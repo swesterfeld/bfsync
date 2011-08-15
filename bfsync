@@ -5,6 +5,7 @@ import os
 import hashlib
 import pickle
 import subprocess
+import shutil
 
 ##################################### Hash Cache #############################################
 
@@ -379,7 +380,7 @@ if command == "add":
       sys.stderr.write ("error writing git file %s\n" % git_file)
       sys.exit (1)
     os.chdir (bfsync_dir)
-    if os.system ("git add '%s'" % git_file) != 0:
+    if subprocess.call (["git", "add", git_file]) != 0:
       sys.stderr.write ("cannot git add file %s\n" % git_file)
       sys.exit (1)
   exit_and_save (0)
@@ -427,8 +428,10 @@ if command == "gather":
             for df in dest_files:
               src  = full_name
               dest = os.path.join (repo_dir, df)
-              mkdir_recursive (os.path.dirname (dest))
-              if os.system ("cp -av '%s' '%s'" % (src, dest)) != 0:
+              try:
+                mkdir_recursive (os.path.dirname (dest))
+                shutil.copy2 (src, dest)
+              except:
                 sys.stderr.write ("can't copy file %s to %s\n" % (src, dest))
                 sys.exit (1)
               gathered += 1
