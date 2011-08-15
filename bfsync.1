@@ -1,0 +1,29 @@
+.TH "BFSYNC" "1" "2011\-08\-15" "Revision 602" "bfsync Manual Page"
+
+.SH NAME
+
+bfsync - manage git-like repository with big files
+
+.SH SYNOPSIS
+
+\fBbfsync\fR \fI<command>\fR \fI<args>...\fR
+
+.SH DESCRIPTION
+
+\fBbfsync\fR is a program that provides git-style revision control for collections of big files. The
+contents of the files are managed by bfsync, and a git repository is used to do version control; in
+this repo only the hashes of the actual data files are stored.
+
+.SH OPTIONS
+
+\fBbfsync\fR has a number of commands, the options depend on the command.
+.TP
+\fBclone\fR \fI<repo>\fR
+Initialize new cloned bfsync repo from git repo \fI<repo>\fR; its \fBhighly recommended\fR to always work with a bare git main repo (git init --bare).
+.PP
+
+.SH SEE ALSO
+
+git.1 <http://testbit.eu/index.php?title=Git.1&action=edit&redlink=1>,
+rsync.1 <http://testbit.eu/index.php?title=Rsync.1&action=edit&redlink=1>
+
