@@ -1,0 +1,7 @@
+bfsync init
+bfsync clone <git repo>
+bfsync status
+bfsync add <file>
+bfsync rm <file>
+bfsync commit
+bfsync gather /mnt/big

@@ -1,0 +1,31 @@
+* double add
+* use bare upstream repo
+* fix special chars (space, ", ', \, :,...)
+* use dict() style api for parse_git_files
+* better check invalid adds
+* track file mode, too
+* man page
+* make install
+
+stefan@voyager:~/big$ rm -rf .bfsync/
+stefan@voyager:~/big$ bfsync validate
+error: can not find .bfsync directory
+
+stefan@voyager:~/big$ bfsync init
+initializing bfsync repository in /home/stefan/big...
+Initialized empty Git repository in /home/stefan/big/.bfsync/.git/
+stefan@voyager:~/big$ bfsync add bazzz/bazzzz
+error writing git file /home/stefan/big/.bfsync/bazzz/bazzzz
+
+stefan@voyager:~/big$ bfsync validate
+validating ./bazzz/bazzzz... Traceback (most recent call last):
+  File "/home/stefan/src/sandbox/bfsync/bfsync.py", line 223, in <module>
+    ok, failed = validate()
+  File "/home/stefan/src/sandbox/bfsync/bfsync.py", line 108, in validate
+    hash = compute_hash (os.path.join (repo_dir, v))
+  File "/home/stefan/src/sandbox/bfsync/bfsync.py", line 48, in compute_hash
+    file = open (filename, "r")
+IOError: [Errno 2] No such file or directory: '/home/stefan/big/./bazzz/bazzzz'
+
+* fix validate for missing files
+* implement clone

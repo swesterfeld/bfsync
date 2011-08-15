@@ -1,0 +1,589 @@
+#!/usr/bin/env python
+
+import sys
+import os
+import hashlib
+import pickle
+import subprocess
+
+##################################### Hash Cache #############################################
+
+class HashCacheEntry:
+  def __init__ (self, stat_hash, file_hash, expire_date):
+    self.stat_hash = stat_hash
+    self.file_hash = file_hash
+    self.expire_date = expire_date
+
+class HashCache:
+  def __init__ (self):
+    self.cache = dict()
+    try:
+      f = open (os.path.expanduser ('~/.bfsync_cache'), "r")
+      for line in f.readlines():
+        (stat_hash, file_hash, expire_date) = line.split()
+        expire_date = int (expire_date)
+        self.cache[stat_hash] = HashCacheEntry (stat_hash, file_hash, expire_date)
+      f.close ()
+    except:
+      pass
+
+  def insert (self, stat_hash, file_hash):
+    self.cache[stat_hash] = HashCacheEntry (stat_hash, file_hash, 0) # FIXME
+
+  def lookup (self, stat_hash):
+    if self.cache.has_key (stat_hash):
+      return self.cache[stat_hash].file_hash
+    else:
+      return ""
+  def save (self):
+    try:
+      f = open (os.path.expanduser ('~/.bfsync_cache'), "w")
+      for key in self.cache:
+        entry = self.cache[key]
+        f.write ("%s %s %d\n" % (entry.stat_hash, entry.file_hash, entry.expire_date))
+      close (f)
+    except:
+      pass
+#################################### Transfer #########################################
+
+def format_size (size, total_size):
+  unit_str = [ "B", "KB", "MB", "GB", "TB" ]
+  unit = 0
+  while (total_size > 10000) and (unit < len (unit_str)):
+    size = (size + 512) / 1024
+    total_size = (total_size + 512) / 1024
+    unit += 1
+  return "%d/%d %s" % (size, total_size, unit_str[unit])
+
+class TransferFile:
+  def __init__ (self, local_path, remote_path, size):
+    self.local_path = local_path
+    self.remote_path = remote_path
+    self.size = size
+
+class TransferList:
+  def __init__ (self):
+    self.tlist = []
+  def add (self, tfile):
+    self.tlist += [ tfile ]
+  def send_list (self, pipe):
+    tlist_str = pickle.dumps (self.tlist)
+    # prepend pickled string len
+    tlist_str = str (len (tlist_str)) + "\n" + tlist_str
+    pipe.write (tlist_str)
+  def send_files (self, pipe, verbose):
+    file_count = 0
+    bytes_sent = 0
+    total_bytes = 0
+    for tfile in self.tlist:
+      total_bytes += tfile.size
+    for tfile in self.tlist:
+      file_count += 1
+      f = open (tfile.local_path)
+      remaining = tfile.size
+      while (remaining > 0):
+        todo = min (remaining, 256 * 1024)
+        data = f.read (todo)
+        pipe.write (data)
+        remaining -= todo
+        bytes_sent += todo
+        if (verbose):
+          print "\rPUT: file %d/%d    %s    %.1f%%" % (
+            file_count, len (self.tlist),
+            format_size (bytes_sent, total_bytes),
+            bytes_sent * 100.0 / total_bytes),
+          sys.stdout.flush()
+      f.close()
+    if (verbose):
+      print
+  def receive_list (self, pipe):
+    in_size = True
+    size_str = ""
+    while in_size:
+      s = pipe.read (1)
+      if s == '\n':
+        in_size = False
+      else:
+        size_str += s
+    size = int (size_str)
+    tlist_str = pipe.read (size)
+    self.tlist = pickle.loads (tlist_str)
+  def receive_files (self, pipe, verbose):
+    file_count = 0
+    bytes_received = 0
+    total_bytes = 0
+    for tfile in self.tlist:
+      total_bytes += tfile.size
+    for tfile in self.tlist:
+      file_count += 1
+      mkdir_recursive (os.path.dirname (tfile.remote_path))
+      f = open (tfile.remote_path, "w")
+      remaining = tfile.size
+      while (remaining > 0):
+        todo = min (remaining, 256 * 1024)
+        data = pipe.read (todo)
+        f.write (data)
+        remaining -= todo
+        bytes_received += todo
+        if (verbose):
+          print "\rGET: file %d/%d    %s    %.1f%%" % (
+            file_count, len (self.tlist),
+            format_size (bytes_received, total_bytes),
+            bytes_received * 100.0 / total_bytes),
+          sys.stdout.flush()
+      f.close()
+    if (verbose):
+      print
+
+#######################################################################################
+def find_bfsync_dir():
+  old_cwd = os.getcwd()
+  dir = old_cwd
+  while True:
+    try:
+      test_dir = os.path.join (dir, ".bfsync")
+      os.chdir (test_dir)
+      os.chdir (old_cwd)
+      return test_dir
+    except:
+      pass
+    # try parent directory
+    newdir = os.path.dirname (dir)
+    if newdir == dir:
+      # no more parent
+      sys.stderr.write ("error: can not find .bfsync directory\n")
+      sys.exit (1)
+    dir = newdir
+
+def parse_git_file (filename):
+  hash = ""
+  size = ""
+  try:
+    file = open (filename, "r")
+    for line in file:
+      x = line.split ("=")
+      if len (x) == 2:
+        key = x[0].strip()
+        value = x[1].strip()
+        if key == "hash":
+          hash = value
+        elif key == "size":
+          size = int (value)
+        else:
+          pass  # skip
+    return True, hash, size
+  except:
+    pass
+  return False, "", ""
+
+hash_cache = HashCache()
+
+def exit_and_save (code):
+  hash_cache.save()
+  sys.exit (code)
+
+def make_stat_hash (filename):
+  filename = os.path.abspath (filename)
+  stat = os.stat (filename)
+  l = [
+    filename,
+    stat.st_mode, stat.st_ino, stat.st_dev, stat.st_nlink,
+    stat.st_uid, stat.st_gid, stat.st_size,
+    stat.st_atime, stat.st_mtime, stat.st_ctime
+  ]
+  stat_hash = hashlib.sha256 (pickle.dumps (l)).hexdigest()
+  return stat_hash
+
+def compute_hash (filename):
+  filename = os.path.abspath (filename)
+  stat_hash = make_stat_hash (filename)
+  result = hash_cache.lookup (stat_hash)
+  if result != "":  # file hash already in cache
+    return result
+  file = open (filename, "r")
+  hash = hashlib.sha256()
+  eof = False
+  while not eof:
+    data = file.read (256 * 1024)
+    if data == "":
+      eof = True
+    else:
+      hash.update (data)
+  file.close()
+  result = hash.hexdigest()
+  hash_cache.insert (stat_hash, result)
+  return result
+
+def compute_size (filename):
+  try:
+    return os.stat (filename).st_size
+  except:
+    sys.stderr.write ("can't stat file %s\n" % filename)
+    sys.exit (1)
+
+def repository_path (bfsync_dir, file):
+  repo_path = os.path.basename (file)
+  file = os.path.dirname (file)
+  while os.path.join (file, ".bfsync") != bfsync_dir:
+    repo_path = os.path.join (os.path.basename (file), repo_path)
+    file = os.path.dirname (file)
+  return repo_path
+
+def mkdir_recursive (dir):
+  if os.path.exists (dir) and os.path.isdir (dir):
+    return
+  else:
+    try:
+      os.makedirs (dir)
+      if os.path.exists (dir) and os.path.isdir (dir):
+        return
+    except:
+      pass
+  sys.stderr.write ("error: can't create directory %s\n" % dir)
+  sys.exit (1)
+
+def validate (show_progress):
+  bfsync_dir = find_bfsync_dir()
+  os.chdir (bfsync_dir)
+  validate_list = []
+  for dir, dirs, files in os.walk ("."):
+    if '.git' in dirs:
+      dirs.remove ('.git')
+    for file in files:
+      validate_list += [ os.path.join (dir, file) ]
+  repo_dir = os.path.dirname (bfsync_dir)
+  failed = []
+  ok = []
+  for v in validate_list:
+    if (show_progress):
+      sys.stdout.write ("validating %s... " % v)
+    if not os.path.exists (os.path.join (repo_dir, v)):
+      if (show_progress):
+        print "MISSING."
+      failed += [ v ]
+    else:
+      hash = compute_hash (os.path.join (repo_dir, v))
+      size = compute_size (os.path.join (repo_dir, v))
+      success, git_hash, git_size = parse_git_file (os.path.join (bfsync_dir, v))
+      if success and hash == git_hash and size == git_size:
+        if (show_progress):
+          print "OK."
+        ok += [ v ]
+      else:
+        if (show_progress):
+          print "FAILED."
+        failed += [ v ]
+  return ok, failed
+
+command = None
+arg_iter = sys.argv[1:].__iter__()
+args = []
+
+for arg in arg_iter:
+  if arg == "init" and command == None:
+    command = "init"
+  elif arg == "status" and command == None:
+    command = "status"
+  elif arg == "add" and command == None:
+    command = "add"
+  elif arg == "commit" and command == None:
+    command = "commit"
+  elif arg == "clone" and command == None:
+    command = "clone"
+  elif arg == "validate" and command == None:
+    command = "validate"
+  elif arg == "gather" and command == None:
+    command = "gather"
+  elif arg == "pull" and command == None:
+    command = "pull"
+  elif arg == "push" and command == None:
+    command = "push"
+  elif arg == "remote-ls" and command == None:
+    command = "remote-ls"
+  elif arg == "get" and command == None:
+    command = "get"
+  elif arg == "remote-validate" and command == None:
+    command = "remote-validate"
+  elif arg == "remote-receive" and command == None:
+    command = "remote-receive"
+  elif arg == "remote-send" and command == None:
+    command = "remote-send"
+  elif arg == "put" and command == None:
+    command = "put"
+  elif command in ("add", "clone", "gather", "remote-ls", "get", "remote-validate", "put"):
+    args += [ arg ]
+  else:
+    sys.stderr.write ("can't parse command line args...\n")
+    sys.exit (1)
+
+root_dir = os.getcwd()
+
+if command == "init":
+  try:
+    os.chdir (".bfsync")
+    bfsync_there = True
+  except:
+    bfsync_there = False
+  if bfsync_there:
+    sys.stderr.write ("bfsync: there is already a .bfsync dir here - init failed\n")
+    sys.exit (1)
+  print "initializing bfsync repository in " + root_dir + "..."
+  try:
+    os.chdir (root_dir)
+    os.mkdir (".bfsync")
+    os.chdir (os.path.join (root_dir, ".bfsync"))
+  except:
+    sys.stderr.write ("bfsync: can not create .bfsync dir - init failed\n")
+    sys.exit (1)
+  if os.system ("git init") != 0:
+    sys.stderr.write ("bfsync: can not git initialize .bfsync dir - init failed\n");
+    sys.exit (1)
+  sys.exit (0)
+
+if command == "status":
+  bfsync_dir = find_bfsync_dir()
+  for dir, dirs, files in os.walk (root_dir):
+    if '.bfsync' in dirs:
+      dirs.remove ('.bfsync')
+    for file in files:
+      repo_path = repository_path (bfsync_dir, os.path.join (dir, file))
+      git_file = os.path.join (bfsync_dir, repo_path)
+      ok, hash, size = parse_git_file (git_file)
+      if ok:
+        print "X", repo_path
+      else:
+        print "?", repo_path
+  sys.exit (0)
+
+if command == "add":
+  cwd = os.getcwd()
+  bfsync_dir = find_bfsync_dir()
+  for i in args:
+    repo_path = repository_path (bfsync_dir, os.path.join (root_dir, i))
+    mkdir_recursive (os.path.join (bfsync_dir, os.path.dirname (repo_path)))
+    git_file = os.path.join (bfsync_dir, repo_path)
+    try:
+      gf = open (git_file, "r")
+      have_gf = True
+    except:
+      have_gf = False
+    if have_gf:
+      sys.stderr.write ("git file %s already exists - cannot use add.\n" % git_file)
+      sys.exit (0)
+    try:
+      gf = open (git_file, "w")
+      gf.write ("hash = %s\n" % compute_hash (os.path.join (cwd, i)))
+      gf.write ("size = %d\n" % compute_size (os.path.join (cwd, i)))
+      gf.close()
+    except:
+      sys.stderr.write ("error writing git file %s\n" % git_file)
+      sys.exit (1)
+    os.chdir (bfsync_dir)
+    if os.system ("git add '%s'" % git_file) != 0:
+      sys.stderr.write ("cannot git add file %s\n" % git_file)
+      sys.exit (1)
+  exit_and_save (0)
+
+if command == "commit":
+  bfsync_dir = find_bfsync_dir()
+  try:
+    os.chdir (bfsync_dir)
+    if os.system ("git commit -a") != 0:
+      sys.stderr.write ("git commit failed\n")
+      sys.exit (1)
+  except:
+    sys.stderr.write ("cannot chdir to directory %s\n" % bfsync_dir)
+    sys.exit (1)
+  exit_and_save (0)
+
+if command == "validate":
+  ok, failed = validate (True)
+  print "Files that are up to date:  ", len (ok)
+  print "Files that didn't validate: ", len (failed)
+  exit_and_save (0)
+
+if command == "gather":
+  bfsync_dir = find_bfsync_dir()
+  ok, failed = validate (True)
+  if len (failed) == 0:
+    print "All files validated; nothing to do."
+    exit_and_save (0)
+  hash_needed = dict()
+  for file in failed:
+    success, git_hash, git_size = parse_git_file (os.path.join (bfsync_dir, file))
+    if not hash_needed.has_key (git_hash):
+      hash_needed[git_hash] = []
+    hash_needed[git_hash] += [ file ]
+  repo_dir = os.path.dirname (bfsync_dir)
+  gathered = 0
+  for i in args:
+    for dir, dirs, files in os.walk (i):
+      for f in files:
+        full_name = os.path.join (dir, f)
+        if os.path.isfile (full_name):
+          hash = compute_hash (full_name)
+          if hash_needed.has_key (hash):
+            dest_files = hash_needed[hash]
+            for df in dest_files:
+              src  = full_name
+              dest = os.path.join (repo_dir, df)
+              mkdir_recursive (os.path.dirname (dest))
+              if os.system ("cp -av '%s' '%s'" % (src, dest)) != 0:
+                sys.stderr.write ("can't copy file %s to %s\n" % (src, dest))
+                sys.exit (1)
+              gathered += 1
+  print "Gathered files: %d" % gathered
+  exit_and_save (0)
+
+def strip_git_suffix (s):
+  if s[-4:] == ".git":
+    return s[:-4]
+  else:
+    return s
+
+def guess_dir_name (url):
+  dir_name = ""
+  for ch in reversed (url):
+    if (ch == ":") or (ch == "/"):
+      return strip_git_suffix (dir_name)
+    dir_name = ch + dir_name
+  return strip_git_suffix (dir_name)
+
+if command == "clone":
+  destdir = guess_dir_name (args[0])
+  if os.path.exists (destdir):
+    print "fatal: destination path '" + destdir + "' already exists"
+    sys.exit (1)
+  if os.system ("git clone %s %s/.bfsync" % (args[0], destdir)) != 0:
+    print "git clone failed"
+    sys.exit (1)
+  exit_and_save (0)
+
+if command == "pull":
+  bfsync_dir = find_bfsync_dir()
+  try:
+    os.chdir (bfsync_dir)
+    if os.system ("git pull") != 0:
+      sys.stderr.write ("git pull failed\n")
+      sys.exit (1)
+  except:
+    sys.stderr.write ("cannot chdir to directory %s\n" % bfsync_dir)
+    sys.exit (1)
+  exit_and_save (0)
+
+if command == "push":
+  bfsync_dir = find_bfsync_dir()
+  try:
+    os.chdir (bfsync_dir)
+    if os.system ("git push") != 0:
+      sys.stderr.write ("git push failed\n")
+      sys.exit (1)
+  except:
+    sys.stderr.write ("cannot chdir to directory %s\n" % bfsync_dir)
+    sys.exit (1)
+  exit_and_save (0)
+
+class RemoteFile:
+  pass
+
+if command == "remote-ls":
+  for i in args:
+    file_list = []
+    for dir, dirs, files in os.walk (i):
+      for f in files:
+        full_name = os.path.join (dir, f)
+        if os.path.isfile (full_name):
+          remote_file = RemoteFile()
+          remote_file.name = full_name
+          remote_file.hash = compute_hash (full_name)
+          remote_file.size = compute_size (full_name)
+          file_list += [ remote_file ]
+    print pickle.dumps (file_list)
+  exit_and_save (0)
+
+if command == "remote-validate":
+  os.chdir (args[0])
+  bfsync_dir = find_bfsync_dir()
+  ok, failed = validate (False)
+  file_list = []
+  for f in failed:
+    remote_file = RemoteFile()
+    remote_file.name = f
+    success, git_hash, git_size = parse_git_file (os.path.join (bfsync_dir, f))
+    remote_file.hash = git_hash
+    file_list += [ remote_file ]
+  print pickle.dumps (file_list)
+  exit_and_save (0)
+
+if command == "remote-receive":
+  tl = TransferList()
+  tl.receive_list (sys.stdin)
+  tl.receive_files (sys.stdin, False)
+  exit_and_save (0)
+
+if command == "remote-send":
+  tl = TransferList()
+  tl.receive_list (sys.stdin)
+  tl.send_files (sys.stdout, False)
+  exit_and_save (0)
+
+if command == "get":
+  bfsync_dir = find_bfsync_dir()
+  repo_dir = os.path.dirname (bfsync_dir)
+  ok, failed = validate (False)
+  if len (failed) == 0:
+    print "All files validated; nothing to do."
+    sys.exit (0)
+  (host, path) = args[0].split (":")
+  remote_list_p = subprocess.Popen(["ssh", host, "bfsync", "remote-ls", path], stdout=subprocess.PIPE).communicate()[0]
+  remote_list = pickle.loads (remote_list_p)
+  hash_needed = dict()
+  for file in failed:
+    success, git_hash, git_size = parse_git_file (os.path.join (bfsync_dir, file))
+    if not hash_needed.has_key (git_hash):
+      hash_needed[git_hash] = []
+    hash_needed[git_hash] += [ file ]
+  tl = TransferList()
+  for remote_file in remote_list:
+    if hash_needed.has_key (remote_file.hash):
+      dest_files = hash_needed[remote_file.hash]
+      for df in dest_files:
+        src  = remote_file.name
+        dest = os.path.join (repo_dir, df)
+        tl.add (TransferFile (src, dest, remote_file.size))
+  remote_send_p = subprocess.Popen (["ssh", host, "bfsync", "remote-send"],
+                                    stdin=subprocess.PIPE,
+                                    stdout=subprocess.PIPE)
+  tl.send_list (remote_send_p.stdin)
+  tl.receive_files (remote_send_p.stdout, True)
+  exit_and_save (0)
+
+if command == "put":
+  (host, path) = args[0].split (":")
+  remote_list_p = subprocess.Popen(["ssh", host, "bfsync", "remote-validate", path], stdout=subprocess.PIPE).communicate()[0]
+  remote_list = pickle.loads (remote_list_p)
+  hash_needed = dict()
+  for file in remote_list:
+    if not hash_needed.has_key (file.hash):
+      hash_needed[file.hash] = []
+    hash_needed[file.hash] += [ file.name ]
+  src_dir = os.getcwd()
+  tl = TransferList()
+  remote_dirs = dict()
+  for dir, dirs, files in os.walk (src_dir):
+    for f in files:
+      full_name = os.path.join (dir, f)
+      if os.path.isfile (full_name):
+        hash = compute_hash (full_name)
+        if hash_needed.has_key (hash):
+          dest_files = hash_needed[hash]
+          for df in dest_files:
+            src  = full_name
+            dest = os.path.join (path, df)
+            tl.add (TransferFile (src, dest, compute_size (full_name)))
+  pipe = subprocess.Popen (["ssh", host, "bfsync", "remote-receive"], bufsize=-1, stdin=subprocess.PIPE).stdin
+  tl.send_list (pipe)
+  tl.send_files (pipe, True)
+  exit_and_save (0)
+
+print "usage: bfsync <command> [ args... ]"
