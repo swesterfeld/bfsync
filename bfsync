@@ -452,6 +452,7 @@ if command == "validate":
 
 def local_get (i):
   status_line.set_op ("GET")
+  status_line.update ("preparing file list...")
   bfsync_dir = find_bfsync_dir()
   ok, failed = validate (False)
   if len (failed) == 0:
