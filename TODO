@@ -1,4 +1,3 @@
-* merge get and gather
 * use dict() style api for parse_git_files
 * track file mode, too
 * man page

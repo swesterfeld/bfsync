@@ -90,9 +90,9 @@ def format_rate (bytes_per_sec):
   return "%.1f %s" % (bytes_per_sec, unit_str[unit])
 
 class TransferFile:
-  def __init__ (self, local_path, remote_path, size):
-    self.local_path = local_path
-    self.remote_path = remote_path
+  def __init__ (self, src_path, dest_path, size):
+    self.src_path = src_path
+    self.dest_path = dest_path
     self.size = size
 
 class TransferList:
@@ -114,7 +114,7 @@ class TransferList:
     self.start_time = time.time()
     for tfile in self.tlist:
       self.file_number += 1
-      f = open (tfile.local_path)
+      f = open (tfile.src_path)
       remaining = tfile.size
       while (remaining > 0):
         todo = min (remaining, 256 * 1024)
@@ -154,8 +154,8 @@ class TransferList:
     self.start_time = time.time()
     for tfile in self.tlist:
       self.file_number += 1
-      mkdir_recursive (os.path.dirname (tfile.remote_path))
-      f = open (tfile.remote_path, "w")
+      mkdir_recursive (os.path.dirname (tfile.dest_path))
+      f = open (tfile.dest_path, "w")
       remaining = tfile.size
       while (remaining > 0):
         todo = min (remaining, 256 * 1024)
@@ -168,6 +168,19 @@ class TransferList:
       f.close()
     if (verbose):
       print
+  def copy_files (self):
+    self.start_time = time.time()
+    for tfile in self.tlist:
+      self.file_number += 1
+      try:
+        mkdir_recursive (os.path.dirname (tfile.dest_path))
+        shutil.copy2 (tfile.src_path, tfile.dest_path)
+      except:
+        sys.stderr.write ("can't copy file %s to %s\n" % (tfile.src_path, tfile.dest_path))
+        sys.exit (1)
+      self.bytes_done += tfile.size
+      self.update_status_line()
+    print
 
 #######################################################################################
 def find_bfsync_dir():
@@ -323,8 +336,6 @@ for arg in arg_iter:
     command = "clone"
   elif arg == "validate" and command == None:
     command = "validate"
-  elif arg == "gather" and command == None:
-    command = "gather"
   elif arg == "pull" and command == None:
     command = "pull"
   elif arg == "push" and command == None:
@@ -343,7 +354,7 @@ for arg in arg_iter:
     command = "put"
   elif arg == "devtest" and command == None:
     command = "devtest"
-  elif command in ("add", "clone", "gather", "remote-ls", "get", "remote-validate", "put"):
+  elif command in ("add", "clone", "remote-ls", "get", "remote-validate", "put"):
     args += [ arg ]
   else:
     sys.stderr.write ("can't parse command line args...\n")
@@ -439,9 +450,10 @@ if command == "validate":
   print "Files that didn't validate: ", len (failed)
   exit_and_save (0)
 
-if command == "gather":
+def local_get (i):
+  status_line.set_op ("GET")
   bfsync_dir = find_bfsync_dir()
-  ok, failed = validate (True)
+  ok, failed = validate (False)
   if len (failed) == 0:
     print "All files validated; nothing to do."
     exit_and_save (0)
@@ -452,27 +464,20 @@ if command == "gather":
       hash_needed[git_hash] = []
     hash_needed[git_hash] += [ file ]
   repo_dir = os.path.dirname (bfsync_dir)
-  gathered = 0
-  for i in args:
-    for dir, dirs, files in os.walk (i):
-      for f in files:
-        full_name = os.path.join (dir, f)
-        if os.path.isfile (full_name):
-          hash = compute_hash (full_name)
-          if hash_needed.has_key (hash):
-            dest_files = hash_needed[hash]
-            for df in dest_files:
-              src  = full_name
-              dest = os.path.join (repo_dir, df)
-              try:
-                mkdir_recursive (os.path.dirname (dest))
-                shutil.copy2 (src, dest)
-              except:
-                sys.stderr.write ("can't copy file %s to %s\n" % (src, dest))
-                sys.exit (1)
-              gathered += 1
-  print "Gathered files: %d" % gathered
-  exit_and_save (0)
+  tl = TransferList()
+  for dir, dirs, files in os.walk (i):
+    for f in files:
+      full_name = os.path.join (dir, f)
+      if os.path.isfile (full_name):
+        hash = compute_hash (full_name)
+        if hash_needed.has_key (hash):
+          dest_files = hash_needed[hash]
+          for df in dest_files:
+            src  = full_name
+            dest = os.path.join (repo_dir, df)
+            tl.add (TransferFile (src, dest, compute_size (src)))
+  tl.copy_files()
+  return
 
 def strip_git_suffix (s):
   if s[-4:] == ".git":
@@ -566,17 +571,16 @@ if command == "remote-send":
   tl.send_files (sys.stdout, False)
   exit_and_save (0)
 
-if command == "get":
+def remote_get (url):
   bfsync_dir = find_bfsync_dir()
   repo_dir = os.path.dirname (bfsync_dir)
-  status_line.set_op ("GET")
   status_line.update ("checking local files...")
   ok, failed = validate (False)
   if len (failed) == 0:
     print "All files validated; nothing to do."
     sys.exit (0)
   status_line.update ("transferring file list...")
-  (host, path) = args[0].split (":")
+  (host, path) = url.split (":")
   remote_list_p = subprocess.Popen(["ssh", host, "bfsync", "remote-ls", path], stdout=subprocess.PIPE).communicate()[0]
   remote_list = pickle.loads (remote_list_p)
   hash_needed = dict()
@@ -598,6 +602,15 @@ if command == "get":
                                     stdout=subprocess.PIPE)
   tl.send_list (remote_send_p.stdin)
   tl.receive_files (remote_send_p.stdout, True)
+  return
+
+if command == "get":
+  status_line.set_op ("GET")
+  for i in args:
+    if len (i.split (":")) > 1:
+      remote_get (i)
+    else:
+      local_get (i)
   exit_and_save (0)
 
 if command == "put":
