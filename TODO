@@ -4,7 +4,5 @@
 * make install
 * fix hash cash expiring
 * fix validate for missing files
-* implement clone
 * implement delete
 * implement mv
-* rename validate => check

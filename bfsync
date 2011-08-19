@@ -286,21 +286,21 @@ def mkdir_recursive (dir):
   sys.stderr.write ("error: can't create directory %s\n" % dir)
   sys.exit (1)
 
-def validate (show_progress):
+def check (show_progress):
   bfsync_dir = find_bfsync_dir()
   os.chdir (bfsync_dir)
-  validate_list = []
+  check_list = []
   for dir, dirs, files in os.walk ("."):
     if '.git' in dirs:
       dirs.remove ('.git')
     for file in files:
-      validate_list += [ os.path.join (dir, file) ]
+      check_list += [ os.path.join (dir, file) ]
   repo_dir = os.path.dirname (bfsync_dir)
   failed = []
   ok = []
-  for v in validate_list:
+  for v in check_list:
     if (show_progress):
-      sys.stdout.write ("validating %s... " % v)
+      sys.stdout.write ("checking %s... " % v)
     if not os.path.exists (os.path.join (repo_dir, v)):
       if (show_progress):
         print "MISSING."
@@ -334,8 +334,8 @@ for arg in arg_iter:
     command = "commit"
   elif arg == "clone" and command == None:
     command = "clone"
-  elif arg == "validate" and command == None:
-    command = "validate"
+  elif arg == "check" and command == None:
+    command = "check"
   elif arg == "pull" and command == None:
     command = "pull"
   elif arg == "push" and command == None:
@@ -344,8 +344,8 @@ for arg in arg_iter:
     command = "remote-ls"
   elif arg == "get" and command == None:
     command = "get"
-  elif arg == "remote-validate" and command == None:
-    command = "remote-validate"
+  elif arg == "remote-check" and command == None:
+    command = "remote-check"
   elif arg == "remote-receive" and command == None:
     command = "remote-receive"
   elif arg == "remote-send" and command == None:
@@ -354,7 +354,7 @@ for arg in arg_iter:
     command = "put"
   elif arg == "devtest" and command == None:
     command = "devtest"
-  elif command in ("add", "clone", "remote-ls", "get", "remote-validate", "put"):
+  elif command in ("add", "clone", "remote-ls", "get", "remote-check", "put"):
     args += [ arg ]
   else:
     sys.stderr.write ("can't parse command line args...\n")
@@ -444,19 +444,19 @@ if command == "commit":
     sys.exit (1)
   exit_and_save (0)
 
-if command == "validate":
-  ok, failed = validate (True)
-  print "Files that are up to date:  ", len (ok)
-  print "Files that didn't validate: ", len (failed)
+if command == "check":
+  ok, failed = check (True)
+  print "Files that are up to date:    ", len (ok)
+  print "Files that didn't pass check: ", len (failed)
   exit_and_save (0)
 
 def local_get (i):
   status_line.set_op ("GET")
   status_line.update ("preparing file list...")
   bfsync_dir = find_bfsync_dir()
-  ok, failed = validate (False)
+  ok, failed = check (False)
   if len (failed) == 0:
-    print "All files validated; nothing to do."
+    print "All files up to date; nothing to do."
     exit_and_save (0)
   hash_needed = dict()
   for file in failed:
@@ -546,10 +546,10 @@ if command == "remote-ls":
     print pickle.dumps (file_list)
   exit_and_save (0)
 
-if command == "remote-validate":
+if command == "remote-check":
   os.chdir (args[0])
   bfsync_dir = find_bfsync_dir()
-  ok, failed = validate (False)
+  ok, failed = check (False)
   file_list = []
   for f in failed:
     remote_file = RemoteFile()
@@ -576,9 +576,9 @@ def remote_get (url):
   bfsync_dir = find_bfsync_dir()
   repo_dir = os.path.dirname (bfsync_dir)
   status_line.update ("checking local files...")
-  ok, failed = validate (False)
+  ok, failed = check (False)
   if len (failed) == 0:
-    print "All files validated; nothing to do."
+    print "All files up to date; nothing to do."
     sys.exit (0)
   status_line.update ("transferring file list...")
   (host, path) = url.split (":")
@@ -618,7 +618,7 @@ if command == "put":
   status_line.set_op ("PUT")
   status_line.update ("transferring file list...")
   (host, path) = args[0].split (":")
-  remote_list_p = subprocess.Popen(["ssh", host, "bfsync", "remote-validate", path], stdout=subprocess.PIPE).communicate()[0]
+  remote_list_p = subprocess.Popen(["ssh", host, "bfsync", "remote-check", path], stdout=subprocess.PIPE).communicate()[0]
   remote_list = pickle.loads (remote_list_p)
   hash_needed = dict()
   for file in remote_list:
