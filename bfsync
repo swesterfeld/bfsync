@@ -24,6 +24,11 @@ class StatusLine:
     self.line = self.op_text + text
     print "\r%s " % self.line,
     sys.stdout.flush()
+  def die (self, text):
+    if len (self.line) > 0:
+      print "\n"
+    sys.stderr.write ("bfsync: %s\n" % text)
+    sys.exit (1)
 
 status_line = StatusLine()
 
@@ -245,11 +250,7 @@ def compute_hash (filename):
   return result
 
 def compute_size (filename):
-  try:
-    return os.stat (filename).st_size
-  except:
-    sys.stderr.write ("can't stat file %s\n" % filename)
-    sys.exit (1)
+  return os.stat (filename).st_size
 
 def repository_path (bfsync_dir, file):
   repo_path = os.path.basename (file)
@@ -400,12 +401,16 @@ if command == "add":
     except:
       have_gf = False
     if have_gf:
-      sys.stderr.write ("git file %s already exists - cannot use add.\n" % git_file)
-      sys.exit (0)
+      status_line.die ("git file %s already exists - cannot use add." % git_file)
+    try:
+      hash = compute_hash (os.path.join (cwd, i))
+      size = compute_size (os.path.join (cwd, i))
+    except Exception, ex:
+      status_line.die ("error during hash/size computation: %s" % ex)
     try:
       gf = open (git_file, "w")
-      gf.write ("hash = %s\n" % compute_hash (os.path.join (cwd, i)))
-      gf.write ("size = %d\n" % compute_size (os.path.join (cwd, i)))
+      gf.write ("hash = %s\n" % hash)
+      gf.write ("size = %d\n" % size)
       gf.close()
     except:
       sys.stderr.write ("error writing git file %s\n" % git_file)
