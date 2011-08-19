@@ -6,6 +6,7 @@
 * track file mode, too
 * man page
 * make install
+* fix hash cash expiring
 
 stefan@voyager:~/big$ rm -rf .bfsync/
 stefan@voyager:~/big$ bfsync validate
