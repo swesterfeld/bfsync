@@ -93,21 +93,22 @@ class TransferFile:
 class TransferList:
   def __init__ (self):
     self.tlist = []
+    self.bytes_total = 0
+    self.bytes_done = 0
+    self.start_time = 0 # must be set to time.time() once sending/receiving starts
+    self.file_number = 0
   def add (self, tfile):
     self.tlist += [ tfile ]
+    self.bytes_total += tfile.size
   def send_list (self, pipe):
     tlist_str = pickle.dumps (self.tlist)
     # prepend pickled string len
     tlist_str = str (len (tlist_str)) + "\n" + tlist_str
     pipe.write (tlist_str)
   def send_files (self, pipe, verbose):
-    file_count = 0
-    bytes_sent = 0
-    total_bytes = 0
+    self.start_time = time.time()
     for tfile in self.tlist:
-      total_bytes += tfile.size
-    for tfile in self.tlist:
-      file_count += 1
+      self.file_number += 1
       f = open (tfile.local_path)
       remaining = tfile.size
       while (remaining > 0):
@@ -115,13 +116,9 @@ class TransferList:
         data = f.read (todo)
         pipe.write (data)
         remaining -= todo
-        bytes_sent += todo
+        self.bytes_done += todo
         if (verbose):
-          print "\rPUT: file %d/%d    %s    %.1f%%" % (
-            file_count, len (self.tlist),
-            format_size (bytes_sent, total_bytes),
-            bytes_sent * 100.0 / total_bytes),
-          sys.stdout.flush()
+          self.update_status_line()
       f.close()
     if (verbose):
       print
@@ -137,15 +134,21 @@ class TransferList:
     size = int (size_str)
     tlist_str = pipe.read (size)
     self.tlist = pickle.loads (tlist_str)
+  def update_status_line (self):
+    elapsed_time = max (time.time() - self.start_time, 1)
+    bytes_per_sec = max (self.bytes_done / elapsed_time, 1)
+    eta = int ((self.bytes_total - self.bytes_done) / bytes_per_sec)
+    status_line.update ("file %d/%d    %s    %.1f%%   %s   ETA: %d:%02d" % (
+        self.file_number, len (self.tlist),
+        format_size (self.bytes_done, self.bytes_total),
+        self.bytes_done * 100.0 / self.bytes_total,
+        format_rate (bytes_per_sec),
+        eta / 60, eta % 60
+      ))
   def receive_files (self, pipe, verbose):
-    file_count = 0
-    bytes_received = 0
-    total_bytes = 0
-    start_time = time.time()
+    self.start_time = time.time()
     for tfile in self.tlist:
-      total_bytes += tfile.size
-    for tfile in self.tlist:
-      file_count += 1
+      self.file_number += 1
       mkdir_recursive (os.path.dirname (tfile.remote_path))
       f = open (tfile.remote_path, "w")
       remaining = tfile.size
@@ -154,18 +157,9 @@ class TransferList:
         data = pipe.read (todo)
         f.write (data)
         remaining -= todo
-        bytes_received += todo
+        self.bytes_done += todo
         if (verbose):
-          elapsed_time = max (time.time() - start_time, 1)
-          bytes_per_sec = max (bytes_received / elapsed_time, 1)
-          eta = int ((total_bytes - bytes_received) / bytes_per_sec)
-          status_line.update ("file %d/%d    %s    %.1f%%   %s   ETA: %d:%02d" % (
-              file_count, len (self.tlist),
-              format_size (bytes_received, total_bytes),
-              bytes_received * 100.0 / total_bytes,
-              format_rate (bytes_per_sec),
-              eta / 60, eta % 60
-            ))
+          self.update_status_line()
       f.close()
     if (verbose):
       print
@@ -602,6 +596,8 @@ if command == "get":
   exit_and_save (0)
 
 if command == "put":
+  status_line.set_op ("PUT")
+  status_line.update ("transferring file list...")
   (host, path) = args[0].split (":")
   remote_list_p = subprocess.Popen(["ssh", host, "bfsync", "remote-validate", path], stdout=subprocess.PIPE).communicate()[0]
   remote_list = pickle.loads (remote_list_p)
@@ -611,6 +607,7 @@ if command == "put":
       hash_needed[file.hash] = []
     hash_needed[file.hash] += [ file.name ]
   src_dir = os.getcwd()
+  status_line.update ("checking local files...")
   tl = TransferList()
   remote_dirs = dict()
   for dir, dirs, files in os.walk (src_dir):
