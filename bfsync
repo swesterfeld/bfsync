@@ -6,6 +6,26 @@ import hashlib
 import pickle
 import subprocess
 import shutil
+import time
+
+##################################### Status Line ############################################
+
+class StatusLine:
+  def __init__ (self):
+    self.op_text = ""
+    self.line = ""
+  def set_op (self, op):
+    self.op_text = op + ": "
+  def update (self, text):
+    print "\r",
+    # clear old status
+    for i in range (len (self.line)):
+      sys.stdout.write (" ")
+    self.line = self.op_text + text
+    print "\r%s " % self.line,
+    sys.stdout.flush()
+
+status_line = StatusLine()
 
 ##################################### Hash Cache #############################################
 
@@ -55,6 +75,14 @@ def format_size (size, total_size):
     total_size = (total_size + 512) / 1024
     unit += 1
   return "%d/%d %s" % (size, total_size, unit_str[unit])
+
+def format_rate (bytes_per_sec):
+  unit_str = [ "B/s", "KB/s", "MB/s", "GB/s", "TB/s" ]
+  unit = 0
+  while (bytes_per_sec > 10000) and (unit < len (unit_str)):
+    bytes_per_sec /= 1024
+    unit += 1
+  return "%.1f %s" % (bytes_per_sec, unit_str[unit])
 
 class TransferFile:
   def __init__ (self, local_path, remote_path, size):
@@ -113,6 +141,7 @@ class TransferList:
     file_count = 0
     bytes_received = 0
     total_bytes = 0
+    start_time = time.time()
     for tfile in self.tlist:
       total_bytes += tfile.size
     for tfile in self.tlist:
@@ -127,11 +156,16 @@ class TransferList:
         remaining -= todo
         bytes_received += todo
         if (verbose):
-          print "\rGET: file %d/%d    %s    %.1f%%" % (
-            file_count, len (self.tlist),
-            format_size (bytes_received, total_bytes),
-            bytes_received * 100.0 / total_bytes),
-          sys.stdout.flush()
+          elapsed_time = max (time.time() - start_time, 1)
+          bytes_per_sec = max (bytes_received / elapsed_time, 1)
+          eta = int ((total_bytes - bytes_received) / bytes_per_sec)
+          status_line.update ("file %d/%d    %s    %.1f%%   %s   ETA: %d:%02d" % (
+              file_count, len (self.tlist),
+              format_size (bytes_received, total_bytes),
+              bytes_received * 100.0 / total_bytes,
+              format_rate (bytes_per_sec),
+              eta / 60, eta % 60
+            ))
       f.close()
     if (verbose):
       print
@@ -190,7 +224,8 @@ def make_stat_hash (filename):
     filename,
     stat.st_mode, stat.st_ino, stat.st_dev, stat.st_nlink,
     stat.st_uid, stat.st_gid, stat.st_size,
-    stat.st_atime, stat.st_mtime, stat.st_ctime
+    stat.st_mtime, stat.st_ctime,
+    # stat.st_atime, - we keep out atime to allow reading file without changing the hash value
   ]
   stat_hash = hashlib.sha256 (pickle.dumps (l)).hexdigest()
   return stat_hash
@@ -533,10 +568,13 @@ if command == "remote-send":
 if command == "get":
   bfsync_dir = find_bfsync_dir()
   repo_dir = os.path.dirname (bfsync_dir)
+  status_line.set_op ("GET")
+  status_line.update ("checking local files...")
   ok, failed = validate (False)
   if len (failed) == 0:
     print "All files validated; nothing to do."
     sys.exit (0)
+  status_line.update ("transferring file list...")
   (host, path) = args[0].split (":")
   remote_list_p = subprocess.Popen(["ssh", host, "bfsync", "remote-ls", path], stdout=subprocess.PIPE).communicate()[0]
   remote_list = pickle.loads (remote_list_p)

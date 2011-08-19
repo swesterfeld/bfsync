@@ -31,3 +31,5 @@ IOError: [Errno 2] No such file or directory: '/home/stefan/big/./bazzz/bazzzz'
 * implement clone
 * implement delete
 * implement mv
+* rename validate => check
+* catch add on directory
