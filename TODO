@@ -3,5 +3,4 @@
 * man page
 * make install
 * fix validate for missing files
-* implement delete
 * implement mv
