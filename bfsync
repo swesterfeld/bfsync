@@ -51,8 +51,8 @@ class HashCache:
       for line in f.readlines():
         (stat_hash, file_hash, expire_time) = line.split()
         # expire cache entries which are too old
+        expire_time = int (expire_time)
         if load_time < expire_time:
-          expire_time = int (expire_time)
           self.cache[stat_hash] = HashCacheEntry (stat_hash, file_hash, expire_time)
       f.close ()
     except:
@@ -78,7 +78,7 @@ class HashCache:
       for key in self.cache:
         entry = self.cache[key]
         f.write ("%s %s %d\n" % (entry.stat_hash, entry.file_hash, entry.expire_time))
-      close (f)
+      f.close()
     except:
       pass
 #################################### Transfer #########################################

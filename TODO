@@ -2,7 +2,6 @@
 * track file mode, too
 * man page
 * make install
-* fix hash cash expiring
 * fix validate for missing files
 * implement delete
 * implement mv
