@@ -108,10 +108,11 @@ def format_time (sec):
     return "%d:%02d:%02d" % (sec / 3600, (sec / 60) % 60, sec % 60)
 
 class TransferFile:
-  def __init__ (self, src_path, dest_path, size):
+  def __init__ (self, src_path, dest_path, size, mode):
     self.src_path = src_path
     self.dest_path = dest_path
     self.size = size
+    self.mode = mode
 
 class TransferList:
   def __init__ (self):
@@ -184,6 +185,7 @@ class TransferList:
         if (verbose):
           self.update_status_line()
       f.close()
+      os.chmod (tfile.dest_path, tfile.mode)
     if (verbose):
       print
   def copy_files (self):
@@ -193,8 +195,9 @@ class TransferList:
       try:
         mkdir_recursive (os.path.dirname (tfile.dest_path))
         shutil.copy2 (tfile.src_path, tfile.dest_path)
-      except:
-        sys.stderr.write ("can't copy file %s to %s\n" % (tfile.src_path, tfile.dest_path))
+        os.chmod (tfile.dest_path, tfile.mode)
+      except Exception, ex:
+        sys.stderr.write ("can't copy file %s to %s: %s\n" % (tfile.src_path, tfile.dest_path, ex))
         sys.exit (1)
       self.bytes_done += tfile.size
       self.update_status_line()
@@ -223,6 +226,7 @@ def find_bfsync_dir():
 def parse_git_file (filename):
   hash = ""
   size = ""
+  mode = 0644
   try:
     file = open (filename, "r")
     for line in file:
@@ -236,10 +240,13 @@ def parse_git_file (filename):
           size = int (value)
         else:
           pass  # skip
-    return True, hash, size
+    file.close()
+    mode = compute_mode (filename)
+    mode = simplify_mode (mode)
+    return True, hash, size, mode
   except:
     pass
-  return False, "", ""
+  return False, "", "", mode
 
 hash_cache = HashCache()
 
@@ -282,6 +289,17 @@ def compute_hash (filename):
 
 def compute_size (filename):
   return os.stat (filename).st_size
+
+def compute_mode (filename):
+  return os.stat (filename).st_mode
+
+# git will just preserve executable/not executable, so we can simplify mode
+# to one of these
+def simplify_mode (mode):
+  if (mode & 0111):
+    return 0755
+  else:
+    return 0644
 
 def repository_path (bfsync_dir, file):
   repo_path = os.path.basename (file)
@@ -326,7 +344,7 @@ def check (show_progress):
     else:
       hash = compute_hash (os.path.join (repo_dir, v))
       size = compute_size (os.path.join (repo_dir, v))
-      success, git_hash, git_size = parse_git_file (os.path.join (bfsync_dir, v))
+      success, git_hash, git_size, git_mode = parse_git_file (os.path.join (bfsync_dir, v))
       if success and hash == git_hash and size == git_size:
         if (show_progress):
           print "OK."
@@ -388,7 +406,7 @@ if command == "status":
     for file in files:
       repo_path = repository_path (bfsync_dir, os.path.join (dir, file))
       git_file = os.path.join (bfsync_dir, repo_path)
-      ok, hash, size = parse_git_file (git_file)
+      ok, hash, size, mode = parse_git_file (git_file)
       if ok:
         print "X", repo_path
       else:
@@ -412,13 +430,16 @@ if command == "add":
     try:
       hash = compute_hash (os.path.join (cwd, i))
       size = compute_size (os.path.join (cwd, i))
+      mode = compute_mode (os.path.join (cwd, i))
+      mode = simplify_mode (mode)
     except Exception, ex:
-      status_line.die ("error during hash/size computation: %s" % ex)
+      status_line.die ("error during hash/size/mode computation: %s" % ex)
     try:
       gf = open (git_file, "w")
       gf.write ("hash = %s\n" % hash)
       gf.write ("size = %d\n" % size)
       gf.close()
+      os.chmod (git_file, mode)
     except:
       sys.stderr.write ("error writing git file %s\n" % git_file)
       sys.exit (1)
@@ -456,10 +477,10 @@ def local_get (i):
     exit_and_save (0)
   hash_needed = dict()
   for file in failed:
-    success, git_hash, git_size = parse_git_file (os.path.join (bfsync_dir, file))
+    success, git_hash, git_size, git_mode = parse_git_file (os.path.join (bfsync_dir, file))
     if not hash_needed.has_key (git_hash):
       hash_needed[git_hash] = []
-    hash_needed[git_hash] += [ file ]
+    hash_needed[git_hash] += [ (file, git_mode) ]
   repo_dir = os.path.dirname (bfsync_dir)
   tl = TransferList()
   for dir, dirs, files in os.walk (i):
@@ -471,8 +492,9 @@ def local_get (i):
           dest_files = hash_needed[hash]
           for df in dest_files:
             src  = full_name
-            dest = os.path.join (repo_dir, df)
-            tl.add (TransferFile (src, dest, compute_size (src)))
+            dest = os.path.join (repo_dir, df[0])
+            mode = df[1]
+            tl.add (TransferFile (src, dest, compute_size (src), mode))
   tl.copy_files()
   return
 
@@ -554,8 +576,9 @@ if command == "remote-check":
   for f in failed:
     remote_file = RemoteFile()
     remote_file.name = f
-    success, git_hash, git_size = parse_git_file (os.path.join (bfsync_dir, f))
+    success, git_hash, git_size, git_mode = parse_git_file (os.path.join (bfsync_dir, f))
     remote_file.hash = git_hash
+    remote_file.mode = git_mode
     file_list += [ remote_file ]
   print pickle.dumps (file_list)
   exit_and_save (0)
@@ -586,18 +609,19 @@ def remote_get (url):
   remote_list = pickle.loads (remote_list_p)
   hash_needed = dict()
   for file in failed:
-    success, git_hash, git_size = parse_git_file (os.path.join (bfsync_dir, file))
+    success, git_hash, git_size, git_mode = parse_git_file (os.path.join (bfsync_dir, file))
     if not hash_needed.has_key (git_hash):
       hash_needed[git_hash] = []
-    hash_needed[git_hash] += [ file ]
+    hash_needed[git_hash] += [ (file, git_mode) ]
   tl = TransferList()
   for remote_file in remote_list:
     if hash_needed.has_key (remote_file.hash):
       dest_files = hash_needed[remote_file.hash]
       for df in dest_files:
         src  = remote_file.name
-        dest = os.path.join (repo_dir, df)
-        tl.add (TransferFile (src, dest, remote_file.size))
+        dest = os.path.join (repo_dir, df[0])
+        mode = df[1]
+        tl.add (TransferFile (src, dest, remote_file.size, mode))
   remote_send_p = subprocess.Popen (["ssh", host, "bfsync", "remote-send"],
                                     stdin=subprocess.PIPE,
                                     stdout=subprocess.PIPE)
@@ -624,7 +648,7 @@ if command == "put":
   for file in remote_list:
     if not hash_needed.has_key (file.hash):
       hash_needed[file.hash] = []
-    hash_needed[file.hash] += [ file.name ]
+    hash_needed[file.hash] += [ (file.name, file.mode) ]
   src_dir = os.getcwd()
   status_line.update ("checking local files...")
   tl = TransferList()
@@ -638,8 +662,9 @@ if command == "put":
           dest_files = hash_needed[hash]
           for df in dest_files:
             src  = full_name
-            dest = os.path.join (path, df)
-            tl.add (TransferFile (src, dest, compute_size (full_name)))
+            dest = os.path.join (path, df[0])
+            mode = df[1]
+            tl.add (TransferFile (src, dest, compute_size (full_name), mode))
   pipe = subprocess.Popen (["ssh", host, "bfsync", "remote-receive"], bufsize=-1, stdin=subprocess.PIPE).stdin
   tl.send_list (pipe)
   tl.send_files (pipe, True)
@@ -656,7 +681,7 @@ if command == "repo-files":
     ok, failed = check (False)
     have_hash = dict()
     for file in ok:
-      success, git_hash, git_size = parse_git_file (os.path.join (bfsync_dir, file))
+      success, git_hash, git_size, git_mode = parse_git_file (os.path.join (bfsync_dir, file))
       if not have_hash.has_key (git_hash):
         have_hash[git_hash] = []
       have_hash[git_hash] += [ file ]
