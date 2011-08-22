@@ -164,7 +164,7 @@ class TransferList:
     status_line.update ("file %d/%d    %s    %.1f%%   %s   ETA: %s" % (
         self.file_number, len (self.tlist),
         format_size (self.bytes_done, self.bytes_total),
-        self.bytes_done * 100.0 / self.bytes_total,
+        self.bytes_done * 100.0 / max (self.bytes_total, 1),
         format_rate (bytes_per_sec),
         format_time (eta)
       ))
@@ -496,6 +496,10 @@ if command == "clone":
     print "fatal: destination path '" + destdir + "' already exists"
     sys.exit (1)
   if os.system ("git clone %s %s/.bfsync" % (args[0], destdir)) != 0:
+    try:
+      os.rmdir (destdir)
+    except:
+      pass
     print "git clone failed"
     sys.exit (1)
   exit_and_save (0)
