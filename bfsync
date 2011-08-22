@@ -37,20 +37,23 @@ status_line = StatusLine()
 ##################################### Hash Cache #############################################
 
 class HashCacheEntry:
-  def __init__ (self, stat_hash, file_hash, expire_date):
+  def __init__ (self, stat_hash, file_hash, expire_time):
     self.stat_hash = stat_hash
     self.file_hash = file_hash
-    self.expire_date = expire_date
+    self.expire_time = expire_time
 
 class HashCache:
   def __init__ (self):
     self.cache = dict()
     try:
       f = open (os.path.expanduser ('~/.bfsync_cache'), "r")
+      load_time = time.time()
       for line in f.readlines():
-        (stat_hash, file_hash, expire_date) = line.split()
-        expire_date = int (expire_date)
-        self.cache[stat_hash] = HashCacheEntry (stat_hash, file_hash, expire_date)
+        (stat_hash, file_hash, expire_time) = line.split()
+        # expire cache entries which are too old
+        if load_time < expire_time:
+          expire_time = int (expire_time)
+          self.cache[stat_hash] = HashCacheEntry (stat_hash, file_hash, expire_time)
       f.close ()
     except:
       pass
@@ -62,7 +65,7 @@ class HashCache:
     expire_end *= 24  # -> 1 day
     expire_end *= 30  # -> 1 month
     expire_time = int (time.time()) + random.randint (0, expire_end)
-    self.cache[stat_hash] = HashCacheEntry (stat_hash, file_hash, expire_time) # FIXME
+    self.cache[stat_hash] = HashCacheEntry (stat_hash, file_hash, expire_time)
 
   def lookup (self, stat_hash):
     if self.cache.has_key (stat_hash):
@@ -74,7 +77,7 @@ class HashCache:
       f = open (os.path.expanduser ('~/.bfsync_cache'), "w")
       for key in self.cache:
         entry = self.cache[key]
-        f.write ("%s %s %d\n" % (entry.stat_hash, entry.file_hash, entry.expire_date))
+        f.write ("%s %s %d\n" % (entry.stat_hash, entry.file_hash, entry.expire_time))
       close (f)
     except:
       pass
