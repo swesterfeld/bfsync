@@ -7,6 +7,7 @@ import pickle
 import subprocess
 import shutil
 import time
+import optparse
 
 ##################################### Status Line ############################################
 
@@ -358,9 +359,11 @@ for arg in arg_iter:
     command = "remote-send"
   elif arg == "put" and command == None:
     command = "put"
+  elif arg == "repo-files" and command == None:
+    command = "repo-files"
   elif arg == "devtest" and command == None:
     command = "devtest"
-  elif command in ("add", "clone", "remote-ls", "get", "remote-check", "put"):
+  elif command in ("add", "clone", "remote-ls", "get", "remote-check", "put", "repo-files"):
     args += [ arg ]
   else:
     sys.stderr.write ("can't parse command line args...\n")
@@ -649,6 +652,34 @@ if command == "put":
   pipe = subprocess.Popen (["ssh", host, "bfsync", "remote-receive"], bufsize=-1, stdin=subprocess.PIPE).stdin
   tl.send_list (pipe)
   tl.send_files (pipe, True)
+  exit_and_save (0)
+
+if command == "repo-files":
+  parser = optparse.OptionParser()
+  parser.add_option("-0", "--null",
+                  action="store_true", dest="null", default=False)
+  (options,args) = parser.parse_args (args)
+  null = options.null
+  for i in args:
+    bfsync_dir = find_bfsync_dir()
+    ok, failed = check (False)
+    have_hash = dict()
+    for file in ok:
+      success, git_hash, git_size = parse_git_file (os.path.join (bfsync_dir, file))
+      if not have_hash.has_key (git_hash):
+        have_hash[git_hash] = []
+      have_hash[git_hash] += [ file ]
+    repo_dir = os.path.dirname (bfsync_dir)
+    for dir, dirs, files in os.walk (i):
+      for f in files:
+        full_name = os.path.join (dir, f)
+        if os.path.isfile (full_name):
+          hash = compute_hash (full_name)
+          if have_hash.has_key (hash):
+            if null:
+              sys.stdout.write (full_name + '\0')
+            else:
+              print full_name
   exit_and_save (0)
 
 if command == "devtest":
