@@ -96,6 +96,13 @@ def format_rate (bytes_per_sec):
     unit += 1
   return "%.1f %s" % (bytes_per_sec, unit_str[unit])
 
+def format_time (sec):
+  sec = int (sec)
+  if (sec < 3600):
+    return "%d:%02d" % (sec / 60, sec % 60)
+  else:
+    return "%d:%02d:%02d" % (sec / 3600, (sec / 60) % 60, sec % 60)
+
 class TransferFile:
   def __init__ (self, src_path, dest_path, size):
     self.src_path = src_path
@@ -150,12 +157,12 @@ class TransferList:
     elapsed_time = max (time.time() - self.start_time, 1)
     bytes_per_sec = max (self.bytes_done / elapsed_time, 1)
     eta = int ((self.bytes_total - self.bytes_done) / bytes_per_sec)
-    status_line.update ("file %d/%d    %s    %.1f%%   %s   ETA: %d:%02d" % (
+    status_line.update ("file %d/%d    %s    %.1f%%   %s   ETA: %s" % (
         self.file_number, len (self.tlist),
         format_size (self.bytes_done, self.bytes_total),
         self.bytes_done * 100.0 / self.bytes_total,
         format_rate (bytes_per_sec),
-        eta / 60, eta % 60
+        format_time (eta)
       ))
   def receive_files (self, pipe, verbose):
     self.start_time = time.time()
@@ -687,6 +694,10 @@ if command == "devtest":
   for i in range (20):
     print "%d bytes <=> %s <=> %s" % (bytes, format_size (bytes + 2, bytes + 2), format_rate (bytes + 2))
     bytes *= 10
+  seconds = 1
+  for i in range (20):
+    print "%d seconds <=> %s" % (seconds, format_time (seconds))
+    seconds *= 2
   exit_and_save (0)
 
 print "usage: bfsync <command> [ args... ]"
