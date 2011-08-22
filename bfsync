@@ -342,9 +342,7 @@ arg_iter = sys.argv[1:].__iter__()
 args = []
 
 for arg in arg_iter:
-  if arg == "init" and command == None:
-    command = "init"
-  elif arg == "status" and command == None:
+  if arg == "status" and command == None:
     command = "status"
   elif arg == "add" and command == None:
     command = "add"
@@ -381,28 +379,6 @@ for arg in arg_iter:
     sys.exit (1)
 
 root_dir = os.getcwd()
-
-if command == "init":
-  try:
-    os.chdir (".bfsync")
-    bfsync_there = True
-  except:
-    bfsync_there = False
-  if bfsync_there:
-    sys.stderr.write ("bfsync: there is already a .bfsync dir here - init failed\n")
-    sys.exit (1)
-  print "initializing bfsync repository in " + root_dir + "..."
-  try:
-    os.chdir (root_dir)
-    os.mkdir (".bfsync")
-    os.chdir (os.path.join (root_dir, ".bfsync"))
-  except:
-    sys.stderr.write ("bfsync: can not create .bfsync dir - init failed\n")
-    sys.exit (1)
-  if os.system ("git init") != 0:
-    sys.stderr.write ("bfsync: can not git initialize .bfsync dir - init failed\n");
-    sys.exit (1)
-  sys.exit (0)
 
 if command == "status":
   bfsync_dir = find_bfsync_dir()
