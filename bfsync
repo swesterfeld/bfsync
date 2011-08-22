@@ -390,9 +390,11 @@ for arg in arg_iter:
     command = "repo-files"
   elif arg == "delete" and command == None:
     command = "delete"
+  elif arg == "mv" and command == None:
+    command = "mv"
   elif arg == "devtest" and command == None:
     command = "devtest"
-  elif command in ("add", "clone", "remote-ls", "get", "remote-check", "put", "repo-files"):
+  elif command in ("add", "clone", "mv", "remote-ls", "get", "remote-check", "put", "repo-files"):
     args += [ arg ]
   else:
     sys.stderr.write ("can't parse command line args...\n")
@@ -725,6 +727,55 @@ if command == "delete":
     if sys.stdin.readline().strip() == "y":
       for filename in del_list:
         os.remove (filename)
+  exit_and_save (0)
+
+def try_open (filename):
+  try:
+    f = open (filename, "r")
+    f.close()
+    return True
+  except:
+    return False
+
+if command == "mv":
+  bfsync_dir = find_bfsync_dir()
+  if len (args) != 2:
+    print "usage: bfsync mv <src> <dest>"
+    exit_and_save (1)
+
+  src = os.path.join (root_dir, args[0])
+  dest = os.path.join (root_dir, args[1])
+  src_repo_path = repository_path (bfsync_dir, src)
+  dest_repo_path = repository_path (bfsync_dir, dest)
+  src_git_file = os.path.join (bfsync_dir, src_repo_path)
+  dest_git_file = os.path.join (bfsync_dir, dest_repo_path)
+
+  if not try_open (src_git_file):
+    print "bfsync: source file %s not in repository" % src_repo_path
+    exit_and_save (1)
+  if try_open (dest_git_file):
+    print "bfsync: dest file %s is already in repository" % dest_repo_path
+    exit_and_save (1)
+
+  # copy file to dest
+  try:
+    shutil.copy2 (src, dest)
+  except Exception, ex:
+    sys.stderr.write ("can't copy file %s to %s: %s\n" % (src, dest, ex))
+    sys.exit (1)
+
+  # change it in git repo
+  os.chdir (bfsync_dir)
+  if subprocess.call (["git", "mv", src_git_file, dest_git_file]) != 0:
+    sys.stderr.write ("cannot git move file %s to %s\n" % (src_git_file, dest_git_file))
+    sys.exit (1)
+
+  # remove src file
+  try:
+    os.remove (src)
+  except Exception, ex:
+    sys.stderr.write ("can't remove file %s: %s\n" % (src, ex))
+
   exit_and_save (0)
 
 if command == "devtest":
