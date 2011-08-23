@@ -1,4 +1,4 @@
-.TH "BFSYNC" "1" "2011\-08\-23" "Revision 610" "bfsync Manual Page"
+.TH "BFSYNC" "1" "2011\-08\-23" "Revision 612" "bfsync Manual Page"
 
 .SH NAME
 
@@ -40,7 +40,7 @@ Push changes to upstream repository
 Pull changes from upstream repository
 .PP
 .TP
-\fBget\fR \fI<dir>|<remote dir>'\fR
+\fBget\fR \fI<dir>|<remote dir>...\fR
 Transfer file contents from directory - usually the directory should contain a bfsync checkout of the repository you're working with. However, it is possible to get data from any directory (local or remote), and as long as required hash values are found, it doesn't matter where the data comes from. A path with a ":" is interpreted as remote path, a path without ":" is a local path. Examples for remote paths are stefan@server:/big/files or server:some/dir
 .PP
 .TP
@@ -54,6 +54,10 @@ Checks local repository - ideally, all files that are known to the git index of 
 .TP
 \fBmv\fR \fI<src_file>\fR \fI<dest_file>\fR
 Use this for renaming a file - in the local repo, the data is automatically adapted, but for remote repositories, you'll need to use get/put to get the data right, and delete to delete the old file.
+.PP
+.TP
+\fBrm\fR \fI<files...>\fR
+Remove a file form the repository. On the local checkout the data file is removed automatically; however on remote hosts, using \fBbfsync delete\fR is required to remove the file.
 .PP
 .TP
 \fBdelete\fR
