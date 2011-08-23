@@ -394,41 +394,19 @@ arg_iter = sys.argv[1:].__iter__()
 args = []
 
 for arg in arg_iter:
-  if arg == "status" and command == None:
-    command = "status"
-  elif arg == "add" and command == None:
-    command = "add"
-  elif arg == "commit" and command == None:
-    command = "commit"
-  elif arg == "clone" and command == None:
-    command = "clone"
-  elif arg == "check" and command == None:
-    command = "check"
-  elif arg == "pull" and command == None:
-    command = "pull"
-  elif arg == "push" and command == None:
-    command = "push"
-  elif arg == "remote-ls" and command == None:
-    command = "remote-ls"
-  elif arg == "get" and command == None:
-    command = "get"
-  elif arg == "remote-check" and command == None:
-    command = "remote-check"
-  elif arg == "remote-receive" and command == None:
-    command = "remote-receive"
-  elif arg == "remote-send" and command == None:
-    command = "remote-send"
-  elif arg == "put" and command == None:
-    command = "put"
-  elif arg == "repo-files" and command == None:
-    command = "repo-files"
-  elif arg == "delete" and command == None:
-    command = "delete"
-  elif arg == "mv" and command == None:
-    command = "mv"
-  elif arg == "devtest" and command == None:
-    command = "devtest"
-  elif command in ("add", "clone", "mv", "remote-ls", "get", "remote-check", "put", "repo-files"):
+  commands = (
+    "add",
+    "check", "clone", "commit",
+    "delete", "devtest"
+    "get",
+    "mv",
+    "pull", "push", "put",
+    "remote-check", "remote-ls", "remote-receive", "remote-send",
+    "repo-files", "rm",
+    "status")
+  if arg in commands and command == None:
+    command = arg
+  elif command in ("add", "clone", "mv", "rm", "remote-ls", "get", "remote-check", "put", "repo-files"):
     args += [ arg ]
   else:
     sys.stderr.write ("can't parse command line args...\n")
@@ -494,8 +472,8 @@ if command == "commit":
     if os.system ("git commit -a") != 0:
       sys.stderr.write ("git commit failed\n")
       sys.exit (1)
-  except:
-    sys.stderr.write ("cannot chdir to directory %s\n" % bfsync_dir)
+  except Exception, ex:
+    sys.stderr.write ("cannot chdir to directory %s: %s\n" % (bfsync_dir, ex))
     sys.exit (1)
   exit_and_save (0)
 
@@ -804,6 +782,25 @@ if command == "mv":
   except Exception, ex:
     sys.stderr.write ("can't remove file %s: %s\n" % (src, ex))
 
+  exit_and_save (0)
+
+if command == "rm":
+  cwd = os.getcwd()
+  bfsync_dir = find_bfsync_dir()
+  for i in args:
+    repo_path = repository_path (bfsync_dir, os.path.join (root_dir, i))
+    git_file = os.path.join (bfsync_dir, repo_path)
+    if not try_open (git_file):
+      status_line.die ("git file %s doesn't exist - cannot use rm." % git_file)
+    os.chdir (bfsync_dir)
+    if subprocess.call (["git", "rm", git_file]) != 0:
+      sys.stderr.write ("cannot git remove file %s\n" % git_file)
+      sys.exit (1)
+    data_filename = os.path.join (cwd, i)
+    try:
+      os.remove (data_filename)
+    except:
+      status_line.die ("git file removed, but cannot remove file %s" % data_filename)
   exit_and_save (0)
 
 if command == "devtest":
