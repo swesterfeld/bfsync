@@ -1,4 +1,4 @@
-.TH "BFSYNC" "1" "2011\-08\-23" "Revision 608" "bfsync Manual Page"
+.TH "BFSYNC" "1" "2011\-08\-23" "Revision 610" "bfsync Manual Page"
 
 .SH NAME
 
@@ -120,6 +120,34 @@ Commit the changes to the repository.
 .TP
 \fBclient1:~/big$ bfsync push\fR
 Push the changes to the server.
+.PP
+
+So far, we have added the file to the repository on client1, but the contents of the file are only present on client1, and not in the other repos. To change this, we can transfer the file to the server.
+.TP
+\fBserver:~$ cd big\fR
+Change directory.
+.PP
+.TP
+\fBserver:~/big$ bfsync pull\fR
+Updating the git index repository is required on the server before we can transfer the file there. By pulling, the server will have the necessary information, or in other words: the server can know that a file named 01-some-music.flac is part of the bfsync repository and \fIshould\fR be there. Running \fBbfsync check\fR will report one missing file after this step.
+.PP
+.TP
+\fBclient1:~/big$ bfsync put server:big\fR
+Now the actual transfer: after this step, both client1 and server will have a copy of \fI01-some-music.flac\fR.
+.PP
+
+As last step, we'll transfer the file to client2. Of course we could use the same commands that we used to get the file to the server, but let's assume that client2 is behind a firewall, and that its not possible to ssh to client2 directly. Fortunately, besides uploading files to another host (\fBbfsync put\fR), its also possible to download data from another host (\fBbfsync get\fR).
+.TP
+\fBclient2:~$ cd big\fR
+Change directory
+.PP
+.TP
+\fBclient2:~/big$ bfsync pull\fR
+Update directory information.
+.PP
+.TP
+\fBclient2:~/big$ bfsync get server:big\fR
+Get the file form the server.
 .PP
 
 .SH SEE ALSO
