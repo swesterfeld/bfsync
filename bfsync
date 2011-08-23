@@ -565,7 +565,7 @@ if command == "push":
   bfsync_dir = find_bfsync_dir()
   try:
     os.chdir (bfsync_dir)
-    if os.system ("git push") != 0:
+    if os.system ("git push origin master") != 0:
       sys.stderr.write ("git push failed\n")
       sys.exit (1)
   except:
