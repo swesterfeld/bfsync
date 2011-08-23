@@ -1,6 +1,4 @@
-* use dict() style api for parse_git_files
-* track file mode, too
-* man page
-* make install
 * age based cache expire
 * detect protocol version
+* use dict() style api for parse_git_files
+* improve file mode tracking
