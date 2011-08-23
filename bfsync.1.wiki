@@ -13,7 +13,11 @@ bfsync - manage git-like repository with big files
 
 '''bfsync''' is a program that provides git-style revision control for collections of big files. The
 contents of the files are managed by bfsync, and a git repository is used to do version control; in
-this repo only the hashes of the actual data files are stored. 
+this repo only the hashes of the actual data files are stored.
+
+For transfer, bfsync needs to be installed on every system that needs to be accessed. The actual transfer
+is done using ssh. Transfer has only be tested with ssh keys; its highly recommended to use ssh-agent to
+avoid entering your password over and over again. 
 
 == OPTIONS ==
 
@@ -24,7 +28,7 @@ this repo only the hashes of the actual data files are stored.
 ; '''clone''' ''<repo>''
 : Initialize new cloned bfsync repo from git repo ''<repo>''; its '''highly recommended''' to always work with a bare git main repo (git init --bare).
 
-; '''add''' ''<files>...''
+; '''add''' ''<file>...''
 : Add files to the bfsync repository
 
 ; '''commit'''
@@ -36,7 +40,7 @@ this repo only the hashes of the actual data files are stored.
 ; '''pull'''
 : Pull changes from upstream repository
 
-; '''get''' ''<dir>|<remote dir>'
+; '''get''' ''<dir>|<remote dir>...''
 : Transfer file contents from directory - usually the directory should contain a bfsync checkout of the repository you're working with. However, it is possible to get data from any directory (local or remote), and as long as required hash values are found, it doesn't matter where the data comes from. A path with a ":" is interpreted as remote path, a path without ":" is a local path. Examples for remote paths are stefan@server:/big/files or server:some/dir
 
 ; '''put''' ''<remote repo>''
@@ -47,6 +51,9 @@ this repo only the hashes of the actual data files are stored.
 
 ; '''mv''' ''<src_file>'' ''<dest_file>''
 : Use this for renaming a file - in the local repo, the data is automatically adapted, but for remote repositories, you'll need to use get/put to get the data right, and delete to delete the old file.
+
+; '''rm''' ''<file>...''
+: Remove a file form the repository. On the local checkout the data file is removed automatically; however on remote hosts, using '''bfsync delete''' is required to remove the file.
 
 ; '''delete'''
 : This will check for files that are present locally, but not known to the index git repo. This can occur if you create new files, or if remote renames have been done. Since bfsync cannot distinguish these two cases, you'll have to confirm the delete list or abort if files that you have newly created are on that list.
@@ -98,6 +105,28 @@ As second step, we add a music file on client1. Of course its possible to add mo
 
 ; '''client1:~/big$ bfsync push'''
 : Push the changes to the server.
+
+So far, we have added the file to the repository on client1, but the contents of the file are only present on client1, and not in the other repos. To change this, we can transfer the file to the server.
+
+; '''server:~$ cd big'''
+: Change directory.
+
+; '''server:~/big$ bfsync pull'''
+: Updating the git index repository is required on the server before we can transfer the file there. By pulling, the server will have the necessary information, or in other words: the server can know that a file named 01-some-music.flac is part of the bfsync repository and ''should'' be there. Running '''bfsync check''' will report one missing file after this step.
+
+; '''client1:~/big$ bfsync put server:big'''
+: Now the actual transfer: after this step, both client1 and server will have a copy of ''01-some-music.flac''.
+
+As last step, we'll transfer the file to client2. Of course we could use the same commands that we used to get the file to the server, but let's assume that client2 is behind a firewall, and that its not possible to ssh to client2 directly. Fortunately, besides uploading files to another host ('''bfsync put'''), its also possible to download data from another host ('''bfsync get''').
+
+; '''client2:~$ cd big'''
+: Change directory
+
+; '''client2:~/big$ bfsync pull'''
+: Update directory information.
+
+; '''client2:~/big$ bfsync get server:big'''
+: Get the file form the server.
 
 == SEE ALSO ==
 [[git.1]],

@@ -1,4 +1,4 @@
-.TH "BFSYNC" "1" "2011\-08\-23" "Revision 612" "bfsync Manual Page"
+.TH "BFSYNC" "1" "2011\-08\-23" "Revision 613" "bfsync Manual Page"
 
 .SH NAME
 
@@ -14,6 +14,10 @@ bfsync - manage git-like repository with big files
 contents of the files are managed by bfsync, and a git repository is used to do version control; in
 this repo only the hashes of the actual data files are stored.
 
+For transfer, bfsync needs to be installed on every system that needs to be accessed. The actual transfer
+is done using ssh. Transfer has only be tested with ssh keys; its highly recommended to use ssh-agent to
+avoid entering your password over and over again.
+
 .SH OPTIONS
 
 \fBbfsync\fR has a number of commands, the options depend on the command.
@@ -24,7 +28,7 @@ this repo only the hashes of the actual data files are stored.
 Initialize new cloned bfsync repo from git repo \fI<repo>\fR; its \fBhighly recommended\fR to always work with a bare git main repo (git init --bare).
 .PP
 .TP
-\fBadd\fR \fI<files>...\fR
+\fBadd\fR \fI<file>...\fR
 Add files to the bfsync repository
 .PP
 .TP
@@ -56,7 +60,7 @@ Checks local repository - ideally, all files that are known to the git index of 
 Use this for renaming a file - in the local repo, the data is automatically adapted, but for remote repositories, you'll need to use get/put to get the data right, and delete to delete the old file.
 .PP
 .TP
-\fBrm\fR \fI<files...>\fR
+\fBrm\fR \fI<file>...\fR
 Remove a file form the repository. On the local checkout the data file is removed automatically; however on remote hosts, using \fBbfsync delete\fR is required to remove the file.
 .PP
 .TP
