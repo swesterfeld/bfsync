@@ -389,32 +389,9 @@ def check_untracked (show_progress):
           print "checking %s... UNTRACKED." % repo_path
   return untracked_list
 
-command = None
-arg_iter = sys.argv[1:].__iter__()
-args = []
-
-for arg in arg_iter:
-  commands = (
-    "add",
-    "check", "clone", "commit",
-    "delete", "devtest"
-    "get",
-    "mv",
-    "pull", "push", "put",
-    "remote-check", "remote-ls", "remote-receive", "remote-send",
-    "repo-files", "rm",
-    "status")
-  if arg in commands and command == None:
-    command = arg
-  elif command in ("add", "clone", "mv", "rm", "remote-ls", "get", "remote-check", "put", "repo-files"):
-    args += [ arg ]
-  else:
-    sys.stderr.write ("can't parse command line args...\n")
-    sys.exit (1)
-
 root_dir = os.getcwd()
 
-if command == "status":
+def cmd_status():
   bfsync_dir = find_bfsync_dir()
   for dir, dirs, files in os.walk (root_dir):
     if '.bfsync' in dirs:
@@ -429,7 +406,7 @@ if command == "status":
         print "?", repo_path
   sys.exit (0)
 
-if command == "add":
+def cmd_add():
   cwd = os.getcwd()
   bfsync_dir = find_bfsync_dir()
   for i in args:
@@ -465,7 +442,7 @@ if command == "add":
       sys.exit (1)
   exit_and_save (0)
 
-if command == "commit":
+def cmd_commit():
   bfsync_dir = find_bfsync_dir()
   try:
     os.chdir (bfsync_dir)
@@ -477,7 +454,7 @@ if command == "commit":
     sys.exit (1)
   exit_and_save (0)
 
-if command == "check":
+def cmd_check():
   ok, failed = check (True)
   untracked  = check_untracked (True)
   print "Files that are up to date:    ", len (ok)
@@ -530,7 +507,7 @@ def guess_dir_name (url):
     dir_name = ch + dir_name
   return strip_git_suffix (dir_name)
 
-if command == "clone":
+def cmd_clone():
   destdir = guess_dir_name (args[0])
   if os.path.exists (destdir):
     print "fatal: destination path '" + destdir + "' already exists"
@@ -544,7 +521,7 @@ if command == "clone":
     sys.exit (1)
   exit_and_save (0)
 
-if command == "pull":
+def cmd_pull():
   bfsync_dir = find_bfsync_dir()
   try:
     os.chdir (bfsync_dir)
@@ -556,7 +533,7 @@ if command == "pull":
     sys.exit (1)
   exit_and_save (0)
 
-if command == "push":
+def cmd_push():
   bfsync_dir = find_bfsync_dir()
   try:
     os.chdir (bfsync_dir)
@@ -571,7 +548,7 @@ if command == "push":
 class RemoteFile:
   pass
 
-if command == "remote-ls":
+def cmd_remote_ls():
   for i in args:
     file_list = []
     for dir, dirs, files in os.walk (i):
@@ -586,7 +563,7 @@ if command == "remote-ls":
     print pickle.dumps (file_list)
   exit_and_save (0)
 
-if command == "remote-check":
+def cmd_remote_check():
   os.chdir (args[0])
   bfsync_dir = find_bfsync_dir()
   ok, failed = check (False)
@@ -601,13 +578,13 @@ if command == "remote-check":
   print pickle.dumps (file_list)
   exit_and_save (0)
 
-if command == "remote-receive":
+def cmd_remote_receive():
   tl = TransferList()
   tl.receive_list (sys.stdin)
   tl.receive_files (sys.stdin, False)
   exit_and_save (0)
 
-if command == "remote-send":
+def cmd_remote_send():
   tl = TransferList()
   tl.receive_list (sys.stdin)
   tl.send_files (sys.stdout, False)
@@ -647,7 +624,7 @@ def remote_get (url):
   tl.receive_files (remote_send_p.stdout, True)
   return
 
-if command == "get":
+def cmd_get():
   status_line.set_op ("GET")
   for i in args:
     if len (i.split (":")) > 1:
@@ -656,7 +633,7 @@ if command == "get":
       local_get (i)
   exit_and_save (0)
 
-if command == "put":
+def cmd_put():
   status_line.set_op ("PUT")
   status_line.update ("transferring file list...")
   (host, path) = args[0].split (":")
@@ -688,7 +665,7 @@ if command == "put":
   tl.send_files (pipe, True)
   exit_and_save (0)
 
-if command == "repo-files":
+def cmd_repo_files():
   parser = optparse.OptionParser()
   parser.add_option("-0", "--null",
                   action="store_true", dest="null", default=False)
@@ -716,7 +693,7 @@ if command == "repo-files":
               print full_name
   exit_and_save (0)
 
-if command == "delete":
+def cmd_delete():
   bfsync_dir = find_bfsync_dir()
   repo_dir = os.path.dirname (bfsync_dir)
   del_list = check_untracked (False)
@@ -743,7 +720,7 @@ def try_open (filename):
   except:
     return False
 
-if command == "mv":
+def cmd_mv():
   bfsync_dir = find_bfsync_dir()
   if len (args) != 2:
     print "usage: bfsync mv <src> <dest>"
@@ -784,7 +761,7 @@ if command == "mv":
 
   exit_and_save (0)
 
-if command == "rm":
+def cmd_rm():
   cwd = os.getcwd()
   bfsync_dir = find_bfsync_dir()
   for i in args:
@@ -803,7 +780,7 @@ if command == "rm":
       status_line.die ("git file removed, but cannot remove file %s" % data_filename)
   exit_and_save (0)
 
-if command == "devtest":
+def cmd_devtest():
   bytes = 1
   for i in range (20):
     print "%d bytes <=> %s <=> %s" % (bytes, format_size (bytes + 2, bytes + 2), format_rate (bytes + 2))
@@ -814,4 +791,49 @@ if command == "devtest":
     seconds *= 2
   exit_and_save (0)
 
-print "usage: bfsync <command> [ args... ]"
+command = None
+command_func = None
+arg_iter = sys.argv[1:].__iter__()
+args = []
+
+for arg in arg_iter:
+  commands = [
+    ( "add",            cmd_add, 1),
+    ( "check",          cmd_check, 0),
+    ( "clone",          cmd_clone, 1),
+    ( "commit",         cmd_commit, 0),
+    ( "delete",         cmd_delete, 0),
+    ( "devtest",        cmd_devtest, 0),
+    ( "get",            cmd_get, 1),
+    ( "mv",             cmd_mv, 1),
+    ( "pull",           cmd_pull, 0),
+    ( "push",           cmd_push, 0),
+    ( "put",            cmd_put, 1),
+    ( "remote-check",   cmd_remote_check, 1),
+    ( "remote-ls",      cmd_remote_ls, 1),
+    ( "remote-receive", cmd_remote_receive, 0),
+    ( "remote-send",    cmd_remote_send, 0),
+    ( "repo-files",     cmd_repo_files, 1),
+    ( "rm",             cmd_rm, 1),
+    ( "status",         cmd_status, 0)
+  ]
+  parse_ok = False
+  if command == None:
+    for c in commands:
+      if c[0] == arg:
+        command_func = c[1]
+        command_args = c[2]
+        command = c[0]
+        parse_ok = True
+  else:
+    if command_args > 0:
+      args += [ arg ]
+      parse_ok = True
+  if not parse_ok:
+    sys.stderr.write ("can't parse command line args...\n")
+    sys.exit (1)
+
+if command_func != None:
+  command_func()
+else:
+  print "usage: bfsync <command> [ args... ]"
