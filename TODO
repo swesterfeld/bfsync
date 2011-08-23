@@ -3,3 +3,4 @@
 * man page
 * make install
 * age based cache expire
+* detect protocol version
