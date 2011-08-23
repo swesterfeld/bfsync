@@ -355,6 +355,23 @@ def check (show_progress):
         failed += [ v ]
   return ok, failed
 
+def check_untracked (show_progress):
+  bfsync_dir = find_bfsync_dir()
+  untracked_list = []
+  for dir, dirs, files in os.walk (root_dir):
+    if '.bfsync' in dirs:
+      dirs.remove ('.bfsync')
+    for file in files:
+      full_path = os.path.join (dir, file)
+      repo_path = repository_path (bfsync_dir, full_path)
+      git_file = os.path.join (bfsync_dir, repo_path)
+      ok, hash, size, mode = parse_git_file (git_file)
+      if not ok:
+        untracked_list += [ repo_path ]
+        if (show_progress):
+          print "checking %s... UNTRACKED." % repo_path
+  return untracked_list
+
 command = None
 arg_iter = sys.argv[1:].__iter__()
 args = []
@@ -467,8 +484,10 @@ if command == "commit":
 
 if command == "check":
   ok, failed = check (True)
+  untracked  = check_untracked (True)
   print "Files that are up to date:    ", len (ok)
   print "Files that didn't pass check: ", len (failed)
+  print "Untracked files:              ", len (untracked)
   exit_and_save (0)
 
 def local_get (i):
@@ -704,28 +723,20 @@ if command == "repo-files":
 
 if command == "delete":
   bfsync_dir = find_bfsync_dir()
-  del_list = []
-  for dir, dirs, files in os.walk (root_dir):
-    if '.bfsync' in dirs:
-      dirs.remove ('.bfsync')
-    for file in files:
-      full_path = os.path.join (dir, file)
-      repo_path = repository_path (bfsync_dir, full_path)
-      git_file = os.path.join (bfsync_dir, repo_path)
-      ok, hash, size, mode = parse_git_file (git_file)
-      if not ok:
-        del_list += [ full_path ]
+  repo_dir = os.path.dirname (bfsync_dir)
+  del_list = check_untracked (False)
   if len (del_list) == 0:
     print "delete: nothing to do: no files that are not tracked by the repository"
   else:
     print "delete: the following files are not tracked by the repository"
     print
     for filename in del_list:
-      print filename
+      print os.path.join (repo_dir, filename)
     print
     print "Delete these files [ this action cannot be undone ] (y/n)? ",
     if sys.stdin.readline().strip() == "y":
       for filename in del_list:
+        filename = os.path.join (repo_dir, filename)
         os.remove (filename)
   exit_and_save (0)
 
