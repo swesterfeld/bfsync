@@ -4,3 +4,4 @@
 * detect protocol version
 * use dict() style api for parse_git_files
 * improve file mode tracking
+* add should probably have progress indication (for huge adds)
