@@ -669,9 +669,9 @@ def cmd_repo_files():
   parser = optparse.OptionParser()
   parser.add_option("-0", "--null",
                   action="store_true", dest="null", default=False)
-  (options,args) = parser.parse_args (args)
+  (options, dir_list) = parser.parse_args (args)
   null = options.null
-  for i in args:
+  for i in dir_list:
     bfsync_dir = find_bfsync_dir()
     ok, failed = check (False)
     have_hash = dict()
