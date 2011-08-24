@@ -1,3 +1,5 @@
+* allow mv on directory
+* automatically try to get from own repo first (for renames)
 * age based cache expire
 * detect protocol version
 * use dict() style api for parse_git_files
