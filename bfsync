@@ -62,6 +62,9 @@ class HashCacheEntry:
 class HashCache:
   def __init__ (self):
     self.cache = dict()
+    self.load_cache()
+
+  def load_cache (self):
     try:
       f = open (os.path.expanduser ('~/.bfsync_cache'), "r")
       load_time = time.time()
@@ -89,7 +92,10 @@ class HashCache:
       return self.cache[stat_hash].file_hash
     else:
       return ""
+
   def save (self):
+    # reload cache data in case another bfsync process has added entries to the cache
+    self.load_cache()
     try:
       f = open (os.path.expanduser ('~/.bfsync_cache'), "w")
       for key in self.cache:
