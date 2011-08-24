@@ -469,7 +469,7 @@ def local_get (i):
   ok, failed = check (False)
   if len (failed) == 0:
     print "All files up to date; nothing to do."
-    exit_and_save (0)
+    return
   hash_needed = dict()
   for file in failed:
     success, git_hash, git_size, git_mode = parse_git_file (os.path.join (bfsync_dir, file))
@@ -597,7 +597,7 @@ def remote_get (url):
   ok, failed = check (False)
   if len (failed) == 0:
     print "All files up to date; nothing to do."
-    sys.exit (0)
+    return
   status_line.update ("transferring file list...")
   (host, path) = url.split (":")
   remote_list_p = subprocess.Popen(["ssh", host, "bfsync", "remote-ls", path], stdout=subprocess.PIPE).communicate()[0]
