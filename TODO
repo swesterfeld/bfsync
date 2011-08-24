@@ -5,3 +5,4 @@
 * use dict() style api for parse_git_files
 * improve file mode tracking
 * add should probably have progress indication (for huge adds)
+* check_untracked should start walking from the repository root, not root_dir
