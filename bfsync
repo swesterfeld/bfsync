@@ -360,6 +360,7 @@ def check (show_progress):
   for v in check_list:
     if (show_progress):
       sys.stdout.write ("checking %s... " % v)
+      sys.stdout.flush()
     if not os.path.exists (os.path.join (repo_dir, v)):
       if (show_progress):
         print "MISSING."
