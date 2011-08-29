@@ -70,25 +70,30 @@ class HashCache:
       load_time = time.time()
       for line in f.readlines():
         (stat_hash, file_hash, expire_time) = line.split()
-        # expire cache entries which are too old
-        expire_time = int (expire_time)
-        if load_time < expire_time:
-          self.cache[stat_hash] = HashCacheEntry (stat_hash, file_hash, expire_time)
+        if not self.cache.has_key (stat_hash):
+          # expire cache entries which are too old
+          expire_time = int (expire_time)
+          if load_time < expire_time:
+            self.cache[stat_hash] = HashCacheEntry (stat_hash, file_hash, expire_time)
       f.close ()
     except:
       pass
 
-  def insert (self, stat_hash, file_hash):
+  def gen_expire_time (self):
     expire_end  = 1   # -> 1 second
     expire_end *= 60  # -> 1 minute
     expire_end *= 60  # -> 1 hour
     expire_end *= 24  # -> 1 day
     expire_end *= 30  # -> 1 month
     expire_time = int (time.time()) + random.randint (0, expire_end)
-    self.cache[stat_hash] = HashCacheEntry (stat_hash, file_hash, expire_time)
+    return expire_time
+
+  def insert (self, stat_hash, file_hash):
+    self.cache[stat_hash] = HashCacheEntry (stat_hash, file_hash, self.gen_expire_time())
 
   def lookup (self, stat_hash):
     if self.cache.has_key (stat_hash):
+      self.cache[stat_hash].expire_time = max (self.cache[stat_hash].expire_time, self.gen_expire_time())
       return self.cache[stat_hash].file_hash
     else:
       return ""
