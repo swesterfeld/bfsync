@@ -1,4 +1,4 @@
-.TH "BFSYNC" "1" "2011\-08\-23" "Revision 613" "bfsync Manual Page"
+.TH "BFSYNC" "1" "2011\-08\-29" "Revision 615" "bfsync Manual Page"
 
 .SH NAME
 
@@ -15,7 +15,7 @@ contents of the files are managed by bfsync, and a git repository is used to do 
 this repo only the hashes of the actual data files are stored.
 
 For transfer, bfsync needs to be installed on every system that needs to be accessed. The actual transfer
-is done using ssh. Transfer has only be tested with ssh keys; its highly recommended to use ssh-agent to
+is done using ssh. Transfer has only be tested with ssh keys; it's highly recommended to use ssh-agent to
 avoid entering your password over and over again.
 
 .SH OPTIONS
@@ -25,7 +25,7 @@ avoid entering your password over and over again.
 .SH COMMANDS
 .TP
 \fBclone\fR \fI<repo>\fR
-Initialize new cloned bfsync repo from git repo \fI<repo>\fR; its \fBhighly recommended\fR to always work with a bare git main repo (git init --bare).
+Initialize new cloned bfsync repo from git repo \fI<repo>\fR; it's \fBhighly recommended\fR to always work with a bare git main repo (git init --bare).
 .PP
 .TP
 \fBadd\fR \fI<file>...\fR
@@ -61,7 +61,7 @@ Use this for renaming a file - in the local repo, the data is automatically adap
 .PP
 .TP
 \fBrm\fR \fI<file>...\fR
-Remove a file form the repository. On the local checkout the data file is removed automatically; however on remote hosts, using \fBbfsync delete\fR is required to remove the file.
+Remove a file from the repository. On the local checkout the data file is removed automatically; however on remote hosts, using \fBbfsync delete\fR is required to remove the file.
 .PP
 .TP
 \fBdelete\fR
@@ -108,7 +108,7 @@ Clone repository on client1.
 Clone repository on client2.
 .PP
 
-As second step, we add a music file on client1. Of course its possible to add more files in one step, either by passing more than one filename to bfsync add, or by calling bfsync add more than once. Whenever files are added or otherwise changed, we need to commit and push the changes to the server, so that it contains the canonical index of files.
+As second step, we add a music file on client1. Of course it's possible to add more files in one step, either by passing more than one filename to bfsync add, or by calling bfsync add more than once. Whenever files are added or otherwise changed, we need to commit and push the changes to the server, so that it contains the canonical index of files.
 .TP
 \fBclient1:~$ cd big\fR
 Change dir.
@@ -144,7 +144,7 @@ Updating the git index repository is required on the server before we can transf
 Now the actual transfer: after this step, both client1 and server will have a copy of \fI01-some-music.flac\fR.
 .PP
 
-As last step, we'll transfer the file to client2. Of course we could use the same commands that we used to get the file to the server, but let's assume that client2 is behind a firewall, and that its not possible to ssh to client2 directly. Fortunately, besides uploading files to another host (\fBbfsync put\fR), its also possible to download data from another host (\fBbfsync get\fR).
+As last step, we'll transfer the file to client2. Of course we could use the same commands that we used to get the file to the server, but let's assume that client2 is behind a firewall, and that it's not possible to ssh to client2 directly. Fortunately, besides uploading files to another host (\fBbfsync put\fR), it's also possible to download data from another host (\fBbfsync get\fR).
 .TP
 \fBclient2:~$ cd big\fR
 Change directory
@@ -155,7 +155,7 @@ Update directory information.
 .PP
 .TP
 \fBclient2:~/big$ bfsync get server:big\fR
-Get the file form the server.
+Get the file from the server.
 .PP
 
 .SH SEE ALSO
