@@ -85,7 +85,8 @@ class HashCache:
     expire_end *= 60  # -> 1 hour
     expire_end *= 24  # -> 1 day
     expire_end *= 30  # -> 1 month
-    expire_time = int (time.time()) + random.randint (0, expire_end)
+    expire_start = expire_end / 2  # -> 2 weeks
+    expire_time = int (time.time()) + random.randint (expire_start, expire_end)
     return expire_time
 
   def insert (self, stat_hash, file_hash):
