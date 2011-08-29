@@ -4,7 +4,7 @@ from distutils.core import setup
 
 setup (
   name = 'bfsync',
-  version = '0.1.0',
+  version = '0.1.1',
   description = 'Big File synchronization based on Git',
   author = 'Stefan Westerfeld',
   author_email = 'stefan@space.twc.de',

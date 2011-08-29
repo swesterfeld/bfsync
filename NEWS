@@ -1,0 +1,10 @@
+Overview of Changes in bfsync-0.1.1:
+
+* improved check output (added missing stdout flush)
+* improved hash cache (less time consuming rechecks required)
+* fix cache saving / unwanted exit in get
+* fix problem than caused repo-files command not to work at all
+
+Overview of Changes in bfsync-0.1.0:
+
+* initial public release

@@ -1,2 +1,2 @@
-include TODO COPYING
+include TODO COPYING NEWS
 include rebuild-manpage.sh
