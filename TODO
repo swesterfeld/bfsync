@@ -6,3 +6,27 @@
 * improve file mode tracking
 * add should probably have progress indication (for huge adds)
 * check_untracked should start walking from the repository root, not root_dir
+
+BFSYNC2:
+
+* basic filesystem:
+
+git/files:
+git/files/foo/bar         <- store stat information and blob reference
+
+git/dirs:
+git/dirs/foo              <- store stat information for directory foo
+
+git/blobs/<some hash>     <- ensure that blob occurred in repos history
+
+blobs:
+blobs/<some hash>         <- store blob data for some files
+
+* overlay filesystem (FUSE):
+
+new/files/foo/bar         <- store stat/content changes for file bar (uncommitted)
+
+new/dirs/foo              <- store stat changes for directory foo
+
+new/rm/foo/bar            <- mark file/directory as removed
+
