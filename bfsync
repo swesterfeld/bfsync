@@ -26,6 +26,7 @@ import shutil
 import time
 import optparse
 import random
+import CfgParser
 
 ##################################### Status Line ############################################
 
@@ -639,7 +640,11 @@ def remote_get (url):
 
 def cmd_get():
   status_line.set_op ("GET")
-  for i in args:
+  if len (args) == 0:
+    my_args = bfsync_config.get ("default/get")
+  else:
+    my_args = args
+  for i in my_args:
     if len (i.split (":")) > 1:
       remote_get (i)
     else:
@@ -808,6 +813,15 @@ command = None
 command_func = None
 arg_iter = sys.argv[1:].__iter__()
 args = []
+bfsync_config = CfgParser.CfgParser (os.path.expanduser ("~/files/.bfsync/config"),
+  [
+    "default"
+  ],
+  [
+    "default/get",
+    "default/put",
+    "exclude"
+  ])
 
 for arg in arg_iter:
   commands = [
