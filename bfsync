@@ -604,11 +604,22 @@ def cmd_remote_send():
   tl.send_files (sys.stdout, False)
   exit_and_save (0)
 
+def process_excludes (file_list):
+  result_file_list = []
+  for f in file_list:
+    for i in bfsync_config.get ("exclude"):
+      norm_f = os.path.normpath (f)
+      x = os.path.normpath (i) + "/"
+      if norm_f[0:len(x)] != x:
+        result_file_list += [ f ]
+  return result_file_list
+
 def remote_get (url):
   bfsync_dir = find_bfsync_dir()
   repo_dir = os.path.dirname (bfsync_dir)
   status_line.update ("checking local files...")
   ok, failed = check (False)
+  failed = process_excludes (failed)
   if len (failed) == 0:
     print "All files up to date; nothing to do."
     return
