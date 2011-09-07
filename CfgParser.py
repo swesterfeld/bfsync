@@ -126,4 +126,7 @@ class CfgParser:
         self.parse_error ("expected identifier or EOF")
 
   def get (self, key):
-    return self.values[key]
+    if not self.values.has_key (key):
+      return []
+    else:
+      return self.values[key]

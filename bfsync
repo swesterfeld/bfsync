@@ -607,11 +607,17 @@ def cmd_remote_send():
 def process_excludes (file_list):
   result_file_list = []
   for f in file_list:
+    is_excluded = False
+
+    # check if file is in subdir of exclude dirs
     for i in bfsync_config.get ("exclude"):
       norm_f = os.path.normpath (f)
       x = os.path.normpath (i) + "/"
-      if norm_f[0:len(x)] != x:
-        result_file_list += [ f ]
+      if norm_f[0:len(x)] == x:          # starts with exclude/ ?
+        is_excluded = True
+
+    if not is_excluded:
+      result_file_list += [ f ]
   return result_file_list
 
 def remote_get (url):
