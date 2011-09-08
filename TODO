@@ -31,3 +31,20 @@ new/dirs/foo              <- store stat changes for directory foo
 
 new/rm/foo/bar            <- mark file/directory as removed
 
+==============================================================================================
+
+BFSYNC2.1:
+
+* don't use git
+* linear commit history; a commit always has a parent
+* commits are stored as regular sha-files
+* commits contain diffs against previous commits
+  - deleted files/dirs
+  - new files/dirs with stat info
+
+ENCRYPTED MODE:
+* files are stored as continuous stream of encrypted data
+* index is stored as pointers into file stream
+* splitting (as 16M blocks) enables easy update
+* passphrase-derived key
+
