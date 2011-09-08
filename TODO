@@ -47,4 +47,5 @@ ENCRYPTED MODE:
 * index is stored as pointers into file stream
 * splitting (as 16M blocks) enables easy update
 * passphrase-derived key
-
+* sha-256 checksum for each block at the beginning
+  -> partial writes become invisible
