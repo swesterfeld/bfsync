@@ -46,6 +46,11 @@ enum FileStatus
   FS_DATA
 };
 
+struct FileHandle
+{
+  int fd;
+};
+
 FileStatus
 file_status (const string& path)
 {
@@ -182,7 +187,9 @@ bfsync_open (const char *path, struct fuse_file_info *fi)
 
   if (fd != -1)
     {
-      close (fd);
+      FileHandle *fh = new FileHandle;
+      fh->fd = fd;
+      fi->fh = reinterpret_cast<uint64_t> (fh);
       return 0;
     }
   else
@@ -192,24 +199,41 @@ bfsync_open (const char *path, struct fuse_file_info *fi)
 }
 
 static int
+bfsync_release (const char *path, struct fuse_file_info *fi)
+{
+  FileHandle *fh = reinterpret_cast<FileHandle *> (fi->fh);
+  close (fh->fd);
+  delete fh;
+  return 0;
+}
+
+static int
 bfsync_read (const char *path, char *buf, size_t size, off_t offset,
              struct fuse_file_info *fi)
 {
-  string filename = options.repo_path + "/data" + path;
+  FileHandle *fh = reinterpret_cast<FileHandle *> (fi->fh);
 
   ssize_t bytes_read = 0;
-  (void) fi;
 
-  int fd = open (filename.c_str(), O_RDONLY);
-  if (fd != -1)
-    {
-      bytes_read = pread (fd, buf, size, offset);
-      close (fd);
-    }
+  if (fh->fd != -1)
+    bytes_read = pread (fh->fd, buf, size, offset);
 
   return bytes_read;
 }
 
+static int
+bfsync_write (const char *path, const char *buf, size_t size, off_t offset,
+              struct fuse_file_info *fi)
+{
+  FileHandle *fh = reinterpret_cast<FileHandle *> (fi->fh);
+
+  ssize_t bytes_written = 0;
+
+  if (fh->fd != -1)
+    bytes_written = pwrite (fh->fd, buf, size, offset);
+
+  return bytes_written;
+}
 
 static int
 bfsync_mknod (const char *path, mode_t mode, dev_t dev)
@@ -278,6 +302,8 @@ main (int argc, char *argv[])
   bfsync_oper.chmod    = bfsync_chmod;
   bfsync_oper.utime    = bfsync_utime;
   bfsync_oper.truncate = bfsync_truncate;
+  bfsync_oper.release  = bfsync_release;
+  bfsync_oper.write    = bfsync_write;
 
   return fuse_main (argc, argv, &bfsync_oper, NULL);
 }
