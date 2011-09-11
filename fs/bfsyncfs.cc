@@ -43,7 +43,8 @@ enum FileStatus
 {
   FS_NONE,
   FS_NEW,
-  FS_DATA
+  FS_DATA,
+  FS_DEL
 };
 
 struct FileHandle
@@ -56,6 +57,8 @@ file_status (const string& path)
 {
   struct stat st;
 
+  if (lstat ((options.repo_path + "/del" + path).c_str(), &st) == 0)
+    return FS_DEL;
   if (lstat ((options.repo_path + "/new" + path).c_str(), &st) == 0)
     return FS_NEW;
   if (lstat ((options.repo_path + "/data" + path).c_str(), &st) == 0)
@@ -101,6 +104,9 @@ copy_on_write (const string& path)
 static int
 bfsync_getattr (const char *path, struct stat *stbuf)
 {
+  if (file_status (path) == FS_DEL)
+    return -ENOENT;
+
   string new_filename = options.repo_path + "/new" + path;
   if (lstat (new_filename.c_str(), stbuf) == 0)
     {
@@ -129,6 +135,24 @@ bfsync_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
   (void) fi;
 
   bool dir_ok = false;
+
+  string del_files = options.repo_path + "/del" + path;
+  dir = g_dir_open (del_files.c_str(), 0, NULL);
+  if (dir)
+    {
+      const char *name;
+      while ((name = g_dir_read_name (dir)))
+        {
+          if (file_list.count (name) == 0)
+            {
+              file_list.insert (name);
+              // by inserting deleted files into the file_list (without calling filler)
+              // we ensure that they won't show up in ls
+            }
+        }
+      g_dir_close (dir);
+      dir_ok = true;
+    }
 
   string filename = options.repo_path + "/data" + path;
   dir = g_dir_open (filename.c_str(), 0, NULL);
@@ -179,6 +203,19 @@ bfsync_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
 static int
 bfsync_open (const char *path, struct fuse_file_info *fi)
 {
+  if (file_status (path) == FS_DEL)
+    {
+      printf ("OPEN: flags = %d\n", fi->flags);
+      if (fi->flags & O_CREAT)
+        {
+          unlink ((options.repo_path + "/del" + path).c_str());
+        }
+      else
+        {
+          return -ENOENT;
+        }
+    }
+
   string filename = file_path (path);
   if (filename == "")
     return -ENOENT;
@@ -238,7 +275,10 @@ bfsync_write (const char *path, const char *buf, size_t size, off_t offset,
 static int
 bfsync_mknod (const char *path, mode_t mode, dev_t dev)
 {
+  printf ("MKNOD %s\n", path);
   string filename = options.repo_path + "/new" + path;
+
+  unlink ((options.repo_path + "/del" + path).c_str()); // just in case this is a deleted file
 
   int rc = mknod (filename.c_str(), mode, dev);
   if (rc == 0)
@@ -283,6 +323,34 @@ bfsync_truncate (const char *name, off_t off)
     }
 }
 
+static int
+bfsync_unlink (const char *name)
+{
+  if (file_status (name) == FS_DATA)
+    {
+      int fd = open ((options.repo_path + "/del" + name).c_str(), O_CREAT|O_WRONLY, 0644);
+      if (fd != -1)
+        {
+          close (fd);
+          return 0;
+        }
+      else
+        {
+          return -errno;
+        }
+    }
+  else if (file_status (name) == FS_NEW)
+    {
+      int rc = unlink (file_path (name).c_str());
+      if (rc == 0)
+        return 0;
+      else
+        return -errno;
+    }
+  return -EINVAL;
+}
+
+
 static struct fuse_operations bfsync_oper = { NULL, };
 
 int
@@ -304,6 +372,7 @@ main (int argc, char *argv[])
   bfsync_oper.truncate = bfsync_truncate;
   bfsync_oper.release  = bfsync_release;
   bfsync_oper.write    = bfsync_write;
+  bfsync_oper.unlink   = bfsync_unlink;
 
   return fuse_main (argc, argv, &bfsync_oper, NULL);
 }
