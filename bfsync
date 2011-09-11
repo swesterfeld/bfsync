@@ -671,7 +671,11 @@ def cmd_get():
 def cmd_put():
   status_line.set_op ("PUT")
   status_line.update ("transferring file list...")
-  (host, path) = args[0].split (":")
+  if len (args) == 0:
+    my_args = bfsync_config.get ("default/put")
+  else:
+    my_args = args
+  (host, path) = my_args[0].split (":")
   remote_list_p = subprocess.Popen(["ssh", host, "bfsync", "remote-check", path], stdout=subprocess.PIPE).communicate()[0]
   remote_list = pickle.loads (remote_list_p)
   hash_needed = dict()
