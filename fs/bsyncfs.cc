@@ -38,6 +38,12 @@ struct Options {
 static int
 bfsync_getattr (const char *path, struct stat *stbuf)
 {
+  string new_filename = options.repo_path + "/new" + path;
+  if (lstat (new_filename.c_str(), stbuf) == 0)
+    {
+      return 0;
+    }
+
   string filename = options.repo_path + "/data" + path;
   if (lstat (filename.c_str(), stbuf) == 0)
     {
@@ -53,30 +59,49 @@ static int
 bfsync_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
                 off_t offset, struct fuse_file_info *fi)
 {
+  GDir *dir;
+
   (void) offset;
   (void) fi;
 
+  bool dir_ok = false;
 
   string filename = options.repo_path + "/data" + path;
-  GDir *dir = g_dir_open (filename.c_str(), 0, NULL);
+  dir = g_dir_open (filename.c_str(), 0, NULL);
   if (dir)
     {
       const char *name;
-
-      filler (buf, ".", NULL, 0);
-      filler (buf, "..", NULL, 0);
-
       while ((name = g_dir_read_name (dir)))
         {
           filler (buf, name, NULL, 0);
         }
       g_dir_close (dir);
+      dir_ok = true;
+    }
+
+  string new_files = options.repo_path + "/new" + path;
+  dir = g_dir_open (new_files.c_str(), 0, NULL);
+  if (dir)
+    {
+      const char *name;
+      while ((name = g_dir_read_name (dir)))
+        {
+          filler (buf, name, NULL, 0);
+        }
+      g_dir_close (dir);
+      dir_ok = true;
+    }
+
+  if (dir_ok)
+    {
+      // . and .. are always there
+      filler (buf, ".", NULL, 0);
+      filler (buf, "..", NULL, 0);
+
+      return 0;
     }
   else
-    {
-      return -ENOENT;
-    }
-  return 0;
+    return -ENOENT;
 }
 
 static int
@@ -116,6 +141,19 @@ bfsync_read (const char *path, char *buf, size_t size, off_t offset,
   return bytes_read;
 }
 
+
+static int
+bfsync_mknod (const char *path, mode_t mode, dev_t dev)
+{
+  string filename = options.repo_path + "/new" + path;
+
+  int rc = mknod (filename.c_str(), mode, dev);
+  if (rc == 0)
+    return 0;
+  else
+    return -errno;
+}
+
 static struct fuse_operations bfsync_oper = { NULL, };
 
 int
@@ -127,6 +165,7 @@ main (int argc, char *argv[])
   bfsync_oper.readdir  = bfsync_readdir;
   bfsync_oper.open     = bfsync_open;
   bfsync_oper.read     = bfsync_read;
+  bfsync_oper.mknod    = bfsync_mknod;
 
   return fuse_main (argc, argv, &bfsync_oper, NULL);
 }
