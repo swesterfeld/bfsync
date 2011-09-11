@@ -215,6 +215,11 @@ bfsync_open (const char *path, struct fuse_file_info *fi)
           return -ENOENT;
         }
     }
+  int accmode = fi->flags & O_ACCMODE;
+  if (accmode == O_WRONLY || accmode == O_RDWR)
+    {
+      copy_on_write (path);
+    }
 
   string filename = file_path (path);
   if (filename == "")
