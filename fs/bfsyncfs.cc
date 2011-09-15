@@ -26,6 +26,7 @@
 #include <fcntl.h>
 #include <glib.h>
 #include <stdlib.h>
+#include <assert.h>
 
 #include <string>
 #include <vector>
@@ -103,7 +104,7 @@ split (const string& path)
 }
 
 void
-copy_dirs (const string& path)
+copy_dirs (const string& path, FileStatus status)
 {
   vector<string> dirs = split (path);
   if (dirs.empty())
@@ -111,7 +112,20 @@ copy_dirs (const string& path)
 
   dirs.pop_back();
 
-  string dir = options.repo_path + "/new";
+  string dir;
+  if (status == FS_DEL)
+    {
+      dir = options.repo_path + "/del";
+    }
+  else if (status == FS_NEW)
+    {
+      dir = options.repo_path + "/new";
+    }
+  else
+    {
+      assert (false);
+    }
+
   for (vector<string>::iterator di = dirs.begin(); di != dirs.end(); di++)
     {
       dir += "/" + *di;
@@ -124,7 +138,7 @@ copy_on_write (const string& path)
 {
   if (file_status (path) == FS_DATA)
     {
-      copy_dirs (path);
+      copy_dirs (path, FS_NEW);
 
       string old_name = options.repo_path + "/data" + path;
       int old_fd = open (old_name.c_str(), O_RDONLY);
@@ -323,12 +337,11 @@ bfsync_write (const char *path, const char *buf, size_t size, off_t offset,
 static int
 bfsync_mknod (const char *path, mode_t mode, dev_t dev)
 {
-  printf ("MKNOD %s\n", path);
   string filename = options.repo_path + "/new" + path;
 
   unlink ((options.repo_path + "/del" + path).c_str()); // just in case this is a deleted file
 
-  copy_dirs (path);
+  copy_dirs (path, FS_NEW);
 
   int rc = mknod (filename.c_str(), mode, dev);
   if (rc == 0)
@@ -387,6 +400,8 @@ bfsync_unlink (const char *name)
   // make del entry if data is present
   if (file_status (name) == FS_DATA)
     {
+      copy_dirs (name, FS_DEL);
+
       int fd = open ((options.repo_path + "/del" + name).c_str(), O_CREAT|O_WRONLY, 0644);
       if (fd != -1)
         {
