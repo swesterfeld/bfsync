@@ -34,14 +34,20 @@ def read_file (name):
   f.close()
   return data
 
-# write/read test
+tests = []
+
+#####
+
 def test_01():
   bla = "blablabla\n*\nxyz\n"
   write_file ("testx", bla);
   if read_file ("testx") != bla:
     raise Exception ("read back failed")
 
-# Overwrite README
+tests += [ ("write/read test", test_01) ]
+
+#####
+
 def test_02():
   bla = "blablabla\n*\nxyz\n"
   write_file ("mnt/README", bla)
@@ -51,19 +57,33 @@ def test_02():
   if os.path.exists ("mnt/README"):
     raise Exception ("File not properly deleted")
 
-# Write file in subdir
+tests += [ ("overwrite README", test_02) ]
+
+#####
+
 def test_03():
   bla = "blablabla\n*\nxyz\n"
   write_file ("mnt/subdir/y", bla)
   if read_file ("mnt/subdir/y") != bla:
     raise Exception ("read back failed")
 
-tests = [ (test_01, "test_01"),
-          (test_02, "test_02"),
-          (test_03, "test_03") ]
+tests += [ ("write file in subdir", test_03) ]
 
-for (f, desc) in tests:
-  print desc, "...",
+#####
+
+def test_04():
+  if len (read_file ("mnt/README")) < 100:
+    raise Exception ("README too small?")
+  os.remove ("mnt/README")
+  if os.path.exists ("mnt/README"):
+    raise Exception ("File not properly deleted")
+
+tests += [ ("delete README", test_04) ]
+
+#####
+
+for (desc, f) in tests:
+  print "test %-30s" % desc,
   teardown()
   setup()
   try:
@@ -74,3 +94,4 @@ for (f, desc) in tests:
     print "OK."
 
 teardown()
+setup()
