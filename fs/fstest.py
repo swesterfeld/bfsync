@@ -87,7 +87,15 @@ for (desc, f) in tests:
   teardown()
   setup()
   try:
+    if subprocess.call (["tar", "cf", "test_data_before.tar", "test/data"]) != 0:
+      raise Exception ("error during tar")
     f()
+    if subprocess.call (["tar", "cf", "test_data_after.tar", "test/data"]) != 0:
+      raise Exception ("error during tar")
+    if read_file ("test_data_before.tar") != read_file ("test_data_after.tar"):
+      raise Exception ("test/data changed (tar)")
+    os.remove ("test_data_before.tar")
+    os.remove ("test_data_after.tar")
   except Exception, e:
     print "FAIL: ", e
   else:
