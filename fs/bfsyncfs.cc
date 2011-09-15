@@ -371,15 +371,26 @@ bfsync_chmod (const char *name, mode_t mode)
 int
 bfsync_chown (const char *name, uid_t uid, gid_t gid)
 {
-  printf ("|||| chown %s %d\n", name, uid, gid);
+  printf ("|||| chown %s %d %d\n", name, uid, gid);
   return -EINVAL;
 }
 
 int
-bfsync_utime (const char *name, struct utimbuf *)
+bfsync_utimens (const char *name, const struct timespec times[2])
 {
-  printf ("|||| utime %s\n", name);
-  return -EINVAL;
+  if (file_status (name) == FS_DATA)
+    copy_on_write (name);
+
+  if (file_status (name) != FS_NEW)
+    return -ENOENT;
+  else
+    {
+      int rc = utimensat (AT_FDCWD, file_path (name).c_str(), times, 0);
+      if (rc == 0)
+        return 0;
+      else
+        return -errno;
+    }
 }
 
 int
@@ -490,7 +501,7 @@ main (int argc, char *argv[])
   bfsync_oper.mknod    = bfsync_mknod;
   bfsync_oper.chown    = bfsync_chown;
   bfsync_oper.chmod    = bfsync_chmod;
-  bfsync_oper.utime    = bfsync_utime;
+  bfsync_oper.utimens  = bfsync_utimens;
   bfsync_oper.truncate = bfsync_truncate;
   bfsync_oper.release  = bfsync_release;
   bfsync_oper.write    = bfsync_write;

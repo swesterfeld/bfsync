@@ -39,6 +39,12 @@ def read_file (name):
 
 tests = []
 
+def test_read():
+  if read_file ("mnt/README") != read_file ("test/data/README"):
+    raise Exception ("read failed")
+
+tests += [ ("read", test_read) ]
+
 #####
 
 def test_01():
@@ -47,7 +53,7 @@ def test_01():
   if read_file ("mnt/testx") != bla:
     raise Exception ("read back failed")
 
-tests += [ ("write/read test", test_01) ]
+tests += [ ("write/read", test_01) ]
 
 #####
 
