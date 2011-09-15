@@ -385,7 +385,7 @@ bfsync_utimens (const char *name, const struct timespec times[2])
     return -ENOENT;
   else
     {
-      int rc = utimensat (AT_FDCWD, file_path (name).c_str(), times, 0);
+      int rc = utimensat (AT_FDCWD, file_path (name).c_str(), times, AT_SYMLINK_NOFOLLOW);
       if (rc == 0)
         return 0;
       else
@@ -484,6 +484,32 @@ bfsync_rename (const char *old_path, const char *new_path)
   return 0;
 }
 
+static int
+bfsync_symlink (const char *from, const char *to)
+{
+  copy_dirs (from, FS_NEW);
+
+  int rc = symlink (from, (options.repo_path + "/new" + to).c_str());
+
+  if (rc == 0)
+    return 0;
+
+  return -errno;
+}
+
+static int
+bfsync_readlink (const char *path, char *buffer, size_t size)
+{
+  string filename = file_path (path);
+  if (filename == "")
+    return -ENOENT;
+
+  int rc = readlink (filename.c_str(), buffer, size);
+  if (rc == -1)
+    return -errno;
+  return 0;
+}
+
 static struct fuse_operations bfsync_oper = { NULL, };
 
 int
@@ -496,6 +522,7 @@ main (int argc, char *argv[])
   bfsync_oper.readdir  = bfsync_readdir;
   bfsync_oper.open     = bfsync_open;
   bfsync_oper.read     = bfsync_read;
+  bfsync_oper.readlink = bfsync_readlink;
 
   /* write */
   bfsync_oper.mknod    = bfsync_mknod;
@@ -508,6 +535,7 @@ main (int argc, char *argv[])
   bfsync_oper.unlink   = bfsync_unlink;
   bfsync_oper.mkdir    = bfsync_mkdir;
   bfsync_oper.rename   = bfsync_rename;
+  bfsync_oper.symlink  = bfsync_symlink;
 
   return fuse_main (argc, argv, &bfsync_oper, NULL);
 }
