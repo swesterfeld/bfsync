@@ -15,6 +15,9 @@ def setup():
   if subprocess.call (["mkdir", "-p", "test/new"]) != 0:
     print "error during setup"
     sys.exit (1)
+  if subprocess.call (["mkdir", "-p", "test/del"]) != 0:
+    print "error during setup"
+    sys.exit (1)
   if subprocess.call (["mkdir", "-p", "test/data/subdir"]) != 0:
     print "error during setup"
     sys.exit (1)
