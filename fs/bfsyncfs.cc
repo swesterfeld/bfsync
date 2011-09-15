@@ -57,7 +57,7 @@ file_status (const string& path)
 {
   struct stat st;
 
-  if (lstat ((options.repo_path + "/del" + path).c_str(), &st) == 0)
+  if (path != "/" && lstat ((options.repo_path + "/del" + path).c_str(), &st) == 0)
     return FS_DEL;
   if (lstat ((options.repo_path + "/new" + path).c_str(), &st) == 0)
     return FS_NEW;
@@ -78,11 +78,54 @@ file_path (const string& path)
   return "";
 }
 
+vector<string>
+split (const string& path)
+{
+  vector<string> result;
+
+  string s;
+  for (size_t i = 0; i < path.size(); i++)
+    {
+      if (path[i] == '/')
+        {
+          if (!s.empty())
+            {
+              result.push_back (s);
+              s = "";
+            }
+        }
+      else
+        s += path[i];
+    }
+  if (!s.empty())
+    result.push_back (s);
+  return result;
+}
+
+void
+copy_dirs (const string& path)
+{
+  vector<string> dirs = split (path);
+  if (dirs.empty())
+    return;
+
+  dirs.pop_back();
+
+  string dir = options.repo_path + "/new";
+  for (vector<string>::iterator di = dirs.begin(); di != dirs.end(); di++)
+    {
+      dir += "/" + *di;
+      mkdir (dir.c_str(), 0755);
+    }
+}
+
 void
 copy_on_write (const string& path)
 {
   if (file_status (path) == FS_DATA)
     {
+      copy_dirs (path);
+
       string old_name = options.repo_path + "/data" + path;
       int old_fd = open (old_name.c_str(), O_RDONLY);
 
@@ -284,6 +327,8 @@ bfsync_mknod (const char *path, mode_t mode, dev_t dev)
   string filename = options.repo_path + "/new" + path;
 
   unlink ((options.repo_path + "/del" + path).c_str()); // just in case this is a deleted file
+
+  copy_dirs (path);
 
   int rc = mknod (filename.c_str(), mode, dev);
   if (rc == 0)

@@ -24,7 +24,7 @@ def setup():
   if subprocess.call (["cp", "-a", "../README", "test/data/README"]) != 0:
     print "error during setup"
     sys.exit (1)
-  write_file ("test/data/subdir/x", "File X")
+  write_file ("test/data/subdir/x", "File X\n")
 
 def write_file (name, data):
   f = open (name, "w")
