@@ -85,6 +85,17 @@ tests += [ ("delete README", test_04) ]
 
 #####
 
+def test_05():
+  if len (read_file ("mnt/subdir/x")) < 5:
+    raise Exception ("subdir/x too small?")
+  os.remove ("mnt/subdir/x")
+  if os.path.exists ("mnt/subdir/x"):
+    raise Exception ("subdir file not properly deleted")
+
+tests += [ ("subdir file delete", test_05) ]
+
+#####
+
 for (desc, f) in tests:
   print "test %-30s" % desc,
   teardown()
