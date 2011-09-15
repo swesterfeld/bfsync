@@ -43,8 +43,8 @@ tests = []
 
 def test_01():
   bla = "blablabla\n*\nxyz\n"
-  write_file ("testx", bla);
-  if read_file ("testx") != bla:
+  write_file ("mnt/testx", bla);
+  if read_file ("mnt/testx") != bla:
     raise Exception ("read back failed")
 
 tests += [ ("write/read test", test_01) ]
@@ -93,6 +93,32 @@ def test_05():
     raise Exception ("subdir file not properly deleted")
 
 tests += [ ("subdir file delete", test_05) ]
+
+#####
+
+def test_06():
+  os.mkdir ("mnt/newdir")
+  if not os.path.exists ("mnt/newdir"):
+    raise Exception ("newdir not created")
+  bla = "newdir test!\n"
+  write_file ("mnt/newdir/testx", bla);
+  if read_file ("mnt/newdir/testx") != bla:
+    raise Exception ("read back failed")
+
+tests += [ ("mkdir", test_06) ]
+
+#####
+
+def test_07():
+  os.mkdir ("mnt/subdir/newdir")
+  if not os.path.exists ("mnt/subdir/newdir"):
+    raise Exception ("newdir not created")
+  bla = "newdir test!\n"
+  write_file ("mnt/subdir/newdir/testx", bla);
+  if read_file ("mnt/subdir/newdir/testx") != bla:
+    raise Exception ("read back failed")
+
+tests += [ ("mkdir in subdir", test_07) ]
 
 #####
 

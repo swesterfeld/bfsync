@@ -416,6 +416,19 @@ bfsync_unlink (const char *name)
   return 0;
 }
 
+static int
+bfsync_mkdir (const char *path, mode_t mode)
+{
+  string filename = options.repo_path + "/new" + path;
+
+  copy_dirs (path, FS_NEW);
+
+  int rc = mkdir (filename.c_str(), mode);
+  if (rc == 0)
+    return 0;
+
+  return -errno;
+}
 
 static struct fuse_operations bfsync_oper = { NULL, };
 
@@ -439,6 +452,7 @@ main (int argc, char *argv[])
   bfsync_oper.release  = bfsync_release;
   bfsync_oper.write    = bfsync_write;
   bfsync_oper.unlink   = bfsync_unlink;
+  bfsync_oper.mkdir    = bfsync_mkdir;
 
   return fuse_main (argc, argv, &bfsync_oper, NULL);
 }
