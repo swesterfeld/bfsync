@@ -504,9 +504,10 @@ bfsync_readlink (const char *path, char *buffer, size_t size)
   if (filename == "")
     return -ENOENT;
 
-  int rc = readlink (filename.c_str(), buffer, size);
-  if (rc == -1)
+  int len = readlink (filename.c_str(), buffer, size - 1);
+  if (len == -1)
     return -errno;
+  buffer[len] = 0;
   return 0;
 }
 
