@@ -371,8 +371,19 @@ bfsync_chmod (const char *name, mode_t mode)
 int
 bfsync_chown (const char *name, uid_t uid, gid_t gid)
 {
-  printf ("|||| chown %s %d %d\n", name, uid, gid);
-  return -EINVAL;
+  if (file_status (name) == FS_DATA)
+    copy_on_write (name);
+
+  if (file_status (name) != FS_NEW)
+    return -ENOENT;
+  else
+    {
+      int rc = lchown (file_path (name).c_str(), uid, gid);
+      if (rc == 0)
+        return 0;
+      else
+        return -errno;
+    }
 }
 
 int
