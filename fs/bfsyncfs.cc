@@ -331,6 +331,15 @@ bfsync_truncate (const char *name, off_t off)
 static int
 bfsync_unlink (const char *name)
 {
+  // delete data for new files
+  if (file_status (name) == FS_NEW)
+    {
+      int rc = unlink (file_path (name).c_str());
+      if (rc != 0)
+        return -errno;
+    }
+
+  // make del entry if data is present
   if (file_status (name) == FS_DATA)
     {
       int fd = open ((options.repo_path + "/del" + name).c_str(), O_CREAT|O_WRONLY, 0644);
@@ -344,15 +353,7 @@ bfsync_unlink (const char *name)
           return -errno;
         }
     }
-  else if (file_status (name) == FS_NEW)
-    {
-      int rc = unlink (file_path (name).c_str());
-      if (rc == 0)
-        return 0;
-      else
-        return -errno;
-    }
-  return -EINVAL;
+  return 0;
 }
 
 
