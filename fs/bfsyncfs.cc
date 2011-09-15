@@ -351,20 +351,34 @@ bfsync_mknod (const char *path, mode_t mode, dev_t dev)
 }
 
 int
-bfsync_chmod (const char *, mode_t)
+bfsync_chmod (const char *name, mode_t mode)
 {
+  if (file_status (name) == FS_DATA)
+    copy_on_write (name);
+
+  if (file_status (name) != FS_NEW)
+    return -ENOENT;
+  else
+    {
+      int rc = chmod (file_path (name).c_str(), mode);
+      if (rc == 0)
+        return 0;
+      else
+        return -errno;
+    }
+}
+
+int
+bfsync_chown (const char *name, uid_t uid, gid_t gid)
+{
+  printf ("|||| chown %s %d\n", name, uid, gid);
   return -EINVAL;
 }
 
 int
-bfsync_chown (const char *, uid_t, gid_t)
+bfsync_utime (const char *name, struct utimbuf *)
 {
-  return -EINVAL;
-}
-
-int
-bfsync_utime (const char *, struct utimbuf *)
-{
+  printf ("|||| utime %s\n", name);
   return -EINVAL;
 }
 
@@ -430,6 +444,35 @@ bfsync_mkdir (const char *path, mode_t mode)
   return -errno;
 }
 
+static int
+bfsync_rename (const char *old_path, const char *new_path)
+{
+  copy_dirs (new_path, FS_NEW);
+
+  copy_on_write (old_path);
+
+  rename ((options.repo_path + "/new" + old_path).c_str(),
+          (options.repo_path + "/new" + new_path).c_str());
+
+  // make del entry if data is present
+  if (file_status (old_path) == FS_DATA)
+    {
+      copy_dirs (old_path, FS_DEL);
+
+      int fd = open ((options.repo_path + "/del" + old_path).c_str(), O_CREAT|O_WRONLY, 0644);
+      if (fd != -1)
+        {
+          close (fd);
+          return 0;
+        }
+      else
+        {
+          return -errno;
+        }
+    }
+  return 0;
+}
+
 static struct fuse_operations bfsync_oper = { NULL, };
 
 int
@@ -453,6 +496,7 @@ main (int argc, char *argv[])
   bfsync_oper.write    = bfsync_write;
   bfsync_oper.unlink   = bfsync_unlink;
   bfsync_oper.mkdir    = bfsync_mkdir;
+  bfsync_oper.rename   = bfsync_rename;
 
   return fuse_main (argc, argv, &bfsync_oper, NULL);
 }
