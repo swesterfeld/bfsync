@@ -271,7 +271,6 @@ bfsync_open (const char *path, struct fuse_file_info *fi)
 {
   if (file_status (path) == FS_DEL)
     {
-      printf ("OPEN: flags = %d\n", fi->flags);
       if (fi->flags & O_CREAT)
         {
           unlink ((options.repo_path + "/del" + path).c_str());
