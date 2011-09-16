@@ -181,17 +181,12 @@ bfsync_getattr (const char *path, struct stat *stbuf)
     }
 }
 
-static int
-bfsync_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
-                off_t offset, struct fuse_file_info *fi)
+bool
+read_dir_contents (const string& path, vector<string>& entries)
 {
-  GDir *dir;
-  set<string> file_list;
-
-  (void) offset;
-  (void) fi;
-
-  bool dir_ok = false;
+  bool            dir_ok;
+  set<string>     file_list;
+  GDir           *dir;
 
   string del_files = options.repo_path + "/del" + path;
   dir = g_dir_open (del_files.c_str(), 0, NULL);
@@ -203,7 +198,7 @@ bfsync_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
           if (file_list.count (name) == 0)
             {
               file_list.insert (name);
-              // by inserting deleted files into the file_list (without calling filler)
+              // by inserting deleted files into the file_list (without updating result)
               // we ensure that they won't show up in ls
             }
         }
@@ -221,7 +216,7 @@ bfsync_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
           if (file_list.count (name) == 0)
             {
               file_list.insert (name);
-              filler (buf, name, NULL, 0);
+              entries.push_back (name);
             }
         }
       g_dir_close (dir);
@@ -238,15 +233,29 @@ bfsync_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
           if (file_list.count (name) == 0)
             {
               file_list.insert (name);
-              filler (buf, name, NULL, 0);
+              entries.push_back (name);
             }
         }
       g_dir_close (dir);
       dir_ok = true;
     }
 
-  if (dir_ok)
+  return dir_ok;
+}
+
+static int
+bfsync_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
+                off_t offset, struct fuse_file_info *fi)
+{
+  (void) offset;
+  (void) fi;
+
+  vector<string> entries;
+  if (read_dir_contents (path, entries))
     {
+      for (vector<string>::iterator ei = entries.begin(); ei != entries.end(); ei++)
+        filler (buf, ei->c_str(), NULL, 0);
+
       // . and .. are always there
       filler (buf, ".", NULL, 0);
       filler (buf, "..", NULL, 0);
@@ -467,6 +476,42 @@ bfsync_mkdir (const char *path, mode_t mode)
 }
 
 static int
+bfsync_rmdir (const char *name)
+{
+  // check that dir is in fact empty
+  vector<string> entries;
+  if (read_dir_contents (name, entries))
+    if (!entries.empty())
+      return -ENOTEMPTY;
+
+  // rmdir new directories
+  if (file_status (name) == FS_NEW)
+    {
+      int rc = rmdir (file_path (name).c_str());
+      if (rc != 0)
+        return -errno;
+    }
+
+  // make del entry if data is present
+  if (file_status (name) == FS_DATA)
+    {
+      copy_dirs (name, FS_DEL);
+
+      int fd = open ((options.repo_path + "/del" + name).c_str(), O_CREAT|O_WRONLY, 0644);
+      if (fd != -1)
+        {
+          close (fd);
+          return 0;
+        }
+      else
+        {
+          return -errno;
+        }
+    }
+  return 0;
+}
+
+static int
 bfsync_rename (const char *old_path, const char *new_path)
 {
   copy_dirs (new_path, FS_NEW);
@@ -532,9 +577,11 @@ main (int argc, char *argv[])
   /* read */
   bfsync_oper.getattr  = bfsync_getattr;
   bfsync_oper.readdir  = bfsync_readdir;
-  bfsync_oper.open     = bfsync_open;
   bfsync_oper.read     = bfsync_read;
   bfsync_oper.readlink = bfsync_readlink;
+
+  /* read/write */
+  bfsync_oper.open     = bfsync_open;
 
   /* write */
   bfsync_oper.mknod    = bfsync_mknod;
@@ -548,6 +595,7 @@ main (int argc, char *argv[])
   bfsync_oper.mkdir    = bfsync_mkdir;
   bfsync_oper.rename   = bfsync_rename;
   bfsync_oper.symlink  = bfsync_symlink;
+  bfsync_oper.rmdir    = bfsync_rmdir;
 
   return fuse_main (argc, argv, &bfsync_oper, NULL);
 }

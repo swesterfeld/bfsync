@@ -3,6 +3,7 @@
 import os
 import sys
 import subprocess
+import time
 
 def teardown():
   cwd = os.getcwd()
@@ -128,10 +129,38 @@ tests += [ ("mkdir in subdir", test_07) ]
 
 #####
 
+def test_rmdir():
+  os.mkdir ("mnt/newdir")
+  if not os.path.exists ("mnt/newdir"):
+    raise Exception ("newdir not created")
+  os.rmdir ("mnt/newdir")
+  if os.path.exists ("mnt/newdir"):
+    raise Exception ("newdir not deleted")
+
+tests += [ ("rmdir", test_rmdir) ]
+
+#####
+
+def test_rmdir2():
+  if not os.path.exists ("mnt/subdir"):
+    raise Exception ("missing subdir")
+  try:
+    os.rmdir ("mnt/subdir")
+  except:
+    pass
+  if not os.path.exists ("mnt/subdir"):
+    raise Exception ("subdir deleted, although not empty")
+
+tests += [ ("rmdir non-empty", test_rmdir2) ]
+
+#####
+
+
 for (desc, f) in tests:
   print "test %-30s" % desc,
   teardown()
   setup()
+  time.sleep (0.5)
   try:
     if subprocess.call (["tar", "cf", "test_data_before.tar", "test/data"]) != 0:
       raise Exception ("error during tar")
