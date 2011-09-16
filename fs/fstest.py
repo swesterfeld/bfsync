@@ -168,6 +168,16 @@ tests += [ ("rmdir on subsubdir", test_rmdir3) ]
 
 #####
 
+def test_rm():
+  os.remove ("mnt/subdir/x")
+  if not os.path.exists ("mnt/subdir"):
+    raise Exception ("subdir vanished")
+
+tests += [ ("rm in subdir", test_rm) ]
+
+#####
+
+
 
 for (desc, f) in tests:
   print "test %-30s" % desc,
