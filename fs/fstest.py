@@ -19,7 +19,7 @@ def setup():
   if subprocess.call (["mkdir", "-p", "test/del"]) != 0:
     print "error during setup"
     sys.exit (1)
-  if subprocess.call (["mkdir", "-p", "test/data/subdir"]) != 0:
+  if subprocess.call (["mkdir", "-p", "test/data/subdir/subsub"]) != 0:
     print "error during setup"
     sys.exit (1)
   if subprocess.call (["cp", "-a", "../README", "test/data/README"]) != 0:
@@ -152,6 +152,19 @@ def test_rmdir2():
     raise Exception ("subdir deleted, although not empty")
 
 tests += [ ("rmdir non-empty", test_rmdir2) ]
+
+#####
+
+def test_rmdir3():
+  if not os.path.exists ("mnt/subdir/subsub"):
+    raise Exception ("missing subsub")
+  os.rmdir ("mnt/subdir/subsub")
+  if os.path.exists ("mnt/subdir/subsub"):
+    raise Exception ("subsub removed but still there")
+  if not os.path.exists ("mnt/subdir"):
+    raise Exception ("subdir vanished")
+
+tests += [ ("rmdir on subsubdir", test_rmdir3) ]
 
 #####
 
