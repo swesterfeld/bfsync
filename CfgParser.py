@@ -12,7 +12,7 @@ class CfgParser:
   TOKEN_ERROR = 7
 
   def get_token (self):
-    m = re.match ("([a-z_:.@/]+)(.*)", self.toparse, re.DOTALL)
+    m = re.match ("([a-z_:.@/-]+)(.*)", self.toparse, re.DOTALL)
     if m:
       self.toparse = m.group (2)
       return self.TOKEN_IDENTIFIER, m.group (1)

@@ -51,7 +51,13 @@ enum FileStatus
 struct FileHandle
 {
   int fd;
+  enum { NONE, INFO } special_file;
 };
+
+struct SpecialFiles
+{
+  string info;
+} special_files;
 
 FileStatus
 file_status (const string& path)
@@ -175,6 +181,24 @@ bfsync_getattr (const char *path, struct stat *stbuf)
     {
       return 0;
     }
+
+  if (string (path) == "/.bfsync")
+    {
+      memset (stbuf, 0, sizeof (struct stat));
+      stbuf->st_mode = 0755 | S_IFDIR;
+      stbuf->st_uid  = getuid();
+      stbuf->st_gid  = getgid();
+      return 0;
+    }
+  else if (string (path) == "/.bfsync/info")
+    {
+      memset (stbuf, 0, sizeof (struct stat));
+      stbuf->st_mode = 0644 | S_IFREG;
+      stbuf->st_uid  = getuid();
+      stbuf->st_gid  = getgid();
+      stbuf->st_size = special_files.info.size();
+      return 0;
+    }
   else
     {
       return -errno;
@@ -239,6 +263,14 @@ read_dir_contents (const string& path, vector<string>& entries)
       g_dir_close (dir);
       dir_ok = true;
     }
+  if (path == "/")
+    {
+      entries.push_back (".bfsync");
+    }
+  else if (path == "/.bfsync")
+    {
+      entries.push_back ("info");
+    }
 
   return dir_ok;
 }
@@ -269,6 +301,15 @@ bfsync_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
 static int
 bfsync_open (const char *path, struct fuse_file_info *fi)
 {
+  if (string (path) == "/.bfsync/info")
+    {
+      FileHandle *fh = new FileHandle;
+      fh->fd = -1;
+      fh->special_file = FileHandle::INFO;
+      fi->fh = reinterpret_cast<uint64_t> (fh);
+      return 0;
+    }
+
   if (file_status (path) == FS_DEL)
     {
       if (fi->flags & O_CREAT)
@@ -296,6 +337,7 @@ bfsync_open (const char *path, struct fuse_file_info *fi)
     {
       FileHandle *fh = new FileHandle;
       fh->fd = fd;
+      fh->special_file = FileHandle::NONE;
       fi->fh = reinterpret_cast<uint64_t> (fh);
       return 0;
     }
@@ -324,6 +366,22 @@ bfsync_read (const char *path, char *buf, size_t size, off_t offset,
 
   if (fh->fd != -1)
     bytes_read = pread (fh->fd, buf, size, offset);
+
+  if (fh->special_file == FileHandle::INFO)
+    {
+      const string& info = special_files.info;
+      if (offset < info.size())
+        {
+          bytes_read = size;
+          if (offset + bytes_read > info.size())
+            bytes_read = info.size() - offset;
+          memcpy (buf, &info[offset], bytes_read);
+        }
+      else
+        {
+          bytes_read = 0;
+        }
+    }
 
   return bytes_read;
 }
@@ -572,6 +630,12 @@ int
 main (int argc, char *argv[])
 {
   options.repo_path = "test";
+
+  string repo_path = options.repo_path;
+  if (!g_path_is_absolute (repo_path.c_str()))
+    repo_path = g_get_current_dir() + string (G_DIR_SEPARATOR + repo_path);
+
+  special_files.info = "repo-path \"" + repo_path + "\";\n";
 
   /* read */
   bfsync_oper.getattr  = bfsync_getattr;
