@@ -543,7 +543,7 @@ bfsync_rename (const char *old_path, const char *new_path)
 static int
 bfsync_symlink (const char *from, const char *to)
 {
-  copy_dirs (from, FS_NEW);
+  copy_dirs (to, FS_NEW);
 
   int rc = symlink (from, (options.repo_path + "/new" + to).c_str());
 
