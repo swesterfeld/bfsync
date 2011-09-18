@@ -19,6 +19,8 @@
 
 import sys
 import os
+import subprocess
+import hashlib
 import CfgParser
 
 def find_bfsync_dir():
@@ -36,22 +38,70 @@ def find_bfsync_dir():
     newdir = os.path.dirname (dir)
     if newdir == dir:
       # no more parent
-      sys.stderr.write ("error: can not find .bfsync directory\n")
-      sys.exit (1)
+      raise Exception ("can not find .bfsync directory")
     dir = newdir
 
+def compute_size (filename):
+  return os.stat (filename).st_size
+
+def hash_all (filenames):
+  # compute total size of all files
+  total_size = 0
+  for filename in filenames:
+    total_size += compute_size (filename)
+  # hash data
+  done_size = 0
+  for filename in filenames:
+    file = open (filename, "r")
+    hash = hashlib.sha1()
+    eof = False
+    while not eof:
+      data = file.read (256 * 1024)
+      if data == "":
+        eof = True
+      else:
+        hash.update (data)
+        done_size += len (data)
+        print "%d/%d\r" % (done_size, total_size),
+        sys.stdout.flush()
+    file.close()
+  return
+
 def cmd_commit():
+  if len (args) != 1:
+    raise Exception ("commit requires mount-point as argument")
+
+  os.chdir (args[0])
   bfsync_dir = find_bfsync_dir()
   bfsync_info = CfgParser.CfgParser ((bfsync_dir + "/info"),
   [
   ],
   [
-    "repo-path"
+    "repo-path",
+    "mount-point"
   ])
 
-  for i in bfsync_info.get ("repo-path"):
-    print "repo-path is", i
+  repo_path = bfsync_info.get ("repo-path")
+  if len (repo_path) != 1:
+    raise Exception ("bad repo path")
+  repo_path = repo_path[0]
+  os.chdir (repo_path)
 
+  mount_point = bfsync_info.get ("mount-point")
+  if len (mount_point) != 1:
+    raise Exception ("bad mount point")
+  mount_point = mount_point[0]
+
+  if subprocess.call (["fusermount", "-u", mount_point]) != 0:
+    raise Exception ("umount failed")
+
+  file_list = []
+  for dir, dirs, files in os.walk ("new"):
+    for file in files:
+      file_list += [ os.path.join (dir, file) ]
+
+  hash_all (file_list)
+  return
   #try:
     #os.chdir (bfsync_dir)
     #if os.system ("git commit -a") != 0:
@@ -61,7 +111,6 @@ def cmd_commit():
     #sys.stderr.write ("cannot chdir to directory %s: %s\n" % (bfsync_dir, ex))
     #sys.exit (1)
   # exit_and_save...
-  sys.exit (0)
 
 
 command = None
@@ -71,7 +120,7 @@ args = []
 
 for arg in arg_iter:
   commands = [
-    ( "commit",         cmd_commit, 0),
+    ( "commit",         cmd_commit, 1),
   ]
   parse_ok = False
   if command == None:
@@ -90,6 +139,10 @@ for arg in arg_iter:
     sys.exit (1)
 
 if command_func != None:
-  command_func()
+  try:
+    command_func()
+  except Exception, ex:
+    sys.stderr.write ("bfsync2: %s\n" % ex)
+    sys.exit (1)
 else:
   print "usage: bfsync <command> [ args... ]"

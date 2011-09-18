@@ -635,7 +635,8 @@ main (int argc, char *argv[])
   if (!g_path_is_absolute (repo_path.c_str()))
     repo_path = g_get_current_dir() + string (G_DIR_SEPARATOR + repo_path);
 
-  special_files.info = "repo-path \"" + repo_path + "\";\n";
+  special_files.info = "repo-path \"" + repo_path + "\";\n"
+                     + "mount-point \"" + g_get_current_dir() + "/mnt\";\n";
 
   /* read */
   bfsync_oper.getattr  = bfsync_getattr;
