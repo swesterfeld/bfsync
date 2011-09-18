@@ -192,12 +192,15 @@ for (desc, f) in tests:
       raise Exception ("error during tar")
     if read_file ("test_data_before.tar") != read_file ("test_data_after.tar"):
       raise Exception ("test/data changed (tar)")
-    os.remove ("test_data_before.tar")
-    os.remove ("test_data_after.tar")
   except Exception, e:
     print "FAIL: ", e
   else:
     print "OK."
-
+  finally:
+    try:
+      os.remove ("test_data_before.tar")
+      os.remove ("test_data_after.tar")
+    except:
+      pass
 teardown()
 setup()
