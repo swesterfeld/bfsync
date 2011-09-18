@@ -51,3 +51,7 @@ ENCRYPTED MODE:
 * passphrase-derived key
 * sha-256 checksum for each block at the beginning
   -> partial writes become invisible
+* store git upstream repo as encrypted contents in a git repository (file-by-file encryption)
+* extract crypted repo before commit
+* push changes
+* reencrypt repo after commit
