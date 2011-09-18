@@ -1,3 +1,4 @@
-CfgParser.pyc
+*.pyc
+bfsyncfs
 mnt
 test
