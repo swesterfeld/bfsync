@@ -59,6 +59,28 @@ struct SpecialFiles
   string info;
 } special_files;
 
+static FILE *debug_file = NULL;
+
+#define DEBUG 0
+
+static inline void
+debug (const char *fmt, ...)
+{
+  // no debugging -> return as quickly as possible
+  if (!DEBUG)
+    return;
+
+  if (!debug_file)
+    debug_file = fopen ("/tmp/bfsyncfs.log", "w");
+
+  va_list ap;
+
+  va_start (ap, fmt);
+  vfprintf (debug_file, fmt, ap);
+  fflush (debug_file);
+  va_end (ap);
+}
+
 FileStatus
 file_status (const string& path)
 {
@@ -167,23 +189,32 @@ copy_on_write (const string& path)
 static int
 bfsync_getattr (const char *path, struct stat *stbuf)
 {
+  debug ("getattr (\"%s\")\n", path);
+
   if (file_status (path) == FS_DEL)
-    return -ENOENT;
+    {
+      debug ("=> ENOENT\n");
+      return -ENOENT;
+    }
 
   string new_filename = options.repo_path + "/new" + path;
   if (lstat (new_filename.c_str(), stbuf) == 0)
     {
+      debug ("=> new\n");
       return 0;
     }
 
   string filename = options.repo_path + "/data" + path;
   if (lstat (filename.c_str(), stbuf) == 0)
     {
+      debug ("=> data\n");
       return 0;
     }
 
   if (string (path) == "/.bfsync")
     {
+      debug ("=> .bfsync\n");
+
       memset (stbuf, 0, sizeof (struct stat));
       stbuf->st_mode = 0755 | S_IFDIR;
       stbuf->st_uid  = getuid();
@@ -192,6 +223,8 @@ bfsync_getattr (const char *path, struct stat *stbuf)
     }
   else if (string (path) == "/.bfsync/info")
     {
+      debug ("=> .bfsync/info\n");
+
       memset (stbuf, 0, sizeof (struct stat));
       stbuf->st_mode = 0644 | S_IFREG;
       stbuf->st_uid  = getuid();
@@ -201,6 +234,7 @@ bfsync_getattr (const char *path, struct stat *stbuf)
     }
   else
     {
+      debug ("=> ERROR: %s\n", strerror (errno));
       return -errno;
     }
 }
@@ -279,12 +313,16 @@ static int
 bfsync_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
                 off_t offset, struct fuse_file_info *fi)
 {
+  debug ("readdir (\"%s\")\n", path);
+
   (void) offset;
   (void) fi;
 
   vector<string> entries;
   if (read_dir_contents (path, entries))
     {
+      debug ("=> %zd entries\n", entries.size());
+
       for (vector<string>::iterator ei = entries.begin(); ei != entries.end(); ei++)
         filler (buf, ei->c_str(), NULL, 0);
 
@@ -295,12 +333,17 @@ bfsync_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
       return 0;
     }
   else
-    return -ENOENT;
+    {
+      debug ("=> ENOENT\n");
+      return -ENOENT;
+    }
 }
 
 static int
 bfsync_open (const char *path, struct fuse_file_info *fi)
 {
+  debug ("open (\"%s\")\n", path);
+
   if (string (path) == "/.bfsync/info")
     {
       FileHandle *fh = new FileHandle;
@@ -360,6 +403,8 @@ static int
 bfsync_read (const char *path, char *buf, size_t size, off_t offset,
              struct fuse_file_info *fi)
 {
+  debug ("read (\"%s\")\n", path);
+
   FileHandle *fh = reinterpret_cast<FileHandle *> (fi->fh);
 
   ssize_t bytes_read = 0;
@@ -629,14 +674,16 @@ static struct fuse_operations bfsync_oper = { NULL, };
 int
 main (int argc, char *argv[])
 {
-  options.repo_path = "test";
-
-  string repo_path = options.repo_path;
+  string repo_path = "test";
   if (!g_path_is_absolute (repo_path.c_str()))
     repo_path = g_get_current_dir() + string (G_DIR_SEPARATOR + repo_path);
 
+  options.repo_path = repo_path;
+
   special_files.info = "repo-path \"" + repo_path + "\";\n"
                      + "mount-point \"" + g_get_current_dir() + "/mnt\";\n";
+
+  debug ("starting bfsyncfs; info = \n{\n%s}\n", special_files.info.c_str());
 
   /* read */
   bfsync_oper.getattr  = bfsync_getattr;
