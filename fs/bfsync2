@@ -29,6 +29,7 @@ import CfgParser
 import HashCache
 import StatusLine
 import shutil
+import argparse
 
 from utils import mkdir_recursive
 from TransferList import TransferList, TransferFile
@@ -87,10 +88,12 @@ def validate_object (object_file, hash):
   return False
 
 def cmd_commit():
-  if len (args) != 1:
-    raise Exception ("commit requires mount-point as argument")
+  parser = argparse.ArgumentParser (prog='bfsync2 commit')
+  parser.add_argument ('-m', help='set commit message')
+  parser.add_argument ('repo_path', help='path to the repository')
+  commit_args = parser.parse_args (args)
 
-  os.chdir (args[0])
+  os.chdir (commit_args.repo_path)
   bfsync_dir = find_bfsync_dir()
   bfsync_info = CfgParser.CfgParser ((bfsync_dir + "/info"),
   [
@@ -129,11 +132,14 @@ def cmd_commit():
 
   (fd,name) = tempfile.mkstemp (prefix = "bfsync_commit_")
   f = os.fdopen (fd, "w")
+  if commit_args.m:
+    f.write (commit_args.m)
   f.write("\n")
   for filename in file_list:
     f.write ("# add %s\n" % filename)
   f.close()
-  os.system ("vim %s" % name)
+  if not commit_args.m:
+    os.system ("vim %s" % name)
   if not commit_msg_ok (name):
     raise Exception ("commit message is empty")
 
