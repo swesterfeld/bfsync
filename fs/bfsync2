@@ -109,41 +109,8 @@ def hash_all (filenames):
     file.close()
   return
 
-def compute_hash (filename):
-  filename = os.path.abspath (filename)
-  stat_hash = make_stat_hash (filename)
-  result = hash_cache.lookup (stat_hash)
-  if result != "":  # file hash already in cache
-    return result
-  file = open (filename, "r")
-  hash = hashlib.sha1()
-  eof = False
-  while not eof:
-    data = file.read (256 * 1024)
-    if data == "":
-      eof = True
-    else:
-      hash.update (data)
-  file.close()
-  result = hash.hexdigest()
-  hash_cache.insert (stat_hash, result)
-  return result
-
 def compute_mode (filename):
   return os.stat (filename).st_mode
-
-def make_stat_hash (filename):
-  filename = os.path.abspath (filename)
-  stat = os.stat (filename)
-  l = [
-    filename,
-    stat.st_mode, stat.st_ino, stat.st_dev, stat.st_nlink,
-    stat.st_uid, stat.st_gid, stat.st_size,
-    stat.st_mtime, stat.st_ctime,
-    # stat.st_atime, - we keep out atime to allow reading file without changing the hash value
-  ]
-  stat_hash = hashlib.sha1 (pickle.dumps (l)).hexdigest()
-  return stat_hash
 
 def commit_msg_ok (filename):
   file = open (filename, "r")
@@ -222,7 +189,7 @@ def cmd_commit():
   for filename in file_list:
     try:
       new_file = os.path.join (repo_path, "new", filename)
-      hash = compute_hash (new_file)
+      hash = hash_cache.compute_hash (new_file)
       size = compute_size (new_file)
       mode = compute_mode (new_file)
     except Exception, ex:

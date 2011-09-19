@@ -1,6 +1,8 @@
 import time
 import random
 import os
+import hashlib
+import pickle
 
 class HashCacheEntry:
   def __init__ (self, stat_hash, file_hash, expire_time):
@@ -47,6 +49,39 @@ class HashCache:
       return self.cache[stat_hash].file_hash
     else:
       return ""
+
+  def compute_hash (self, filename):
+    filename = os.path.abspath (filename)
+    stat_hash = self.make_stat_hash (filename)
+    result = self.lookup (stat_hash)
+    if result != "":  # file hash already in cache
+      return result
+    file = open (filename, "r")
+    hash = hashlib.sha1()
+    eof = False
+    while not eof:
+      data = file.read (256 * 1024)
+      if data == "":
+        eof = True
+      else:
+        hash.update (data)
+    file.close()
+    result = hash.hexdigest()
+    self.insert (stat_hash, result)
+    return result
+
+  def make_stat_hash (self, filename):
+    filename = os.path.abspath (filename)
+    stat = os.stat (filename)
+    l = [
+      filename,
+      stat.st_mode, stat.st_ino, stat.st_dev, stat.st_nlink,
+      stat.st_uid, stat.st_gid, stat.st_size,
+      stat.st_mtime, stat.st_ctime,
+      # stat.st_atime, - we keep out atime to allow reading file without changing the hash value
+    ]
+    stat_hash = hashlib.sha1 (pickle.dumps (l)).hexdigest()
+    return stat_hash
 
   def save (self):
     # reload cache data in case another bfsync process has added entries to the cache
