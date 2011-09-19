@@ -13,6 +13,7 @@ def teardown():
     sys.exit (1)
 
 def setup():
+  time.sleep (1)
   cwd = os.getcwd()
   if subprocess.call (["mkdir", "-p", "test/new"]) != 0:
     print "error during setup"
@@ -29,10 +30,13 @@ def setup():
   if subprocess.call (["mkdir", "-p", "test/data/subdir/subsub"]) != 0:
     print "error during setup"
     sys.exit (1)
-  if subprocess.call (["cp", "-a", "../README", "test/data/README"]) != 0:
+  if subprocess.call (["cp", "-a", "../README", "mnt/README"]) != 0:
     print "error during setup"
     sys.exit (1)
-  write_file ("test/data/subdir/x", "File X\n")
+  write_file ("mnt/subdir/x", "File X\n")
+  if run_quiet (["bfsync2", "commit", "-m", "fstest", "mnt"]) != 0:
+    raise Exception ("commit failed")
+  start_bfsyncfs()
 
 def write_file (name, data):
   f = open (name, "w")
@@ -48,7 +52,7 @@ def read_file (name):
 tests = []
 
 def test_read():
-  if read_file ("mnt/README") != read_file ("test/data/README"):
+  if read_file ("mnt/README") != read_file ("../README"):
     raise Exception ("read failed")
 
 tests += [ ("read", test_read) ]
@@ -187,7 +191,7 @@ tests += [ ("rm in subdir", test_rm) ]
 def test_commit_read():
   write_file ("mnt/foo", "foo")
   readme = read_file ("mnt/foo")
-  if subprocess.call (["bfsync2", "commit", "-m", "fstest", "mnt"]) != 0:
+  if run_quiet (["bfsync2", "commit", "-m", "fstest", "mnt"]) != 0:
     raise Exception ("commit failed")
   start_bfsyncfs()
   readme_committed = read_file ("mnt/foo")
@@ -206,6 +210,9 @@ def start_bfsyncfs():
     print "can't start bfsyncfs"
     sys.exit (1)
 
+def run_quiet (cmd):
+  return subprocess.Popen (cmd, stdout=subprocess.PIPE).wait()
+
 start_bfsyncfs()
 
 for (desc, f) in tests:
@@ -223,11 +230,11 @@ for (desc, f) in tests:
       raise Exception ("test/data changed (tar)")
   except Exception, e:
     print "FAIL: ", e
-    print "\n\n"
-    print "=================================================="
-    traceback.print_exc()
-    print "=================================================="
-    print "\n\n"
+    #print "\n\n"
+    #print "=================================================="
+    #traceback.print_exc()
+    #print "=================================================="
+    #print "\n\n"
   else:
     print "OK."
   finally:
