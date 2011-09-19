@@ -4,6 +4,7 @@ import os
 import sys
 import subprocess
 import time
+import traceback
 
 def teardown():
   cwd = os.getcwd()
@@ -17,6 +18,12 @@ def setup():
     print "error during setup"
     sys.exit (1)
   if subprocess.call (["mkdir", "-p", "test/del"]) != 0:
+    print "error during setup"
+    sys.exit (1)
+  if subprocess.call (["mkdir", "-p", "test/git"]) != 0:
+    print "error during setup"
+    sys.exit (1)
+  if subprocess.call (["git", "init", "-q", "test/git"]) != 0:
     print "error during setup"
     sys.exit (1)
   if subprocess.call (["mkdir", "-p", "test/data/subdir/subsub"]) != 0:
@@ -177,7 +184,25 @@ tests += [ ("rm in subdir", test_rm) ]
 
 #####
 
+def test_commit_read():
+  write_file ("mnt/foo", "foo")
+  readme = read_file ("mnt/foo")
+  if subprocess.call (["bfsync2", "commit", "mnt"]) != 0:
+    raise Exception ("commit failed")
+  readme_committed = read_file ("mnt/foo")
+  if readme != readme_committed:
+    raise Exception ("README reread failed")
 
+tests += [ ("commit-read", test_commit_read) ]
+
+#####
+
+# unmount mnt just in case its mounted
+subprocess.call (["fusermount", "-u", "mnt"])
+
+if subprocess.call (["bfsyncfs", "mnt"]) != 0:
+  print "can't start bfsyncfs"
+  sys.exit (1)
 
 for (desc, f) in tests:
   print "test %-30s" % desc,
@@ -194,6 +219,11 @@ for (desc, f) in tests:
       raise Exception ("test/data changed (tar)")
   except Exception, e:
     print "FAIL: ", e
+    print "\n\n"
+    print "=================================================="
+    traceback.print_exc()
+    print "=================================================="
+    print "\n\n"
   else:
     print "OK."
   finally:
@@ -204,3 +234,7 @@ for (desc, f) in tests:
       pass
 teardown()
 setup()
+
+if subprocess.call (["fusermount", "-u", "mnt"]):
+  print "can't stop bfsyncfs"
+  sys.exit (1)
