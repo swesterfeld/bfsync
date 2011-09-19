@@ -189,6 +189,7 @@ def test_commit_read():
   readme = read_file ("mnt/foo")
   if subprocess.call (["bfsync2", "commit", "-m", "fstest", "mnt"]) != 0:
     raise Exception ("commit failed")
+  start_bfsyncfs()
   readme_committed = read_file ("mnt/foo")
   if readme != readme_committed:
     raise Exception ("README reread failed")
@@ -200,9 +201,12 @@ tests += [ ("commit-read", test_commit_read) ]
 # unmount mnt just in case its mounted
 subprocess.call (["fusermount", "-u", "mnt"])
 
-if subprocess.call (["bfsyncfs", "mnt"]) != 0:
-  print "can't start bfsyncfs"
-  sys.exit (1)
+def start_bfsyncfs():
+  if subprocess.call (["bfsyncfs", "mnt"]) != 0:
+    print "can't start bfsyncfs"
+    sys.exit (1)
+
+start_bfsyncfs()
 
 for (desc, f) in tests:
   print "test %-30s" % desc,

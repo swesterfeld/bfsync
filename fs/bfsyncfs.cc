@@ -45,6 +45,7 @@ enum FileStatus
   FS_NONE,
   FS_NEW,
   FS_DATA,
+  FS_GIT,
   FS_DEL
 };
 
@@ -81,6 +82,68 @@ debug (const char *fmt, ...)
   va_end (ap);
 }
 
+struct GitFile
+{
+  size_t size;
+  string hash;
+
+  GitFile();
+  bool parse (const string& filename);
+};
+
+GitFile::GitFile() :
+  size (0)
+{
+}
+
+bool
+GitFile::parse (const string& filename)
+{
+  printf ("parse => %s\n", filename.c_str());
+
+  FILE *file = fopen (filename.c_str(), "r");
+  if (!file)
+    return false;
+
+  bool result = true;
+  size_t size_count = 0, hash_count = 0;
+  char buffer[1024];
+  while (fgets (buffer, 1024, file))
+    {
+      char *key = strtok (buffer, " \n");
+      if (key)
+        {
+          char *eq  = strtok (NULL, " \n");
+          if (eq)
+            {
+              char *val = strtok (NULL, " \n");
+              if (val && string (eq) == "=")
+                {
+                  if (string (key) == "size")
+                    {
+                      size = atoi (val);
+                      size_count++;
+                      printf ("size (%s) => %zd\n", filename.c_str(), size);
+                    }
+                  else if (string (key) == "hash")
+                    {
+                      hash = val;
+                      hash_count++;
+                      printf ("hash (%s) => %s\n", filename.c_str(), hash.c_str());
+                    }
+                }
+            }
+        }
+    }
+  if (size_count != 1)
+    result = false;
+  if (hash_count != 1)
+    result = false;
+  fclose (file);
+  return result;
+}
+
+
 FileStatus
 file_status (const string& path)
 {
@@ -92,9 +155,20 @@ file_status (const string& path)
     return FS_NEW;
   if (lstat ((options.repo_path + "/data" + path).c_str(), &st) == 0)
     return FS_DATA;
+  if (lstat ((options.repo_path + "/git/files" + path).c_str(), &st) == 0)
+    return FS_GIT;
 
   return FS_NONE;
 }
+
+string
+make_object_filename (const string& hash)
+{
+  if (hash.size() != 40)
+    return "";
+  return options.repo_path + "/objects/" + hash.substr (0, 2) + "/" + hash.substr (2);
+}
+
 
 string
 file_path (const string& path)
@@ -104,6 +178,12 @@ file_path (const string& path)
     return options.repo_path + "/new" + path;
   if (fs == FS_DATA)
     return options.repo_path + "/data" + path;
+  if (fs == FS_GIT)
+    {
+      GitFile gf;
+      if (gf.parse (options.repo_path + "/git/files" + path))
+        return make_object_filename (gf.hash);
+    }
   return "";
 }
 
@@ -183,58 +263,6 @@ copy_on_write (const string& path)
       close (old_fd);
       close (new_fd);
     }
-}
-
-struct GitFile
-{
-  size_t size;
-
-  GitFile();
-  bool parse (const string& filename);
-};
-
-GitFile::GitFile() :
-  size (0)
-{
-}
-
-bool
-GitFile::parse (const string& filename)
-{
-  printf ("parse => %s\n", filename.c_str());
-
-  FILE *file = fopen (filename.c_str(), "r");
-  if (!file)
-    return false;
-
-  bool result = true;
-  size_t size_count = 0;
-  char buffer[1024];
-  while (fgets (buffer, 1024, file))
-    {
-      char *key = strtok (buffer, " \n");
-      if (key)
-        {
-          char *eq  = strtok (NULL, " \n");
-          if (eq)
-            {
-              char *val = strtok (NULL, " \n");
-              if (val)
-                {
-                  if (string (key) == "size" && string (eq) == "=")
-                    {
-                      size = atoi (val);
-                      size_count++;
-                      printf ("size (%s) => %zd\n", filename.c_str(), size);
-                    }
-                }
-            }
-        }
-    }
-  if (size_count != 1)
-    result = false;
-  fclose (file);
-  return result;
 }
 
 static int
@@ -451,6 +479,7 @@ bfsync_open (const char *path, struct fuse_file_info *fi)
     }
 
   string filename = file_path (path);
+  printf ("open: translated filename = %s\n", filename.c_str());
   if (filename == "")
     return -ENOENT;
 
