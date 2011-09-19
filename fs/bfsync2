@@ -54,15 +54,6 @@ def find_bfsync_dir():
       raise Exception ("can not find .bfsync directory")
     dir = newdir
 
-def compute_size (filename):
-  return os.stat (filename).st_size
-
-def compute_mtime (filename):
-  return os.stat (filename).st_mtime
-
-def compute_mode (filename):
-  return os.stat (filename).st_mode
-
 def commit_msg_ok (filename):
   file = open (filename, "r")
   result = False
@@ -151,9 +142,7 @@ def cmd_commit():
     try:
       new_file = os.path.join (repo_path, "new", filename)
       hash = hash_cache.compute_hash (new_file)
-      size = compute_size (new_file)
-      mode = compute_mode (new_file)
-      mtime = compute_mtime (new_file)
+      stat = os.stat (new_file)
     except Exception, ex:
       raise
 
@@ -162,9 +151,11 @@ def cmd_commit():
     try:
       gf = open (git_file, "w")
       gf.write ("hash = %s\n" % hash)
-      gf.write ("size = %d\n" % size)
-      gf.write ("mode = %o\n" % mode)
-      gf.write ("mtime = %d\n" % mtime)
+      gf.write ("size = %d\n" % stat.st_size)
+      gf.write ("mode = %o\n" % stat.st_mode)
+      gf.write ("mtime = %d\n" % stat.st_mtime)
+      gf.write ("uid = %d\n" % stat.st_uid)
+      gf.write ("gid = %d\n" % stat.st_gid)
       gf.close()
     except Exception, ex:
       raise

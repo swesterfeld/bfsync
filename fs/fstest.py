@@ -34,9 +34,7 @@ def setup():
     print "error during setup"
     sys.exit (1)
   write_file ("mnt/subdir/x", "File X\n")
-  if run_quiet (["bfsync2", "commit", "-m", "fstest", "mnt"]) != 0:
-    raise Exception ("commit failed")
-  start_bfsyncfs()
+  commit()
 
 def write_file (name, data):
   f = open (name, "w")
@@ -211,13 +209,33 @@ def test_commit_mtime():
 
 tests += [ ("commit-mtime", test_commit_mtime) ]
 
+#####
+
+def test_commit_uid_gid():
+  write_file ("mnt/foo", "foo")
+  os.system ("chown 123.456 mnt/foo")
+  old_stat = os.stat ("mnt/foo")
+  if (old_stat.st_uid != 123 or old_stat.st_gid != 456):
+    raise Exception ("can't set uid/gid (are you root?)")
+  commit()
+  new_stat = os.stat ("mnt/foo")
+  if old_stat.st_uid != new_stat.st_uid:
+    raise Exception ("stat uid diffs %d => %d" % (old_stat.st_uid, new_stat.st_uid))
+  if old_stat.st_gid != new_stat.st_gid:
+    raise Exception ("stat gid diffs %d => %d" % (old_stat.st_gid, new_stat.st_gid))
+
+tests += [ ("commit-uid-gid", test_commit_uid_gid) ]
+
+#####
+
+
 def start_bfsyncfs():
-  if subprocess.call (["bfsyncfs", "mnt"]) != 0:
+  if subprocess.call (["./bfsyncfs", "mnt"]) != 0:
     print "can't start bfsyncfs"
     sys.exit (1)
 
 def commit():
-  if run_quiet (["bfsync2", "commit", "-m", "fstest", "mnt"]) != 0:
+  if run_quiet (["./bfsync2", "commit", "-m", "fstest", "mnt"]) != 0:
     raise Exception ("commit failed")
   start_bfsyncfs()
 
