@@ -21,11 +21,20 @@ import sys
 import os
 import subprocess
 import hashlib
+import pickle
 import traceback
 import time
 import tempfile
 import CfgParser
+import HashCache
 import StatusLine
+import shutil
+import argparse
+
+from utils import mkdir_recursive
+from TransferList import TransferList, TransferFile
+from StatusLine import status_line
+from HashCache import hash_cache
 
 def find_bfsync_dir():
   old_cwd = os.getcwd()
@@ -48,70 +57,43 @@ def find_bfsync_dir():
 def compute_size (filename):
   return os.stat (filename).st_size
 
-def format_size (size, total_size):
-  unit_str = [ "B", "KB", "MB", "GB", "TB" ]
-  unit = 0
-  while (total_size > 10000) and (unit + 1 < len (unit_str)):
-    size = (size + 512) / 1024
-    total_size = (total_size + 512) / 1024
-    unit += 1
-  return "%d/%d %s" % (size, total_size, unit_str[unit])
+def compute_mode (filename):
+  return os.stat (filename).st_mode
 
-def format_rate (bytes_per_sec):
-  unit_str = [ "B/s", "KB/s", "MB/s", "GB/s", "TB/s" ]
-  unit = 0
-  while (bytes_per_sec > 10000) and (unit + 1 < len (unit_str)):
-    bytes_per_sec /= 1024
-    unit += 1
-  return "%.1f %s" % (bytes_per_sec, unit_str[unit])
-
-def format_time (sec):
-  sec = int (sec)
-  if (sec < 3600):
-    return "%d:%02d" % (sec / 60, sec % 60)
-  else:
-    return "%d:%02d:%02d" % (sec / 3600, (sec / 60) % 60, sec % 60)
-
-def hash_all (filenames):
-  # compute total size of all files
-  bytes_total = 0
-  for filename in filenames:
-    bytes_total += compute_size (filename)
-  # hash data
-  bytes_done = 0
-  file_number = 0
-  start_time = time.time()
-  status_line.set_op ("HASH")
-  for filename in filenames:
-    file = open (filename, "r")
-    file_number += 1
-    hash = hashlib.sha1()
-    eof = False
-    while not eof:
-      data = file.read (256 * 1024)
-      if data == "":
-        eof = True
+def commit_msg_ok (filename):
+  file = open (filename, "r")
+  result = False
+  for line in file:
+    line = line.strip()
+    if len (line):
+      if line[0] == "#":
+        pass
       else:
-        hash.update (data)
-        bytes_done += len (data)
-        elapsed_time = max (time.time() - start_time, 1)
-        bytes_per_sec = max (bytes_done / elapsed_time, 1)
-        eta = int ((bytes_total - bytes_done) / bytes_per_sec)
-        status_line.update ("file %d/%d    %s    %.1f%%   %s   ETA: %s" % (
-          file_number, len (filenames),
-          format_size (bytes_done, bytes_total),
-          bytes_done * 100.0 / max (bytes_total, 1),
-          format_rate (bytes_per_sec),
-          format_time (eta)
-        ))
-    file.close()
-  return
+        result = True
+  file.close()
+  return result
+
+def make_object_filename (hash):
+  if len (hash) != 40:
+    raise Exception ("bad hash %s (not len 40)" % hash)
+  return hash[0:2] + "/" + hash[2:]
+
+def validate_object (object_file, hash):
+  try:
+    os.stat (object_file)
+    if hash_cache.compute_hash (object_file) == hash:
+      return True
+  except:
+    pass
+  return False
 
 def cmd_commit():
-  if len (args) != 1:
-    raise Exception ("commit requires mount-point as argument")
+  parser = argparse.ArgumentParser (prog='bfsync2 commit')
+  parser.add_argument ('-m', help='set commit message')
+  parser.add_argument ('repo_path', help='path to the repository')
+  commit_args = parser.parse_args (args)
 
-  os.chdir (args[0])
+  os.chdir (commit_args.repo_path)
   bfsync_dir = find_bfsync_dir()
   bfsync_info = CfgParser.CfgParser ((bfsync_dir + "/info"),
   [
@@ -125,41 +107,89 @@ def cmd_commit():
   if len (repo_path) != 1:
     raise Exception ("bad repo path")
   repo_path = repo_path[0]
-  os.chdir (repo_path)
 
   mount_point = bfsync_info.get ("mount-point")
   if len (mount_point) != 1:
     raise Exception ("bad mount point")
   mount_point = mount_point[0]
 
+  # chdir to repo_path to allow unmount
+  os.chdir (repo_path)
   if subprocess.call (["fusermount", "-u", mount_point]) != 0:
     raise Exception ("umount failed")
 
+  os.chdir (os.path.join (repo_path, "new"))
   file_list = []
-  for dir, dirs, files in os.walk ("new"):
+  for dir, dirs, files in os.walk ("."):
     for file in files:
       file_list += [ os.path.join (dir, file) ]
 
-  hash_all (file_list)
+  if len (file_list) == 0:
+    raise Exception ("no changes to commit")
+
+  hash_cache.hash_all (status_line, file_list)
+  status_line.cleanup()
+
   (fd,name) = tempfile.mkstemp (prefix = "bfsync_commit_")
   f = os.fdopen (fd, "w")
+  if commit_args.m:
+    f.write (commit_args.m)
   f.write("\n")
   for filename in file_list:
     f.write ("# add %s\n" % filename)
   f.close()
-  os.system ("vim %s" % name)
-  return
-  #try:
-    #os.chdir (bfsync_dir)
-    #if os.system ("git commit -a") != 0:
-      #sys.stderr.write ("git commit failed\n")
-      #sys.exit (1)
-  #except Exception, ex:
-    #sys.stderr.write ("cannot chdir to directory %s: %s\n" % (bfsync_dir, ex))
-    #sys.exit (1)
-  # exit_and_save...
+  if not commit_args.m:
+    os.system ("vim %s" % name)
+  if not commit_msg_ok (name):
+    raise Exception ("commit message is empty")
 
-status_line = StatusLine.StatusLine()
+  # create entries in git/files for newly added files
+  for filename in file_list:
+    try:
+      new_file = os.path.join (repo_path, "new", filename)
+      hash = hash_cache.compute_hash (new_file)
+      size = compute_size (new_file)
+      mode = compute_mode (new_file)
+    except Exception, ex:
+      raise
+
+    git_file = os.path.join (repo_path, "git/files", filename)
+    mkdir_recursive (os.path.dirname (git_file))
+    try:
+      gf = open (git_file, "w")
+      gf.write ("hash = %s\n" % hash)
+      gf.write ("size = %d\n" % size)
+      gf.write ("mode = %o\n" % mode)
+      gf.close()
+    except Exception, ex:
+      raise
+    os.chdir (os.path.join (repo_path, "git"))
+    if subprocess.call (["git", "add", git_file]) != 0:
+      raise Exception ("cannot git add file %s\n" % git_file)
+
+  # commit changes to repo
+  os.chdir (os.path.join (repo_path, "git"))
+  if os.system ("git commit -a -F %s" % name) != 0:
+    raise Exception ("git commit failed")
+
+  # copy files into objects/ directory
+  tl = TransferList()
+  for filename in file_list:
+    new_file = os.path.join (repo_path, "new", filename)
+    hash = hash_cache.compute_hash (new_file)
+    object_file = os.path.join (repo_path, "objects", make_object_filename (hash))
+    if not validate_object (object_file, hash):
+      mkdir_recursive (os.path.dirname (object_file))
+      tl.add (TransferFile (new_file, object_file, os.path.getsize (new_file), 0444))
+  status_line.set_op ("COPY")
+  tl.copy_files()
+
+  # remove files from new/ directory
+  for filename in file_list:
+    new_file = os.path.join (repo_path, "new", filename)
+    os.remove (new_file)
+  return
+
 command = None
 command_func = None
 arg_iter = sys.argv[1:].__iter__()
@@ -189,8 +219,14 @@ if command_func != None:
   try:
     command_func()
   except Exception, ex:
+    print "\n\n"
+    print "=================================================="
     traceback.print_exc()
+    print "=================================================="
+    print "\n\n"
+    hash_cache.save()
     sys.stderr.write ("bfsync2: %s\n" % ex)
     sys.exit (1)
+  hash_cache.save()
 else:
   print "usage: bfsync <command> [ args... ]"
