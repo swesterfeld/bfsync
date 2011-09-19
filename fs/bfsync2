@@ -28,6 +28,11 @@ import tempfile
 import CfgParser
 import HashCache
 import StatusLine
+import shutil
+
+from utils import mkdir_recursive
+from TransferList import TransferList, TransferFile
+from StatusLine import status_line
 
 def find_bfsync_dir():
   old_cwd = os.getcwd()
@@ -66,17 +71,10 @@ def commit_msg_ok (filename):
   file.close()
   return result
 
-def mkdir_recursive (dir):
-  if os.path.exists (dir) and os.path.isdir (dir):
-    return
-  else:
-    try:
-      os.makedirs (dir)
-      if os.path.exists (dir) and os.path.isdir (dir):
-        return
-    except:
-      pass
-  raise Exception ("can't create directory %s\n" % dir)
+def make_object_filename (hash):
+  if len (hash) != 40:
+    raise Exception ("bad hash %s (not len 40)" % hash)
+  return hash[0:2] + "/" + hash[2:]
 
 def cmd_commit():
   if len (args) != 1:
@@ -127,6 +125,7 @@ def cmd_commit():
   if not commit_msg_ok (name):
     raise Exception ("commit message is empty")
 
+  # create entries in git/files for newly added files
   for filename in file_list:
     try:
       new_file = os.path.join (repo_path, "new", filename)
@@ -150,12 +149,27 @@ def cmd_commit():
     if subprocess.call (["git", "add", git_file]) != 0:
       raise Exception ("cannot git add file %s\n" % git_file)
 
+  # commit changes to repo
   os.chdir (os.path.join (repo_path, "git"))
   if os.system ("git commit -a -F %s" % name) != 0:
     raise Exception ("git commit failed")
+
+  # copy files into objects/ directory
+  tl = TransferList()
+  for filename in file_list:
+    new_file = os.path.join (repo_path, "new", filename)
+    hash = hash_cache.compute_hash (new_file)
+    object_file = os.path.join (repo_path, "objects", make_object_filename (hash))
+    mkdir_recursive (os.path.dirname (object_file))
+    tl.add (TransferFile (new_file, object_file, os.path.getsize (new_file), 0444))
+  tl.copy_files()
+
+  # remove files from new/ directory
+  for filename in file_list:
+    new_file = os.path.join (repo_path, "new", filename)
+    os.remove (new_file)
   return
 
-status_line = StatusLine.StatusLine()
 hash_cache = HashCache.HashCache()
 command = None
 command_func = None

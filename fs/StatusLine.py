@@ -19,3 +19,5 @@ class StatusLine:
       print "\n"
     sys.stderr.write ("bfsync: %s\n" % text)
     sys.exit (1)
+
+status_line = StatusLine()

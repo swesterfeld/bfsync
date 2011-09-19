@@ -1,3 +1,5 @@
+import os
+
 def format_size (size, total_size):
   unit_str = [ "B", "KB", "MB", "GB", "TB" ]
   unit = 0
@@ -21,5 +23,17 @@ def format_time (sec):
     return "%d:%02d" % (sec / 60, sec % 60)
   else:
     return "%d:%02d:%02d" % (sec / 3600, (sec / 60) % 60, sec % 60)
+
+def mkdir_recursive (dir):
+  if os.path.exists (dir) and os.path.isdir (dir):
+    return
+  else:
+    try:
+      os.makedirs (dir)
+      if os.path.exists (dir) and os.path.isdir (dir):
+        return
+    except:
+      pass
+  raise Exception ("can't create directory %s\n" % dir)
 
 
