@@ -21,10 +21,12 @@ import sys
 import os
 import subprocess
 import hashlib
+import pickle
 import traceback
 import time
 import tempfile
 import CfgParser
+import HashCache
 import StatusLine
 
 def find_bfsync_dir():
@@ -107,6 +109,42 @@ def hash_all (filenames):
     file.close()
   return
 
+def compute_hash (filename):
+  filename = os.path.abspath (filename)
+  stat_hash = make_stat_hash (filename)
+  result = hash_cache.lookup (stat_hash)
+  if result != "":  # file hash already in cache
+    return result
+  file = open (filename, "r")
+  hash = hashlib.sha1()
+  eof = False
+  while not eof:
+    data = file.read (256 * 1024)
+    if data == "":
+      eof = True
+    else:
+      hash.update (data)
+  file.close()
+  result = hash.hexdigest()
+  hash_cache.insert (stat_hash, result)
+  return result
+
+def compute_mode (filename):
+  return os.stat (filename).st_mode
+
+def make_stat_hash (filename):
+  filename = os.path.abspath (filename)
+  stat = os.stat (filename)
+  l = [
+    filename,
+    stat.st_mode, stat.st_ino, stat.st_dev, stat.st_nlink,
+    stat.st_uid, stat.st_gid, stat.st_size,
+    stat.st_mtime, stat.st_ctime,
+    # stat.st_atime, - we keep out atime to allow reading file without changing the hash value
+  ]
+  stat_hash = hashlib.sha1 (pickle.dumps (l)).hexdigest()
+  return stat_hash
+
 def commit_msg_ok (filename):
   file = open (filename, "r")
   result = False
@@ -119,6 +157,18 @@ def commit_msg_ok (filename):
         result = True
   file.close()
   return result
+
+def mkdir_recursive (dir):
+  if os.path.exists (dir) and os.path.isdir (dir):
+    return
+  else:
+    try:
+      os.makedirs (dir)
+      if os.path.exists (dir) and os.path.isdir (dir):
+        return
+    except:
+      pass
+  raise Exception ("can't create directory %s\n" % dir)
 
 def cmd_commit():
   if len (args) != 1:
@@ -138,18 +188,20 @@ def cmd_commit():
   if len (repo_path) != 1:
     raise Exception ("bad repo path")
   repo_path = repo_path[0]
-  os.chdir (repo_path)
 
   mount_point = bfsync_info.get ("mount-point")
   if len (mount_point) != 1:
     raise Exception ("bad mount point")
   mount_point = mount_point[0]
 
+  # chdir to repo_path to allow unmount
+  os.chdir (repo_path)
   if subprocess.call (["fusermount", "-u", mount_point]) != 0:
     raise Exception ("umount failed")
 
+  os.chdir (os.path.join (repo_path, "new"))
   file_list = []
-  for dir, dirs, files in os.walk ("new"):
+  for dir, dirs, files in os.walk ("."):
     for file in files:
       file_list += [ os.path.join (dir, file) ]
 
@@ -166,18 +218,37 @@ def cmd_commit():
   os.system ("vim %s" % name)
   if not commit_msg_ok (name):
     raise Exception ("commit message is empty")
+
+  for filename in file_list:
+    try:
+      new_file = os.path.join (repo_path, "new", filename)
+      hash = compute_hash (new_file)
+      size = compute_size (new_file)
+      mode = compute_mode (new_file)
+    except Exception, ex:
+      raise
+
+    git_file = os.path.join (repo_path, "git/files", filename)
+    mkdir_recursive (os.path.dirname (git_file))
+    try:
+      gf = open (git_file, "w")
+      gf.write ("hash = %s\n" % hash)
+      gf.write ("size = %d\n" % size)
+      gf.write ("mode = %o\n" % mode)
+      gf.close()
+    except Exception, ex:
+      raise
+    os.chdir (os.path.join (repo_path, "git"))
+    if subprocess.call (["git", "add", git_file]) != 0:
+      raise Exception ("cannot git add file %s\n" % git_file)
+
+  os.chdir (os.path.join (repo_path, "git"))
+  if os.system ("git commit -a -F %s" % name) != 0:
+    raise Exception ("git commit failed")
   return
-  #try:
-    #os.chdir (bfsync_dir)
-    #if os.system ("git commit -a") != 0:
-      #sys.stderr.write ("git commit failed\n")
-      #sys.exit (1)
-  #except Exception, ex:
-    #sys.stderr.write ("cannot chdir to directory %s: %s\n" % (bfsync_dir, ex))
-    #sys.exit (1)
-  # exit_and_save...
 
 status_line = StatusLine.StatusLine()
+hash_cache = HashCache.HashCache()
 command = None
 command_func = None
 arg_iter = sys.argv[1:].__iter__()
@@ -212,7 +283,9 @@ if command_func != None:
     traceback.print_exc()
     print "=================================================="
     print "\n\n"
+    hash_cache.save()
     sys.stderr.write ("bfsync2: %s\n" % ex)
     sys.exit (1)
+  hash_cache.save()
 else:
   print "usage: bfsync <command> [ args... ]"
