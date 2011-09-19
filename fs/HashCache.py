@@ -3,6 +3,7 @@ import random
 import os
 import hashlib
 import pickle
+from utils import format_size, format_rate, format_time
 
 class HashCacheEntry:
   def __init__ (self, stat_hash, file_hash, expire_time):
@@ -82,6 +83,48 @@ class HashCache:
     ]
     stat_hash = hashlib.sha1 (pickle.dumps (l)).hexdigest()
     return stat_hash
+
+  def hash_all (self, status_line, filenames):
+    # compute total size of all files
+    bytes_total = 0
+    for filename in filenames:
+      bytes_total += os.path.getsize (filename)
+    # hash data
+    bytes_done = 0
+    file_number = 0
+    start_time = time.time()
+    status_line.set_op ("HASH")
+    for filename in filenames:
+      file = open (filename, "r")
+      file_number += 1
+      stat_hash = self.make_stat_hash (filename)
+      result = self.lookup (stat_hash)
+      if result == "":
+        hash = hashlib.sha1()
+        eof = False
+        while not eof:
+          data = file.read (256 * 1024)
+          if data == "":
+            eof = True
+          else:
+            hash.update (data)
+            bytes_done += len (data)
+            elapsed_time = max (time.time() - start_time, 1)
+            bytes_per_sec = max (bytes_done / elapsed_time, 1)
+            eta = int ((bytes_total - bytes_done) / bytes_per_sec)
+            status_line.update ("file %d/%d    %s    %.1f%%   %s   ETA: %s" % (
+              file_number, len (filenames),
+              format_size (bytes_done, bytes_total),
+              bytes_done * 100.0 / max (bytes_total, 1),
+              format_rate (bytes_per_sec),
+              format_time (eta)
+            ))
+        file.close()
+        result = hash.hexdigest()
+        self.insert (stat_hash, result)
+      else:
+        bytes_done += os.path.getsize (filename)
+    return
 
   def save (self):
     # reload cache data in case another bfsync process has added entries to the cache

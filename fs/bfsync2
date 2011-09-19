@@ -50,65 +50,6 @@ def find_bfsync_dir():
 def compute_size (filename):
   return os.stat (filename).st_size
 
-def format_size (size, total_size):
-  unit_str = [ "B", "KB", "MB", "GB", "TB" ]
-  unit = 0
-  while (total_size > 10000) and (unit + 1 < len (unit_str)):
-    size = (size + 512) / 1024
-    total_size = (total_size + 512) / 1024
-    unit += 1
-  return "%d/%d %s" % (size, total_size, unit_str[unit])
-
-def format_rate (bytes_per_sec):
-  unit_str = [ "B/s", "KB/s", "MB/s", "GB/s", "TB/s" ]
-  unit = 0
-  while (bytes_per_sec > 10000) and (unit + 1 < len (unit_str)):
-    bytes_per_sec /= 1024
-    unit += 1
-  return "%.1f %s" % (bytes_per_sec, unit_str[unit])
-
-def format_time (sec):
-  sec = int (sec)
-  if (sec < 3600):
-    return "%d:%02d" % (sec / 60, sec % 60)
-  else:
-    return "%d:%02d:%02d" % (sec / 3600, (sec / 60) % 60, sec % 60)
-
-def hash_all (filenames):
-  # compute total size of all files
-  bytes_total = 0
-  for filename in filenames:
-    bytes_total += compute_size (filename)
-  # hash data
-  bytes_done = 0
-  file_number = 0
-  start_time = time.time()
-  status_line.set_op ("HASH")
-  for filename in filenames:
-    file = open (filename, "r")
-    file_number += 1
-    hash = hashlib.sha1()
-    eof = False
-    while not eof:
-      data = file.read (256 * 1024)
-      if data == "":
-        eof = True
-      else:
-        hash.update (data)
-        bytes_done += len (data)
-        elapsed_time = max (time.time() - start_time, 1)
-        bytes_per_sec = max (bytes_done / elapsed_time, 1)
-        eta = int ((bytes_total - bytes_done) / bytes_per_sec)
-        status_line.update ("file %d/%d    %s    %.1f%%   %s   ETA: %s" % (
-          file_number, len (filenames),
-          format_size (bytes_done, bytes_total),
-          bytes_done * 100.0 / max (bytes_total, 1),
-          format_rate (bytes_per_sec),
-          format_time (eta)
-        ))
-    file.close()
-  return
-
 def compute_mode (filename):
   return os.stat (filename).st_mode
 
@@ -175,7 +116,7 @@ def cmd_commit():
   if len (file_list) == 0:
     raise Exception ("no changes to commit")
 
-  hash_all (file_list)
+  hash_cache.hash_all (status_line, file_list)
   (fd,name) = tempfile.mkstemp (prefix = "bfsync_commit_")
   f = os.fdopen (fd, "w")
   f.write("\n")
