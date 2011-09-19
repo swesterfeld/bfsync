@@ -14,9 +14,12 @@ class StatusLine:
     self.line = self.op_text + text
     print "\r%s " % self.line,
     sys.stdout.flush()
-  def die (self, text):
+  def cleanup (self):
     if len (self.line) > 0:
       print "\n"
+    self.line = ""
+  def die (self, text):
+    self.cleanup()
     sys.stderr.write ("bfsync: %s\n" % text)
     sys.exit (1)
 

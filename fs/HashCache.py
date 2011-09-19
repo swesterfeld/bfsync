@@ -137,3 +137,5 @@ class HashCache:
       f.close()
     except:
       pass
+
+hash_cache = HashCache()

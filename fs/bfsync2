@@ -33,6 +33,7 @@ import shutil
 from utils import mkdir_recursive
 from TransferList import TransferList, TransferFile
 from StatusLine import status_line
+from HashCache import hash_cache
 
 def find_bfsync_dir():
   old_cwd = os.getcwd()
@@ -76,6 +77,15 @@ def make_object_filename (hash):
     raise Exception ("bad hash %s (not len 40)" % hash)
   return hash[0:2] + "/" + hash[2:]
 
+def validate_object (object_file, hash):
+  try:
+    os.stat (object_file)
+    if hash_cache.compute_hash (object_file) == hash:
+      return True
+  except:
+    pass
+  return False
+
 def cmd_commit():
   if len (args) != 1:
     raise Exception ("commit requires mount-point as argument")
@@ -115,6 +125,8 @@ def cmd_commit():
     raise Exception ("no changes to commit")
 
   hash_cache.hash_all (status_line, file_list)
+  status_line.cleanup()
+
   (fd,name) = tempfile.mkstemp (prefix = "bfsync_commit_")
   f = os.fdopen (fd, "w")
   f.write("\n")
@@ -160,8 +172,10 @@ def cmd_commit():
     new_file = os.path.join (repo_path, "new", filename)
     hash = hash_cache.compute_hash (new_file)
     object_file = os.path.join (repo_path, "objects", make_object_filename (hash))
-    mkdir_recursive (os.path.dirname (object_file))
-    tl.add (TransferFile (new_file, object_file, os.path.getsize (new_file), 0444))
+    if not validate_object (object_file, hash):
+      mkdir_recursive (os.path.dirname (object_file))
+      tl.add (TransferFile (new_file, object_file, os.path.getsize (new_file), 0444))
+  status_line.set_op ("COPY")
   tl.copy_files()
 
   # remove files from new/ directory
@@ -170,7 +184,6 @@ def cmd_commit():
     os.remove (new_file)
   return
 
-hash_cache = HashCache.HashCache()
 command = None
 command_func = None
 arg_iter = sys.argv[1:].__iter__()
