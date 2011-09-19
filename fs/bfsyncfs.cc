@@ -44,7 +44,6 @@ enum FileStatus
 {
   FS_NONE,
   FS_NEW,
-  FS_DATA,
   FS_GIT,
   FS_DEL
 };
@@ -153,8 +152,6 @@ file_status (const string& path)
     return FS_DEL;
   if (lstat ((options.repo_path + "/new" + path).c_str(), &st) == 0)
     return FS_NEW;
-  if (lstat ((options.repo_path + "/data" + path).c_str(), &st) == 0)
-    return FS_DATA;
   if (lstat ((options.repo_path + "/git/files" + path).c_str(), &st) == 0)
     return FS_GIT;
 
@@ -176,8 +173,6 @@ file_path (const string& path)
   FileStatus fs = file_status (path);
   if (fs == FS_NEW)
     return options.repo_path + "/new" + path;
-  if (fs == FS_DATA)
-    return options.repo_path + "/data" + path;
   if (fs == FS_GIT)
     {
       GitFile gf;
@@ -244,11 +239,11 @@ copy_dirs (const string& path, FileStatus status)
 void
 copy_on_write (const string& path)
 {
-  if (file_status (path) == FS_DATA)
+  if (file_status (path) == FS_GIT)
     {
       copy_dirs (path, FS_NEW);
 
-      string old_name = options.repo_path + "/data" + path;
+      string old_name = file_path (path);
       int old_fd = open (old_name.c_str(), O_RDONLY);
 
       string new_name = options.repo_path + "/new" + path;
@@ -573,8 +568,7 @@ bfsync_mknod (const char *path, mode_t mode, dev_t dev)
 int
 bfsync_chmod (const char *name, mode_t mode)
 {
-  if (file_status (name) == FS_DATA)
-    copy_on_write (name);
+  copy_on_write (name);
 
   if (file_status (name) != FS_NEW)
     return -ENOENT;
@@ -591,8 +585,7 @@ bfsync_chmod (const char *name, mode_t mode)
 int
 bfsync_chown (const char *name, uid_t uid, gid_t gid)
 {
-  if (file_status (name) == FS_DATA)
-    copy_on_write (name);
+  copy_on_write (name);
 
   if (file_status (name) != FS_NEW)
     return -ENOENT;
@@ -609,8 +602,7 @@ bfsync_chown (const char *name, uid_t uid, gid_t gid)
 int
 bfsync_utimens (const char *name, const struct timespec times[2])
 {
-  if (file_status (name) == FS_DATA)
-    copy_on_write (name);
+  copy_on_write (name);
 
   if (file_status (name) != FS_NEW)
     return -ENOENT;
@@ -627,8 +619,7 @@ bfsync_utimens (const char *name, const struct timespec times[2])
 int
 bfsync_truncate (const char *name, off_t off)
 {
-  if (file_status (name) == FS_DATA)
-    copy_on_write (name);
+  copy_on_write (name);
 
   if (file_status (name) != FS_NEW)
     return -EINVAL;
@@ -653,8 +644,8 @@ bfsync_unlink (const char *name)
         return -errno;
     }
 
-  // make del entry if data is present
-  if (file_status (name) == FS_DATA)
+  // make del entry if git entry is present
+  if (file_status (name) == FS_GIT)
     {
       copy_dirs (name, FS_DEL);
 
@@ -703,8 +694,8 @@ bfsync_rmdir (const char *name)
         return -errno;
     }
 
-  // make del entry if data is present
-  if (file_status (name) == FS_DATA)
+  // make del entry if git entry is present
+  if (file_status (name) == FS_GIT)
     {
       copy_dirs (name, FS_DEL);
 
@@ -732,8 +723,8 @@ bfsync_rename (const char *old_path, const char *new_path)
   rename ((options.repo_path + "/new" + old_path).c_str(),
           (options.repo_path + "/new" + new_path).c_str());
 
-  // make del entry if data is present
-  if (file_status (old_path) == FS_DATA)
+  // make del entry if git entry is present
+  if (file_status (old_path) == FS_GIT)
     {
       copy_dirs (old_path, FS_DEL);
 
