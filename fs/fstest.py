@@ -187,7 +187,7 @@ tests += [ ("rm in subdir", test_rm) ]
 def test_commit_read():
   write_file ("mnt/foo", "foo")
   readme = read_file ("mnt/foo")
-  if subprocess.call (["bfsync2", "commit", "mnt"]) != 0:
+  if subprocess.call (["bfsync2", "commit", "-m", "fstest", "mnt"]) != 0:
     raise Exception ("commit failed")
   readme_committed = read_file ("mnt/foo")
   if readme != readme_committed:
