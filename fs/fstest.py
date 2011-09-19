@@ -191,9 +191,7 @@ tests += [ ("rm in subdir", test_rm) ]
 def test_commit_read():
   write_file ("mnt/foo", "foo")
   readme = read_file ("mnt/foo")
-  if run_quiet (["bfsync2", "commit", "-m", "fstest", "mnt"]) != 0:
-    raise Exception ("commit failed")
-  start_bfsyncfs()
+  commit()
   readme_committed = read_file ("mnt/foo")
   if readme != readme_committed:
     raise Exception ("README reread failed")
@@ -202,16 +200,37 @@ tests += [ ("commit-read", test_commit_read) ]
 
 #####
 
-# unmount mnt just in case its mounted
-subprocess.call (["fusermount", "-u", "mnt"])
+def test_commit_mtime():
+  write_file ("mnt/foo", "foo")
+  os.system ("touch -t 01010101 mnt/foo")
+  old_stat = os.stat ("mnt/foo")
+  commit()
+  new_stat = os.stat ("mnt/foo")
+  if old_stat.st_mtime != new_stat.st_mtime:
+    raise Exception ("stat mtime diffs %d => %d" % (old_stat.st_mtime, new_stat.st_mtime))
+
+tests += [ ("commit-mtime", test_commit_mtime) ]
 
 def start_bfsyncfs():
   if subprocess.call (["bfsyncfs", "mnt"]) != 0:
     print "can't start bfsyncfs"
     sys.exit (1)
 
+def commit():
+  if run_quiet (["bfsync2", "commit", "-m", "fstest", "mnt"]) != 0:
+    raise Exception ("commit failed")
+  start_bfsyncfs()
+
 def run_quiet (cmd):
   return subprocess.Popen (cmd, stdout=subprocess.PIPE).wait()
+
+# unmount if mounted
+try:
+  f = open ("mnt/.bfsync/info")
+  f.close()
+  subprocess.call (["fusermount", "-u", "mnt"])
+except:
+  pass # not mounted
 
 start_bfsyncfs()
 

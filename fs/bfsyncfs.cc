@@ -85,6 +85,7 @@ struct GitFile
 {
   size_t size;
   string hash;
+  time_t mtime;
 
   GitFile();
   bool parse (const string& filename);
@@ -105,7 +106,7 @@ GitFile::parse (const string& filename)
     return false;
 
   bool result = true;
-  size_t size_count = 0, hash_count = 0;
+  size_t size_count = 0, hash_count = 0, mtime_count = 0;
   char buffer[1024];
   while (fgets (buffer, 1024, file))
     {
@@ -130,6 +131,11 @@ GitFile::parse (const string& filename)
                       hash_count++;
                       printf ("hash (%s) => %s\n", filename.c_str(), hash.c_str());
                     }
+                  else if (string (key) == "mtime")
+                    {
+                      mtime = atol (val);
+                      mtime_count++;
+                    }
                 }
             }
         }
@@ -137,6 +143,8 @@ GitFile::parse (const string& filename)
   if (size_count != 1)
     result = false;
   if (hash_count != 1)
+    result = false;
+  if (mtime_count != 1)
     result = false;
   fclose (file);
   return result;
@@ -294,6 +302,7 @@ bfsync_getattr (const char *path, struct stat *stbuf)
       stbuf->st_uid  = getuid();
       stbuf->st_gid  = getgid();
       stbuf->st_size = git_file.size;
+      stbuf->st_mtime = git_file.mtime;
       return 0;
     }
 

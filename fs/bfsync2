@@ -57,6 +57,9 @@ def find_bfsync_dir():
 def compute_size (filename):
   return os.stat (filename).st_size
 
+def compute_mtime (filename):
+  return os.stat (filename).st_mtime
+
 def compute_mode (filename):
   return os.stat (filename).st_mode
 
@@ -150,6 +153,7 @@ def cmd_commit():
       hash = hash_cache.compute_hash (new_file)
       size = compute_size (new_file)
       mode = compute_mode (new_file)
+      mtime = compute_mtime (new_file)
     except Exception, ex:
       raise
 
@@ -160,6 +164,7 @@ def cmd_commit():
       gf.write ("hash = %s\n" % hash)
       gf.write ("size = %d\n" % size)
       gf.write ("mode = %o\n" % mode)
+      gf.write ("mtime = %d\n" % mtime)
       gf.close()
     except Exception, ex:
       raise
