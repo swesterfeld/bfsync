@@ -107,6 +107,19 @@ def hash_all (filenames):
     file.close()
   return
 
+def commit_msg_ok (filename):
+  file = open (filename, "r")
+  result = False
+  for line in file:
+    line = line.strip()
+    if len (line):
+      if line[0] == "#":
+        pass
+      else:
+        result = True
+  file.close()
+  return result
+
 def cmd_commit():
   if len (args) != 1:
     raise Exception ("commit requires mount-point as argument")
@@ -140,6 +153,9 @@ def cmd_commit():
     for file in files:
       file_list += [ os.path.join (dir, file) ]
 
+  if len (file_list) == 0:
+    raise Exception ("no changes to commit")
+
   hash_all (file_list)
   (fd,name) = tempfile.mkstemp (prefix = "bfsync_commit_")
   f = os.fdopen (fd, "w")
@@ -148,6 +164,8 @@ def cmd_commit():
     f.write ("# add %s\n" % filename)
   f.close()
   os.system ("vim %s" % name)
+  if not commit_msg_ok (name):
+    raise Exception ("commit message is empty")
   return
   #try:
     #os.chdir (bfsync_dir)
@@ -189,7 +207,11 @@ if command_func != None:
   try:
     command_func()
   except Exception, ex:
+    print "\n\n"
+    print "=================================================="
     traceback.print_exc()
+    print "=================================================="
+    print "\n\n"
     sys.stderr.write ("bfsync2: %s\n" % ex)
     sys.exit (1)
 else:
