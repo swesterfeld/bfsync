@@ -211,6 +211,22 @@ def test_commit_mtime():
 
 tests += [ ("commit-mtime", test_commit_mtime) ]
 
+#####
+
+def test_commit_symlink():
+  os.symlink ("mnt/README", "mnt/readme-link")
+  print os.readlink ("mnt/readme-link")
+  #os.system ("touch -t 01010101 mnt/foo")
+  #old_stat = os.stat ("mnt/foo")
+  commit()
+  #new_stat = os.stat ("mnt/foo")
+  #if old_stat.st_mtime != new_stat.st_mtime:
+    #raise Exception ("stat mtime diffs %d => %d" % (old_stat.st_mtime, new_stat.st_mtime))
+
+tests += [ ("commit-symlink", test_commit_symlink) ]
+
+#####
+
 def start_bfsyncfs():
   if subprocess.call (["bfsyncfs", "mnt"]) != 0:
     print "can't start bfsyncfs"

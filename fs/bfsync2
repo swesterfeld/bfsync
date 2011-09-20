@@ -35,6 +35,7 @@ from utils import mkdir_recursive
 from TransferList import TransferList, TransferFile
 from StatusLine import status_line
 from HashCache import hash_cache
+from stat import S_ISREG, S_ISLNK
 
 def find_bfsync_dir():
   old_cwd = os.getcwd()
@@ -123,9 +124,17 @@ def cmd_commit():
 
   os.chdir (os.path.join (repo_path, "new"))
   file_list = []
+  symlink_list = []
   for dir, dirs, files in os.walk ("."):
     for file in files:
-      file_list += [ os.path.join (dir, file) ]
+      filename = os.path.join (dir, file)
+      stat = os.lstat (filename)
+      if S_ISREG (stat.st_mode):
+        file_list += [ filename ]
+      elif S_ISLNK (stat.st_mode):
+        symlink_list += [ filename ]
+      else:
+        raise Exception ("file '%s' has unknown type - cannot commit" % filename)
 
   if len (file_list) == 0:
     raise Exception ("no changes to commit")
