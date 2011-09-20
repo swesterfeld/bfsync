@@ -34,9 +34,7 @@ def setup():
     print "error during setup"
     sys.exit (1)
   write_file ("mnt/subdir/x", "File X\n")
-  if run_quiet (["bfsync2", "commit", "-m", "fstest", "mnt"]) != 0:
-    raise Exception ("commit failed")
-  start_bfsyncfs()
+  commit()
 
 def write_file (name, data):
   f = open (name, "w")
@@ -228,12 +226,12 @@ tests += [ ("commit-symlink", test_commit_symlink) ]
 #####
 
 def start_bfsyncfs():
-  if subprocess.call (["bfsyncfs", "mnt"]) != 0:
+  if subprocess.call (["./bfsyncfs", "mnt"]) != 0:
     print "can't start bfsyncfs"
     sys.exit (1)
 
 def commit():
-  if run_quiet (["bfsync2", "commit", "-m", "fstest", "mnt"]) != 0:
+  if run_quiet (["./bfsync2", "commit", "-m", "fstest", "mnt"]) != 0:
     raise Exception ("commit failed")
   start_bfsyncfs()
 
