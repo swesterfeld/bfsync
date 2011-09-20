@@ -130,7 +130,7 @@ def cmd_commit():
   if len (file_list) == 0:
     raise Exception ("no changes to commit")
 
-  hash_cache.hash_all (status_line, file_list)
+  hash_cache.hash_all (file_list)
   status_line.cleanup()
 
   (fd,name) = tempfile.mkstemp (prefix = "bfsync_commit_")
