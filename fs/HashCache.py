@@ -4,6 +4,7 @@ import os
 import hashlib
 import pickle
 from utils import format_size, format_rate, format_time
+from StatusLine import status_line
 
 class HashCacheEntry:
   def __init__ (self, stat_hash, file_hash, expire_time):
@@ -84,7 +85,7 @@ class HashCache:
     stat_hash = hashlib.sha1 (pickle.dumps (l)).hexdigest()
     return stat_hash
 
-  def hash_all (self, status_line, filenames):
+  def hash_all (self, filenames):
     # compute total size of all files
     bytes_total = 0
     for filename in filenames:

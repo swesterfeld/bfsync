@@ -35,6 +35,7 @@ from utils import mkdir_recursive
 from TransferList import TransferList, TransferFile
 from StatusLine import status_line
 from HashCache import hash_cache
+from stat import S_ISREG, S_ISLNK
 
 def find_bfsync_dir():
   old_cwd = os.getcwd()
@@ -81,6 +82,11 @@ def validate_object (object_file, hash):
     pass
   return False
 
+###################
+FILE_REGULAR = 1
+FILE_SYMLINK = 2
+###################
+
 def cmd_commit():
   parser = argparse.ArgumentParser (prog='bfsync2 commit')
   parser.add_argument ('-m', help='set commit message')
@@ -114,35 +120,59 @@ def cmd_commit():
 
   os.chdir (os.path.join (repo_path, "new"))
   file_list = []
+  hash_list = []
   for dir, dirs, files in os.walk ("."):
     for file in files:
-      file_list += [ os.path.join (dir, file) ]
+      filename = os.path.join (dir, file)
+      stat = os.lstat (filename)
+      if S_ISREG (stat.st_mode):
+        file_list += [ (filename, FILE_REGULAR) ]
+        hash_list += [ filename ]
+      elif S_ISLNK (stat.st_mode):
+        file_list += [ (filename, FILE_SYMLINK) ]
+      else:
+        raise Exception ("file '%s' has unknown type - cannot commit" % filename)
 
   if len (file_list) == 0:
     raise Exception ("no changes to commit")
 
-  hash_cache.hash_all (status_line, file_list)
+  hash_cache.hash_all (hash_list)
   status_line.cleanup()
 
-  (fd,name) = tempfile.mkstemp (prefix = "bfsync_commit_")
+  (fd,commit_msg_filename) = tempfile.mkstemp (prefix = "bfsync_commit_")
   f = os.fdopen (fd, "w")
   if commit_args.m:
     f.write (commit_args.m)
   f.write("\n")
-  for filename in file_list:
-    f.write ("# add %s\n" % filename)
+  for (filename, filetype) in file_list:
+    f.write ("# add ")
+    if (filetype == FILE_SYMLINK):
+      f.write ("symlink ")
+    f.write ("%s\n" % filename)
   f.close()
   if not commit_args.m:
-    os.system ("vim %s" % name)
-  if not commit_msg_ok (name):
+    os.system ("vim %s" % commit_msg_filename)
+  if not commit_msg_ok (commit_msg_filename):
+    os.remove (commit_msg_filename)
     raise Exception ("commit message is empty")
 
   # create entries in git/files for newly added files
-  for filename in file_list:
+  (git_add_fd,git_add_filename) = tempfile.mkstemp (prefix = "bfsync_git_add_")
+  git_add_file = os.fdopen (fd, "w")
+  status_line.set_op ("GIT-ADD")
+  count = len (file_list)
+  add_count = 0
+  for (filename, filetype) in file_list:
     try:
       new_file = os.path.join (repo_path, "new", filename)
-      hash = hash_cache.compute_hash (new_file)
-      stat = os.stat (new_file)
+      stat = os.lstat (new_file)
+      if filetype == FILE_REGULAR:
+        hash = hash_cache.compute_hash (new_file)
+        size = stat.st_size
+      elif filetype == FILE_SYMLINK:
+        link = os.readlink (new_file)
+      mode = stat.st_mode;
+      mtime = stat.st_mtime
     except Exception, ex:
       raise
 
@@ -150,38 +180,53 @@ def cmd_commit():
     mkdir_recursive (os.path.dirname (git_file))
     try:
       gf = open (git_file, "w")
-      gf.write ("hash = %s\n" % hash)
-      gf.write ("size = %d\n" % stat.st_size)
-      gf.write ("mode = %o\n" % stat.st_mode)
-      gf.write ("mtime = %d\n" % stat.st_mtime)
+      if filetype == FILE_REGULAR:
+        gf.write ("type = file\n")
+        gf.write ("hash = %s\n" % hash)
+        gf.write ("size = %d\n" % size)
+      elif filetype == FILE_SYMLINK:
+        gf.write ("type = symlink\n")
+        gf.write ("link = %s\n" % link)
       gf.write ("uid = %d\n" % stat.st_uid)
       gf.write ("gid = %d\n" % stat.st_gid)
+      gf.write ("mode = %o\n" % mode)
+      gf.write ("mtime = %d\n" % mtime)
       gf.close()
     except Exception, ex:
       raise
-    os.chdir (os.path.join (repo_path, "git"))
-    if subprocess.call (["git", "add", git_file]) != 0:
-      raise Exception ("cannot git add file %s\n" % git_file)
+    git_add_file.write (git_file + "\0")
+    add_count += 1
+    status_line.update ("file %d/%d" % (add_count, count))
+  status_line.cleanup()
+  git_add_file.close()
 
   # commit changes to repo
   os.chdir (os.path.join (repo_path, "git"))
-  if os.system ("git commit -a -F %s" % name) != 0:
+  if subprocess.call (["xargs", "-0", "-a", git_add_filename, "git", "add"]) != 0:
+    raise Exception ("cannot git add files %s\n" % git_add_filename)
+  if os.system ("git commit -q -a -F %s" % commit_msg_filename) != 0:
     raise Exception ("git commit failed")
+  os.remove (git_add_filename)
+  os.remove (commit_msg_filename)
 
   # copy files into objects/ directory
   tl = TransferList()
-  for filename in file_list:
-    new_file = os.path.join (repo_path, "new", filename)
-    hash = hash_cache.compute_hash (new_file)
-    object_file = os.path.join (repo_path, "objects", make_object_filename (hash))
-    if not validate_object (object_file, hash):
-      mkdir_recursive (os.path.dirname (object_file))
-      tl.add (TransferFile (new_file, object_file, os.path.getsize (new_file), 0444))
+  have_hash = dict()
+  for (filename, filetype) in file_list:
+    if filetype == FILE_REGULAR:
+      new_file = os.path.join (repo_path, "new", filename)
+      hash = hash_cache.compute_hash (new_file)
+      object_file = os.path.join (repo_path, "objects", make_object_filename (hash))
+      if not validate_object (object_file, hash) and not (hash in have_hash):
+        mkdir_recursive (os.path.dirname (object_file))
+        tl.add (TransferFile (new_file, object_file, os.path.getsize (new_file), 0444))
+        # copy duplicate files only once:
+        have_hash[hash] = True
   status_line.set_op ("COPY")
   tl.copy_files()
 
   # remove files from new/ directory
-  for filename in file_list:
+  for (filename, filetype) in file_list:
     new_file = os.path.join (repo_path, "new", filename)
     os.remove (new_file)
   return

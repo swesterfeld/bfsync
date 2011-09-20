@@ -55,3 +55,10 @@ ENCRYPTED MODE:
 * extract crypted repo before commit
 * push changes
 * reencrypt repo after commit
+
+==============================================================================================
+
+bfsync2 TODO:
+
+* preserve directory permissions
+* allow adding directories called .git

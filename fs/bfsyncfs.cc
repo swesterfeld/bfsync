@@ -81,13 +81,21 @@ debug (const char *fmt, ...)
   va_end (ap);
 }
 
+enum FileType {
+  FILE_NONE,
+  FILE_REGULAR,
+  FILE_SYMLINK
+};
+
 struct GitFile
 {
-  size_t size;
-  string hash;
-  time_t mtime;
-  uid_t  uid;
-  gid_t  gid;
+  size_t   size;
+  string   hash;
+  time_t   mtime;
+  uid_t    uid;
+  gid_t    gid;
+  string   link;
+  FileType type;
 
   GitFile();
   bool parse (const string& filename);
@@ -108,7 +116,8 @@ GitFile::parse (const string& filename)
     return false;
 
   bool result = true;
-  size_t size_count = 0, hash_count = 0, mtime_count = 0, uid_count = 0, gid_count = 0;
+  size_t size_count = 0, hash_count = 0, mtime_count = 0, link_count = 0, type_count = 0;
+  size_t uid_count = 0, gid_count = 0;
   char buffer[1024];
   while (fgets (buffer, 1024, file))
     {
@@ -148,14 +157,34 @@ GitFile::parse (const string& filename)
                       gid = atoi (val);
                       gid_count++;
                     }
+                  else if (string (key) == "link")
+                    {
+                      link = val;
+                      link_count++;
+                    }
+                  else if (string (key) == "type")
+                    {
+                      if (string (val) == "file")
+                        type = FILE_REGULAR;
+                      else if (string (val) == "symlink")
+                        type = FILE_SYMLINK;
+                      else
+                        type = FILE_NONE;
+                      type_count++;
+                    }
                 }
             }
         }
     }
-  if (size_count != 1)
+  if (type_count != 1)
     result = false;
-  if (hash_count != 1)
-    result = false;
+  if (type == FILE_REGULAR)
+    {
+      if (size_count != 1)
+        result = false;
+      if (hash_count != 1)
+        result = false;
+    }
   if (mtime_count != 1)
     result = false;
   if (uid_count != 1)
@@ -302,23 +331,28 @@ bfsync_getattr (const char *path, struct stat *stbuf)
       return 0;
     }
 
-  string filename = options.repo_path + "/data" + path;
-  if (lstat (filename.c_str(), stbuf) == 0)
-    {
-      debug ("=> data\n");
-      return 0;
-    }
-
   string git_filename = options.repo_path + "/git/files" + path;
   GitFile git_file;
   if (git_file.parse (git_filename))
     {
-      memset (stbuf, 0, sizeof (struct stat));
-      stbuf->st_mode = 0644 | S_IFREG;
-      stbuf->st_uid  = git_file.uid;
-      stbuf->st_gid  = git_file.gid;
-      stbuf->st_size = git_file.size;
-      stbuf->st_mtime = git_file.mtime;
+      if (git_file.type == FILE_REGULAR)
+        {
+          memset (stbuf, 0, sizeof (struct stat));
+          stbuf->st_mode = 0644 | S_IFREG;
+          stbuf->st_uid  = git_file.uid;
+          stbuf->st_gid  = git_file.gid;
+          stbuf->st_size = git_file.size;
+          stbuf->st_mtime = git_file.mtime;
+        }
+      else if (git_file.type == FILE_SYMLINK)
+        {
+          memset (stbuf, 0, sizeof (struct stat));
+          stbuf->st_mode = 0644 | S_IFLNK;
+          stbuf->st_uid  = git_file.uid;
+          stbuf->st_gid  = git_file.gid;
+          stbuf->st_size = git_file.link.size();
+          stbuf->st_mtime = git_file.mtime;
+        }
       return 0;
     }
 
@@ -369,23 +403,6 @@ read_dir_contents (const string& path, vector<string>& entries)
               file_list.insert (name);
               // by inserting deleted files into the file_list (without updating result)
               // we ensure that they won't show up in ls
-            }
-        }
-      g_dir_close (dir);
-      dir_ok = true;
-    }
-
-  string filename = options.repo_path + "/data" + path;
-  dir = g_dir_open (filename.c_str(), 0, NULL);
-  if (dir)
-    {
-      const char *name;
-      while ((name = g_dir_read_name (dir)))
-        {
-          if (file_list.count (name) == 0)
-            {
-              file_list.insert (name);
-              entries.push_back (name);
             }
         }
       g_dir_close (dir);
@@ -783,11 +800,30 @@ bfsync_symlink (const char *from, const char *to)
 static int
 bfsync_readlink (const char *path, char *buffer, size_t size)
 {
-  string filename = file_path (path);
-  if (filename == "")
-    return -ENOENT;
+  int len = 0;
+  if (file_status (path) == FS_GIT)
+    {
+      GitFile gf;
+      if (gf.parse (options.repo_path + "/git/files" + path) && gf.type == FILE_SYMLINK)
+        {
+          len = gf.link.size();
+          if (len >= size)
+            len = size - 1;
+          memcpy (buffer, gf.link.c_str(), len);
+        }
+      else
+        {
+          return -ENOENT;
+        }
+    }
+  else
+    {
+      string filename = file_path (path);
+      if (filename == "")
+        return -ENOENT;
 
-  int len = readlink (filename.c_str(), buffer, size - 1);
+      len = readlink (filename.c_str(), buffer, size - 1);
+    }
   if (len == -1)
     return -errno;
   buffer[len] = 0;

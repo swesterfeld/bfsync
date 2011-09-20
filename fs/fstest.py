@@ -27,7 +27,7 @@ def setup():
   if subprocess.call (["git", "init", "-q", "test/git"]) != 0:
     print "error during setup"
     sys.exit (1)
-  if subprocess.call (["mkdir", "-p", "test/data/subdir/subsub"]) != 0:
+  if subprocess.call (["mkdir", "-p", "mnt/subdir/subsub"]) != 0:
     print "error during setup"
     sys.exit (1)
   if subprocess.call (["cp", "-a", "../README", "mnt/README"]) != 0:
@@ -228,6 +228,19 @@ tests += [ ("commit-uid-gid", test_commit_uid_gid) ]
 
 #####
 
+def test_commit_symlink():
+  link = "README"
+  os.symlink (link, "mnt/readme-link")
+  if os.readlink ("mnt/readme-link") != link:
+    raise Exception ("cannot create symlink")
+  commit()
+  new_link = os.readlink ("mnt/readme-link")
+  if new_link != link:
+    raise Exception ("symlink diffs %s => %s" % (link, new_link))
+
+tests += [ ("commit-symlink", test_commit_symlink) ]
+
+#####
 
 def start_bfsyncfs():
   if subprocess.call (["./bfsyncfs", "mnt"]) != 0:
@@ -258,13 +271,7 @@ for (desc, f) in tests:
   setup()
   time.sleep (0.5)
   try:
-    if subprocess.call (["tar", "cf", "test_data_before.tar", "test/data"]) != 0:
-      raise Exception ("error during tar")
     f()
-    if subprocess.call (["tar", "cf", "test_data_after.tar", "test/data"]) != 0:
-      raise Exception ("error during tar")
-    if read_file ("test_data_before.tar") != read_file ("test_data_after.tar"):
-      raise Exception ("test/data changed (tar)")
   except Exception, e:
     print "FAIL: ", e
     #print "\n\n"
