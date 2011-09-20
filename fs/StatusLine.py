@@ -16,7 +16,7 @@ class StatusLine:
     sys.stdout.flush()
   def cleanup (self):
     if len (self.line) > 0:
-      print "\n"
+      print
     self.line = ""
   def die (self, text):
     self.cleanup()

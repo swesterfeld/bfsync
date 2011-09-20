@@ -148,7 +148,7 @@ def cmd_commit():
   hash_cache.hash_all (hash_list)
   status_line.cleanup()
 
-  (fd,name) = tempfile.mkstemp (prefix = "bfsync_commit_")
+  (fd,commit_msg_filename) = tempfile.mkstemp (prefix = "bfsync_commit_")
   f = os.fdopen (fd, "w")
   if commit_args.m:
     f.write (commit_args.m)
@@ -160,11 +160,17 @@ def cmd_commit():
     f.write ("%s\n" % filename)
   f.close()
   if not commit_args.m:
-    os.system ("vim %s" % name)
-  if not commit_msg_ok (name):
+    os.system ("vim %s" % commit_msg_filename)
+  if not commit_msg_ok (commit_msg_filename):
+    os.remove (commit_msg_filename)
     raise Exception ("commit message is empty")
 
   # create entries in git/files for newly added files
+  (git_add_fd,git_add_filename) = tempfile.mkstemp (prefix = "bfsync_git_add_")
+  git_add_file = os.fdopen (fd, "w")
+  status_line.set_op ("GIT-ADD")
+  count = len (file_list)
+  add_count = 0
   for (filename, filetype) in file_list:
     try:
       new_file = os.path.join (repo_path, "new", filename)
@@ -195,25 +201,34 @@ def cmd_commit():
       gf.close()
     except Exception, ex:
       raise
-    os.chdir (os.path.join (repo_path, "git"))
-    if subprocess.call (["git", "add", git_file]) != 0:
-      raise Exception ("cannot git add file %s\n" % git_file)
+    git_add_file.write (git_file + "\0")
+    add_count += 1
+    status_line.update ("file %d/%d" % (add_count, count))
+  status_line.cleanup()
+  git_add_file.close()
 
   # commit changes to repo
   os.chdir (os.path.join (repo_path, "git"))
-  if os.system ("git commit -a -F %s" % name) != 0:
+  if subprocess.call (["xargs", "-0", "-a", git_add_filename, "git", "add"]) != 0:
+    raise Exception ("cannot git add files %s\n" % git_add_filename)
+  if os.system ("git commit -q -a -F %s" % commit_msg_filename) != 0:
     raise Exception ("git commit failed")
+  os.remove (git_add_filename)
+  os.remove (commit_msg_filename)
 
   # copy files into objects/ directory
   tl = TransferList()
+  have_hash = dict()
   for (filename, filetype) in file_list:
     if filetype == FILE_REGULAR:
       new_file = os.path.join (repo_path, "new", filename)
       hash = hash_cache.compute_hash (new_file)
       object_file = os.path.join (repo_path, "objects", make_object_filename (hash))
-      if not validate_object (object_file, hash):
+      if not validate_object (object_file, hash) and not (hash in have_hash):
         mkdir_recursive (os.path.dirname (object_file))
         tl.add (TransferFile (new_file, object_file, os.path.getsize (new_file), 0444))
+        # copy duplicate files only once:
+        have_hash[hash] = True
   status_line.set_op ("COPY")
   tl.copy_files()
 
