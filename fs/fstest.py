@@ -27,7 +27,7 @@ def setup():
   if subprocess.call (["git", "init", "-q", "test/git"]) != 0:
     print "error during setup"
     sys.exit (1)
-  if subprocess.call (["mkdir", "-p", "test/data/subdir/subsub"]) != 0:
+  if subprocess.call (["mkdir", "-p", "mnt/subdir/subsub"]) != 0:
     print "error during setup"
     sys.exit (1)
   if subprocess.call (["cp", "-a", "../README", "mnt/README"]) != 0:
@@ -214,14 +214,14 @@ tests += [ ("commit-mtime", test_commit_mtime) ]
 #####
 
 def test_commit_symlink():
-  os.symlink ("mnt/README", "mnt/readme-link")
-  print os.readlink ("mnt/readme-link")
-  #os.system ("touch -t 01010101 mnt/foo")
-  #old_stat = os.stat ("mnt/foo")
+  link = "README"
+  os.symlink (link, "mnt/readme-link")
+  if os.readlink ("mnt/readme-link") != link:
+    raise Exception ("cannot create symlink")
   commit()
-  #new_stat = os.stat ("mnt/foo")
-  #if old_stat.st_mtime != new_stat.st_mtime:
-    #raise Exception ("stat mtime diffs %d => %d" % (old_stat.st_mtime, new_stat.st_mtime))
+  new_link = os.readlink ("mnt/readme-link")
+  if new_link != link:
+    raise Exception ("symlink diffs %s => %s" % (link, new_link))
 
 tests += [ ("commit-symlink", test_commit_symlink) ]
 
@@ -256,13 +256,7 @@ for (desc, f) in tests:
   setup()
   time.sleep (0.5)
   try:
-    if subprocess.call (["tar", "cf", "test_data_before.tar", "test/data"]) != 0:
-      raise Exception ("error during tar")
     f()
-    if subprocess.call (["tar", "cf", "test_data_after.tar", "test/data"]) != 0:
-      raise Exception ("error during tar")
-    if read_file ("test_data_before.tar") != read_file ("test_data_after.tar"):
-      raise Exception ("test/data changed (tar)")
   except Exception, e:
     print "FAIL: ", e
     #print "\n\n"
