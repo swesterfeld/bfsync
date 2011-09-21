@@ -348,7 +348,10 @@ copy_dirs (const string& path, FileStatus status)
 
   for (vector<string>::iterator di = dirs.begin(); di != dirs.end(); di++)
     {
-      dir += "/" + *di;
+      if (status == FS_DEL)
+        dir += "/d_" + *di;
+      else
+        dir += "/" + *di;
       mkdir (dir.c_str(), 0755);  // FIXME: copy mode, mtime, uid, gid, ...
     }
 }
