@@ -247,6 +247,14 @@ def cmd_commit():
     if filetype != FILE_DIR:
       new_file = os.path.join (repo_path, "new", filename)
       os.remove (new_file)
+
+  # remove dirs form new/ directory (sort by length, so delete subdirs first)
+  sorted_list = sorted (file_list, key = lambda (name, t): -len (name))
+  for (filename, filetype) in sorted_list:
+    if filetype == FILE_DIR:
+      new_dir = os.path.join (repo_path, "new", filename)
+      os.rmdir (new_dir)
+
   return
 
 command = None
