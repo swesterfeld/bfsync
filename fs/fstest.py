@@ -314,6 +314,18 @@ tests += [ ("commit-dir-mtime3", test_commit_dir_mtime3) ]
 
 #####
 
+def test_commit_chmod():
+  os.chmod ("mnt/subdir/x", 0400)
+  old_stat = os.stat ("mnt/subdir/x")
+  commit()
+  new_stat = os.stat ("mnt/subdir/x")
+  if old_stat.st_mode != new_stat.st_mode:
+    raise Exception ("stat mode diffs %o => %o" % (old_stat.st_mode, new_stat.st_mode))
+
+tests += [ ("commit-chmod", test_commit_chmod) ]
+
+#####
+
 
 def start_bfsyncfs():
   if subprocess.call (["./bfsyncfs", "mnt"]) != 0:
