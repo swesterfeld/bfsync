@@ -95,6 +95,7 @@ struct GitFile
   time_t   mtime;
   uid_t    uid;
   gid_t    gid;
+  mode_t   mode;
   string   link;
   FileType type;
 
@@ -118,7 +119,7 @@ GitFile::parse (const string& filename)
 
   bool result = true;
   size_t size_count = 0, hash_count = 0, mtime_count = 0, link_count = 0, type_count = 0;
-  size_t uid_count = 0, gid_count = 0;
+  size_t uid_count = 0, gid_count = 0, mode_count = 0;
   char buffer[1024];
   while (fgets (buffer, 1024, file))
     {
@@ -163,6 +164,11 @@ GitFile::parse (const string& filename)
                       link = val;
                       link_count++;
                     }
+                  else if (string (key) == "mode")
+                    {
+                      mode = strtol (val, NULL, 8);
+                      mode_count++;
+                    }
                   else if (string (key) == "type")
                     {
                       if (string (val) == "file")
@@ -188,6 +194,8 @@ GitFile::parse (const string& filename)
       if (hash_count != 1)
         result = false;
     }
+  if (mode_count != 1)
+    result = false;
   if (mtime_count != 1)
     result = false;
   if (uid_count != 1)
@@ -391,10 +399,11 @@ bfsync_getattr (const char *path, struct stat *stbuf)
   GitFile git_file;
   if (git_file.parse (git_filename))
     {
+      int git_mode = git_file.mode & ~S_IFMT;
       if (git_file.type == FILE_REGULAR)
         {
           memset (stbuf, 0, sizeof (struct stat));
-          stbuf->st_mode = 0644 | S_IFREG;
+          stbuf->st_mode = git_mode | S_IFREG;
           stbuf->st_uid  = git_file.uid;
           stbuf->st_gid  = git_file.gid;
           stbuf->st_size = git_file.size;
@@ -403,7 +412,7 @@ bfsync_getattr (const char *path, struct stat *stbuf)
       else if (git_file.type == FILE_SYMLINK)
         {
           memset (stbuf, 0, sizeof (struct stat));
-          stbuf->st_mode = 0644 | S_IFLNK;
+          stbuf->st_mode = git_mode | S_IFLNK;
           stbuf->st_uid  = git_file.uid;
           stbuf->st_gid  = git_file.gid;
           stbuf->st_size = git_file.link.size();
@@ -412,7 +421,7 @@ bfsync_getattr (const char *path, struct stat *stbuf)
       else if (git_file.type == FILE_DIR)
         {
           memset (stbuf, 0, sizeof (struct stat));
-          stbuf->st_mode = 0755 | S_IFDIR;
+          stbuf->st_mode = git_mode | S_IFDIR;
           stbuf->st_uid  = git_file.uid;
           stbuf->st_gid  = git_file.gid;
           stbuf->st_mtime = git_file.mtime;
