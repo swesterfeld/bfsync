@@ -349,7 +349,7 @@ copy_dirs (const string& path, FileStatus status)
   for (vector<string>::iterator di = dirs.begin(); di != dirs.end(); di++)
     {
       dir += "/" + *di;
-      mkdir (dir.c_str(), 0755);
+      mkdir (dir.c_str(), 0755);  // FIXME: copy mode, mtime, uid, gid, ...
     }
 }
 
@@ -360,20 +360,33 @@ copy_on_write (const string& path)
     {
       copy_dirs (path, FS_NEW);
 
-      string old_name = file_path (path);
-      int old_fd = open (old_name.c_str(), O_RDONLY);
-
-      string new_name = options.repo_path + "/new" + path;
-      int new_fd = open (new_name.c_str(), O_WRONLY | O_CREAT, 0644);
-
-      vector<unsigned char> buffer (4096);
-      ssize_t read_bytes;
-      while ((read_bytes = read (old_fd, &buffer[0], buffer.size())) > 0)
+      GitFile gf;
+      if (gf.parse (options.repo_path + "/git/files/" + name2git_name (path)))
         {
-          write (new_fd, &buffer[0], read_bytes);
+          string new_name = options.repo_path + "/new" + path;
+
+          if (gf.type == FILE_REGULAR)
+            {
+              string old_name = file_path (path);
+
+              int old_fd = open (old_name.c_str(), O_RDONLY);
+              int new_fd = open (new_name.c_str(), O_WRONLY | O_CREAT, 0644);
+
+              vector<unsigned char> buffer (4096);
+              ssize_t read_bytes;
+              while ((read_bytes = read (old_fd, &buffer[0], buffer.size())) > 0)
+                {
+                  write (new_fd, &buffer[0], read_bytes);
+                }
+              close (old_fd);
+              close (new_fd);
+            }
+          else if (gf.type == FILE_DIR)
+            {
+              mkdir (new_name.c_str(), 0755);  // FIXME: copy mode, mtime, uid, gid, ...
+            }
+          // FIXME: symlink
         }
-      close (old_fd);
-      close (new_fd);
     }
 }
 

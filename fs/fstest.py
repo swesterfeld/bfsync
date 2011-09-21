@@ -331,6 +331,7 @@ def test_commit_chmod2():
   old_stat = os.stat ("mnt/subdir")
   commit()
   write_file ("mnt/subdir/x", "changed x\n")
+  commit()
   new_stat = os.stat ("mnt/subdir")
   if old_stat.st_mode != new_stat.st_mode:
     raise Exception ("stat mode diffs %o => %o" % (old_stat.st_mode, new_stat.st_mode))
