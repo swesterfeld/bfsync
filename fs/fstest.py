@@ -353,6 +353,20 @@ tests += [ ("commit-symlink-cow", test_commit_symlink_cow) ]
 
 #####
 
+def test_commit_rm():
+  if len (read_file ("mnt/README")) < 100:
+    raise Exception ("README too small?")
+  os.remove ("mnt/README")
+  if os.path.exists ("mnt/README"):
+    raise Exception ("File not properly deleted")
+  commit()
+  if os.path.exists ("mnt/README"):
+    raise Exception ("File not properly deleted after commit")
+
+tests += [ ("commit-rm-README", test_commit_rm) ]
+
+#####
+
 def start_bfsyncfs():
   if subprocess.call (["./bfsyncfs", "mnt"]) != 0:
     print "can't start bfsyncfs"
