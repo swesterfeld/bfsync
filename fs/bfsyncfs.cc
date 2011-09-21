@@ -195,6 +195,59 @@ GitFile::parse (const string& filename)
   return result;
 }
 
+// "foo/bar" => [ "foo", "bar" ]
+vector<string>
+split_name (const string& xname)
+{
+  string name = xname + "/";
+  vector<string> result;
+  string s;
+
+  for (size_t i = 0; i < name.size(); i++)
+    {
+      if (name[i] == '/')
+        {
+          if (!s.empty())
+            {
+              result.push_back (s);
+              s.clear();
+            }
+        }
+      else
+        {
+          s += name[i];
+        }
+    }
+  return (result);
+}
+
+// "foo/bar/bazz" => d_foo/d_bar/i_bazz
+enum
+{
+  GIT_FILENAME = 1,
+  GIT_DIRNAME  = 2
+};
+
+string
+name2git_name (const string& name, int type = GIT_FILENAME)
+{
+  vector<string> path = split_name (name);
+  string result;
+
+  for (size_t i = 0; i < path.size(); i++)
+    {
+      if (i + 1 < path.size())    // not last element
+        result += "d_" + path[i] + "/";
+      else                        // last element
+        {
+          if (type == GIT_FILENAME)
+            result += "i_" + path[i];
+          else // dirname
+            result += "d_" + path[i];
+        }
+    }
+  return result;
+}
 
 FileStatus
 file_status (const string& path)
@@ -205,7 +258,7 @@ file_status (const string& path)
     return FS_DEL;
   if (lstat ((options.repo_path + "/new" + path).c_str(), &st) == 0)
     return FS_NEW;
-  if (lstat ((options.repo_path + "/git/files" + path).c_str(), &st) == 0)
+  if (lstat ((options.repo_path + "/git/files/" + name2git_name (path)).c_str(), &st) == 0)
     return FS_GIT;
 
   return FS_NONE;
@@ -229,7 +282,7 @@ file_path (const string& path)
   if (fs == FS_GIT)
     {
       GitFile gf;
-      if (gf.parse (options.repo_path + "/git/files" + path))
+      if (gf.parse (options.repo_path + "/git/files/" + name2git_name (path)))
         return make_object_filename (gf.hash);
     }
   return "";
@@ -331,7 +384,7 @@ bfsync_getattr (const char *path, struct stat *stbuf)
       return 0;
     }
 
-  string git_filename = options.repo_path + "/git/files" + path;
+  string git_filename = options.repo_path + "/git/files/" + name2git_name (path);
   GitFile git_file;
   if (git_file.parse (git_filename))
     {
@@ -384,6 +437,20 @@ bfsync_getattr (const char *path, struct stat *stbuf)
     }
 }
 
+string
+remove_di_prefix (const string& filename)
+{
+  // d_foo => foo
+  // i_foo => foo
+  // foo => xxx_foo;
+  if (filename.size() > 2 && filename[1] == '_')
+    {
+      if (filename[0] == 'd' || filename[0] == 'i')
+        return filename.substr (2);
+    }
+  return "xxx_" + filename;
+}
+
 bool
 read_dir_contents (const string& path, vector<string>& entries)
 {
@@ -409,18 +476,20 @@ read_dir_contents (const string& path, vector<string>& entries)
       dir_ok = true;
     }
 
-  string git_files = options.repo_path + "/git/files" + path;
+  string git_files = options.repo_path + "/git/files/" + name2git_name (path, GIT_DIRNAME);
   dir = g_dir_open (git_files.c_str(), 0, NULL);
   if (dir)
     {
       const char *name;
       while ((name = g_dir_read_name (dir)))
         {
-          if (file_list.count (name) == 0)
+          string filename = remove_di_prefix (name);
+          if (file_list.count (filename) == 0)
             {
-              file_list.insert (name);
-              entries.push_back (name);
+              file_list.insert (filename);
+              entries.push_back (filename);
             }
+          // FIXME: free name
         }
       g_dir_close (dir);
       dir_ok = true;
@@ -804,7 +873,7 @@ bfsync_readlink (const char *path, char *buffer, size_t size)
   if (file_status (path) == FS_GIT)
     {
       GitFile gf;
-      if (gf.parse (options.repo_path + "/git/files" + path) && gf.type == FILE_SYMLINK)
+      if (gf.parse (options.repo_path + "/git/files/" + name2git_name (path)) && gf.type == FILE_SYMLINK)
         {
           len = gf.link.size();
           if (len >= size)

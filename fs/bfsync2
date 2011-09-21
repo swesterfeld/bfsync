@@ -87,6 +87,15 @@ FILE_REGULAR = 1
 FILE_SYMLINK = 2
 ###################
 
+def name2git_name (name):
+  name = os.path.normpath (name)
+  result = ""
+  path = name.split ("/")
+  for i in path[:-1]:
+    result += "d_" + i + "/"
+  result += "i_" + path[-1]
+  return result
+
 def cmd_commit():
   parser = argparse.ArgumentParser (prog='bfsync2 commit')
   parser.add_argument ('-m', help='set commit message')
@@ -176,7 +185,7 @@ def cmd_commit():
     except Exception, ex:
       raise
 
-    git_file = os.path.join (repo_path, "git/files", filename)
+    git_file = os.path.join (repo_path, "git/files", name2git_name (filename))
     mkdir_recursive (os.path.dirname (git_file))
     try:
       gf = open (git_file, "w")

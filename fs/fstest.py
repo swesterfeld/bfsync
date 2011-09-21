@@ -213,7 +213,7 @@ tests += [ ("commit-mtime", test_commit_mtime) ]
 
 def test_commit_uid_gid():
   write_file ("mnt/foo", "foo")
-  os.system ("chown 123.456 mnt/foo")
+  os.chown ("mnt/foo", 123, 456)
   old_stat = os.stat ("mnt/foo")
   if (old_stat.st_uid != 123 or old_stat.st_gid != 456):
     raise Exception ("can't set uid/gid (are you root?)")
@@ -241,6 +241,33 @@ def test_commit_symlink():
 tests += [ ("commit-symlink", test_commit_symlink) ]
 
 #####
+
+def test_commit_dot_git():
+  dot_git = "dot git"
+  write_file ("mnt/.git", dot_git)
+  if read_file ("mnt/.git") != dot_git:
+    raise Exception ("cannot create dot git file")
+  commit()
+  if read_file ("mnt/.git") != dot_git:
+    raise Exception ("cannot reread dot git file")
+
+tests += [ ("commit-dot-git", test_commit_dot_git) ]
+
+#####
+
+def test_commit_subdir():
+  test = "blub\n"
+  write_file ("mnt/subdir/blub", test)
+  if read_file ("mnt/subdir/blub") != test:
+    raise Exception ("cannot create subdir file")
+  commit()
+  if read_file ("mnt/subdir/bulb") != test:
+    raise Exception ("cannot reread subdir file")
+
+tests += [ ("commit-subdir", test_commit_subdir) ]
+
+#####
+
 
 def start_bfsyncfs():
   if subprocess.call (["./bfsyncfs", "mnt"]) != 0:
