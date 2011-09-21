@@ -149,9 +149,21 @@ def cmd_commit():
       else:
         raise Exception ("file '%s' has unknown type - cannot commit" % filename)
 
-  if len (file_list) == 0:
+  os.chdir (os.path.join (repo_path, "del"))
+  del_list = []
+  for dir, dirs, files in os.walk ("."):
+    for file in files:
+      filename = os.path.normpath (os.path.join (dir, file))
+      stat = os.lstat (filename)
+      if S_ISREG (stat.st_mode):
+        del_list += [ filename ]
+      else:
+        raise Exception ("deleted file '%s' has unknown type - cannot commit" % filename)
+
+  if len (file_list) == 0 and len (del_list) == 0:
     raise Exception ("no changes to commit")
 
+  os.chdir (os.path.join (repo_path, "new"))
   hash_cache.hash_all (hash_list)
   status_line.cleanup()
 
@@ -167,6 +179,9 @@ def cmd_commit():
     elif (filetype == FILE_DIR):
       f.write ("dir ")
     f.write ("%s\n" % filename)
+  for filename in del_list:
+    f.write ("# del ")
+    f.write ("%s\n" % filename)
   f.close()
   if not commit_args.m:
     os.system ("vim %s" % commit_msg_filename)
@@ -176,7 +191,7 @@ def cmd_commit():
 
   # create entries in git/files for newly added files
   (git_add_fd,git_add_filename) = tempfile.mkstemp (prefix = "bfsync_git_add_")
-  git_add_file = os.fdopen (fd, "w")
+  git_add_file = os.fdopen (git_add_fd, "w")
   status_line.set_op ("GIT-ADD")
   count = len (file_list)
   add_count = 0
@@ -217,16 +232,33 @@ def cmd_commit():
     git_add_file.write (git_file + "\0")
     add_count += 1
     status_line.update ("file %d/%d" % (add_count, count))
+
+  # remove entries in git/files for deleted files/dirs
+  (git_rm_fd,git_rm_filename) = tempfile.mkstemp (prefix = "bfsync_git_rm_")
+  git_rm_file = os.fdopen (git_rm_fd, "w")
+  status_line.set_op ("GIT-RM")
+  count = len (del_list)
+  del_count = 0
+  for filename in del_list:
+    git_file = os.path.join (repo_path, "git/files", name2git_name (filename))
+    git_rm_file.write (git_file + "\0")
+    del_count += 1
+    status_line.update ("file %d/%d" % (del_count, count))
+
   status_line.cleanup()
   git_add_file.close()
+  git_rm_file.close()
 
   # commit changes to repo
   os.chdir (os.path.join (repo_path, "git"))
-  if subprocess.call (["xargs", "-0", "-a", git_add_filename, "git", "add"]) != 0:
+  if add_count > 0 and subprocess.call (["xargs", "-0", "-a", git_add_filename, "git", "add"]) != 0:
     raise Exception ("cannot git add files %s\n" % git_add_filename)
+  if del_count > 0 and subprocess.call (["xargs", "-0", "-a", git_rm_filename, "git", "rm", "-q"]) != 0:
+    raise Exception ("cannot git rm files %s\n" % git_rm_filename)
   if os.system ("git commit -q -a -F %s" % commit_msg_filename) != 0:
     raise Exception ("git commit failed")
   os.remove (git_add_filename)
+  os.remove (git_rm_filename)
   os.remove (commit_msg_filename)
 
   # copy files into objects/ directory
@@ -258,6 +290,10 @@ def cmd_commit():
       new_dir = os.path.join (repo_path, "new", filename)
       os.rmdir (new_dir)
 
+  # remove files from del/ directory
+  for filename in del_list:
+    del_file = os.path.join (repo_path, "del", filename)
+    os.remove (del_file)
   return
 
 command = None
