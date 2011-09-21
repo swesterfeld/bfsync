@@ -298,6 +298,23 @@ tests += [ ("commit-dir-mtime2", test_commit_dir_mtime2) ]
 
 #####
 
+def test_commit_dir_mtime3():
+  x = read_file ("mnt/subdir/x")
+  os.system ("touch -t 01010101 mnt/subdir")
+  old_stat = os.stat ("mnt/subdir")
+  commit()
+  new_stat = os.stat ("mnt/subdir")
+  y = read_file ("mnt/subdir/x")
+  if x != y:
+    raise Exception ("subdir/x changed")
+  if old_stat.st_mtime != new_stat.st_mtime:
+    raise Exception ("stat mtime diffs %d => %d" % (old_stat.st_mtime, new_stat.st_mtime))
+
+tests += [ ("commit-dir-mtime3", test_commit_dir_mtime3) ]
+
+#####
+
+
 def start_bfsyncfs():
   if subprocess.call (["./bfsyncfs", "mnt"]) != 0:
     print "can't start bfsyncfs"
