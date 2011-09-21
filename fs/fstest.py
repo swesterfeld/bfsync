@@ -261,7 +261,7 @@ def test_commit_subdir():
   if read_file ("mnt/subdir/blub") != test:
     raise Exception ("cannot create subdir file")
   commit()
-  if read_file ("mnt/subdir/bulb") != test:
+  if read_file ("mnt/subdir/blub") != test:
     raise Exception ("cannot reread subdir file")
 
 tests += [ ("commit-subdir", test_commit_subdir) ]
