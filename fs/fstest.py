@@ -340,6 +340,18 @@ tests += [ ("commit-chmod2", test_commit_chmod2) ]
 
 #####
 
+def test_commit_symlink_cow():
+  os.symlink ("README", "mnt/readme-link")
+  if os.system ("touch -h -t 01010101 mnt/readme-link") != 0:
+    raise Exception ("can't set initial (commit) time")
+  commit()
+  if os.system ("touch -h -t 02020202 mnt/readme-link") != 0:
+    raise Exception ("can't modify time")
+  new_stat = os.lstat ("mnt/readme-link")
+
+tests += [ ("commit-symlink-cow", test_commit_symlink_cow) ]
+
+#####
 
 def start_bfsyncfs():
   if subprocess.call (["./bfsyncfs", "mnt"]) != 0:
