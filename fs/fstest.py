@@ -367,6 +367,24 @@ tests += [ ("commit-rm-README", test_commit_rm) ]
 
 #####
 
+def test_commit_rmdir():
+  os.mkdir ("mnt/newdir")
+  if not os.path.exists ("mnt/newdir"):
+    raise Exception ("newdir not created")
+  commit()
+  if not os.path.exists ("mnt/newdir"):
+    raise Exception ("newdir not there after commit")
+  os.rmdir ("mnt/newdir")
+  if os.path.exists ("mnt/newdir"):
+    raise Exception ("newdir not deleted")
+  commit()
+  if os.path.exists ("mnt/newdir"):
+    raise Exception ("newdir not deleted after commit")
+
+tests += [ ("commit-rmdir", test_commit_rmdir) ]
+
+#####
+
 def start_bfsyncfs():
   if subprocess.call (["./bfsyncfs", "mnt"]) != 0:
     print "can't start bfsyncfs"
