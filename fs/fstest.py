@@ -8,31 +8,30 @@ import traceback
 
 def teardown():
   cwd = os.getcwd()
+  if os.path.exists ("mnt/.bfsync"):
+    if subprocess.call (["fusermount", "-u", "mnt"]):
+      print "can't stop bfsyncfs"
+      sys.exit (1)
   if subprocess.call (["rm", "-rf", cwd + "/test"]) != 0:
     print "error during teardown"
     sys.exit (1)
 
 def setup():
-  time.sleep (1)
   cwd = os.getcwd()
   if subprocess.call (["mkdir", "-p", "test/new"]) != 0:
-    print "error during setup"
-    sys.exit (1)
+    raise Exception ("error during setup")
   if subprocess.call (["mkdir", "-p", "test/del"]) != 0:
-    print "error during setup"
-    sys.exit (1)
+    raise Exception ("error during setup")
   if subprocess.call (["mkdir", "-p", "test/git"]) != 0:
-    print "error during setup"
-    sys.exit (1)
+    raise Exception ("error during setup")
   if subprocess.call (["git", "init", "-q", "test/git"]) != 0:
-    print "error during setup"
-    sys.exit (1)
+    raise Exception ("error during setup")
+
+  start_bfsyncfs()
   if subprocess.call (["mkdir", "-p", "mnt/subdir/subsub"]) != 0:
-    print "error during setup"
-    sys.exit (1)
+    raise Exception ("error during setup")
   if subprocess.call (["cp", "-a", "../README", "mnt/README"]) != 0:
-    print "error during setup"
-    sys.exit (1)
+    raise Exception ("error during setup")
   write_file ("mnt/subdir/x", "File X\n")
   commit()
 
@@ -320,13 +319,10 @@ try:
 except:
   pass # not mounted
 
-start_bfsyncfs()
-
 for (desc, f) in tests:
   print "test %-30s" % desc,
   teardown()
   setup()
-  time.sleep (0.5)
   try:
     f()
   except Exception, e:
@@ -338,12 +334,6 @@ for (desc, f) in tests:
     #print "\n\n"
   else:
     print "OK."
-  finally:
-    try:
-      os.remove ("test_data_before.tar")
-      os.remove ("test_data_after.tar")
-    except:
-      pass
 teardown()
 setup()
 
