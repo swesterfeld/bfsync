@@ -85,6 +85,7 @@ def validate_object (object_file, hash):
 ###################
 FILE_REGULAR = 1
 FILE_SYMLINK = 2
+FILE_DIR     = 3
 ###################
 
 def name2git_name (name):
@@ -131,8 +132,11 @@ def cmd_commit():
   file_list = []
   hash_list = []
   for dir, dirs, files in os.walk ("."):
+    for d in dirs:
+      dirname = os.path.normpath (os.path.join (dir, d))
+      file_list += [ (dirname, FILE_DIR) ]
     for file in files:
-      filename = os.path.join (dir, file)
+      filename = os.path.normpath (os.path.join (dir, file))
       stat = os.lstat (filename)
       if S_ISREG (stat.st_mode):
         file_list += [ (filename, FILE_REGULAR) ]
@@ -157,6 +161,8 @@ def cmd_commit():
     f.write ("# add ")
     if (filetype == FILE_SYMLINK):
       f.write ("symlink ")
+    elif (filetype == FILE_DIR):
+      f.write ("dir ")
     f.write ("%s\n" % filename)
   f.close()
   if not commit_args.m:
@@ -196,6 +202,8 @@ def cmd_commit():
       elif filetype == FILE_SYMLINK:
         gf.write ("type = symlink\n")
         gf.write ("link = %s\n" % link)
+      elif filetype == FILE_DIR:
+        gf.write ("type = dir\n");
       gf.write ("uid = %d\n" % stat.st_uid)
       gf.write ("gid = %d\n" % stat.st_gid)
       gf.write ("mode = %o\n" % mode)
@@ -236,8 +244,9 @@ def cmd_commit():
 
   # remove files from new/ directory
   for (filename, filetype) in file_list:
-    new_file = os.path.join (repo_path, "new", filename)
-    os.remove (new_file)
+    if filetype != FILE_DIR:
+      new_file = os.path.join (repo_path, "new", filename)
+      os.remove (new_file)
   return
 
 command = None

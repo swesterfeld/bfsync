@@ -270,7 +270,6 @@ tests += [ ("commit-subdir", test_commit_subdir) ]
 
 def test_commit_dir_mtime():
   os.mkdir ("mnt/timetest")
-  write_file ("mnt/timetest/foo", "foo\n")
   if not os.path.exists ("mnt/timetest"):
     raise Exception ("timetest not created")
   os.system ("touch -t 01010101 mnt/timetest")
@@ -284,6 +283,21 @@ tests += [ ("commit-dir-mtime", test_commit_dir_mtime) ]
 
 #####
 
+def test_commit_dir_mtime2():
+  os.mkdir ("mnt/timetest")
+  write_file ("mnt/timetest/foo", "foo\n")
+  if not os.path.exists ("mnt/timetest"):
+    raise Exception ("timetest not created")
+  os.system ("touch -t 01010101 mnt/timetest")
+  old_stat = os.stat ("mnt/timetest")
+  commit()
+  new_stat = os.stat ("mnt/timetest")
+  if old_stat.st_mtime != new_stat.st_mtime:
+    raise Exception ("stat mtime diffs %d => %d" % (old_stat.st_mtime, new_stat.st_mtime))
+
+tests += [ ("commit-dir-mtime2", test_commit_dir_mtime2) ]
+
+#####
 
 def start_bfsyncfs():
   if subprocess.call (["./bfsyncfs", "mnt"]) != 0:
