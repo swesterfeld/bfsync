@@ -240,7 +240,7 @@ def cmd_commit():
   count = len (del_list)
   del_count = 0
   for filename in del_list:
-    git_file = os.path.join (repo_path, "git/files", name2git_name (filename))
+    git_file = os.path.join (repo_path, "git/files", filename)
     git_rm_file.write (git_file + "\0")
     del_count += 1
     status_line.update ("file %d/%d" % (del_count, count))

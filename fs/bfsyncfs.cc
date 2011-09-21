@@ -265,7 +265,7 @@ file_status (const string& path)
 {
   struct stat st;
 
-  if (path != "/" && lstat ((options.repo_path + "/del" + path).c_str(), &st) == 0)
+  if (path != "/" && lstat ((options.repo_path + "/del/" + name2git_name (path)).c_str(), &st) == 0)
     return FS_DEL;
   if (lstat ((options.repo_path + "/new" + path).c_str(), &st) == 0)
     return FS_NEW;
@@ -491,16 +491,17 @@ read_dir_contents (const string& path, vector<string>& entries)
   set<string>     file_list;
   GDir           *dir;
 
-  string del_files = options.repo_path + "/del" + path;
+  string del_files = options.repo_path + "/del/" + name2git_name (path);
   dir = g_dir_open (del_files.c_str(), 0, NULL);
   if (dir)
     {
       const char *name;
       while ((name = g_dir_read_name (dir)))
         {
-          if (file_list.count (name) == 0)
+          string filename = remove_di_prefix (name);
+          if (file_list.count (filename) == 0 && string (name).substr (0, 2) == "i_")
             {
-              file_list.insert (name);
+              file_list.insert (filename);
               // by inserting deleted files into the file_list (without updating result)
               // we ensure that they won't show up in ls
             }
@@ -604,7 +605,7 @@ bfsync_open (const char *path, struct fuse_file_info *fi)
     {
       if (fi->flags & O_CREAT)
         {
-          unlink ((options.repo_path + "/del" + path).c_str());
+          unlink ((options.repo_path + "/del/" + name2git_name (path)).c_str());
         }
       else
         {
@@ -698,7 +699,7 @@ bfsync_mknod (const char *path, mode_t mode, dev_t dev)
 {
   string filename = options.repo_path + "/new" + path;
 
-  unlink ((options.repo_path + "/del" + path).c_str()); // just in case this is a deleted file
+  unlink ((options.repo_path + "/del/" + name2git_name (path)).c_str()); // just in case this is a deleted file
 
   copy_dirs (path, FS_NEW);
 
@@ -793,7 +794,7 @@ bfsync_unlink (const char *name)
     {
       copy_dirs (name, FS_DEL);
 
-      int fd = open ((options.repo_path + "/del" + name).c_str(), O_CREAT|O_WRONLY, 0644);
+      int fd = open ((options.repo_path + "/del/" + name2git_name (name)).c_str(), O_CREAT|O_WRONLY, 0644);
       if (fd != -1)
         {
           close (fd);
@@ -843,7 +844,7 @@ bfsync_rmdir (const char *name)
     {
       copy_dirs (name, FS_DEL);
 
-      int fd = open ((options.repo_path + "/del" + name).c_str(), O_CREAT|O_WRONLY, 0644);
+      int fd = open ((options.repo_path + "/del/" + name2git_name (name)).c_str(), O_CREAT|O_WRONLY, 0644);
       if (fd != -1)
         {
           close (fd);
@@ -872,7 +873,7 @@ bfsync_rename (const char *old_path, const char *new_path)
     {
       copy_dirs (old_path, FS_DEL);
 
-      int fd = open ((options.repo_path + "/del" + old_path).c_str(), O_CREAT|O_WRONLY, 0644);
+      int fd = open ((options.repo_path + "/del/" + name2git_name (old_path)).c_str(), O_CREAT|O_WRONLY, 0644);
       if (fd != -1)
         {
           close (fd);
