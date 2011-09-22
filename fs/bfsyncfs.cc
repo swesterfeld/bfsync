@@ -86,6 +86,7 @@ enum FileType {
   FILE_REGULAR,
   FILE_SYMLINK,
   FILE_DIR,
+  FILE_FIFO
 };
 
 struct GitFile
@@ -183,6 +184,8 @@ GitFile::parse (const string& filename)
                         type = FILE_SYMLINK;
                       else if (string (val) == "dir")
                         type = FILE_DIR;
+                      else if (string (val) == "fifo")
+                        type = FILE_FIFO;
                       else
                         type = FILE_NONE;
                       type_count++;
@@ -495,6 +498,15 @@ bfsync_getattr (const char *path, struct stat *stbuf)
         {
           memset (stbuf, 0, sizeof (struct stat));
           stbuf->st_mode = git_mode | S_IFDIR;
+          stbuf->st_uid  = git_file.uid;
+          stbuf->st_gid  = git_file.gid;
+          stbuf->st_mtime = git_file.mtime;
+          stbuf->st_mtim.tv_nsec = git_file.mtime_ns;
+        }
+      else if (git_file.type == FILE_FIFO)
+        {
+          memset (stbuf, 0, sizeof (struct stat));
+          stbuf->st_mode = git_mode | S_IFIFO;
           stbuf->st_uid  = git_file.uid;
           stbuf->st_gid  = git_file.gid;
           stbuf->st_mtime = git_file.mtime;

@@ -35,7 +35,7 @@ from utils import mkdir_recursive
 from TransferList import TransferList, TransferFile
 from StatusLine import status_line
 from HashCache import hash_cache
-from stat import S_ISREG, S_ISLNK
+from stat import *
 
 def find_bfsync_dir():
   old_cwd = os.getcwd()
@@ -86,6 +86,7 @@ def validate_object (object_file, hash):
 FILE_REGULAR = 1
 FILE_SYMLINK = 2
 FILE_DIR     = 3
+FILE_FIFO    = 4
 ###################
 
 def name2git_name (name):
@@ -163,6 +164,8 @@ def cmd_commit():
         hash_list += [ filename ]
       elif S_ISLNK (stat.st_mode):
         file_list += [ (filename, FILE_SYMLINK) ]
+      elif S_ISFIFO (stat.st_mode):
+        file_list += [ (filename, FILE_FIFO) ]
       else:
         raise Exception ("file '%s' has unknown type - cannot commit" % filename)
 
@@ -243,7 +246,9 @@ def cmd_commit():
         gf.write ("type = symlink\n")
         gf.write ("link = %s\n" % link)
       elif filetype == FILE_DIR:
-        gf.write ("type = dir\n");
+        gf.write ("type = dir\n")
+      elif filetype == FILE_FIFO:
+        gf.write ("type = fifo\n")
       gf.write ("uid = %d\n" % stat.st_uid)
       gf.write ("gid = %d\n" % stat.st_gid)
       gf.write ("mode = %o\n" % mode)

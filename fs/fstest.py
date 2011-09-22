@@ -447,6 +447,17 @@ tests += [ ("commit-uid-gid-cow", test_commit_uid_gid_cow) ]
 
 #####
 
+def test_commit_fifo():
+  os.system ("mkfifo mnt/fifo")
+  old_stat = os.stat ("mnt/fifo")
+  commit()
+  new_stat = os.stat ("mnt/fifo")
+  if (old_stat.st_mode != new_stat.st_mode):
+    raise Exception ("stat diffs with fifo %o => %o", oid_stat.st_mode, new_stat.st_mode)
+
+tests += [ ("commit-fifo", test_commit_fifo) ]
+
+#####
 
 def start_bfsyncfs():
   if subprocess.call (["./bfsyncfs", "mnt"]) != 0:
