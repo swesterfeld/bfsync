@@ -210,6 +210,20 @@ tests += [ ("commit-mtime", test_commit_mtime) ]
 
 #####
 
+def test_commit_mtime_chmod():
+  write_file ("mnt/foo", "foo")
+  os.system ("touch -t 01010101 mnt/foo")
+  old_stat = os.stat ("mnt/foo")
+  commit()
+  os.chmod ("mnt/foo", 0640)
+  new_stat = os.stat ("mnt/foo")
+  if old_stat.st_mtime != new_stat.st_mtime:
+    raise Exception ("stat mtime diffs %d => %d" % (old_stat.st_mtime, new_stat.st_mtime))
+
+tests += [ ("commit-mtime-chmod", test_commit_mtime_chmod) ]
+
+#####
+
 def test_commit_uid_gid():
   write_file ("mnt/foo", "foo")
   os.chown ("mnt/foo", 123, 456)
