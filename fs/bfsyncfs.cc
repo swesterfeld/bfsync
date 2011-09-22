@@ -329,12 +329,20 @@ split (const string& path)
   return result;
 }
 
-void
-copy_attrs (const GitFile& git_file, const string& path)
+enum CopyAttrMode
 {
-  int git_mode = git_file.mode & ~S_IFMT;
+  CA_NORMAL,
+  CA_NO_CHMOD
+};
 
-  chmod (path.c_str(), git_mode);
+void
+copy_attrs (const GitFile& git_file, const string& path, CopyAttrMode mode = CA_NORMAL)
+{
+  if (mode == CA_NORMAL)  // chmod() does not work for symlinks
+    {
+      int git_mode = git_file.mode & ~S_IFMT;
+      chmod (path.c_str(), git_mode);
+    }
 
   // set atime and mtime from git file mtime
   timespec times[2];
@@ -428,7 +436,11 @@ copy_on_write (const string& path)
               mkdir (new_name.c_str(), 0755);  // FIXME: copy mode, mtime, uid, gid, ...
               copy_attrs (gf, new_name);
             }
-          // FIXME: symlink
+          else if (gf.type == FILE_SYMLINK)
+            {
+              symlink (gf.link.c_str(), new_name.c_str());
+              copy_attrs (gf, new_name, CA_NO_CHMOD);
+            }
         }
     }
 }
