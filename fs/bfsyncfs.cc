@@ -351,6 +351,9 @@ copy_attrs (const GitFile& git_file, const string& path, CopyAttrMode mode = CA_
   times[1] = times[0];
 
   utimensat (AT_FDCWD, path.c_str(), times, AT_SYMLINK_NOFOLLOW);
+
+  // set uid / gid
+  lchown (path.c_str(), git_file.uid, git_file.gid);
 }
 
 void
@@ -433,7 +436,7 @@ copy_on_write (const string& path)
             }
           else if (gf.type == FILE_DIR)
             {
-              mkdir (new_name.c_str(), 0755);  // FIXME: copy mode, mtime, uid, gid, ...
+              mkdir (new_name.c_str(), 0755);
               copy_attrs (gf, new_name);
             }
           else if (gf.type == FILE_SYMLINK)

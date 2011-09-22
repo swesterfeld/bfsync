@@ -430,6 +430,24 @@ tests += [ ("test-dir-mode", test_dir_mode) ]
 
 #####
 
+def test_commit_uid_gid_cow():
+  os.chown ("mnt/subdir", 123, 456)
+  old_stat = os.stat ("mnt/subdir")
+  if (old_stat.st_uid != 123 or old_stat.st_gid != 456):
+    raise Exception ("can't set uid/gid (are you root?)")
+  commit()
+  write_file ("mnt/subdir/y", "Y!\n")
+  new_stat = os.stat ("mnt/subdir")
+  if old_stat.st_uid != new_stat.st_uid:
+    raise Exception ("stat uid diffs %d => %d" % (old_stat.st_uid, new_stat.st_uid))
+  if old_stat.st_gid != new_stat.st_gid:
+    raise Exception ("stat gid diffs %d => %d" % (old_stat.st_gid, new_stat.st_gid))
+
+tests += [ ("commit-uid-gid-cow", test_commit_uid_gid_cow) ]
+
+#####
+
+
 def start_bfsyncfs():
   if subprocess.call (["./bfsyncfs", "mnt"]) != 0:
     print "can't start bfsyncfs"
