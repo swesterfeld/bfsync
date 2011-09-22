@@ -61,3 +61,4 @@ ENCRYPTED MODE:
 bfsync2 TODO:
 
 * preserve directory permissions
+* pass find -newer test (ctime)
