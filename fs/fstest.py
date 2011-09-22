@@ -415,6 +415,21 @@ def test_stat_ms():
 
 tests += [ ("test-stat-ms", test_stat_ms) ]
 
+#####
+
+def test_dir_mode():
+  os.chmod ("mnt/subdir", 0700)
+  mode_old = os.stat ("mnt/subdir").st_mode
+  commit()
+  os.system ("touch mnt/subdir")
+  mode_new = os.stat ("mnt/subdir").st_mode
+  if mode_old != mode_new:
+    raise Exception ("mode diffs %o => %o" % (mode_old, mode_new))
+
+tests += [ ("test-dir-mode", test_dir_mode) ]
+
+#####
+
 def start_bfsyncfs():
   if subprocess.call (["./bfsyncfs", "mnt"]) != 0:
     print "can't start bfsyncfs"
@@ -436,6 +451,9 @@ try:
 except:
   pass # not mounted
 
+fail_count = 0
+ok_count = 0
+
 for (desc, f) in tests:
   print "test %-30s" % desc,
   teardown()
@@ -444,6 +462,7 @@ for (desc, f) in tests:
     f()
   except Exception, e:
     print "FAIL: ", e
+    fail_count += 1
     #print "\n\n"
     #print "=================================================="
     #traceback.print_exc()
@@ -451,8 +470,12 @@ for (desc, f) in tests:
     #print "\n\n"
   else:
     print "OK."
+    ok_count += 1
 teardown()
 setup()
+
+print
+print "Summary: %d tests failed; %d tests ok" % (fail_count, ok_count)
 
 if subprocess.call (["fusermount", "-u", "mnt"]):
   print "can't stop bfsyncfs"
