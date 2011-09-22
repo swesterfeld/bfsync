@@ -475,7 +475,7 @@ teardown()
 setup()
 
 print
-print "Summary: %d tests failed; %d tests ok" % (fail_count, ok_count)
+print "Summary: %d/%d tests failed" % (fail_count, fail_count + ok_count)
 
 if subprocess.call (["fusermount", "-u", "mnt"]):
   print "can't stop bfsyncfs"
