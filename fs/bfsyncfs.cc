@@ -363,6 +363,14 @@ copy_dirs (const string& path, FileStatus status)
 }
 
 void
+copy_attrs (const GitFile& git_file, const string& path)
+{
+  int git_mode = git_file.mode & ~S_IFMT;
+
+  chmod (path.c_str(), git_mode);
+}
+
+void
 copy_on_write (const string& path)
 {
   if (file_status (path) == FS_GIT)
@@ -389,10 +397,13 @@ copy_on_write (const string& path)
                 }
               close (old_fd);
               close (new_fd);
+
+              copy_attrs (gf, new_name);
             }
           else if (gf.type == FILE_DIR)
             {
               mkdir (new_name.c_str(), 0755);  // FIXME: copy mode, mtime, uid, gid, ...
+              copy_attrs (gf, new_name);
             }
           // FIXME: symlink
         }
