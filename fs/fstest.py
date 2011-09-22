@@ -399,6 +399,22 @@ tests += [ ("commit-rmdir", test_commit_rmdir) ]
 
 #####
 
+def test_stat_ms():
+  fn = "/tmp/fstest_naietrdn"
+  write_file (fn, "foo")
+  mtime_old = os.stat (fn).st_mtime
+  os.system ("cp -a %s mnt/foo" % fn)
+  mtime_new = os.stat ("mnt/foo").st_mtime
+  if mtime_old != mtime_new:
+    raise Exception ("cp mtime changes => %f -> %f" % (mtime_old, mtime_new))
+  commit()
+  mtime_commit = os.stat ("mnt/foo").st_mtime
+  if mtime_commit != mtime_old:
+    raise Exception ("commit mtime changes => %f -> %f" % (mtime_old, mtime_commit))
+  os.remove (fn)
+
+tests += [ ("test-stat-ms", test_stat_ms) ]
+
 def start_bfsyncfs():
   if subprocess.call (["./bfsyncfs", "mnt"]) != 0:
     print "can't start bfsyncfs"

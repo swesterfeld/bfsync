@@ -97,6 +97,23 @@ def name2git_name (name):
   result += "i_" + path[-1]
   return result
 
+# python stat resolution is not nanosecond accurate, so we use a helper program
+def get_times (file_list):
+  (fd, stat_filename) = tempfile.mkstemp (prefix = "bfsync_git_stat_")
+  stat_file = os.fdopen (fd, "w")
+  for (filename, filetype) in file_list:
+    stat_file.write (filename + "\0")
+  stat_file.close();
+  stat_p =  subprocess.Popen(["xargs", "-0", "-a", stat_filename, "bfsyncstat"], stdout = subprocess.PIPE)
+  result = stat_p.communicate()[0]
+  stat_list = result.split ("\0")
+  stat_dict = dict()
+  i = 0
+  while (i + 3) < len (stat_list):
+    stat_dict[stat_list[i]] = (int (stat_list[i + 1]), int (stat_list[i + 2]))
+    i += 3
+  return stat_dict
+
 def cmd_commit():
   parser = argparse.ArgumentParser (prog='bfsync2 commit')
   parser.add_argument ('-m', help='set commit message')
@@ -189,6 +206,9 @@ def cmd_commit():
     os.remove (commit_msg_filename)
     raise Exception ("commit message is empty")
 
+  # get times for new files
+  time_dict = get_times (file_list)
+
   # create entries in git/files for newly added files
   (git_add_fd,git_add_filename) = tempfile.mkstemp (prefix = "bfsync_git_add_")
   git_add_file = os.fdopen (git_add_fd, "w")
@@ -205,7 +225,9 @@ def cmd_commit():
       elif filetype == FILE_SYMLINK:
         link = os.readlink (new_file)
       mode = stat.st_mode;
-      mtime = stat.st_mtime
+      times = time_dict[filename]
+      mtime = times[0]
+      mtime_ns = times[1]
     except Exception, ex:
       raise
 
@@ -226,6 +248,7 @@ def cmd_commit():
       gf.write ("gid = %d\n" % stat.st_gid)
       gf.write ("mode = %o\n" % mode)
       gf.write ("mtime = %d\n" % mtime)
+      gf.write ("mtime_ns = %d\n" % mtime_ns)
       gf.close()
     except Exception, ex:
       raise
