@@ -330,39 +330,6 @@ split (const string& path)
 }
 
 void
-copy_dirs (const string& path, FileStatus status)
-{
-  vector<string> dirs = split (path);
-  if (dirs.empty())
-    return;
-
-  dirs.pop_back();
-
-  string dir;
-  if (status == FS_DEL)
-    {
-      dir = options.repo_path + "/del";
-    }
-  else if (status == FS_NEW)
-    {
-      dir = options.repo_path + "/new";
-    }
-  else
-    {
-      assert (false);
-    }
-
-  for (vector<string>::iterator di = dirs.begin(); di != dirs.end(); di++)
-    {
-      if (status == FS_DEL)
-        dir += "/d_" + *di;
-      else
-        dir += "/" + *di;
-      mkdir (dir.c_str(), 0755);  // FIXME: copy mode, mtime, uid, gid, ...
-    }
-}
-
-void
 copy_attrs (const GitFile& git_file, const string& path)
 {
   int git_mode = git_file.mode & ~S_IFMT;
@@ -376,6 +343,54 @@ copy_attrs (const GitFile& git_file, const string& path)
   times[1] = times[0];
 
   utimensat (AT_FDCWD, path.c_str(), times, AT_SYMLINK_NOFOLLOW);
+}
+
+void
+copy_dirs (const string& path, FileStatus status)
+{
+  vector<string> dirs = split (path);
+  if (dirs.empty())
+    return;
+
+  dirs.pop_back();
+
+  if (status == FS_DEL)
+    {
+      string dir = options.repo_path + "/del";
+
+      for (vector<string>::iterator di = dirs.begin(); di != dirs.end(); di++)
+        {
+          dir += "/d_" + *di;
+
+          mkdir (dir.c_str(), 0755);
+        }
+    }
+  else if (status == FS_NEW)
+    {
+      string dir_path;
+
+      for (vector<string>::iterator di = dirs.begin(); di != dirs.end(); di++)
+        {
+          dir_path += "/" + *di;
+
+          string dir = options.repo_path + "/new" + dir_path;
+
+          bool copy_a = (file_status (dir_path) == FS_GIT);
+
+          mkdir (dir.c_str(), 0755);
+
+          if (copy_a)
+            {
+              GitFile gf;
+              if (gf.parse (options.repo_path + "/git/files/" + name2git_name (dir_path)))
+                copy_attrs (gf, dir.c_str());
+            }
+        }
+    }
+  else
+    {
+      assert (false);
+    }
 }
 
 void
