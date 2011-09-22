@@ -87,6 +87,7 @@ FILE_REGULAR = 1
 FILE_SYMLINK = 2
 FILE_DIR     = 3
 FILE_FIFO    = 4
+FILE_SOCKET  = 5
 ###################
 
 def name2git_name (name):
@@ -166,6 +167,8 @@ def cmd_commit():
         file_list += [ (filename, FILE_SYMLINK) ]
       elif S_ISFIFO (stat.st_mode):
         file_list += [ (filename, FILE_FIFO) ]
+      elif S_ISSOCK (stat.st_mode):
+        file_list += [ (filename, FILE_SOCKET) ]
       else:
         raise Exception ("file '%s' has unknown type - cannot commit" % filename)
 
@@ -249,6 +252,8 @@ def cmd_commit():
         gf.write ("type = dir\n")
       elif filetype == FILE_FIFO:
         gf.write ("type = fifo\n")
+      elif filetype == FILE_SOCKET:
+        gf.write ("type = socket\n")
       gf.write ("uid = %d\n" % stat.st_uid)
       gf.write ("gid = %d\n" % stat.st_gid)
       gf.write ("mode = %o\n" % mode)

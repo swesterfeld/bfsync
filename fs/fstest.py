@@ -5,6 +5,7 @@ import sys
 import subprocess
 import time
 import traceback
+from stat import *
 
 def teardown():
   cwd = os.getcwd()
@@ -447,15 +448,17 @@ tests += [ ("commit-uid-gid-cow", test_commit_uid_gid_cow) ]
 
 #####
 
-def test_commit_fifo():
-  os.system ("mkfifo mnt/fifo")
-  old_stat = os.stat ("mnt/fifo")
-  commit()
-  new_stat = os.stat ("mnt/fifo")
-  if (old_stat.st_mode != new_stat.st_mode):
-    raise Exception ("stat diffs with fifo %o => %o", oid_stat.st_mode, new_stat.st_mode)
+def test_commit_special():
+  for mode, name in [(S_IFIFO, "fifo"),
+                     (S_IFSOCK, "socket")]:
+    os.mknod ("mnt/" + name, mode | 0644)
+    old_stat = os.stat ("mnt/" + name)
+    commit()
+    new_stat = os.stat ("mnt/" + name)
+    if (old_stat.st_mode != new_stat.st_mode):
+      raise Exception ("stat diffs with %s %o => %o", name, old_stat.st_mode, new_stat.st_mode)
 
-tests += [ ("commit-fifo", test_commit_fifo) ]
+tests += [ ("commit-special", test_commit_special) ]
 
 #####
 
