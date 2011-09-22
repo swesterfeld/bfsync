@@ -368,6 +368,14 @@ copy_attrs (const GitFile& git_file, const string& path)
   int git_mode = git_file.mode & ~S_IFMT;
 
   chmod (path.c_str(), git_mode);
+
+  // set atime and mtime from git file mtime
+  timespec times[2];
+  times[0].tv_sec = git_file.mtime;
+  times[0].tv_nsec = git_file.mtime_ns;
+  times[1] = times[0];
+
+  utimensat (AT_FDCWD, path.c_str(), times, AT_SYMLINK_NOFOLLOW);
 }
 
 void
