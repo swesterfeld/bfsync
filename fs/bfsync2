@@ -83,11 +83,13 @@ def validate_object (object_file, hash):
   return False
 
 ###################
-FILE_REGULAR = 1
-FILE_SYMLINK = 2
-FILE_DIR     = 3
-FILE_FIFO    = 4
-FILE_SOCKET  = 5
+FILE_REGULAR    = 1
+FILE_SYMLINK    = 2
+FILE_DIR        = 3
+FILE_FIFO       = 4
+FILE_SOCKET     = 5
+FILE_BLOCK_DEV  = 6
+FILE_CHAR_DEV   = 7
 ###################
 
 def name2git_name (name):
@@ -169,6 +171,10 @@ def cmd_commit():
         file_list += [ (filename, FILE_FIFO) ]
       elif S_ISSOCK (stat.st_mode):
         file_list += [ (filename, FILE_SOCKET) ]
+      elif S_ISBLK (stat.st_mode):
+        file_list += [ (filename, FILE_BLOCK_DEV) ]
+      elif S_ISCHR (stat.st_mode):
+        file_list += [ (filename, FILE_CHAR_DEV) ]
       else:
         raise Exception ("file '%s' has unknown type - cannot commit" % filename)
 
@@ -254,6 +260,14 @@ def cmd_commit():
         gf.write ("type = fifo\n")
       elif filetype == FILE_SOCKET:
         gf.write ("type = socket\n")
+      elif filetype == FILE_BLOCK_DEV:
+        gf.write ("type = blockdev\n")
+      elif filetype == FILE_CHAR_DEV:
+        gf.write ("type = chardev\n")
+      if filetype == FILE_BLOCK_DEV or filetype == FILE_CHAR_DEV:
+        # save major,minor pair for devices
+        gf.write ("major = %d\n" % os.major (stat.st_rdev))
+        gf.write ("minor = %d\n" % os.minor (stat.st_rdev))
       gf.write ("uid = %d\n" % stat.st_uid)
       gf.write ("gid = %d\n" % stat.st_gid)
       gf.write ("mode = %o\n" % mode)

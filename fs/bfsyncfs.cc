@@ -87,7 +87,9 @@ enum FileType {
   FILE_SYMLINK,
   FILE_DIR,
   FILE_FIFO,
-  FILE_SOCKET
+  FILE_SOCKET,
+  FILE_BLOCK_DEV,
+  FILE_CHAR_DEV
 };
 
 struct GitFile
@@ -101,6 +103,8 @@ struct GitFile
   mode_t   mode;
   string   link;
   FileType type;
+  dev_t    major;
+  dev_t    minor;
 
   GitFile();
   bool parse (const string& filename);
@@ -122,7 +126,7 @@ GitFile::parse (const string& filename)
 
   bool result = true;
   size_t size_count = 0, hash_count = 0, mtime_count = 0, mtime_ns_count = 0, link_count = 0, type_count = 0;
-  size_t uid_count = 0, gid_count = 0, mode_count = 0;
+  size_t uid_count = 0, gid_count = 0, mode_count = 0, major_count = 0, minor_count = 0;
   char buffer[1024];
   while (fgets (buffer, 1024, file))
     {
@@ -177,6 +181,16 @@ GitFile::parse (const string& filename)
                       mode = strtol (val, NULL, 8);
                       mode_count++;
                     }
+                  else if (string (key) == "major")
+                    {
+                      major = atoi (val);
+                      major_count++;
+                    }
+                  else if (string (key) == "minor")
+                    {
+                      minor = atoi (val);
+                      minor_count++;
+                    }
                   else if (string (key) == "type")
                     {
                       if (string (val) == "file")
@@ -189,6 +203,10 @@ GitFile::parse (const string& filename)
                         type = FILE_FIFO;
                       else if (string (val) == "socket")
                         type = FILE_SOCKET;
+                      else if (string (val) == "blockdev")
+                        type = FILE_BLOCK_DEV;
+                      else if (string (val) == "chardev")
+                        type = FILE_CHAR_DEV;
                       else
                         type = FILE_NONE;
                       type_count++;
@@ -204,6 +222,11 @@ GitFile::parse (const string& filename)
       if (size_count != 1)
         result = false;
       if (hash_count != 1)
+        result = false;
+    }
+  if (type == FILE_BLOCK_DEV || type == FILE_CHAR_DEV)
+    {
+      if (major_count != 1 || minor_count != 1)
         result = false;
     }
   if (mode_count != 1)
@@ -523,6 +546,26 @@ bfsync_getattr (const char *path, struct stat *stbuf)
           stbuf->st_gid  = git_file.gid;
           stbuf->st_mtime = git_file.mtime;
           stbuf->st_mtim.tv_nsec = git_file.mtime_ns;
+        }
+      else if (git_file.type == FILE_BLOCK_DEV)
+        {
+          memset (stbuf, 0, sizeof (struct stat));
+          stbuf->st_mode = git_mode | S_IFBLK;
+          stbuf->st_uid  = git_file.uid;
+          stbuf->st_gid  = git_file.gid;
+          stbuf->st_mtime = git_file.mtime;
+          stbuf->st_mtim.tv_nsec = git_file.mtime_ns;
+          stbuf->st_rdev = makedev (git_file.major, git_file.minor);
+        }
+      else if (git_file.type == FILE_CHAR_DEV)
+        {
+          memset (stbuf, 0, sizeof (struct stat));
+          stbuf->st_mode = git_mode | S_IFCHR;
+          stbuf->st_uid  = git_file.uid;
+          stbuf->st_gid  = git_file.gid;
+          stbuf->st_mtime = git_file.mtime;
+          stbuf->st_mtim.tv_nsec = git_file.mtime_ns;
+          stbuf->st_rdev = makedev (git_file.major, git_file.minor);
         }
       return 0;
     }

@@ -462,6 +462,28 @@ tests += [ ("commit-special", test_commit_special) ]
 
 #####
 
+def test_commit_device():
+  for mode, name in [(S_IFBLK, "block"), (S_IFCHR, "char")]:
+    os.mknod ("mnt/" + name, mode | 0644, os.makedev (42, 23))
+    old_stat = os.stat ("mnt/" + name)
+    if os.major (old_stat.st_rdev) != 42:
+      raise Exception ("device is not major 42")
+    if os.minor (old_stat.st_rdev) != 23:
+      raise Exception ("device is not minor 23")
+    commit()
+    new_stat = os.stat ("mnt/" + name)
+    if (old_stat.st_mode != new_stat.st_mode):
+      raise Exception ("stat diffs with %s %o => %o" % (name, old_stat.st_mode, new_stat.st_mode))
+    if (old_stat.st_rdev != new_stat.st_rdev):
+      raise Exception ("%s device diff (%d,%d) => (%d,%d)" % (name,
+        os.major (old_stat.st_rdev), os.minor (old_stat.st_rdev),
+        os.major (new_stat.st_rdev), os.minor (new_stat.st_rdev)))
+
+tests += [ ("commit-device", test_commit_device) ]
+
+#####
+
+
 def start_bfsyncfs():
   if subprocess.call (["./bfsyncfs", "mnt"]) != 0:
     print "can't start bfsyncfs"
