@@ -62,3 +62,5 @@ bfsync2 TODO:
 
 * preserve directory permissions
 * pass find -newer test (ctime)
+* store pipes /var/lib/oprofile/opd_pipe
+* dir rename test
