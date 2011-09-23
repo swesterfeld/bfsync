@@ -5,6 +5,7 @@ import sys
 import subprocess
 import time
 import traceback
+from stat import *
 
 def teardown():
   cwd = os.getcwd()
@@ -210,6 +211,20 @@ tests += [ ("commit-mtime", test_commit_mtime) ]
 
 #####
 
+def test_commit_mtime_chmod():
+  write_file ("mnt/foo", "foo")
+  os.system ("touch -t 01010101 mnt/foo")
+  old_stat = os.stat ("mnt/foo")
+  commit()
+  os.chmod ("mnt/foo", 0640)
+  new_stat = os.stat ("mnt/foo")
+  if old_stat.st_mtime != new_stat.st_mtime:
+    raise Exception ("stat mtime diffs %d => %d" % (old_stat.st_mtime, new_stat.st_mtime))
+
+tests += [ ("commit-mtime-chmod", test_commit_mtime_chmod) ]
+
+#####
+
 def test_commit_uid_gid():
   write_file ("mnt/foo", "foo")
   os.chown ("mnt/foo", 123, 456)
@@ -385,6 +400,90 @@ tests += [ ("commit-rmdir", test_commit_rmdir) ]
 
 #####
 
+def test_stat_ms():
+  fn = "/tmp/fstest_naietrdn"
+  write_file (fn, "foo")
+  mtime_old = os.stat (fn).st_mtime
+  os.system ("cp -a %s mnt/foo" % fn)
+  mtime_new = os.stat ("mnt/foo").st_mtime
+  if mtime_old != mtime_new:
+    raise Exception ("cp mtime changes => %f -> %f" % (mtime_old, mtime_new))
+  commit()
+  mtime_commit = os.stat ("mnt/foo").st_mtime
+  if mtime_commit != mtime_old:
+    raise Exception ("commit mtime changes => %f -> %f" % (mtime_old, mtime_commit))
+  os.remove (fn)
+
+tests += [ ("test-stat-ms", test_stat_ms) ]
+
+#####
+
+def test_dir_mode():
+  os.chmod ("mnt/subdir", 0700)
+  mode_old = os.stat ("mnt/subdir").st_mode
+  commit()
+  os.system ("touch mnt/subdir")
+  mode_new = os.stat ("mnt/subdir").st_mode
+  if mode_old != mode_new:
+    raise Exception ("mode diffs %o => %o" % (mode_old, mode_new))
+
+tests += [ ("test-dir-mode", test_dir_mode) ]
+
+#####
+
+def test_commit_uid_gid_cow():
+  os.chown ("mnt/subdir", 123, 456)
+  old_stat = os.stat ("mnt/subdir")
+  if (old_stat.st_uid != 123 or old_stat.st_gid != 456):
+    raise Exception ("can't set uid/gid (are you root?)")
+  commit()
+  write_file ("mnt/subdir/y", "Y!\n")
+  new_stat = os.stat ("mnt/subdir")
+  if old_stat.st_uid != new_stat.st_uid:
+    raise Exception ("stat uid diffs %d => %d" % (old_stat.st_uid, new_stat.st_uid))
+  if old_stat.st_gid != new_stat.st_gid:
+    raise Exception ("stat gid diffs %d => %d" % (old_stat.st_gid, new_stat.st_gid))
+
+tests += [ ("commit-uid-gid-cow", test_commit_uid_gid_cow) ]
+
+#####
+
+def test_commit_special():
+  for mode, name in [(S_IFIFO, "fifo"),
+                     (S_IFSOCK, "socket")]:
+    os.mknod ("mnt/" + name, mode | 0644)
+    old_stat = os.stat ("mnt/" + name)
+    commit()
+    new_stat = os.stat ("mnt/" + name)
+    if (old_stat.st_mode != new_stat.st_mode):
+      raise Exception ("stat diffs with %s %o => %o", name, old_stat.st_mode, new_stat.st_mode)
+
+tests += [ ("commit-special", test_commit_special) ]
+
+#####
+
+def test_commit_device():
+  for mode, name in [(S_IFBLK, "block"), (S_IFCHR, "char")]:
+    os.mknod ("mnt/" + name, mode | 0644, os.makedev (42, 23))
+    old_stat = os.stat ("mnt/" + name)
+    if os.major (old_stat.st_rdev) != 42:
+      raise Exception ("device is not major 42")
+    if os.minor (old_stat.st_rdev) != 23:
+      raise Exception ("device is not minor 23")
+    commit()
+    new_stat = os.stat ("mnt/" + name)
+    if (old_stat.st_mode != new_stat.st_mode):
+      raise Exception ("stat diffs with %s %o => %o" % (name, old_stat.st_mode, new_stat.st_mode))
+    if (old_stat.st_rdev != new_stat.st_rdev):
+      raise Exception ("%s device diff (%d,%d) => (%d,%d)" % (name,
+        os.major (old_stat.st_rdev), os.minor (old_stat.st_rdev),
+        os.major (new_stat.st_rdev), os.minor (new_stat.st_rdev)))
+
+tests += [ ("commit-device", test_commit_device) ]
+
+#####
+
+
 def start_bfsyncfs():
   if subprocess.call (["./bfsyncfs", "mnt"]) != 0:
     print "can't start bfsyncfs"
@@ -406,6 +505,9 @@ try:
 except:
   pass # not mounted
 
+fail_count = 0
+ok_count = 0
+
 for (desc, f) in tests:
   print "test %-30s" % desc,
   teardown()
@@ -414,6 +516,7 @@ for (desc, f) in tests:
     f()
   except Exception, e:
     print "FAIL: ", e
+    fail_count += 1
     #print "\n\n"
     #print "=================================================="
     #traceback.print_exc()
@@ -421,8 +524,12 @@ for (desc, f) in tests:
     #print "\n\n"
   else:
     print "OK."
+    ok_count += 1
 teardown()
 setup()
+
+print
+print "Summary: %d/%d tests failed" % (fail_count, fail_count + ok_count)
 
 if subprocess.call (["fusermount", "-u", "mnt"]):
   print "can't stop bfsyncfs"

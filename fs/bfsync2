@@ -35,7 +35,7 @@ from utils import mkdir_recursive
 from TransferList import TransferList, TransferFile
 from StatusLine import status_line
 from HashCache import hash_cache
-from stat import S_ISREG, S_ISLNK
+from stat import *
 
 def find_bfsync_dir():
   old_cwd = os.getcwd()
@@ -83,9 +83,13 @@ def validate_object (object_file, hash):
   return False
 
 ###################
-FILE_REGULAR = 1
-FILE_SYMLINK = 2
-FILE_DIR     = 3
+FILE_REGULAR    = 1
+FILE_SYMLINK    = 2
+FILE_DIR        = 3
+FILE_FIFO       = 4
+FILE_SOCKET     = 5
+FILE_BLOCK_DEV  = 6
+FILE_CHAR_DEV   = 7
 ###################
 
 def name2git_name (name):
@@ -96,6 +100,23 @@ def name2git_name (name):
     result += "d_" + i + "/"
   result += "i_" + path[-1]
   return result
+
+# python stat resolution is not nanosecond accurate, so we use a helper program
+def get_times (file_list):
+  (fd, stat_filename) = tempfile.mkstemp (prefix = "bfsync_git_stat_")
+  stat_file = os.fdopen (fd, "w")
+  for (filename, filetype) in file_list:
+    stat_file.write (filename + "\0")
+  stat_file.close();
+  stat_p =  subprocess.Popen(["xargs", "-0", "-a", stat_filename, "bfsyncstat"], stdout = subprocess.PIPE)
+  result = stat_p.communicate()[0]
+  stat_list = result.split ("\0")
+  stat_dict = dict()
+  i = 0
+  while (i + 3) < len (stat_list):
+    stat_dict[stat_list[i]] = (int (stat_list[i + 1]), int (stat_list[i + 2]))
+    i += 3
+  return stat_dict
 
 def cmd_commit():
   parser = argparse.ArgumentParser (prog='bfsync2 commit')
@@ -146,6 +167,14 @@ def cmd_commit():
         hash_list += [ filename ]
       elif S_ISLNK (stat.st_mode):
         file_list += [ (filename, FILE_SYMLINK) ]
+      elif S_ISFIFO (stat.st_mode):
+        file_list += [ (filename, FILE_FIFO) ]
+      elif S_ISSOCK (stat.st_mode):
+        file_list += [ (filename, FILE_SOCKET) ]
+      elif S_ISBLK (stat.st_mode):
+        file_list += [ (filename, FILE_BLOCK_DEV) ]
+      elif S_ISCHR (stat.st_mode):
+        file_list += [ (filename, FILE_CHAR_DEV) ]
       else:
         raise Exception ("file '%s' has unknown type - cannot commit" % filename)
 
@@ -189,6 +218,9 @@ def cmd_commit():
     os.remove (commit_msg_filename)
     raise Exception ("commit message is empty")
 
+  # get times for new files
+  time_dict = get_times (file_list)
+
   # create entries in git/files for newly added files
   (git_add_fd,git_add_filename) = tempfile.mkstemp (prefix = "bfsync_git_add_")
   git_add_file = os.fdopen (git_add_fd, "w")
@@ -205,7 +237,9 @@ def cmd_commit():
       elif filetype == FILE_SYMLINK:
         link = os.readlink (new_file)
       mode = stat.st_mode;
-      mtime = stat.st_mtime
+      times = time_dict[filename]
+      mtime = times[0]
+      mtime_ns = times[1]
     except Exception, ex:
       raise
 
@@ -221,11 +255,24 @@ def cmd_commit():
         gf.write ("type = symlink\n")
         gf.write ("link = %s\n" % link)
       elif filetype == FILE_DIR:
-        gf.write ("type = dir\n");
+        gf.write ("type = dir\n")
+      elif filetype == FILE_FIFO:
+        gf.write ("type = fifo\n")
+      elif filetype == FILE_SOCKET:
+        gf.write ("type = socket\n")
+      elif filetype == FILE_BLOCK_DEV:
+        gf.write ("type = blockdev\n")
+      elif filetype == FILE_CHAR_DEV:
+        gf.write ("type = chardev\n")
+      if filetype == FILE_BLOCK_DEV or filetype == FILE_CHAR_DEV:
+        # save major,minor pair for devices
+        gf.write ("major = %d\n" % os.major (stat.st_rdev))
+        gf.write ("minor = %d\n" % os.minor (stat.st_rdev))
       gf.write ("uid = %d\n" % stat.st_uid)
       gf.write ("gid = %d\n" % stat.st_gid)
       gf.write ("mode = %o\n" % mode)
       gf.write ("mtime = %d\n" % mtime)
+      gf.write ("mtime_ns = %d\n" % mtime_ns)
       gf.close()
     except Exception, ex:
       raise

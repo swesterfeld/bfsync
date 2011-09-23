@@ -86,6 +86,10 @@ enum FileType {
   FILE_REGULAR,
   FILE_SYMLINK,
   FILE_DIR,
+  FILE_FIFO,
+  FILE_SOCKET,
+  FILE_BLOCK_DEV,
+  FILE_CHAR_DEV
 };
 
 struct GitFile
@@ -93,11 +97,14 @@ struct GitFile
   size_t   size;
   string   hash;
   time_t   mtime;
+  int      mtime_ns;
   uid_t    uid;
   gid_t    gid;
   mode_t   mode;
   string   link;
   FileType type;
+  dev_t    major;
+  dev_t    minor;
 
   GitFile();
   bool parse (const string& filename);
@@ -118,8 +125,8 @@ GitFile::parse (const string& filename)
     return false;
 
   bool result = true;
-  size_t size_count = 0, hash_count = 0, mtime_count = 0, link_count = 0, type_count = 0;
-  size_t uid_count = 0, gid_count = 0, mode_count = 0;
+  size_t size_count = 0, hash_count = 0, mtime_count = 0, mtime_ns_count = 0, link_count = 0, type_count = 0;
+  size_t uid_count = 0, gid_count = 0, mode_count = 0, major_count = 0, minor_count = 0;
   char buffer[1024];
   while (fgets (buffer, 1024, file))
     {
@@ -149,6 +156,11 @@ GitFile::parse (const string& filename)
                       mtime = atol (val);
                       mtime_count++;
                     }
+                  else if (string (key) == "mtime_ns")
+                    {
+                      mtime_ns = atoi (val);
+                      mtime_ns_count++;
+                    }
                   else if (string (key) == "uid")
                     {
                       uid = atoi (val);
@@ -169,6 +181,16 @@ GitFile::parse (const string& filename)
                       mode = strtol (val, NULL, 8);
                       mode_count++;
                     }
+                  else if (string (key) == "major")
+                    {
+                      major = atoi (val);
+                      major_count++;
+                    }
+                  else if (string (key) == "minor")
+                    {
+                      minor = atoi (val);
+                      minor_count++;
+                    }
                   else if (string (key) == "type")
                     {
                       if (string (val) == "file")
@@ -177,6 +199,14 @@ GitFile::parse (const string& filename)
                         type = FILE_SYMLINK;
                       else if (string (val) == "dir")
                         type = FILE_DIR;
+                      else if (string (val) == "fifo")
+                        type = FILE_FIFO;
+                      else if (string (val) == "socket")
+                        type = FILE_SOCKET;
+                      else if (string (val) == "blockdev")
+                        type = FILE_BLOCK_DEV;
+                      else if (string (val) == "chardev")
+                        type = FILE_CHAR_DEV;
                       else
                         type = FILE_NONE;
                       type_count++;
@@ -194,9 +224,14 @@ GitFile::parse (const string& filename)
       if (hash_count != 1)
         result = false;
     }
+  if (type == FILE_BLOCK_DEV || type == FILE_CHAR_DEV)
+    {
+      if (major_count != 1 || minor_count != 1)
+        result = false;
+    }
   if (mode_count != 1)
     result = false;
-  if (mtime_count != 1)
+  if (mtime_count != 1 && mtime_ns_count != 1)
     result = false;
   if (uid_count != 1)
     result = false;
@@ -323,6 +358,33 @@ split (const string& path)
   return result;
 }
 
+enum CopyAttrMode
+{
+  CA_NORMAL,
+  CA_NO_CHMOD
+};
+
+void
+copy_attrs (const GitFile& git_file, const string& path, CopyAttrMode mode = CA_NORMAL)
+{
+  if (mode == CA_NORMAL)  // chmod() does not work for symlinks
+    {
+      int git_mode = git_file.mode & ~S_IFMT;
+      chmod (path.c_str(), git_mode);
+    }
+
+  // set atime and mtime from git file mtime
+  timespec times[2];
+  times[0].tv_sec = git_file.mtime;
+  times[0].tv_nsec = git_file.mtime_ns;
+  times[1] = times[0];
+
+  utimensat (AT_FDCWD, path.c_str(), times, AT_SYMLINK_NOFOLLOW);
+
+  // set uid / gid
+  lchown (path.c_str(), git_file.uid, git_file.gid);
+}
+
 void
 copy_dirs (const string& path, FileStatus status)
 {
@@ -332,27 +394,42 @@ copy_dirs (const string& path, FileStatus status)
 
   dirs.pop_back();
 
-  string dir;
   if (status == FS_DEL)
     {
-      dir = options.repo_path + "/del";
+      string dir = options.repo_path + "/del";
+
+      for (vector<string>::iterator di = dirs.begin(); di != dirs.end(); di++)
+        {
+          dir += "/d_" + *di;
+
+          mkdir (dir.c_str(), 0755);
+        }
     }
   else if (status == FS_NEW)
     {
-      dir = options.repo_path + "/new";
+      string dir_path;
+
+      for (vector<string>::iterator di = dirs.begin(); di != dirs.end(); di++)
+        {
+          dir_path += "/" + *di;
+
+          string dir = options.repo_path + "/new" + dir_path;
+
+          bool copy_a = (file_status (dir_path) == FS_GIT);
+
+          mkdir (dir.c_str(), 0755);
+
+          if (copy_a)
+            {
+              GitFile gf;
+              if (gf.parse (options.repo_path + "/git/files/" + name2git_name (dir_path)))
+                copy_attrs (gf, dir.c_str());
+            }
+        }
     }
   else
     {
       assert (false);
-    }
-
-  for (vector<string>::iterator di = dirs.begin(); di != dirs.end(); di++)
-    {
-      if (status == FS_DEL)
-        dir += "/d_" + *di;
-      else
-        dir += "/" + *di;
-      mkdir (dir.c_str(), 0755);  // FIXME: copy mode, mtime, uid, gid, ...
     }
 }
 
@@ -383,12 +460,19 @@ copy_on_write (const string& path)
                 }
               close (old_fd);
               close (new_fd);
+
+              copy_attrs (gf, new_name);
             }
           else if (gf.type == FILE_DIR)
             {
-              mkdir (new_name.c_str(), 0755);  // FIXME: copy mode, mtime, uid, gid, ...
+              mkdir (new_name.c_str(), 0755);
+              copy_attrs (gf, new_name);
             }
-          // FIXME: symlink
+          else if (gf.type == FILE_SYMLINK)
+            {
+              symlink (gf.link.c_str(), new_name.c_str());
+              copy_attrs (gf, new_name, CA_NO_CHMOD);
+            }
         }
     }
 }
@@ -424,6 +508,7 @@ bfsync_getattr (const char *path, struct stat *stbuf)
           stbuf->st_gid  = git_file.gid;
           stbuf->st_size = git_file.size;
           stbuf->st_mtime = git_file.mtime;
+          stbuf->st_mtim.tv_nsec = git_file.mtime_ns;
         }
       else if (git_file.type == FILE_SYMLINK)
         {
@@ -433,6 +518,7 @@ bfsync_getattr (const char *path, struct stat *stbuf)
           stbuf->st_gid  = git_file.gid;
           stbuf->st_size = git_file.link.size();
           stbuf->st_mtime = git_file.mtime;
+          stbuf->st_mtim.tv_nsec = git_file.mtime_ns;
         }
       else if (git_file.type == FILE_DIR)
         {
@@ -441,6 +527,45 @@ bfsync_getattr (const char *path, struct stat *stbuf)
           stbuf->st_uid  = git_file.uid;
           stbuf->st_gid  = git_file.gid;
           stbuf->st_mtime = git_file.mtime;
+          stbuf->st_mtim.tv_nsec = git_file.mtime_ns;
+        }
+      else if (git_file.type == FILE_FIFO)
+        {
+          memset (stbuf, 0, sizeof (struct stat));
+          stbuf->st_mode = git_mode | S_IFIFO;
+          stbuf->st_uid  = git_file.uid;
+          stbuf->st_gid  = git_file.gid;
+          stbuf->st_mtime = git_file.mtime;
+          stbuf->st_mtim.tv_nsec = git_file.mtime_ns;
+        }
+      else if (git_file.type == FILE_SOCKET)
+        {
+          memset (stbuf, 0, sizeof (struct stat));
+          stbuf->st_mode = git_mode | S_IFSOCK;
+          stbuf->st_uid  = git_file.uid;
+          stbuf->st_gid  = git_file.gid;
+          stbuf->st_mtime = git_file.mtime;
+          stbuf->st_mtim.tv_nsec = git_file.mtime_ns;
+        }
+      else if (git_file.type == FILE_BLOCK_DEV)
+        {
+          memset (stbuf, 0, sizeof (struct stat));
+          stbuf->st_mode = git_mode | S_IFBLK;
+          stbuf->st_uid  = git_file.uid;
+          stbuf->st_gid  = git_file.gid;
+          stbuf->st_mtime = git_file.mtime;
+          stbuf->st_mtim.tv_nsec = git_file.mtime_ns;
+          stbuf->st_rdev = makedev (git_file.major, git_file.minor);
+        }
+      else if (git_file.type == FILE_CHAR_DEV)
+        {
+          memset (stbuf, 0, sizeof (struct stat));
+          stbuf->st_mode = git_mode | S_IFCHR;
+          stbuf->st_uid  = git_file.uid;
+          stbuf->st_gid  = git_file.gid;
+          stbuf->st_mtime = git_file.mtime;
+          stbuf->st_mtim.tv_nsec = git_file.mtime_ns;
+          stbuf->st_rdev = makedev (git_file.major, git_file.minor);
         }
       return 0;
     }
