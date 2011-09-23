@@ -25,6 +25,8 @@ def setup():
     raise Exception ("error during setup")
   if subprocess.call (["mkdir", "-p", "test/git"]) != 0:
     raise Exception ("error during setup")
+  if subprocess.call (["mkdir", "-p", "mnt"]) != 0:
+    raise Exception ("error during setup")
   if subprocess.call (["git", "init", "-q", "test/git"]) != 0:
     raise Exception ("error during setup")
 
