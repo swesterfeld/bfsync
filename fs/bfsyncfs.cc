@@ -917,6 +917,19 @@ bfsync_readlink (const char *path, char *buffer, size_t size)
   return 0;
 }
 
+static void*
+bfsync_init (struct fuse_conn_info *conn)
+{
+  conn->max_readahead = 10 * 128 * 1024;
+  conn->max_write = 128 * 1024;
+
+  conn->capable = FUSE_CAP_BIG_WRITES;
+  conn->want    = FUSE_CAP_BIG_WRITES;
+
+  struct fuse_context* context = fuse_get_context();
+  return context->private_data;
+}
+
 static struct fuse_operations bfsync_oper = { NULL, };
 
 int
@@ -938,6 +951,7 @@ main (int argc, char *argv[])
   bfsync_oper.readdir  = bfsync_readdir;
   bfsync_oper.read     = bfsync_read;
   bfsync_oper.readlink = bfsync_readlink;
+  bfsync_oper.init     = bfsync_init;
 
   /* read/write */
   bfsync_oper.open     = bfsync_open;
