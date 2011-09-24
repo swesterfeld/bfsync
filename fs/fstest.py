@@ -499,6 +499,12 @@ def commit():
 def run_quiet (cmd):
   return subprocess.Popen (cmd, stdout=subprocess.PIPE).wait()
 
+# compile
+
+if subprocess.call (["make"]):
+  print "compilation failed"
+  sys.exit (1)
+
 # unmount if mounted
 try:
   f = open ("mnt/.bfsync/info")

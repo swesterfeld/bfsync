@@ -19,6 +19,8 @@
 
 #define FUSE_USE_VERSION 26
 
+#include "bfgitfile.hh"
+
 #include <fuse.h>
 #include <stdio.h>
 #include <string.h>
@@ -80,167 +82,6 @@ debug (const char *fmt, ...)
   fflush (debug_file);
   va_end (ap);
 }
-
-enum FileType {
-  FILE_NONE,
-  FILE_REGULAR,
-  FILE_SYMLINK,
-  FILE_DIR,
-  FILE_FIFO,
-  FILE_SOCKET,
-  FILE_BLOCK_DEV,
-  FILE_CHAR_DEV
-};
-
-struct GitFile
-{
-  size_t   size;
-  string   hash;
-  time_t   mtime;
-  int      mtime_ns;
-  uid_t    uid;
-  gid_t    gid;
-  mode_t   mode;
-  string   link;
-  FileType type;
-  dev_t    major;
-  dev_t    minor;
-
-  GitFile();
-  bool parse (const string& filename);
-};
-
-GitFile::GitFile() :
-  size (0)
-{
-}
-
-bool
-GitFile::parse (const string& filename)
-{
-  printf ("parse => %s\n", filename.c_str());
-
-  FILE *file = fopen (filename.c_str(), "r");
-  if (!file)
-    return false;
-
-  bool result = true;
-  size_t size_count = 0, hash_count = 0, mtime_count = 0, mtime_ns_count = 0, link_count = 0, type_count = 0;
-  size_t uid_count = 0, gid_count = 0, mode_count = 0, major_count = 0, minor_count = 0;
-  char buffer[1024];
-  while (fgets (buffer, 1024, file))
-    {
-      char *key = strtok (buffer, " \n");
-      if (key)
-        {
-          char *eq  = strtok (NULL, " \n");
-          if (eq)
-            {
-              char *val = strtok (NULL, " \n");
-              if (val && string (eq) == "=")
-                {
-                  if (string (key) == "size")
-                    {
-                      size = atoi (val);
-                      size_count++;
-                      printf ("size (%s) => %zd\n", filename.c_str(), size);
-                    }
-                  else if (string (key) == "hash")
-                    {
-                      hash = val;
-                      hash_count++;
-                      printf ("hash (%s) => %s\n", filename.c_str(), hash.c_str());
-                    }
-                  else if (string (key) == "mtime")
-                    {
-                      mtime = atol (val);
-                      mtime_count++;
-                    }
-                  else if (string (key) == "mtime_ns")
-                    {
-                      mtime_ns = atoi (val);
-                      mtime_ns_count++;
-                    }
-                  else if (string (key) == "uid")
-                    {
-                      uid = atoi (val);
-                      uid_count++;
-                    }
-                  else if (string (key) == "gid")
-                    {
-                      gid = atoi (val);
-                      gid_count++;
-                    }
-                  else if (string (key) == "link")
-                    {
-                      link = val;
-                      link_count++;
-                    }
-                  else if (string (key) == "mode")
-                    {
-                      mode = strtol (val, NULL, 8);
-                      mode_count++;
-                    }
-                  else if (string (key) == "major")
-                    {
-                      major = atoi (val);
-                      major_count++;
-                    }
-                  else if (string (key) == "minor")
-                    {
-                      minor = atoi (val);
-                      minor_count++;
-                    }
-                  else if (string (key) == "type")
-                    {
-                      if (string (val) == "file")
-                        type = FILE_REGULAR;
-                      else if (string (val) == "symlink")
-                        type = FILE_SYMLINK;
-                      else if (string (val) == "dir")
-                        type = FILE_DIR;
-                      else if (string (val) == "fifo")
-                        type = FILE_FIFO;
-                      else if (string (val) == "socket")
-                        type = FILE_SOCKET;
-                      else if (string (val) == "blockdev")
-                        type = FILE_BLOCK_DEV;
-                      else if (string (val) == "chardev")
-                        type = FILE_CHAR_DEV;
-                      else
-                        type = FILE_NONE;
-                      type_count++;
-                    }
-                }
-            }
-        }
-    }
-  if (type_count != 1)
-    result = false;
-  if (type == FILE_REGULAR)
-    {
-      if (size_count != 1)
-        result = false;
-      if (hash_count != 1)
-        result = false;
-    }
-  if (type == FILE_BLOCK_DEV || type == FILE_CHAR_DEV)
-    {
-      if (major_count != 1 || minor_count != 1)
-        result = false;
-    }
-  if (mode_count != 1)
-    result = false;
-  if (mtime_count != 1 && mtime_ns_count != 1)
-    result = false;
-  if (uid_count != 1)
-    result = false;
-  if (gid_count != 1)
-    result = false;
-  fclose (file);
-  return result;
-}
-
 // "foo/bar" => [ "foo", "bar" ]
 vector<string>
 split_name (const string& xname)
@@ -841,6 +682,20 @@ bfsync_mknod (const char *path, mode_t mode, dev_t dev)
 int
 bfsync_chmod (const char *name, mode_t mode)
 {
+  if (file_status (name) == FS_GIT)
+    {
+      GitFile gf;
+
+      if (gf.parse (options.repo_path + "/git/files/" + name2git_name (name)))
+        {
+          gf.mode = mode;
+          if (gf.save (options.repo_path + "/git/files/" + name2git_name (name)))
+            {
+              return 0;
+            }
+        }
+    }
+
   copy_on_write (name);
 
   if (file_status (name) != FS_NEW)
