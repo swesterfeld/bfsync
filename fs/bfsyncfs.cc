@@ -694,6 +694,7 @@ bfsync_chmod (const char *name, mode_t mode)
               return 0;
             }
         }
+      return -EIO;
     }
 
   copy_on_write (name);

@@ -22,7 +22,11 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include <vector>
+#include <algorithm>
+
 using std::string;
+using std::vector;
 
 GitFile::GitFile() :
   size (0)
@@ -155,27 +159,93 @@ GitFile::parse (const string& filename)
   return result;
 }
 
+struct Attributes
+{
+  vector<string> attrs;
+
+  void
+  add (const string& attrib, const string& value)
+  {
+    attrs.push_back (attrib + " = " + value);
+  }
+  void
+  add (const string& attrib, int64_t value)
+  {
+    char buffer[64];
+    sprintf (buffer, "%s = %ld", attrib.c_str(), value);
+    attrs.push_back (buffer);
+  }
+  void
+  add_oct (const string& attrib, int64_t value)
+  {
+    char buffer[64];
+    sprintf (buffer, "%s = %lo", attrib.c_str(), value);
+    attrs.push_back (buffer);
+  }
+  void write (FILE *file);
+};
+
+void
+Attributes::write (FILE *file)
+{
+  std::sort (attrs.begin(), attrs.end());
+
+  for (vector<string>::iterator ai = attrs.begin(); ai != attrs.end(); ai++)
+    {
+      fprintf (file, "%s\n", ai->c_str());
+    }
+}
+
 bool
 GitFile::save (const string& filename)
 {
+  Attributes attributes;
+
+  attributes.add ("uid", uid);
+  attributes.add ("gid", gid);
+  attributes.add_oct ("mode", mode);
+  attributes.add ("mtime", mtime);
+  attributes.add ("mtime_ns", mtime_ns);
+
   if (type == FILE_REGULAR)
     {
-      FILE *file = fopen (filename.c_str(), "w");
-      if (!file)
-        return false;
-
-      fprintf (file, "type = file\n");
-      fprintf (file, "hash = %s\n", hash.c_str());
-      fprintf (file, "size = %zd\n", size);
-      fprintf (file, "uid = %d\n", uid);
-      fprintf (file, "gid = %d\n", gid);
-      fprintf (file, "mode = %o\n", mode);
-      fprintf (file, "mtime = %ld\n", mtime);
-      fprintf (file, "mtime_ns = %d\n", mtime_ns);
-      fclose (file);
-      return true;
+      attributes.add ("type", "file");
+      attributes.add ("hash", hash);
+      attributes.add ("size", size);
     }
-  return false;
+  else if (type == FILE_DIR)
+    {
+      attributes.add ("type", "dir");
+    }
+  else if (type == FILE_FIFO)
+    {
+      attributes.add ("type", "fifo");
+    }
+  else if (type == FILE_SOCKET)
+    {
+      attributes.add ("type", "socket");
+    }
+  else if (type == FILE_BLOCK_DEV || type == FILE_CHAR_DEV)
+    {
+      if (type == FILE_BLOCK_DEV)
+        attributes.add ("type", "blockdev");
+      else // filetype == FILE_CHAR_DEV
+        attributes.add ("type", "chardev");
+
+      attributes.add ("major", major);
+      attributes.add ("minor", minor);
+    }
+  else // unsupported type
+    {
+      return false;
+    }
+
+  FILE *file = fopen (filename.c_str(), "w");
+  if (!file)
+    return false;
+
+  attributes.write (file);
+
+  fclose (file);
+  return true;
 }
-
-
