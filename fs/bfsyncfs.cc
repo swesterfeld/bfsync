@@ -196,33 +196,6 @@ split (const string& path)
   return result;
 }
 
-enum CopyAttrMode
-{
-  CA_NORMAL,
-  CA_NO_CHMOD
-};
-
-void
-copy_attrs (const GitFile& git_file, const string& path, CopyAttrMode mode = CA_NORMAL)
-{
-  if (mode == CA_NORMAL)  // chmod() does not work for symlinks
-    {
-      int git_mode = git_file.mode & ~S_IFMT;
-      chmod (path.c_str(), git_mode);
-    }
-
-  // set atime and mtime from git file mtime
-  timespec times[2];
-  times[0].tv_sec = git_file.mtime;
-  times[0].tv_nsec = git_file.mtime_ns;
-  times[1] = times[0];
-
-  utimensat (AT_FDCWD, path.c_str(), times, AT_SYMLINK_NOFOLLOW);
-
-  // set uid / gid
-  lchown (path.c_str(), git_file.uid, git_file.gid);
-}
-
 void
 copy_dirs (const string& path, FileStatus status)
 {
@@ -242,16 +215,7 @@ copy_dirs (const string& path, FileStatus status)
 
           string dir = options.repo_path + "/new" + dir_path;
 
-          bool copy_a = (file_status (dir_path) == FS_GIT);
-
           mkdir (dir.c_str(), 0755);
-
-          if (copy_a)
-            {
-              GitFile gf;
-              if (gf.parse (options.repo_path + "/git/files/" + name2git_name (dir_path)))
-                copy_attrs (gf, dir.c_str());
-            }
         }
     }
   else
@@ -287,18 +251,6 @@ copy_on_write (const string& path)
                 }
               close (old_fd);
               close (new_fd);
-
-              copy_attrs (gf, new_name);
-            }
-          else if (gf.type == FILE_DIR)
-            {
-              mkdir (new_name.c_str(), 0755);
-              copy_attrs (gf, new_name);
-            }
-          else if (gf.type == FILE_SYMLINK)
-            {
-              symlink (gf.link.c_str(), new_name.c_str());
-              copy_attrs (gf, new_name, CA_NO_CHMOD);
             }
         }
     }
