@@ -215,8 +215,6 @@ def cmd_commit():
       if filetype == FILE_REGULAR:
         hash = hash_cache.compute_hash (new_file)
         size = stat.st_size
-      elif filetype == FILE_SYMLINK:
-        link = os.readlink (new_file)
       mode = stat.st_mode;
     except Exception, ex:
       raise
