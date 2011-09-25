@@ -261,3 +261,15 @@ GitFile::save (const string& filename)
   fclose (file);
   return true;
 }
+
+void
+GitFile::set_mtime_now()
+{
+  timespec time_now;
+
+  if (clock_gettime (CLOCK_REALTIME, &time_now) == 0)
+    {
+      mtime     = time_now.tv_sec;
+      mtime_ns  = time_now.tv_nsec;
+    }
+}

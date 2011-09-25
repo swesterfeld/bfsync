@@ -494,6 +494,9 @@ bfsync_open (const char *path, struct fuse_file_info *fi)
         {
           GitFile git_file;
           git_file.type = FILE_REGULAR;
+          git_file.uid  = getuid();
+          git_file.gid =  getgid();
+          git_file.set_mtime_now();
           git_file.mode = 0644;                             // FIXME: open mode?
           git_file.size = 0;                                // edited by bfsync2 on commit / along with hash
           git_file.hash = "new";
@@ -572,66 +575,54 @@ bfsync_mknod (const char *path, mode_t mode, dev_t dev)
 {
   string git_file = options.repo_path + "/git/files/" + name2git_name (path);
 
-  copy_dirs (path, FS_NEW);
+  GitFile gf;
+  gf.mode = mode & ~S_IFMT;
+  gf.uid  = getuid();
+  gf.gid  = getgid();
+  gf.set_mtime_now();
 
-  int new_mode = mode & ~S_IFMT;
   if (S_ISREG (mode))
     {
+      copy_dirs (path, FS_NEW);
+
       string filename = options.repo_path + "/new" + path;
       int rc = mknod (filename.c_str(), mode, dev);
       if (rc == 0)
         {
-          GitFile gf;
           gf.type = FILE_REGULAR;
           gf.hash = "new";
-          gf.mode = new_mode;
-          gf.save (git_file);
-          return 0;
         }
       else
-        return -errno;
+        {
+          return -errno;
+        }
     }
   else if (S_ISFIFO (mode))
     {
-      GitFile gf;
       gf.type = FILE_FIFO;
-      gf.mode = new_mode;
-      gf.save (git_file);
-
-      return 0;
     }
   else if (S_ISSOCK (mode))
     {
-      GitFile gf;
       gf.type = FILE_SOCKET;
-      gf.mode = new_mode;
-      gf.save (git_file);
-
-      return 0;
     }
   else if (S_ISBLK (mode))
     {
-      GitFile gf;
       gf.type = FILE_BLOCK_DEV;
       gf.major = major (dev);
       gf.minor = minor (dev);
-      gf.mode = new_mode;
-      gf.save (git_file);
-
-      return 0;
     }
   else if (S_ISCHR (mode))
     {
-      GitFile gf;
       gf.type = FILE_CHAR_DEV;
-      gf.mode = new_mode;
       gf.major = major (dev);
       gf.minor = minor (dev);
-      gf.save (git_file);
-
-      return 0;
     }
-  return -ENOENT;
+  else
+    {
+      return -ENOENT;
+    }
+  gf.save (git_file);
+  return 0;
 }
 
 int
@@ -763,6 +754,7 @@ bfsync_mkdir (const char *path, mode_t mode)
       gf.mode = mode;
       gf.uid = getuid();
       gf.gid = getgid();
+      gf.set_mtime_now();
       gf.save (git_file);
       return 0;
     }
