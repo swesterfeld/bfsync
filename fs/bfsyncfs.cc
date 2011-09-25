@@ -46,8 +46,7 @@ enum FileStatus
 {
   FS_NONE,
   FS_NEW,
-  FS_GIT,
-  FS_DEL
+  FS_GIT
 };
 
 struct FileHandle
@@ -141,8 +140,6 @@ file_status (const string& path)
 {
   struct stat st;
 
-  if (path != "/" && lstat ((options.repo_path + "/del/" + name2git_name (path)).c_str(), &st) == 0)
-    return FS_DEL;
   if (lstat ((options.repo_path + "/new" + path).c_str(), &st) == 0)
     return FS_NEW;
   if (lstat ((options.repo_path + "/git/files/" + name2git_name (path)).c_str(), &st) == 0)
@@ -235,18 +232,7 @@ copy_dirs (const string& path, FileStatus status)
 
   dirs.pop_back();
 
-  if (status == FS_DEL)
-    {
-      string dir = options.repo_path + "/del";
-
-      for (vector<string>::iterator di = dirs.begin(); di != dirs.end(); di++)
-        {
-          dir += "/d_" + *di;
-
-          mkdir (dir.c_str(), 0755);
-        }
-    }
-  else if (status == FS_NEW)
+  if (status == FS_NEW)
     {
       string dir_path;
 
@@ -322,12 +308,6 @@ static int
 bfsync_getattr (const char *path, struct stat *stbuf)
 {
   debug ("getattr (\"%s\")\n", path);
-
-  if (file_status (path) == FS_DEL)
-    {
-      debug ("=> ENOENT\n");
-      return -ENOENT;
-    }
 
   if (string (path) == "/")  // take attrs for / from git/files dir, since we have no own attrs stored for that dir
     {
@@ -580,17 +560,6 @@ bfsync_open (const char *path, struct fuse_file_info *fi)
       return 0;
     }
 
-  if (file_status (path) == FS_DEL)
-    {
-      if (fi->flags & O_CREAT)
-        {
-          unlink ((options.repo_path + "/del/" + name2git_name (path)).c_str());
-        }
-      else
-        {
-          return -ENOENT;
-        }
-    }
   int accmode = fi->flags & O_ACCMODE;
   if (accmode == O_WRONLY || accmode == O_RDWR)
     {
@@ -931,6 +900,7 @@ bfsync_rename (const char *old_path, const char *new_path)
   rename ((options.repo_path + "/new" + old_path).c_str(),
           (options.repo_path + "/new" + new_path).c_str());
 
+#if 0
   // make del entry if git entry is present
   if (file_status (old_path) == FS_GIT)
     {
@@ -947,6 +917,7 @@ bfsync_rename (const char *old_path, const char *new_path)
           return -errno;
         }
     }
+#endif
   return 0;
 }
 
