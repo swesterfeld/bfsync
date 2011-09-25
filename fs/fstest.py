@@ -501,6 +501,17 @@ tests += [ ("rename", test_rename) ]
 
 #####
 
+def test_chmod_ctime():
+  old_stat = os.stat ("mnt/README")
+  os.chmod ("mnt/README", 0600)
+  new_stat = os.stat ("mnt/README")
+  if old_stat.st_ctime == new_stat.st_ctime:
+    raise Exception ("ctime unchanged after chmod")
+
+tests += [ ("chmod-ctime", test_chmod_ctime) ]
+
+#####
+
 def start_bfsyncfs():
   if subprocess.call (["./bfsyncfs", "mnt"]) != 0:
     print "can't start bfsyncfs"

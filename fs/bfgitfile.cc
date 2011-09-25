@@ -32,6 +32,8 @@ GitFile::GitFile() :
   size      (0),
   mtime     (0),
   mtime_ns  (0),
+  ctime     (0),
+  ctime_ns  (0),
   uid       (0),
   gid       (0),
   mode      (0),
@@ -52,6 +54,7 @@ GitFile::parse (const string& filename)
   bool result = true;
   size_t size_count = 0, hash_count = 0, mtime_count = 0, mtime_ns_count = 0, link_count = 0, type_count = 0;
   size_t uid_count = 0, gid_count = 0, mode_count = 0, major_count = 0, minor_count = 0;
+  size_t ctime_count = 0, ctime_ns_count = 0;
   char buffer[1024];
   while (fgets (buffer, 1024, file))
     {
@@ -85,6 +88,16 @@ GitFile::parse (const string& filename)
                     {
                       mtime_ns = atoi (val);
                       mtime_ns_count++;
+                    }
+                  else if (string (key) == "ctime")
+                    {
+                      ctime = atol (val);
+                      ctime_count++;
+                    }
+                  else if (string (key) == "ctime_ns")
+                    {
+                      ctime_ns = atoi (val);
+                      ctime_ns_count++;
                     }
                   else if (string (key) == "uid")
                     {
@@ -158,6 +171,8 @@ GitFile::parse (const string& filename)
     result = false;
   if (mtime_count != 1 && mtime_ns_count != 1)
     result = false;
+  if (ctime_count != 1 && ctime_ns_count != 1)
+    result = false;
   if (uid_count != 1)
     result = false;
   if (gid_count != 1)
@@ -213,6 +228,8 @@ GitFile::save (const string& filename)
   attributes.add_oct ("mode", mode);
   attributes.add ("mtime", mtime);
   attributes.add ("mtime_ns", mtime_ns);
+  attributes.add ("ctime", ctime);
+  attributes.add ("ctime_ns", ctime_ns);
 
   if (type == FILE_REGULAR)
     {
@@ -271,5 +288,17 @@ GitFile::set_mtime_now()
     {
       mtime     = time_now.tv_sec;
       mtime_ns  = time_now.tv_nsec;
+    }
+}
+
+void
+GitFile::set_ctime_now()
+{
+  timespec time_now;
+
+  if (clock_gettime (CLOCK_REALTIME, &time_now) == 0)
+    {
+      ctime     = time_now.tv_sec;
+      ctime_ns  = time_now.tv_nsec;
     }
 }

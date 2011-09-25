@@ -273,9 +273,10 @@ bfsync_getattr (const char *path, struct stat *stbuf)
   if (git_file.parse (git_filename))
     {
       int git_mode = git_file.mode & ~S_IFMT;
+
+      memset (stbuf, 0, sizeof (struct stat));
       if (git_file.type == FILE_REGULAR)
         {
-          memset (stbuf, 0, sizeof (struct stat));
           if (git_file.hash == "new")
             {
               // take size from new file
@@ -287,68 +288,40 @@ bfsync_getattr (const char *path, struct stat *stbuf)
               stbuf->st_size = git_file.size;
             }
           stbuf->st_mode = git_mode | S_IFREG;
-          stbuf->st_uid  = git_file.uid;
-          stbuf->st_gid  = git_file.gid;
-          stbuf->st_mtime = git_file.mtime;
-          stbuf->st_mtim.tv_nsec = git_file.mtime_ns;
         }
       else if (git_file.type == FILE_SYMLINK)
         {
-          memset (stbuf, 0, sizeof (struct stat));
           stbuf->st_mode = git_mode | S_IFLNK;
-          stbuf->st_uid  = git_file.uid;
-          stbuf->st_gid  = git_file.gid;
           stbuf->st_size = git_file.link.size();
-          stbuf->st_mtime = git_file.mtime;
-          stbuf->st_mtim.tv_nsec = git_file.mtime_ns;
         }
       else if (git_file.type == FILE_DIR)
         {
-          memset (stbuf, 0, sizeof (struct stat));
           stbuf->st_mode = git_mode | S_IFDIR;
-          stbuf->st_uid  = git_file.uid;
-          stbuf->st_gid  = git_file.gid;
-          stbuf->st_mtime = git_file.mtime;
-          stbuf->st_mtim.tv_nsec = git_file.mtime_ns;
         }
       else if (git_file.type == FILE_FIFO)
         {
-          memset (stbuf, 0, sizeof (struct stat));
           stbuf->st_mode = git_mode | S_IFIFO;
-          stbuf->st_uid  = git_file.uid;
-          stbuf->st_gid  = git_file.gid;
-          stbuf->st_mtime = git_file.mtime;
-          stbuf->st_mtim.tv_nsec = git_file.mtime_ns;
         }
       else if (git_file.type == FILE_SOCKET)
         {
-          memset (stbuf, 0, sizeof (struct stat));
           stbuf->st_mode = git_mode | S_IFSOCK;
-          stbuf->st_uid  = git_file.uid;
-          stbuf->st_gid  = git_file.gid;
-          stbuf->st_mtime = git_file.mtime;
-          stbuf->st_mtim.tv_nsec = git_file.mtime_ns;
         }
       else if (git_file.type == FILE_BLOCK_DEV)
         {
-          memset (stbuf, 0, sizeof (struct stat));
           stbuf->st_mode = git_mode | S_IFBLK;
-          stbuf->st_uid  = git_file.uid;
-          stbuf->st_gid  = git_file.gid;
-          stbuf->st_mtime = git_file.mtime;
-          stbuf->st_mtim.tv_nsec = git_file.mtime_ns;
           stbuf->st_rdev = makedev (git_file.major, git_file.minor);
         }
       else if (git_file.type == FILE_CHAR_DEV)
         {
-          memset (stbuf, 0, sizeof (struct stat));
           stbuf->st_mode = git_mode | S_IFCHR;
-          stbuf->st_uid  = git_file.uid;
-          stbuf->st_gid  = git_file.gid;
-          stbuf->st_mtime = git_file.mtime;
-          stbuf->st_mtim.tv_nsec = git_file.mtime_ns;
           stbuf->st_rdev = makedev (git_file.major, git_file.minor);
         }
+      stbuf->st_uid          = git_file.uid;
+      stbuf->st_gid          = git_file.gid;
+      stbuf->st_mtime        = git_file.mtime;
+      stbuf->st_mtim.tv_nsec = git_file.mtime_ns;
+      stbuf->st_ctime        = git_file.ctime;
+      stbuf->st_ctim.tv_nsec = git_file.ctime_ns;
       return 0;
     }
   printf ("::: no gitfile parsed\n");
@@ -633,6 +606,7 @@ bfsync_chmod (const char *name, mode_t mode)
   if (gf.parse (options.repo_path + "/git/files/" + name2git_name (name)))
     {
       gf.mode = mode;
+      gf.set_ctime_now();
       if (gf.save (options.repo_path + "/git/files/" + name2git_name (name)))
         {
           return 0;

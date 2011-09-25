@@ -43,6 +43,8 @@ struct GitFile
   std::string hash;
   time_t      mtime;
   int         mtime_ns;
+  time_t      ctime;
+  int         ctime_ns;
   uid_t       uid;
   gid_t       gid;
   mode_t      mode;
@@ -55,6 +57,7 @@ struct GitFile
   bool parse (const std::string& filename);
   bool save (const std::string& filename);
   void set_mtime_now();
+  void set_ctime_now();
 };
 
 #endif
