@@ -450,25 +450,6 @@ read_dir_contents (const string& path, vector<string>& entries)
   set<string>     file_list;
   GDir           *dir;
 
-  string del_files = options.repo_path + "/del/" + name2git_name (path);
-  dir = g_dir_open (del_files.c_str(), 0, NULL);
-  if (dir)
-    {
-      const char *name;
-      while ((name = g_dir_read_name (dir)))
-        {
-          string filename = remove_di_prefix (name);
-          if (file_list.count (filename) == 0 && string (name).substr (0, 2) == "i_")
-            {
-              file_list.insert (filename);
-              // by inserting deleted files into the file_list (without updating result)
-              // we ensure that they won't show up in ls
-            }
-        }
-      g_dir_close (dir);
-      dir_ok = true;
-    }
-
   string git_files = options.repo_path + "/git/files/" + name2git_name (path, GIT_DIRNAME);
   dir = g_dir_open (git_files.c_str(), 0, NULL);
   if (dir)
@@ -481,24 +462,6 @@ read_dir_contents (const string& path, vector<string>& entries)
             {
               file_list.insert (filename);
               entries.push_back (filename);
-            }
-          // FIXME: free name
-        }
-      g_dir_close (dir);
-      dir_ok = true;
-    }
-
-  string new_files = options.repo_path + "/new" + path;
-  dir = g_dir_open (new_files.c_str(), 0, NULL);
-  if (dir)
-    {
-      const char *name;
-      while ((name = g_dir_read_name (dir)))
-        {
-          if (file_list.count (name) == 0)
-            {
-              file_list.insert (name);
-              entries.push_back (name);
             }
         }
       g_dir_close (dir);
