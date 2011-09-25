@@ -459,6 +459,14 @@ def test_commit_special():
     new_stat = os.stat ("mnt/" + name)
     if (old_stat.st_mode != new_stat.st_mode):
       raise Exception ("stat diffs with %s %o => %o", name, old_stat.st_mode, new_stat.st_mode)
+    if old_stat.st_ctime == 0:
+      raise Exception ("old ctime zero on %s" % name)
+    if old_stat.st_mtime == 0:
+      raise Exception ("old mtime zero on %s" % name)
+    if new_stat.st_ctime == 0:
+      raise Exception ("new ctime zero on %s" % name)
+    if new_stat.st_mtime == 0:
+      raise Exception ("new mtime zero on %s" % name)
 
 tests += [ ("commit-special", test_commit_special) ]
 
@@ -509,6 +517,32 @@ def test_chmod_ctime():
     raise Exception ("ctime unchanged after chmod")
 
 tests += [ ("chmod-ctime", test_chmod_ctime) ]
+
+#####
+
+def test_commit_ctime():
+  os.chmod ("mnt/README", 0600)
+  old_stat = os.stat ("mnt/README")
+  commit()
+  new_stat = os.stat ("mnt/README")
+  if old_stat.st_ctime != new_stat.st_ctime:
+    raise Exception ("ctime not stored by commit")
+
+tests += [ ("commit-ctime", test_commit_ctime) ]
+
+#####
+
+def test_mtime_ctime_never_zero():
+  write_file ("mnt/newfile", "unimportant content")
+  os.mkdir ("mnt/newdir")
+  for i in [ "mnt/README", "mnt/subdir", "mnt/newfile", "mnt/newdir" ]:
+    stat = os.stat (i)
+    if stat.st_ctime == 0:
+      raise Exception ("ctime zero on %s" % i)
+    if stat.st_mtime == 0:
+      raise Exception ("mtime zero on %s" % i)
+
+tests += [ ("mtime-ctime-never-zero", test_mtime_ctime_never_zero) ]
 
 #####
 

@@ -256,6 +256,15 @@ copy_on_write (const string& path)
     }
 }
 
+void
+new_git_file (GitFile& gf)
+{
+  gf.uid = getuid();
+  gf.gid = getgid();
+  gf.set_mtime_now();
+  gf.set_ctime_now();
+}
+
 static int
 bfsync_getattr (const char *path, struct stat *stbuf)
 {
@@ -324,7 +333,6 @@ bfsync_getattr (const char *path, struct stat *stbuf)
       stbuf->st_ctim.tv_nsec = git_file.ctime_ns;
       return 0;
     }
-  printf ("::: no gitfile parsed\n");
 
   if (string (path) == "/.bfsync")
     {
@@ -466,10 +474,8 @@ bfsync_open (const char *path, struct fuse_file_info *fi)
       if (file_status (path) == FS_NEW)
         {
           GitFile git_file;
+          new_git_file (git_file);
           git_file.type = FILE_REGULAR;
-          git_file.uid  = getuid();
-          git_file.gid =  getgid();
-          git_file.set_mtime_now();
           git_file.mode = 0644;                             // FIXME: open mode?
           git_file.size = 0;                                // edited by bfsync2 on commit / along with hash
           git_file.hash = "new";
@@ -550,9 +556,7 @@ bfsync_mknod (const char *path, mode_t mode, dev_t dev)
 
   GitFile gf;
   gf.mode = mode & ~S_IFMT;
-  gf.uid  = getuid();
-  gf.gid  = getgid();
-  gf.set_mtime_now();
+  new_git_file (gf);
 
   if (S_ISREG (mode))
     {
@@ -724,11 +728,9 @@ bfsync_mkdir (const char *path, mode_t mode)
       mkdir (git_dir.c_str(), 0755);
 
       GitFile gf;
+      new_git_file (gf);
       gf.type = FILE_DIR;
       gf.mode = mode;
-      gf.uid = getuid();
-      gf.gid = getgid();
-      gf.set_mtime_now();
       gf.save (git_file);
       return 0;
     }
