@@ -178,17 +178,6 @@ def cmd_commit():
       else:
         raise Exception ("file '%s' has unknown type - cannot commit" % filename)
 
-  os.chdir (os.path.join (repo_path, "del"))
-  del_list = []
-  for dir, dirs, files in os.walk ("."):
-    for file in files:
-      filename = os.path.normpath (os.path.join (dir, file))
-      stat = os.lstat (filename)
-      if S_ISREG (stat.st_mode):
-        del_list += [ filename ]
-      else:
-        raise Exception ("deleted file '%s' has unknown type - cannot commit" % filename)
-
   os.chdir (os.path.join (repo_path, "new"))
   hash_cache.hash_all (hash_list)
   status_line.cleanup()
@@ -204,9 +193,6 @@ def cmd_commit():
       f.write ("symlink ")
     elif (filetype == FILE_DIR):
       f.write ("dir ")
-    f.write ("%s\n" % filename)
-  for filename in del_list:
-    f.write ("# del ")
     f.write ("%s\n" % filename)
   f.close()
   if not commit_args.m:
@@ -274,16 +260,6 @@ def cmd_commit():
     add_count += 1
     status_line.update ("file %d/%d" % (add_count, count))
 
-  # remove entries in git/files for deleted files/dirs
-  # status_line.set_op ("GIT-RM")
-  # count = len (del_list)
-  # del_count = 0
-  # for filename in del_list:
-    # git_file = os.path.join (repo_path, "git/files", filename)
-    # os.remove (git_file)
-    # del_count += 1
-    # status_line.update ("file %d/%d" % (del_count, count))
-
   status_line.cleanup()
 
   # commit changes to repo
@@ -322,11 +298,6 @@ def cmd_commit():
     if filetype == FILE_DIR:
       new_dir = os.path.join (repo_path, "new", filename)
       os.rmdir (new_dir)
-
-  # remove files from del/ directory
-  for filename in del_list:
-    del_file = os.path.join (repo_path, "del", filename)
-    os.remove (del_file)
   return
 
 command = None
