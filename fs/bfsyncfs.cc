@@ -329,14 +329,14 @@ bfsync_getattr (const char *path, struct stat *stbuf)
       return -ENOENT;
     }
 
-  string new_filename = options.repo_path + "/new" + path;
-  if (lstat (new_filename.c_str(), stbuf) == 0)
+  if (string (path) == "/")  // take attrs for / from git/files dir, since we have no own attrs stored for that dir
     {
-      debug ("=> new\n");
-      return 0;
+      if (lstat ((options.repo_path + "/git/files/").c_str(), stbuf) == 0)
+        return 0;
     }
 
   string git_filename = options.repo_path + "/git/files/" + name2git_name (path);
+
   GitFile git_file;
   if (git_file.parse (git_filename))
     {
@@ -344,10 +344,19 @@ bfsync_getattr (const char *path, struct stat *stbuf)
       if (git_file.type == FILE_REGULAR)
         {
           memset (stbuf, 0, sizeof (struct stat));
+          if (git_file.hash == "new")
+            {
+              // take size from new file
+              string new_filename = options.repo_path + "/new" + path;
+              lstat (new_filename.c_str(), stbuf);
+            }
+          else
+            {
+              stbuf->st_size = git_file.size;
+            }
           stbuf->st_mode = git_mode | S_IFREG;
           stbuf->st_uid  = git_file.uid;
           stbuf->st_gid  = git_file.gid;
-          stbuf->st_size = git_file.size;
           stbuf->st_mtime = git_file.mtime;
           stbuf->st_mtim.tv_nsec = git_file.mtime_ns;
         }
@@ -410,6 +419,7 @@ bfsync_getattr (const char *path, struct stat *stbuf)
         }
       return 0;
     }
+  printf ("::: no gitfile parsed\n");
 
   if (string (path) == "/.bfsync")
     {
@@ -596,6 +606,16 @@ bfsync_open (const char *path, struct fuse_file_info *fi)
 
   if (fd != -1)
     {
+      if (file_status (path) == FS_NEW)
+        {
+          GitFile git_file;
+          git_file.type = FILE_REGULAR;
+          git_file.mode = 0644;                             // FIXME: open mode?
+          git_file.size = 0;                                // edited by bfsync2 on commit / along with hash
+          git_file.hash = "new";
+          git_file.save (options.repo_path + "/git/files/" + name2git_name (path));
+        }
+
       FileHandle *fh = new FileHandle;
       fh->fd = fd;
       fh->special_file = FileHandle::NONE;
@@ -666,83 +686,131 @@ bfsync_write (const char *path, const char *buf, size_t size, off_t offset,
 static int
 bfsync_mknod (const char *path, mode_t mode, dev_t dev)
 {
-  string filename = options.repo_path + "/new" + path;
-
-  unlink ((options.repo_path + "/del/" + name2git_name (path)).c_str()); // just in case this is a deleted file
+  string git_file = options.repo_path + "/git/files/" + name2git_name (path);
 
   copy_dirs (path, FS_NEW);
 
-  int rc = mknod (filename.c_str(), mode, dev);
-  if (rc == 0)
-    return 0;
-  else
-    return -errno;
+  int new_mode = mode & ~S_IFMT;
+  if (S_ISREG (mode))
+    {
+      string filename = options.repo_path + "/new" + path;
+      int rc = mknod (filename.c_str(), mode, dev);
+      if (rc == 0)
+        {
+          GitFile gf;
+          gf.type = FILE_REGULAR;
+          gf.hash = "new";
+          gf.mode = new_mode;
+          gf.save (git_file);
+          return 0;
+        }
+      else
+        return -errno;
+    }
+  else if (S_ISFIFO (mode))
+    {
+      GitFile gf;
+      gf.type = FILE_FIFO;
+      gf.mode = new_mode;
+      gf.save (git_file);
+
+      return 0;
+    }
+  else if (S_ISSOCK (mode))
+    {
+      GitFile gf;
+      gf.type = FILE_SOCKET;
+      gf.mode = new_mode;
+      gf.save (git_file);
+
+      return 0;
+    }
+  else if (S_ISBLK (mode))
+    {
+      GitFile gf;
+      gf.type = FILE_BLOCK_DEV;
+      gf.major = major (dev);
+      gf.minor = minor (dev);
+      gf.mode = new_mode;
+      gf.save (git_file);
+
+      return 0;
+    }
+  else if (S_ISCHR (mode))
+    {
+      GitFile gf;
+      gf.type = FILE_CHAR_DEV;
+      gf.mode = new_mode;
+      gf.major = major (dev);
+      gf.minor = minor (dev);
+      gf.save (git_file);
+
+      return 0;
+    }
+  return -ENOENT;
 }
 
 int
 bfsync_chmod (const char *name, mode_t mode)
 {
-  if (file_status (name) == FS_GIT)
-    {
-      GitFile gf;
+  GitFile gf;
 
-      if (gf.parse (options.repo_path + "/git/files/" + name2git_name (name)))
+  if (gf.parse (options.repo_path + "/git/files/" + name2git_name (name)))
+    {
+      gf.mode = mode;
+      if (gf.save (options.repo_path + "/git/files/" + name2git_name (name)))
         {
-          gf.mode = mode;
-          if (gf.save (options.repo_path + "/git/files/" + name2git_name (name)))
-            {
-              return 0;
-            }
+          return 0;
         }
-      return -EIO;
-    }
-
-  copy_on_write (name);
-
-  if (file_status (name) != FS_NEW)
-    return -ENOENT;
-  else
-    {
-      int rc = chmod (file_path (name).c_str(), mode);
-      if (rc == 0)
-        return 0;
       else
-        return -errno;
+        {
+          return -EIO;
+        }
     }
+  return -ENOENT;
 }
 
 int
 bfsync_chown (const char *name, uid_t uid, gid_t gid)
 {
-  copy_on_write (name);
+  GitFile gf;
 
-  if (file_status (name) != FS_NEW)
-    return -ENOENT;
-  else
+  if (gf.parse (options.repo_path + "/git/files/" + name2git_name (name)))
     {
-      int rc = lchown (file_path (name).c_str(), uid, gid);
-      if (rc == 0)
-        return 0;
+      gf.uid = uid;
+      gf.gid = gid;
+      if (gf.save (options.repo_path + "/git/files/" + name2git_name (name)))
+        {
+          return 0;
+        }
       else
-        return -errno;
+        {
+          return -EIO;
+        }
     }
+  return -ENOENT;
 }
 
 int
 bfsync_utimens (const char *name, const struct timespec times[2])
 {
-  copy_on_write (name);
+  GitFile gf;
+  string git_file = options.repo_path + "/git/files/" + name2git_name (name);
 
-  if (file_status (name) != FS_NEW)
-    return -ENOENT;
-  else
+  if (gf.parse (git_file))
     {
-      int rc = utimensat (AT_FDCWD, file_path (name).c_str(), times, AT_SYMLINK_NOFOLLOW);
-      if (rc == 0)
-        return 0;
+      gf.mtime    = times[1].tv_sec;
+      gf.mtime_ns = times[1].tv_nsec;
+      if (gf.save (git_file))
+        {
+          return 0;
+        }
       else
-        return -errno;
+        {
+          return -EIO; // should never happen
+        }
     }
+  return -ENOENT;
 }
 
 int
@@ -800,7 +868,20 @@ bfsync_mkdir (const char *path, mode_t mode)
 
   int rc = mkdir (filename.c_str(), mode);
   if (rc == 0)
-    return 0;
+    {
+      string git_file = options.repo_path + "/git/files/" + name2git_name (path);
+      string git_dir  = options.repo_path + "/git/files/" + name2git_name (path, GIT_DIRNAME);
+
+      mkdir (git_dir.c_str(), 0755);
+
+      GitFile gf;
+      gf.type = FILE_DIR;
+      gf.mode = mode;
+      gf.uid = getuid();
+      gf.gid = getgid();
+      gf.save (git_file);
+      return 0;
+    }
 
   return -errno;
 }
@@ -875,10 +956,16 @@ bfsync_symlink (const char *from, const char *to)
   copy_dirs (to, FS_NEW);
 
   int rc = symlink (from, (options.repo_path + "/new" + to).c_str());
-
   if (rc == 0)
-    return 0;
+    {
+      string git_file = options.repo_path + "/git/files/" + name2git_name (to);
 
+      GitFile gf;
+      gf.type = FILE_SYMLINK;
+      gf.link = from;
+      gf.save (git_file);
+      return 0;
+    }
   return -errno;
 }
 

@@ -39,17 +39,17 @@ enum FileType {
 
 struct GitFile
 {
-  size_t   size;
-  std::string   hash;
-  time_t   mtime;
-  int      mtime_ns;
-  uid_t    uid;
-  gid_t    gid;
-  mode_t   mode;
-  std::string   link;
-  FileType type;
-  dev_t    major;
-  dev_t    minor;
+  size_t      size;
+  std::string hash;
+  time_t      mtime;
+  int         mtime_ns;
+  uid_t       uid;
+  gid_t       gid;
+  mode_t      mode;
+  std::string link;
+  FileType    type;
+  dev_t       major;
+  dev_t       minor;
 
   GitFile();
   bool parse (const std::string& filename);

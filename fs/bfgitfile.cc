@@ -29,8 +29,15 @@ using std::string;
 using std::vector;
 
 GitFile::GitFile() :
-  size (0)
+  size      (0),
+  mtime     (0),
+  mtime_ns  (0),
+  uid       (0),
+  gid       (0),
+  mode      (0),
+  type      (FILE_NONE)
 {
+  major = minor = 0;
 }
 
 bool
@@ -216,6 +223,11 @@ GitFile::save (const string& filename)
   else if (type == FILE_DIR)
     {
       attributes.add ("type", "dir");
+    }
+  else if (type == FILE_SYMLINK)
+    {
+      attributes.add ("type", "symlink");
+      attributes.add ("link", link);
     }
   else if (type == FILE_FIFO)
     {

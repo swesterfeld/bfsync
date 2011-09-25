@@ -118,6 +118,25 @@ def get_times (file_list):
     i += 3
   return stat_dict
 
+class GitFile:
+  def __init__ (self):
+    self.attrs = dict()
+  def parse (self, filename):
+    gfr = open (filename, "r")
+    for line in gfr.readlines():
+      l = line.strip().split (" ")
+      self.attrs[l[0]] = l[2]
+    gfr.close()
+  def save (self, filename):
+    gf = open (filename, "w")
+    for k in self.attrs:
+      gf.write ("%s = %s\n" % (k, self.attrs[k]))
+    gf.close()
+  def get (self, key):
+    return self.attrs[key]
+  def set (self, key, value):
+    self.attrs[key] = value
+
 def cmd_commit():
   parser = argparse.ArgumentParser (prog='bfsync2 commit')
   parser.add_argument ('-m', help='set commit message')
@@ -152,31 +171,32 @@ def cmd_commit():
   os.chdir (os.path.join (repo_path, "new"))
   file_list = []
   hash_list = []
-  for dir, dirs, files in os.walk ("."):
-    for d in dirs:
-      dirname = os.path.normpath (os.path.join (dir, d))
-      if (os.path.islink (dirname)):      # symlinks to directories should be treated as links (not dirs)
-        file_list += [ (dirname, FILE_SYMLINK) ]
-      else:
-        file_list += [ (dirname, FILE_DIR) ]
-    for file in files:
-      filename = os.path.normpath (os.path.join (dir, file))
-      stat = os.lstat (filename)
-      if S_ISREG (stat.st_mode):
-        file_list += [ (filename, FILE_REGULAR) ]
-        hash_list += [ filename ]
-      elif S_ISLNK (stat.st_mode):
-        file_list += [ (filename, FILE_SYMLINK) ]
-      elif S_ISFIFO (stat.st_mode):
-        file_list += [ (filename, FILE_FIFO) ]
-      elif S_ISSOCK (stat.st_mode):
-        file_list += [ (filename, FILE_SOCKET) ]
-      elif S_ISBLK (stat.st_mode):
-        file_list += [ (filename, FILE_BLOCK_DEV) ]
-      elif S_ISCHR (stat.st_mode):
-        file_list += [ (filename, FILE_CHAR_DEV) ]
-      else:
-        raise Exception ("file '%s' has unknown type - cannot commit" % filename)
+  if True:
+    for dir, dirs, files in os.walk ("."):
+      for d in dirs:
+        dirname = os.path.normpath (os.path.join (dir, d))
+        if (os.path.islink (dirname)):      # symlinks to directories should be treated as links (not dirs)
+          file_list += [ (dirname, FILE_SYMLINK) ]
+        else:
+          file_list += [ (dirname, FILE_DIR) ]
+      for file in files:
+        filename = os.path.normpath (os.path.join (dir, file))
+        stat = os.lstat (filename)
+        if S_ISREG (stat.st_mode):
+          file_list += [ (filename, FILE_REGULAR) ]
+          hash_list += [ filename ]
+        elif S_ISLNK (stat.st_mode):
+          file_list += [ (filename, FILE_SYMLINK) ]
+        elif S_ISFIFO (stat.st_mode):
+          file_list += [ (filename, FILE_FIFO) ]
+        elif S_ISSOCK (stat.st_mode):
+          file_list += [ (filename, FILE_SOCKET) ]
+        elif S_ISBLK (stat.st_mode):
+          file_list += [ (filename, FILE_BLOCK_DEV) ]
+        elif S_ISCHR (stat.st_mode):
+          file_list += [ (filename, FILE_CHAR_DEV) ]
+        else:
+          raise Exception ("file '%s' has unknown type - cannot commit" % filename)
 
   os.chdir (os.path.join (repo_path, "new"))
   hash_cache.hash_all (hash_list)
@@ -226,37 +246,18 @@ def cmd_commit():
 
     git_file = os.path.join (repo_path, "git/files", name2git_name (filename))
     mkdir_recursive (os.path.dirname (git_file))
+
+    gf_attrs = GitFile()
+    gf_attrs.parse (git_file)
+    rehash = False
     try:
-      gf = open (git_file, "w")
-      if filetype == FILE_REGULAR:
-        gf.write ("type = file\n")
-        gf.write ("hash = %s\n" % hash)
-        gf.write ("size = %d\n" % size)
-      elif filetype == FILE_SYMLINK:
-        gf.write ("type = symlink\n")
-        gf.write ("link = %s\n" % link)
-      elif filetype == FILE_DIR:
-        gf.write ("type = dir\n")
-      elif filetype == FILE_FIFO:
-        gf.write ("type = fifo\n")
-      elif filetype == FILE_SOCKET:
-        gf.write ("type = socket\n")
-      elif filetype == FILE_BLOCK_DEV:
-        gf.write ("type = blockdev\n")
-      elif filetype == FILE_CHAR_DEV:
-        gf.write ("type = chardev\n")
-      if filetype == FILE_BLOCK_DEV or filetype == FILE_CHAR_DEV:
-        # save major,minor pair for devices
-        gf.write ("major = %d\n" % os.major (stat.st_rdev))
-        gf.write ("minor = %d\n" % os.minor (stat.st_rdev))
-      gf.write ("uid = %d\n" % stat.st_uid)
-      gf.write ("gid = %d\n" % stat.st_gid)
-      gf.write ("mode = %o\n" % mode)
-      gf.write ("mtime = %d\n" % mtime)
-      gf.write ("mtime_ns = %d\n" % mtime_ns)
-      gf.close()
-    except Exception, ex:
-      raise
+      rehash = gf_attrs.get ("hash") == "new"
+    except:
+      pass
+    if rehash and filetype == FILE_REGULAR:
+      gf_attrs.set ("size", str (size))
+      gf_attrs.set ("hash", hash)
+      gf_attrs.save (git_file)
     add_count += 1
     status_line.update ("file %d/%d" % (add_count, count))
 
