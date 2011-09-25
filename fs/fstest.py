@@ -485,6 +485,21 @@ tests += [ ("commit-device", test_commit_device) ]
 
 #####
 
+def test_rename():
+  orig_readme = read_file ("mnt/README")
+  os.rename ("mnt/README", "mnt/xreadme")
+  if read_file ("mnt/xreadme") != orig_readme:
+    raise Exception ("contents changed during rename")
+  try:
+    read_file ("mnt/README")
+  except:
+    pass
+  else:
+    raise Exception ("rename left original file behind")
+
+tests += [ ("rename", test_rename) ]
+
+#####
 
 def start_bfsyncfs():
   if subprocess.call (["./bfsyncfs", "mnt"]) != 0:
