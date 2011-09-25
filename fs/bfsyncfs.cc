@@ -943,34 +943,22 @@ bfsync_symlink (const char *from, const char *to)
 static int
 bfsync_readlink (const char *path, char *buffer, size_t size)
 {
-  int len = 0;
-  if (file_status (path) == FS_GIT)
+  GitFile gf;
+  if (gf.parse (options.repo_path + "/git/files/" + name2git_name (path)) && gf.type == FILE_SYMLINK)
     {
-      GitFile gf;
-      if (gf.parse (options.repo_path + "/git/files/" + name2git_name (path)) && gf.type == FILE_SYMLINK)
-        {
-          len = gf.link.size();
-          if (len >= size)
-            len = size - 1;
-          memcpy (buffer, gf.link.c_str(), len);
-        }
-      else
-        {
-          return -ENOENT;
-        }
+      int len = gf.link.size();
+
+      if (len >= size)
+        len = size - 1;
+      memcpy (buffer, gf.link.c_str(), len);
+
+      buffer[len] = 0;
+      return 0;
     }
   else
     {
-      string filename = file_path (path);
-      if (filename == "")
-        return -ENOENT;
-
-      len = readlink (filename.c_str(), buffer, size - 1);
+      return -ENOENT;
     }
-  if (len == -1)
-    return -errno;
-  buffer[len] = 0;
-  return 0;
 }
 
 static void*
