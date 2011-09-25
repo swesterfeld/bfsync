@@ -112,7 +112,8 @@ class GitFile:
     gfr.close()
   def save (self, filename):
     gf = open (filename, "w")
-    for k in self.attrs:
+    keys = sorted (self.attrs.keys())
+    for k in keys:
       gf.write ("%s = %s\n" % (k, self.attrs[k]))
     gf.close()
   def get (self, key):
