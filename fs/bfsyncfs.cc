@@ -846,20 +846,19 @@ bfsync_rename (const char *old_path, const char *new_path)
 static int
 bfsync_symlink (const char *from, const char *to)
 {
-  copy_dirs (to, FS_NEW);
+  if (file_status (to) != FS_NONE)
+    return -EEXIST;
 
-  int rc = symlink (from, (options.repo_path + "/new" + to).c_str());
-  if (rc == 0)
-    {
-      string git_file = options.repo_path + "/git/files/" + name2git_name (to);
+  string git_file = options.repo_path + "/git/files/" + name2git_name (to);
 
-      GitFile gf;
-      gf.type = FILE_SYMLINK;
-      gf.link = from;
-      gf.save (git_file);
-      return 0;
-    }
-  return -errno;
+  GitFile gf;
+  gf.type = FILE_SYMLINK;
+  gf.link = from;
+
+  if (gf.save (git_file))
+    return 0;
+  else
+    return -EIO;
 }
 
 static int
