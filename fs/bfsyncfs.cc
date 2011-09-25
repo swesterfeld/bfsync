@@ -773,15 +773,14 @@ bfsync_unlink (const char *name)
         return -errno;
     }
 
-  // make del entry if git entry is present
+  // delete git entry if present
   if (file_status (name) == FS_GIT)
     {
-      copy_dirs (name, FS_DEL);
+      string git_file = options.repo_path + "/git/files/" + name2git_name (name);
 
-      int fd = open ((options.repo_path + "/del/" + name2git_name (name)).c_str(), O_CREAT|O_WRONLY, 0644);
-      if (fd != -1)
+      int rc = unlink (git_file.c_str());
+      if (rc == 0)
         {
-          close (fd);
           return 0;
         }
       else
@@ -823,15 +822,14 @@ bfsync_rmdir (const char *name)
         return -errno;
     }
 
-  // make del entry if git entry is present
+  // delete git entry if present
   if (file_status (name) == FS_GIT)
     {
-      copy_dirs (name, FS_DEL);
+      string git_file = options.repo_path + "/git/files/" + name2git_name (name);
 
-      int fd = open ((options.repo_path + "/del/" + name2git_name (name)).c_str(), O_CREAT|O_WRONLY, 0644);
-      if (fd != -1)
+      int rc = unlink (git_file.c_str());
+      if (rc == 0)
         {
-          close (fd);
           return 0;
         }
       else

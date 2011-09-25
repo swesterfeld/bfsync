@@ -275,14 +275,14 @@ def cmd_commit():
     status_line.update ("file %d/%d" % (add_count, count))
 
   # remove entries in git/files for deleted files/dirs
-  status_line.set_op ("GIT-RM")
-  count = len (del_list)
-  del_count = 0
-  for filename in del_list:
-    git_file = os.path.join (repo_path, "git/files", filename)
-    os.remove (git_file)
-    del_count += 1
-    status_line.update ("file %d/%d" % (del_count, count))
+  # status_line.set_op ("GIT-RM")
+  # count = len (del_list)
+  # del_count = 0
+  # for filename in del_list:
+    # git_file = os.path.join (repo_path, "git/files", filename)
+    # os.remove (git_file)
+    # del_count += 1
+    # status_line.update ("file %d/%d" % (del_count, count))
 
   status_line.cleanup()
 
