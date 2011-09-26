@@ -22,8 +22,6 @@ def setup():
   cwd = os.getcwd()
   if subprocess.call (["mkdir", "-p", "test/new"]) != 0:
     raise Exception ("error during setup")
-  if subprocess.call (["mkdir", "-p", "test/del"]) != 0:
-    raise Exception ("error during setup")
   if subprocess.call (["mkdir", "-p", "test/git/files"]) != 0:
     raise Exception ("error during setup")
   if subprocess.call (["mkdir", "-p", "mnt"]) != 0:
