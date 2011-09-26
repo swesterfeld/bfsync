@@ -290,6 +290,111 @@ def cmd_commit():
       os.rmdir (new_dir)
   return
 
+def strip_git_suffix (s):
+  if s[-4:] == ".git":
+    return s[:-4]
+  else:
+    return s
+
+def guess_dir_name (url):
+  dir_name = ""
+  for ch in reversed (url):
+    if (ch == ":") or (ch == "/"):
+      return strip_git_suffix (dir_name)
+    dir_name = ch + dir_name
+  return strip_git_suffix (dir_name)
+
+def cmd_clone():
+  parser = argparse.ArgumentParser (prog='bfsync2 clone')
+  parser.add_argument ('repo', help='path/url of the repository')
+  clone_args = parser.parse_args (args)
+  destdir = guess_dir_name (clone_args.repo)
+  if os.path.exists (destdir):
+    raise Exception ("fatal: destination path '" + destdir + "' already exists")
+  if subprocess.call (["mkdir", "-p", destdir + "/new",
+                                      destdir + "/objects",
+                                      destdir + "/git"]) != 0:
+    raise Exception ("creating directories failed")
+  if os.system ("git clone %s %s/git" % (clone_args.repo, destdir)) != 0:
+    try:
+      os.rmdir (destdir)
+    except:
+      pass
+    raise Exception ("git clone failed")
+  if subprocess.call (["mkdir", "-p", destdir + "/git/files"]) != 0:
+    raise Exception ("error during setup")
+  return
+
+def local_get (src):
+  print check ()
+  return
+
+def cmd_get():
+  status_line.set_op ("GET")
+  #if len (args) == 0:
+    #my_args = bfsync_config.get ("default/get")
+  #else:
+    #my_args = args
+  for src in args:
+    if len (src.split (":")) > 1:
+      remote_get (src)
+    else:
+      local_get (src)
+  return
+
+def git_name2file_name (v):
+  prefix = "git/files/"
+  if v[0:len(prefix)] == prefix:
+    v = v[len(prefix):]
+  result = ""
+  for p in v.split ("/"):
+    if p[0:2] == "i_" or p[0:2] == "d_":
+      p = p[2:]
+    if result != "":
+      result += "/"
+    result += p
+  return result
+
+def check():
+  check_list = []
+  show_progress = True
+  missing_list = []
+  for dir, dirs, files in os.walk ("git"):
+    if '.git' in dirs:
+      dirs.remove ('.git')
+    for file in files:
+      check_list += [ os.path.join (dir, file) ]
+  for v in check_list:
+    if (show_progress):
+      sys.stdout.write ("checking %s... " % git_name2file_name (v))
+      sys.stdout.flush()
+    gf_attrs = GitFile()
+    gf_attrs.parse (v)
+    try:
+      hash = gf_attrs.get ("hash")
+    except:
+      hash = "none"
+    if hash == "new":
+      print "CHANGED."
+    elif hash == "none":
+      print "OK."
+    else:
+      object_name = "objects/" + make_object_filename (hash)
+      if not os.path.exists (object_name):
+        missing_list += [ hash ]
+        print "MISSING"
+      else:
+        if hash_cache.compute_hash (object_name) == hash:
+          print "OK."
+        else:
+          missing_list += [ hash ]
+          print "MISSING"
+  return missing_list
+
+def cmd_check():
+  check
+  return
+
 command = None
 command_func = None
 arg_iter = sys.argv[1:].__iter__()
@@ -297,7 +402,10 @@ args = []
 
 for arg in arg_iter:
   commands = [
+    ( "check",          cmd_check, 0),
+    ( "clone",          cmd_clone, 1),
     ( "commit",         cmd_commit, 1),
+    ( "get",            cmd_get, 1),
   ]
   parse_ok = False
   if command == None:
