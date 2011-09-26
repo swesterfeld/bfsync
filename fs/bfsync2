@@ -369,8 +369,8 @@ def cmd_get():
       local_get (src)
   return
 
-def git_name2file_name (v):
-  prefix = "git/files/"
+def git_name2file_name (repo_dir, v):
+  prefix = os.path.join (repo_dir, "git", "files")
   if v[0:len(prefix)] == prefix:
     v = v[len(prefix):]
   result = ""
@@ -382,18 +382,18 @@ def git_name2file_name (v):
     result += p
   return result
 
-def check():
+def check (repo_dir):
   check_list = []
   show_progress = True
   missing_list = []
-  for dir, dirs, files in os.walk ("git"):
+  for dir, dirs, files in os.walk (os.path.join (repo_dir, "git")):
     if '.git' in dirs:
       dirs.remove ('.git')
     for file in files:
       check_list += [ os.path.join (dir, file) ]
   for v in check_list:
     if (show_progress):
-      sys.stdout.write ("checking %s... " % git_name2file_name (v))
+      sys.stdout.write ("checking %s... " % git_name2file_name (repo_dir, v))
       sys.stdout.flush()
     gf_attrs = GitFile()
     gf_attrs.parse (v)
@@ -406,7 +406,7 @@ def check():
     elif hash == "none":
       print "OK."
     else:
-      object_name = "objects/" + make_object_filename (hash)
+      object_name = os.path.join (repo_dir, "objects", make_object_filename (hash))
       if not os.path.exists (object_name):
         missing_list += [ hash ]
         print "MISSING"
@@ -419,7 +419,8 @@ def check():
   return missing_list
 
 def cmd_check():
-  check
+  repo_dir = find_repo_dir()
+  check (repo_dir)
   return
 
 def cmd_push():
