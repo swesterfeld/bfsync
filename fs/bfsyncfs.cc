@@ -39,7 +39,9 @@ using std::vector;
 using std::set;
 
 struct Options {
-  string repo_path;
+  string  repo_path;
+  string  mount_point;
+  bool    mount_debug;
 } options;
 
 enum FileStatus
@@ -873,10 +875,39 @@ bfsync_init (struct fuse_conn_info *conn)
 
 static struct fuse_operations bfsync_oper = { NULL, };
 
+void
+exit_usage()
+{
+  printf ("usage: bfsyncfs [ -d ] repo mount_point\n");
+  exit (1);
+}
+
 int
 main (int argc, char *argv[])
 {
-  string repo_path = "test";
+  string repo_path;
+
+  options.mount_debug = false;
+
+  int opt;
+  while ((opt = getopt (argc, argv, "d")) != -1)
+    {
+      switch (opt)
+        {
+          case 'd': options.mount_debug = true;
+                    break;
+          default:  exit_usage();
+                    exit (1);
+        }
+    }
+  if (argc - optind != 2)
+    {
+      printf ("wrong number of arguments\n");
+      exit_usage();
+    }
+  repo_path = argv[optind++];
+  options.mount_point = argv[optind++];
+
   if (!g_path_is_absolute (repo_path.c_str()))
     repo_path = g_get_current_dir() + string (G_DIR_SEPARATOR + repo_path);
 
@@ -911,5 +942,6 @@ main (int argc, char *argv[])
   bfsync_oper.symlink  = bfsync_symlink;
   bfsync_oper.rmdir    = bfsync_rmdir;
 
-  return fuse_main (argc, argv, &bfsync_oper, NULL);
+  char *my_argv[3] = { "bfsyncfs", g_strdup (options.mount_point.c_str()), NULL };
+  return fuse_main (2, my_argv, &bfsync_oper, NULL);
 }

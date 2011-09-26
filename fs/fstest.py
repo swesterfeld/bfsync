@@ -557,7 +557,7 @@ tests += [ ("mtime-ctime-never-zero", test_mtime_ctime_never_zero) ]
 #####
 
 def start_bfsyncfs():
-  if subprocess.call (["./bfsyncfs", "mnt"]) != 0:
+  if subprocess.call (["./bfsyncfs", "test", "mnt"]) != 0:
     print "can't start bfsyncfs"
     sys.exit (1)
 
