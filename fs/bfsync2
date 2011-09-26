@@ -326,7 +326,20 @@ def cmd_clone():
   return
 
 def local_get (src):
-  print check ()
+  repo_dir = "."
+  object_list = check()
+  hash_needed = dict()
+  tl = TransferList()
+  for hash in object_list:
+    if not hash_needed.has_key (hash):
+      hash_needed[hash] = True
+      obj_name = os.path.join ("objects", make_object_filename (hash))
+      src_name = os.path.join (src, obj_name)
+      dest_name = obj_name
+      if os.path.exists (src_name) and hash_cache.compute_hash (src_name) == hash:
+        print "get " + src_name + " \n => " + dest_name
+        tl.add (TransferFile (src_name, dest_name, os.path.getsize (src_name), 0400))
+  tl.copy_files()
   return
 
 def cmd_get():
