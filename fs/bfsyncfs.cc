@@ -281,6 +281,9 @@ bfsync_getattr (const char *path, struct stat *stbuf)
               // take size from new file
               string new_filename = options.repo_path + "/new" + path;
               lstat (new_filename.c_str(), stbuf);
+
+              git_file.mtime = stbuf->st_mtim.tv_sec;
+              git_file.mtime_ns = stbuf->st_mtim.tv_nsec;
             }
           else
             {

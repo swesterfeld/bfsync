@@ -121,6 +121,24 @@ class GitFile:
   def set (self, key, value):
     self.attrs[key] = value
 
+# python stat resolution is not nanosecond accurate, so we use a helper program
+def get_times (file_list):
+  (fd, stat_filename) = tempfile.mkstemp (prefix = "bfsync_git_stat_")
+  stat_file = os.fdopen (fd, "w")
+  for (filename, filetype) in file_list:
+    stat_file.write (filename + "\0")
+  stat_file.close();
+  stat_p =  subprocess.Popen(["xargs", "-0", "-a", stat_filename, "bfsyncstat"], stdout = subprocess.PIPE)
+  result = stat_p.communicate()[0]
+  os.remove (stat_filename)
+  stat_list = result.split ("\0")
+  stat_dict = dict()
+  i = 0
+  while (i + 3) < len (stat_list):
+    stat_dict[stat_list[i]] = (int (stat_list[i + 1]), int (stat_list[i + 2]))
+    i += 3
+  return stat_dict
+
 def cmd_commit():
   parser = argparse.ArgumentParser (prog='bfsync2 commit')
   parser.add_argument ('-m', help='set commit message')
@@ -195,6 +213,8 @@ def cmd_commit():
     os.remove (commit_msg_filename)
     raise Exception ("commit message is empty")
 
+  time_dict = get_times (file_list)
+
   # create entries in git/files for newly added files
   status_line.set_op ("GIT-ADD")
   count = len (file_list)
@@ -223,6 +243,9 @@ def cmd_commit():
     if rehash and filetype == FILE_REGULAR:
       gf_attrs.set ("size", str (size))
       gf_attrs.set ("hash", hash)
+      mtimes = time_dict[filename]
+      gf_attrs.set ("mtime", mtimes[0])
+      gf_attrs.set ("mtime_ns", mtimes[1])
       gf_attrs.save (git_file)
     add_count += 1
     status_line.update ("file %d/%d" % (add_count, count))
