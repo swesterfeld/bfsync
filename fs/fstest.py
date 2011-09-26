@@ -5,6 +5,7 @@ import sys
 import subprocess
 import time
 import traceback
+import argparse
 from stat import *
 
 def teardown():
@@ -559,46 +560,61 @@ def commit():
 def run_quiet (cmd):
   return subprocess.Popen (cmd, stdout=subprocess.PIPE).wait()
 
-# compile
+def main (verbose):
+  # compile
+  if subprocess.call (["make"]):
+    print "compilation failed"
+    sys.exit (1)
 
-if subprocess.call (["make"]):
-  print "compilation failed"
-  sys.exit (1)
+  # unmount if mounted
+  try:
+    f = open ("mnt/.bfsync/info")
+    f.close()
+    subprocess.call (["fusermount", "-u", "mnt"])
+  except:
+    pass # not mounted
 
-# unmount if mounted
-try:
-  f = open ("mnt/.bfsync/info")
-  f.close()
-  subprocess.call (["fusermount", "-u", "mnt"])
-except:
-  pass # not mounted
+  fail_count = 0
+  ok_count = 0
 
-fail_count = 0
-ok_count = 0
-
-for (desc, f) in tests:
-  print "test %-30s" % desc,
+  for (desc, f) in tests:
+    print "test %-30s" % desc,
+    teardown()
+    setup()
+    try:
+      f()
+    except Exception, e:
+      print "FAIL: ", e
+      fail_count += 1
+      if verbose:
+        print "\n\n"
+        print "=================================================="
+        traceback.print_exc()
+        print "=================================================="
+        print "\n\n"
+    else:
+      print "OK."
+      ok_count += 1
   teardown()
   setup()
-  try:
-    f()
-  except Exception, e:
-    print "FAIL: ", e
-    fail_count += 1
-    #print "\n\n"
-    #print "=================================================="
-    #traceback.print_exc()
-    #print "=================================================="
-    #print "\n\n"
+
+  # output results
+  print
+  if fail_count == 0:
+    print "PASSED: %d tests" % ok_count
   else:
-    print "OK."
-    ok_count += 1
-teardown()
-setup()
+    print "SUMMARY: %d/%d tests failed" % (fail_count, fail_count + ok_count)
 
-print
-print "Summary: %d/%d tests failed" % (fail_count, fail_count + ok_count)
+  # umount fs
+  if subprocess.call (["fusermount", "-u", "mnt"]):
+    print "can't stop bfsyncfs"
+    sys.exit (1)
 
-if subprocess.call (["fusermount", "-u", "mnt"]):
-  print "can't stop bfsyncfs"
-  sys.exit (1)
+parser = argparse.ArgumentParser (prog='fstest.py')
+parser.add_argument ('-v', action='store_true', help='verbose')
+fstest_args = parser.parse_args()
+
+if fstest_args.v:
+  main (True)
+else:
+  main (False)
