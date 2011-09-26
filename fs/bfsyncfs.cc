@@ -274,16 +274,23 @@ bfsync_getattr (const char *path, struct stat *stbuf)
       int git_mode = git_file.mode & ~S_IFMT;
 
       memset (stbuf, 0, sizeof (struct stat));
+      stbuf->st_uid          = git_file.uid;
+      stbuf->st_gid          = git_file.gid;
+      stbuf->st_mtime        = git_file.mtime;
+      stbuf->st_mtim.tv_nsec = git_file.mtime_ns;
+      stbuf->st_ctime        = git_file.ctime;
+      stbuf->st_ctim.tv_nsec = git_file.ctime_ns;
       if (git_file.type == FILE_REGULAR)
         {
           if (git_file.hash == "new")
             {
-              // take size from new file
+              // take size and mtime from new file
+              struct stat new_stat;
               string new_filename = options.repo_path + "/new" + path;
-              lstat (new_filename.c_str(), stbuf);
+              lstat (new_filename.c_str(), &new_stat);
 
-              git_file.mtime = stbuf->st_mtim.tv_sec;
-              git_file.mtime_ns = stbuf->st_mtim.tv_nsec;
+              stbuf->st_size = new_stat.st_size;
+              stbuf->st_mtim = new_stat.st_mtim;
             }
           else
             {
@@ -318,12 +325,6 @@ bfsync_getattr (const char *path, struct stat *stbuf)
           stbuf->st_mode = git_mode | S_IFCHR;
           stbuf->st_rdev = makedev (git_file.major, git_file.minor);
         }
-      stbuf->st_uid          = git_file.uid;
-      stbuf->st_gid          = git_file.gid;
-      stbuf->st_mtime        = git_file.mtime;
-      stbuf->st_mtim.tv_nsec = git_file.mtime_ns;
-      stbuf->st_ctime        = git_file.ctime;
-      stbuf->st_ctim.tv_nsec = git_file.ctime_ns;
       return 0;
     }
 
@@ -640,20 +641,31 @@ bfsync_chown (const char *name, uid_t uid, gid_t gid)
 int
 bfsync_utimens (const char *name, const struct timespec times[2])
 {
-  GitFile gf;
-  string git_file = options.repo_path + "/git/files/" + name2git_name (name);
-
-  if (gf.parse (git_file))
+  if (file_status (name) == FS_CHANGED)
     {
-      gf.mtime    = times[1].tv_sec;
-      gf.mtime_ns = times[1].tv_nsec;
-      if (gf.save (git_file))
-        {
-          return 0;
-        }
+      int rc = utimensat (AT_FDCWD, file_path (name).c_str(), times, AT_SYMLINK_NOFOLLOW);
+      if (rc == 0)
+        return 0;
       else
+        return -errno;
+    }
+  else
+    {
+      GitFile gf;
+      string git_file = options.repo_path + "/git/files/" + name2git_name (name);
+
+      if (gf.parse (git_file))
         {
-          return -EIO; // should never happen
+          gf.mtime    = times[1].tv_sec;
+          gf.mtime_ns = times[1].tv_nsec;
+          if (gf.save (git_file))
+            {
+              return 0;
+            }
+          else
+            {
+              return -EIO; // should never happen
+            }
         }
     }
   return -ENOENT;
