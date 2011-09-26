@@ -408,6 +408,26 @@ def cmd_check():
   check
   return
 
+def cmd_push():
+  repo_dir = "git"
+  try:
+    os.chdir (repo_dir)
+    if os.system ("git push origin master") != 0:
+      raise Exception ("git push failed")
+  except:
+    raise Exception ("cannot chdir to directory %s" % repo_dir)
+  return
+
+def cmd_pull():
+  repo_dir = "git"
+  try:
+    os.chdir (repo_dir)
+    if os.system ("git pull") != 0:
+      raise Exception ("git pull failed")
+  except:
+    raise Exception ("cannot chdir to directory %s" % repo_dir)
+  return
+
 command = None
 command_func = None
 arg_iter = sys.argv[1:].__iter__()
@@ -419,6 +439,8 @@ for arg in arg_iter:
     ( "clone",          cmd_clone, 1),
     ( "commit",         cmd_commit, 1),
     ( "get",            cmd_get, 1),
+    ( "pull",           cmd_pull, 0),
+    ( "push",           cmd_push, 0),
   ]
   parse_ok = False
   if command == None:
