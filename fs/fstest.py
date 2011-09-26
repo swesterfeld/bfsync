@@ -519,6 +519,17 @@ tests += [ ("chmod-ctime", test_chmod_ctime) ]
 
 #####
 
+def test_chown_ctime():
+  old_stat = os.stat ("mnt/README")
+  os.chown ("mnt/README", 123, 456)
+  new_stat = os.stat ("mnt/README")
+  if old_stat.st_ctime == new_stat.st_ctime:
+    raise Exception ("ctime unchanged after chown")
+
+tests += [ ("chown-ctime", test_chown_ctime) ]
+
+#####
+
 def test_commit_ctime():
   os.chmod ("mnt/README", 0600)
   old_stat = os.stat ("mnt/README")

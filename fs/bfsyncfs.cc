@@ -280,6 +280,7 @@ bfsync_getattr (const char *path, struct stat *stbuf)
       stbuf->st_mtim.tv_nsec = git_file.mtime_ns;
       stbuf->st_ctime        = git_file.ctime;
       stbuf->st_ctim.tv_nsec = git_file.ctime_ns;
+      stbuf->st_atim         = stbuf->st_mtim;    // we don't track atime, so set atime == mtime
       if (git_file.type == FILE_REGULAR)
         {
           if (git_file.hash == "new")
@@ -291,6 +292,7 @@ bfsync_getattr (const char *path, struct stat *stbuf)
 
               stbuf->st_size = new_stat.st_size;
               stbuf->st_mtim = new_stat.st_mtim;
+              stbuf->st_atim = new_stat.st_atim;
             }
           else
             {
@@ -626,6 +628,7 @@ bfsync_chown (const char *name, uid_t uid, gid_t gid)
     {
       gf.uid = uid;
       gf.gid = gid;
+      gf.set_ctime_now();
       if (gf.save (options.repo_path + "/git/files/" + name2git_name (name)))
         {
           return 0;
