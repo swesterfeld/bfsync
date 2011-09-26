@@ -340,8 +340,8 @@ def cmd_clone():
   return
 
 def local_get (src):
-  repo_dir = "."
-  object_list = check()
+  repo_dir = find_repo_dir()
+  object_list = check (repo_dir)
   hash_needed = dict()
   tl = TransferList()
   for hash in object_list:
@@ -349,9 +349,8 @@ def local_get (src):
       hash_needed[hash] = True
       obj_name = os.path.join ("objects", make_object_filename (hash))
       src_name = os.path.join (src, obj_name)
-      dest_name = obj_name
+      dest_name = os.path.join (repo_dir, obj_name)
       if os.path.exists (src_name) and hash_cache.compute_hash (src_name) == hash:
-        print "get " + src_name + " \n => " + dest_name
         tl.add (TransferFile (src_name, dest_name, os.path.getsize (src_name), 0400))
   tl.copy_files()
   return
