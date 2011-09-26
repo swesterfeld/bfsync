@@ -294,6 +294,10 @@ def cmd_commit():
     if filetype == FILE_DIR:
       new_dir = os.path.join (repo_path, "new", filename)
       os.rmdir (new_dir)
+
+  # auto-remount
+  if os.system ("bfsyncfs %s %s" % (repo_path, mount_point)) != 0:
+    raise Exception ("auto-remount failed")
   return
 
 def strip_git_suffix (s):
@@ -339,9 +343,19 @@ def cmd_clone():
     raise Exception ("creating files directory failed")
   return
 
+def remote_get (url):
+  repo_dir = find_repo_dir()
+  status_line.update ("checking local files...")
+  missing = check (repo_dir, False)
+  #failed = process_excludes (failed) # TODO
+  if len (missing) == 0:
+    status_line.cleanup()
+    print "All files up to date; nothing to do."
+    return
+
 def local_get (src):
   repo_dir = find_repo_dir()
-  object_list = check (repo_dir)
+  object_list = check (repo_dir, False)
   hash_needed = dict()
   tl = TransferList()
   for hash in object_list:
@@ -381,9 +395,8 @@ def git_name2file_name (repo_dir, v):
     result += p
   return result
 
-def check (repo_dir):
+def check (repo_dir, show_progress):
   check_list = []
-  show_progress = True
   missing_list = []
   for dir, dirs, files in os.walk (os.path.join (repo_dir, "git")):
     if '.git' in dirs:
@@ -401,25 +414,28 @@ def check (repo_dir):
     except:
       hash = "none"
     if hash == "new":
-      print "CHANGED."
+      state = "CHANGED"
     elif hash == "none":
-      print "OK."
+      state = "OK"
     else:
       object_name = os.path.join (repo_dir, "objects", make_object_filename (hash))
       if not os.path.exists (object_name):
         missing_list += [ hash ]
-        print "MISSING"
+        state = "MISSING"
       else:
         if hash_cache.compute_hash (object_name) == hash:
-          print "OK."
+          if show_progress:
+            state = "OK"
         else:
           missing_list += [ hash ]
-          print "MISSING"
+          state = "MISSING"
+    if show_progress:
+      print "%s." % state
   return missing_list
 
 def cmd_check():
   repo_dir = find_repo_dir()
-  check (repo_dir)
+  check (repo_dir, True)
   return
 
 def cmd_push():
