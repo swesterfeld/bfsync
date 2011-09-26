@@ -60,8 +60,5 @@ ENCRYPTED MODE:
 
 bfsync2 TODO:
 
-* preserve directory permissions
-* preserve micro-times (and probably set ctime and atime to something reasonable)
-* pass find -newer test (ctime)
-* store pipes /var/lib/oprofile/opd_pipe
+* write test: find -cnewer (ctime)
 * dir rename test
