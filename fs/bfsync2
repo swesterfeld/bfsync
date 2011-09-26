@@ -423,7 +423,7 @@ def cmd_check():
   return
 
 def cmd_push():
-  repo_dir = "git"
+  repo_dir = os.path.join (find_repo_dir(), "git")
   try:
     os.chdir (repo_dir)
     if os.system ("git push origin master") != 0:
