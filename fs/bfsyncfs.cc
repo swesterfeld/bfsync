@@ -45,8 +45,8 @@ struct Options {
 enum FileStatus
 {
   FS_NONE,
-  FS_NEW,
-  FS_GIT
+  FS_GIT,
+  FS_CHANGED
 };
 
 struct FileHandle
@@ -138,13 +138,14 @@ name2git_name (const string& name, int type = GIT_FILENAME)
 FileStatus
 file_status (const string& path)
 {
-  struct stat st;
-
-  if (lstat ((options.repo_path + "/new" + path).c_str(), &st) == 0)
-    return FS_NEW;
-  if (lstat ((options.repo_path + "/git/files/" + name2git_name (path)).c_str(), &st) == 0)
-    return FS_GIT;
-
+  GitFile gf;
+  if (gf.parse (options.repo_path + "/git/files/" + name2git_name (path)))
+    {
+      if (gf.hash == "new")
+        return FS_CHANGED;
+      else
+        return FS_GIT;
+    }
   return FS_NONE;
 }
 
@@ -161,7 +162,7 @@ string
 file_path (const string& path)
 {
   FileStatus fs = file_status (path);
-  if (fs == FS_NEW)
+  if (fs == FS_CHANGED)
     return options.repo_path + "/new" + path;
   if (fs == FS_GIT)
     {
@@ -197,7 +198,7 @@ split (const string& path)
 }
 
 void
-copy_dirs (const string& path, FileStatus status)
+copy_dirs (const string& path)
 {
   vector<string> dirs = split (path);
   if (dirs.empty())
@@ -205,22 +206,11 @@ copy_dirs (const string& path, FileStatus status)
 
   dirs.pop_back();
 
-  if (status == FS_NEW)
+  string dir_path = options.repo_path + "/new";
+  for (vector<string>::iterator di = dirs.begin(); di != dirs.end(); di++)
     {
-      string dir_path;
-
-      for (vector<string>::iterator di = dirs.begin(); di != dirs.end(); di++)
-        {
-          dir_path += "/" + *di;
-
-          string dir = options.repo_path + "/new" + dir_path;
-
-          mkdir (dir.c_str(), 0755);
-        }
-    }
-  else
-    {
-      assert (false);
+      dir_path += "/" + *di;
+      mkdir (dir_path.c_str(), 0755);
     }
 }
 
@@ -229,7 +219,7 @@ copy_on_write (const string& path)
 {
   if (file_status (path) == FS_GIT)
     {
-      copy_dirs (path, FS_NEW);
+      copy_dirs (path);
 
       GitFile gf;
       if (gf.parse (options.repo_path + "/git/files/" + name2git_name (path)))
@@ -460,6 +450,17 @@ bfsync_open (const char *path, struct fuse_file_info *fi)
   if (accmode == O_WRONLY || accmode == O_RDWR)
     {
       copy_on_write (path);
+
+      if (file_status (path) == FS_GIT)
+        {
+          GitFile git_file;
+          new_git_file (git_file);
+          git_file.type = FILE_REGULAR;
+          git_file.mode = 0644;                             // FIXME: open mode?
+          git_file.size = 0;                                // edited by bfsync2 on commit / along with hash
+          git_file.hash = "new";
+          git_file.save (options.repo_path + "/git/files/" + name2git_name (path));
+        }
     }
 
   string filename = file_path (path);
@@ -471,17 +472,6 @@ bfsync_open (const char *path, struct fuse_file_info *fi)
 
   if (fd != -1)
     {
-      if (file_status (path) == FS_NEW)
-        {
-          GitFile git_file;
-          new_git_file (git_file);
-          git_file.type = FILE_REGULAR;
-          git_file.mode = 0644;                             // FIXME: open mode?
-          git_file.size = 0;                                // edited by bfsync2 on commit / along with hash
-          git_file.hash = "new";
-          git_file.save (options.repo_path + "/git/files/" + name2git_name (path));
-        }
-
       FileHandle *fh = new FileHandle;
       fh->fd = fd;
       fh->special_file = FileHandle::NONE;
@@ -560,7 +550,7 @@ bfsync_mknod (const char *path, mode_t mode, dev_t dev)
 
   if (S_ISREG (mode))
     {
-      copy_dirs (path, FS_NEW);
+      copy_dirs (path);
 
       string filename = options.repo_path + "/new" + path;
       int rc = mknod (filename.c_str(), mode, dev);
@@ -671,7 +661,7 @@ bfsync_truncate (const char *name, off_t off)
 {
   copy_on_write (name);
 
-  if (file_status (name) != FS_NEW)
+  if (file_status (name) != FS_CHANGED)
     return -EINVAL;
   else
     {
@@ -686,8 +676,8 @@ bfsync_truncate (const char *name, off_t off)
 static int
 bfsync_unlink (const char *name)
 {
-  // delete data for new files
-  if (file_status (name) == FS_NEW)
+  // delete data for changed files
+  if (file_status (name) == FS_CHANGED)
     {
       int rc = unlink (file_path (name).c_str());
       if (rc != 0)
@@ -695,7 +685,7 @@ bfsync_unlink (const char *name)
     }
 
   // delete git entry if present
-  if (file_status (name) == FS_GIT)
+  if (file_status (name) != FS_NONE)
     {
       string git_file = options.repo_path + "/git/files/" + name2git_name (name);
 
@@ -717,7 +707,7 @@ bfsync_mkdir (const char *path, mode_t mode)
 {
   string filename = options.repo_path + "/new" + path;
 
-  copy_dirs (path, FS_NEW);
+  copy_dirs (path);
 
   int rc = mkdir (filename.c_str(), mode);
   if (rc == 0)
@@ -748,7 +738,7 @@ bfsync_rmdir (const char *name)
       return -ENOTEMPTY;
 
   // rmdir new directories
-  if (file_status (name) == FS_NEW)
+  if (file_status (name) == FS_CHANGED)
     {
       int rc = rmdir (file_path (name).c_str());
       if (rc != 0)
@@ -783,7 +773,7 @@ bfsync_rename (const char *old_path, const char *new_path)
   if (rc != 0)
     return -errno;
 
-  copy_dirs (new_path, FS_NEW);
+  copy_dirs (new_path);
 
   copy_on_write (old_path);
 
