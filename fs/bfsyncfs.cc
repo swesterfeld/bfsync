@@ -913,8 +913,9 @@ main (int argc, char *argv[])
 
   options.repo_path = repo_path;
 
-  special_files.info = "repo-path \"" + repo_path + "\";\n"
-                     + "mount-point \"" + g_get_current_dir() + "/mnt\";\n";
+  special_files.info  = "repo-type mount;\n";
+  special_files.info += "repo-path \"" + repo_path + "\";\n";
+  special_files.info += "mount-point \"" + string (g_get_current_dir()) + "/mnt\";\n";
 
   debug ("starting bfsyncfs; info = \n{\n%s}\n", special_files.info.c_str());
 

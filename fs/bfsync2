@@ -139,6 +139,17 @@ def get_times (file_list):
     i += 3
   return stat_dict
 
+def parse_config (filename):
+  bfsync_info = CfgParser.CfgParser (filename,
+  [
+  ],
+  [
+    "repo-type",
+    "repo-path",
+    "mount-point"
+  ])
+  return bfsync_info
+
 def cmd_commit():
   parser = argparse.ArgumentParser (prog='bfsync2 commit')
   parser.add_argument ('-m', help='set commit message')
@@ -147,13 +158,8 @@ def cmd_commit():
 
   os.chdir (commit_args.repo_path)
   bfsync_dir = find_bfsync_dir()
-  bfsync_info = CfgParser.CfgParser ((bfsync_dir + "/info"),
-  [
-  ],
-  [
-    "repo-path",
-    "mount-point"
-  ])
+
+  bfsync_info = parse_config (bfsync_dir + "/info")
 
   repo_path = bfsync_info.get ("repo-path")
   if len (repo_path) != 1:
@@ -313,7 +319,8 @@ def cmd_clone():
     raise Exception ("fatal: destination path '" + destdir + "' already exists")
   if subprocess.call (["mkdir", "-p", destdir + "/new",
                                       destdir + "/objects",
-                                      destdir + "/git"]) != 0:
+                                      destdir + "/git",
+                                      destdir + "/.bfsync"]) != 0:
     raise Exception ("creating directories failed")
   if os.system ("git clone %s %s/git" % (clone_args.repo, destdir)) != 0:
     try:
@@ -321,8 +328,15 @@ def cmd_clone():
     except:
       pass
     raise Exception ("git clone failed")
+  infoname = destdir + "/.bfsync/info"
+  try:
+    f = open (infoname, "w")
+    f.write ("repo-type store;\n")
+    f.close()
+  except:
+    raise Exception ("unable to write initial repo info file %s" % infoname)
   if subprocess.call (["mkdir", "-p", destdir + "/git/files"]) != 0:
-    raise Exception ("error during setup")
+    raise Exception ("creating files directory failed")
   return
 
 def local_get (src):
@@ -418,8 +432,42 @@ def cmd_push():
     raise Exception ("cannot chdir to directory %s" % repo_dir)
   return
 
+def find_repo_dir():
+  dir = os.getcwd()
+  while True:
+    file_ok = False
+    try:
+      cfg_file = os.path.join (dir, ".bfsync/info")
+      f = open (cfg_file, "r")
+      f.close()
+      file_ok = True
+    except:
+      pass
+    if file_ok:
+      cfg = parse_config (cfg_file)
+      repo_type_list = cfg.get ("repo-type")
+      if len (repo_type_list) != 1:
+        raise Exception ("bad repo-type list (should have exactly 1 entry)")
+      if repo_type_list[0] == "store":
+        pass # dir ok
+      elif repo_type_list[0] == "mount":
+        dir = cfg.get ("repo-path")
+        if len (dir) == 1:
+          dir = dir[0]
+        else:
+          raise Exception ("bad repo-path list (should have exactly 1 entry)")
+      else:
+        raise Exception ("unknown repo-type '%s' in find_repo_dir", cfg.get ("repo-type"))
+      return dir
+    # try parent directory
+    newdir = os.path.dirname (dir)
+    if newdir == dir:
+      # no more parent
+      raise Exception ("error: can not find .bfsync directory")
+    dir = newdir
+
 def cmd_pull():
-  repo_dir = "git"
+  repo_dir = find_repo_dir() + "/git"
   try:
     os.chdir (repo_dir)
     if os.system ("git pull") != 0:
