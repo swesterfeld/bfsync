@@ -281,7 +281,7 @@ FSLock::FSLock()
     {
       sleep (1);
     }
-  lock = "";
+  special_files.lock.clear();
 }
 
 FSLock::~FSLock()
