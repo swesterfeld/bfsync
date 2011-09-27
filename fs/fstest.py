@@ -564,7 +564,6 @@ def start_bfsyncfs():
 def commit():
   if run_quiet (["./bfsync2", "commit", "-m", "fstest", "mnt"]) != 0:
     raise Exception ("commit failed")
-  start_bfsyncfs()
 
 def run_quiet (cmd):
   return subprocess.Popen (cmd, stdout=subprocess.PIPE).wait()
@@ -586,8 +585,10 @@ def main (verbose):
   fail_count = 0
   ok_count = 0
 
+  test_nr = 1
   for (desc, f) in tests:
-    print "test %-30s" % desc,
+    sys.stdout.write ("[%02d] test %-30s" % (test_nr, desc))
+    sys.stdout.flush()
     teardown()
     setup()
     try:
@@ -604,6 +605,7 @@ def main (verbose):
     else:
       print "OK."
       ok_count += 1
+    test_nr += 1
   teardown()
   setup()
 
