@@ -54,12 +54,13 @@ enum FileStatus
 struct FileHandle
 {
   int fd;
-  enum { NONE, INFO } special_file;
+  enum { NONE, INFO, LOCK } special_file;
 };
 
 struct SpecialFiles
 {
   string info;
+  string lock;
 } special_files;
 
 static FILE *debug_file = NULL;
@@ -263,48 +264,28 @@ struct FSLock
   ~FSLock();
 };
 
-static int lock_fd = -1;
 
 FSLock::FSLock()
 {
-#if 0
-  if (lock_fd == -1)
-    lock_fd = open ("/tmp/fslock", O_RDWR);
+  pid_t  pid = 0; // <- no lock
+  string pid_str;
 
-  assert (lock_fd != -1);
-
-  do
+  printf ("FSLock: lock = '%s'\n", special_files.lock.c_str());
+  for (string::const_iterator li = special_files.lock.begin(); li != special_files.lock.end(); li++)
     {
-      char c;
-
-      int rc = pread (lock_fd, &c, 1, 0);
-      if (rc == 1 && c == '0')
-        {
-          // got lock
-          c = '1';
-          int rc = pwrite (lock_fd, &c, 1, 0);
-          assert (rc == 1);
-          return;
-        }
-      else
-        {
-          // no lock - try again later
-          sleep (1);
-        }
+      if (*li == '\n')
+        pid = atoi (pid_str.c_str());
+      pid_str += *li;
     }
-  while (1);
-#endif
+  while (pid > 0 && (kill (pid, 0) == 0))   // lock held by some process
+    {
+      sleep (1);
+    }
+  lock = "";
 }
 
 FSLock::~FSLock()
 {
-#if 0
-  // release lock
-  char c = '0';
-
-  int rc = pwrite (lock_fd, &c, 1, 0);
-  assert (rc == 1);
-#endif
 }
 
 static int
@@ -386,8 +367,6 @@ bfsync_getattr (const char *path, struct stat *stbuf)
 
   if (string (path) == "/.bfsync")
     {
-      debug ("=> .bfsync\n");
-
       memset (stbuf, 0, sizeof (struct stat));
       stbuf->st_mode = 0755 | S_IFDIR;
       stbuf->st_uid  = getuid();
@@ -396,13 +375,20 @@ bfsync_getattr (const char *path, struct stat *stbuf)
     }
   else if (string (path) == "/.bfsync/info")
     {
-      debug ("=> .bfsync/info\n");
-
       memset (stbuf, 0, sizeof (struct stat));
       stbuf->st_mode = 0644 | S_IFREG;
       stbuf->st_uid  = getuid();
       stbuf->st_gid  = getgid();
       stbuf->st_size = special_files.info.size();
+      return 0;
+    }
+  else if (string (path) == "/.bfsync/lock")
+    {
+      memset (stbuf, 0, sizeof (struct stat));
+      stbuf->st_mode = 0644 | S_IFREG;
+      stbuf->st_uid  = getuid();
+      stbuf->st_gid  = getgid();
+      stbuf->st_size = special_files.lock.size();
       return 0;
     }
   else
@@ -457,6 +443,7 @@ read_dir_contents (const string& path, vector<string>& entries)
   else if (path == "/.bfsync")
     {
       entries.push_back ("info");
+      entries.push_back ("lock");
     }
 
   return dir_ok;
@@ -509,6 +496,14 @@ bfsync_open (const char *path, struct fuse_file_info *fi)
       fi->fh = reinterpret_cast<uint64_t> (fh);
       return 0;
     }
+  else if (string (path) == "/.bfsync/lock")
+    {
+      FileHandle *fh = new FileHandle;
+      fh->fd = -1;
+      fh->special_file = FileHandle::LOCK;
+      fi->fh = reinterpret_cast<uint64_t> (fh);
+      return 0;
+    }
 
   int accmode = fi->flags & O_ACCMODE;
   if (accmode == O_WRONLY || accmode == O_RDWR)
@@ -551,9 +546,18 @@ bfsync_open (const char *path, struct fuse_file_info *fi)
 static int
 bfsync_release (const char *path, struct fuse_file_info *fi)
 {
+  FileHandle *fh = reinterpret_cast<FileHandle *> (fi->fh);
+
+  // release on .bfsync special files is lock-free
+  if (fh->fd == -1)
+    {
+      delete fh;
+      return 0;
+    }
+
+  // other files protected by lock
   FSLock lock;
 
-  FileHandle *fh = reinterpret_cast<FileHandle *> (fi->fh);
   close (fh->fd);
   delete fh;
   return 0;
@@ -597,9 +601,20 @@ static int
 bfsync_write (const char *path, const char *buf, size_t size, off_t offset,
               struct fuse_file_info *fi)
 {
-  FSLock lock;
-
   FileHandle *fh = reinterpret_cast<FileHandle *> (fi->fh);
+
+  // write is done before acquiring filesystem lock:
+  if (fh->fd == -1 && fh->special_file == FileHandle::LOCK)
+    {
+      string& lock_file = special_files.lock;
+
+      lock_file.resize (size + offset);
+      std::copy (buf, buf + size, lock_file.begin() + offset);
+      return size;
+    }
+
+  // ordinary file writes are protected by lock (for instance to avoid changing files during commit)
+  FSLock lock;
 
   ssize_t bytes_written = 0;
 
@@ -749,6 +764,16 @@ bfsync_utimens (const char *name, const struct timespec times[2])
 int
 bfsync_truncate (const char *name, off_t off)
 {
+  // write is done before acquiring filesystem lock:
+  if (string (name) == "/.bfsync/lock")
+    {
+      string& lock_file = special_files.lock;
+
+      lock_file.resize (off);
+      return 0;
+    }
+
+  // other files protected by lock
   FSLock lock;
 
   copy_on_write (name);
@@ -1031,6 +1056,14 @@ main (int argc, char *argv[])
   bfsync_oper.symlink  = bfsync_symlink;
   bfsync_oper.rmdir    = bfsync_rmdir;
 
-  char *my_argv[3] = { "bfsyncfs", g_strdup (options.mount_point.c_str()), NULL };
-  return fuse_main (2, my_argv, &bfsync_oper, NULL);
+  char *my_argv[32] = { NULL, };
+  int my_argc = 0;
+
+  my_argv[my_argc++] = "bfsyncfs";
+  my_argv[my_argc++] = g_strdup (options.mount_point.c_str());
+  if (options.mount_debug)
+    my_argv[my_argc++] = "-d";
+  my_argv[my_argc] = NULL;
+
+  return fuse_main (my_argc, my_argv, &bfsync_oper, NULL);
 }
