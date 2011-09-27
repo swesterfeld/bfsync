@@ -257,9 +257,61 @@ new_git_file (GitFile& gf)
   gf.set_ctime_now();
 }
 
+struct FSLock
+{
+  FSLock();
+  ~FSLock();
+};
+
+static int lock_fd = -1;
+
+FSLock::FSLock()
+{
+#if 0
+  if (lock_fd == -1)
+    lock_fd = open ("/tmp/fslock", O_RDWR);
+
+  assert (lock_fd != -1);
+
+  do
+    {
+      char c;
+
+      int rc = pread (lock_fd, &c, 1, 0);
+      if (rc == 1 && c == '0')
+        {
+          // got lock
+          c = '1';
+          int rc = pwrite (lock_fd, &c, 1, 0);
+          assert (rc == 1);
+          return;
+        }
+      else
+        {
+          // no lock - try again later
+          sleep (1);
+        }
+    }
+  while (1);
+#endif
+}
+
+FSLock::~FSLock()
+{
+#if 0
+  // release lock
+  char c = '0';
+
+  int rc = pwrite (lock_fd, &c, 1, 0);
+  assert (rc == 1);
+#endif
+}
+
 static int
 bfsync_getattr (const char *path, struct stat *stbuf)
 {
+  FSLock lock;
+
   debug ("getattr (\"%s\")\n", path);
 
   if (string (path) == "/")  // take attrs for / from git/files dir, since we have no own attrs stored for that dir
@@ -414,6 +466,8 @@ static int
 bfsync_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
                 off_t offset, struct fuse_file_info *fi)
 {
+  FSLock lock;
+
   debug ("readdir (\"%s\")\n", path);
 
   (void) offset;
@@ -443,6 +497,8 @@ bfsync_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
 static int
 bfsync_open (const char *path, struct fuse_file_info *fi)
 {
+  FSLock lock;
+
   debug ("open (\"%s\")\n", path);
 
   if (string (path) == "/.bfsync/info")
@@ -495,6 +551,8 @@ bfsync_open (const char *path, struct fuse_file_info *fi)
 static int
 bfsync_release (const char *path, struct fuse_file_info *fi)
 {
+  FSLock lock;
+
   FileHandle *fh = reinterpret_cast<FileHandle *> (fi->fh);
   close (fh->fd);
   delete fh;
@@ -505,6 +563,8 @@ static int
 bfsync_read (const char *path, char *buf, size_t size, off_t offset,
              struct fuse_file_info *fi)
 {
+  FSLock lock;
+
   debug ("read (\"%s\")\n", path);
 
   FileHandle *fh = reinterpret_cast<FileHandle *> (fi->fh);
@@ -537,6 +597,8 @@ static int
 bfsync_write (const char *path, const char *buf, size_t size, off_t offset,
               struct fuse_file_info *fi)
 {
+  FSLock lock;
+
   FileHandle *fh = reinterpret_cast<FileHandle *> (fi->fh);
 
   ssize_t bytes_written = 0;
@@ -550,6 +612,8 @@ bfsync_write (const char *path, const char *buf, size_t size, off_t offset,
 static int
 bfsync_mknod (const char *path, mode_t mode, dev_t dev)
 {
+  FSLock lock;
+
   string git_file = options.repo_path + "/git/files/" + name2git_name (path);
 
   GitFile gf;
@@ -603,6 +667,8 @@ bfsync_mknod (const char *path, mode_t mode, dev_t dev)
 int
 bfsync_chmod (const char *name, mode_t mode)
 {
+  FSLock lock;
+
   GitFile gf;
 
   if (gf.parse (options.repo_path + "/git/files/" + name2git_name (name)))
@@ -624,6 +690,8 @@ bfsync_chmod (const char *name, mode_t mode)
 int
 bfsync_chown (const char *name, uid_t uid, gid_t gid)
 {
+  FSLock lock;
+
   GitFile gf;
 
   if (gf.parse (options.repo_path + "/git/files/" + name2git_name (name)))
@@ -646,6 +714,8 @@ bfsync_chown (const char *name, uid_t uid, gid_t gid)
 int
 bfsync_utimens (const char *name, const struct timespec times[2])
 {
+  FSLock lock;
+
   if (file_status (name) == FS_CHANGED)
     {
       int rc = utimensat (AT_FDCWD, file_path (name).c_str(), times, AT_SYMLINK_NOFOLLOW);
@@ -679,6 +749,8 @@ bfsync_utimens (const char *name, const struct timespec times[2])
 int
 bfsync_truncate (const char *name, off_t off)
 {
+  FSLock lock;
+
   copy_on_write (name);
 
   if (file_status (name) != FS_CHANGED)
@@ -696,6 +768,8 @@ bfsync_truncate (const char *name, off_t off)
 static int
 bfsync_unlink (const char *name)
 {
+  FSLock lock;
+
   // delete data for changed files
   if (file_status (name) == FS_CHANGED)
     {
@@ -725,6 +799,8 @@ bfsync_unlink (const char *name)
 static int
 bfsync_mkdir (const char *path, mode_t mode)
 {
+  FSLock lock;
+
   string filename = options.repo_path + "/new" + path;
 
   copy_dirs (path);
@@ -751,6 +827,8 @@ bfsync_mkdir (const char *path, mode_t mode)
 static int
 bfsync_rmdir (const char *name)
 {
+  FSLock lock;
+
   // check that dir is in fact empty
   vector<string> entries;
   if (read_dir_contents (name, entries))
@@ -786,6 +864,8 @@ bfsync_rmdir (const char *name)
 static int
 bfsync_rename (const char *old_path, const char *new_path)
 {
+  FSLock lock;
+
   string old_git_file = options.repo_path + "/git/files/" + name2git_name (old_path);
   string new_git_file = options.repo_path + "/git/files/" + name2git_name (new_path);
 
@@ -824,6 +904,8 @@ bfsync_rename (const char *old_path, const char *new_path)
 static int
 bfsync_symlink (const char *from, const char *to)
 {
+  FSLock lock;
+
   if (file_status (to) != FS_NONE)
     return -EEXIST;
 
@@ -842,6 +924,8 @@ bfsync_symlink (const char *from, const char *to)
 static int
 bfsync_readlink (const char *path, char *buffer, size_t size)
 {
+  FSLock lock;
+
   GitFile gf;
   if (gf.parse (options.repo_path + "/git/files/" + name2git_name (path)) && gf.type == FILE_SYMLINK)
     {
@@ -885,7 +969,7 @@ exit_usage()
 int
 main (int argc, char *argv[])
 {
-  string repo_path;
+  string repo_path, mount_point;
 
   options.mount_debug = false;
 
@@ -906,16 +990,20 @@ main (int argc, char *argv[])
       exit_usage();
     }
   repo_path = argv[optind++];
-  options.mount_point = argv[optind++];
+  mount_point = argv[optind++];
 
   if (!g_path_is_absolute (repo_path.c_str()))
     repo_path = g_get_current_dir() + string (G_DIR_SEPARATOR + repo_path);
 
+  if (!g_path_is_absolute (mount_point.c_str()))
+    mount_point = g_get_current_dir() + string (G_DIR_SEPARATOR + mount_point);
+
   options.repo_path = repo_path;
+  options.mount_point = mount_point;
 
   special_files.info  = "repo-type mount;\n";
   special_files.info += "repo-path \"" + repo_path + "\";\n";
-  special_files.info += "mount-point \"" + string (g_get_current_dir()) + "/mnt\";\n";
+  special_files.info += "mount-point \"" + mount_point + "\";\n";
 
   debug ("starting bfsyncfs; info = \n{\n%s}\n", special_files.info.c_str());
 
