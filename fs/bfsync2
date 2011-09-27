@@ -153,10 +153,8 @@ def parse_config (filename):
 def cmd_commit():
   parser = argparse.ArgumentParser (prog='bfsync2 commit')
   parser.add_argument ('-m', help='set commit message')
-  parser.add_argument ('repo_path', help='path to the repository')
   commit_args = parser.parse_args (args)
 
-  os.chdir (commit_args.repo_path)
   bfsync_dir = find_bfsync_dir()
 
   bfsync_info = parse_config (bfsync_dir + "/info")
@@ -171,10 +169,11 @@ def cmd_commit():
     raise Exception ("bad mount point")
   mount_point = mount_point[0]
 
-  # chdir to repo_path to allow unmount
   os.chdir (repo_path)
-  if subprocess.call (["fusermount", "-u", mount_point]) != 0:
-    raise Exception ("umount failed")
+
+  # lock repo to allow modifications
+  if os.system ("echo %d > %s/.bfsync/lock" % (os.getpid(), mount_point)) != 0:
+    raise Exception ("cannot lock repo")
 
   os.chdir (os.path.join (repo_path, "new"))
   file_list = []
@@ -294,10 +293,6 @@ def cmd_commit():
     if filetype == FILE_DIR:
       new_dir = os.path.join (repo_path, "new", filename)
       os.rmdir (new_dir)
-
-  # auto-remount
-  if os.system ("bfsyncfs %s %s" % (repo_path, mount_point)) != 0:
-    raise Exception ("auto-remount failed")
   return
 
 def strip_git_suffix (s):

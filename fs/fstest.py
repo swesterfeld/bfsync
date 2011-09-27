@@ -562,8 +562,11 @@ def start_bfsyncfs():
     sys.exit (1)
 
 def commit():
-  if run_quiet (["./bfsync2", "commit", "-m", "fstest", "mnt"]) != 0:
+  cwd = os.getcwd()
+  os.chdir ("mnt")
+  if run_quiet ([cwd + "/bfsync2", "commit", "-m", "fstest"]) != 0:
     raise Exception ("commit failed")
+  os.chdir (cwd)
 
 def run_quiet (cmd):
   return subprocess.Popen (cmd, stdout=subprocess.PIPE).wait()

@@ -291,8 +291,6 @@ FSLock::~FSLock()
 static int
 bfsync_getattr (const char *path, struct stat *stbuf)
 {
-  FSLock lock;
-
   debug ("getattr (\"%s\")\n", path);
 
   if (string (path) == "/")  // take attrs for / from git/files dir, since we have no own attrs stored for that dir
@@ -301,6 +299,7 @@ bfsync_getattr (const char *path, struct stat *stbuf)
         return 0;
     }
 
+  FSLock lock;
   string git_filename = options.repo_path + "/git/files/" + name2git_name (path);
 
   GitFile git_file;
