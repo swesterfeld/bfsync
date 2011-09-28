@@ -341,26 +341,26 @@ def cmd_clone():
 def remote_get (url):
   repo_dir = find_repo_dir()
   status_line.update ("checking local files...")
-  missing = check (repo_dir, False)
+  object_list = check (repo_dir, False)
   #failed = process_excludes (failed) # TODO
-  if len (missing) == 0:
+  if len (object_list) == 0:
     status_line.cleanup()
     print "All files up to date; nothing to do."
     return
+  print
+  for hash in object_list:
+    print hash
 
 def local_get (src):
   repo_dir = find_repo_dir()
   object_list = check (repo_dir, False)
-  hash_needed = dict()
   tl = TransferList()
   for hash in object_list:
-    if not hash_needed.has_key (hash):
-      hash_needed[hash] = True
-      obj_name = os.path.join ("objects", make_object_filename (hash))
-      src_name = os.path.join (src, obj_name)
-      dest_name = os.path.join (repo_dir, obj_name)
-      if os.path.exists (src_name) and hash_cache.compute_hash (src_name) == hash:
-        tl.add (TransferFile (src_name, dest_name, os.path.getsize (src_name), 0400))
+    obj_name = os.path.join ("objects", make_object_filename (hash))
+    src_name = os.path.join (src, obj_name)
+    dest_name = os.path.join (repo_dir, obj_name)
+    if os.path.exists (src_name) and hash_cache.compute_hash (src_name) == hash:
+      tl.add (TransferFile (src_name, dest_name, os.path.getsize (src_name), 0400))
   tl.copy_files()
   return
 
@@ -389,6 +389,15 @@ def git_name2file_name (repo_dir, v):
       result += "/"
     result += p
   return result
+
+def dedup_hash_list (hash_list):
+  result_list = []
+  seen_hash = dict()
+  for hash in hash_list:
+    if not seen_hash.has_key (hash):
+      seen_hash[hash] = True
+      result_list += [ hash ]
+  return result_list
 
 def check (repo_dir, show_progress):
   check_list = []
@@ -426,7 +435,7 @@ def check (repo_dir, show_progress):
           state = "MISSING"
     if show_progress:
       print "%s." % state
-  return missing_list
+  return dedup_hash_list (missing_list)
 
 def cmd_check():
   repo_dir = find_repo_dir()
@@ -487,6 +496,27 @@ def cmd_pull():
     raise Exception ("cannot chdir to directory %s" % repo_dir)
   return
 
+class RemoteFile:
+  pass
+
+def cmd_remote_ls():
+  file_list = []
+  for rdir in args:
+    os.chdir (rdir)
+    object_dir = find_repo_dir() + "/objects"
+    for dir, dirs, files in os.walk (object_dir):
+      for f in files:
+        full_name = os.path.join (dir, f)
+        if os.path.isfile (full_name):
+          name_hash = os.path.basename (dir) + f
+          real_hash = hash_cache.compute_hash (full_name)
+          if (name_hash == real_hash):
+            remote_file = RemoteFile()
+            remote_file.hash = real_hash
+            remote_file.size = os.path.getsize (full_name)
+            file_list += [ remote_file ]
+  print pickle.dumps (file_list)
+
 command = None
 command_func = None
 arg_iter = sys.argv[1:].__iter__()
@@ -500,6 +530,7 @@ for arg in arg_iter:
     ( "get",            cmd_get, 1),
     ( "pull",           cmd_pull, 0),
     ( "push",           cmd_push, 0),
+    ( "remote-ls",      cmd_remote_ls, 1)
   ]
   parse_ok = False
   if command == None:
