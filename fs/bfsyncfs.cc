@@ -258,16 +258,38 @@ new_git_file (GitFile& gf)
   gf.set_ctime_now();
 }
 
+class Mutex
+{
+  pthread_mutex_t mutex;
+public:
+  Mutex();
+  ~Mutex();
+
+  void lock()   { pthread_mutex_lock (&mutex); }
+  void unlock() { pthread_mutex_unlock (&mutex); }
+} mutex;
+
+Mutex::Mutex()
+{
+  pthread_mutex_init (&mutex, NULL);
+}
+
+Mutex::~Mutex()
+{
+  pthread_mutex_destroy (&mutex);
+}
+
 struct FSLock
 {
   FSLock();
   ~FSLock();
 };
 
-
 FSLock::FSLock()
 {
-  pid_t  pid = 0; // <- no lock
+  mutex.lock();
+
+  pid_t  pid = 0; // <- no lock by external process
   string pid_str;
 
   printf ("FSLock: lock = '%s'\n", special_files.lock.c_str());
@@ -286,6 +308,7 @@ FSLock::FSLock()
 
 FSLock::~FSLock()
 {
+  mutex.unlock();
 }
 
 static int
@@ -600,9 +623,10 @@ static int
 bfsync_write (const char *path, const char *buf, size_t size, off_t offset,
               struct fuse_file_info *fi)
 {
+  FSLock lock;
+
   FileHandle *fh = reinterpret_cast<FileHandle *> (fi->fh);
 
-  // write is done before acquiring filesystem lock:
   if (fh->fd == -1 && fh->special_file == FileHandle::LOCK)
     {
       string& lock_file = special_files.lock;
@@ -611,10 +635,6 @@ bfsync_write (const char *path, const char *buf, size_t size, off_t offset,
       std::copy (buf, buf + size, lock_file.begin() + offset);
       return size;
     }
-
-  // ordinary file writes are protected by lock (for instance to avoid changing files during commit)
-  FSLock lock;
-
   ssize_t bytes_written = 0;
 
   if (fh->fd != -1)
@@ -763,7 +783,8 @@ bfsync_utimens (const char *name, const struct timespec times[2])
 int
 bfsync_truncate (const char *name, off_t off)
 {
-  // write is done before acquiring filesystem lock:
+  FSLock lock;
+
   if (string (name) == "/.bfsync/lock")
     {
       string& lock_file = special_files.lock;
@@ -771,10 +792,6 @@ bfsync_truncate (const char *name, off_t off)
       lock_file.resize (off);
       return 0;
     }
-
-  // other files protected by lock
-  FSLock lock;
-
   copy_on_write (name);
 
   if (file_status (name) != FS_CHANGED)
