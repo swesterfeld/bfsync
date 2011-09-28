@@ -2,6 +2,7 @@ import time
 import sys
 import os
 import shutil
+import pickle
 from utils import mkdir_recursive, format_size, format_rate, format_time
 from StatusLine import status_line
 
