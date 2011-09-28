@@ -62,3 +62,7 @@ bfsync2 TODO:
 
 * write test: find -cnewer (ctime)
 * dir rename test
+* why does commit from subdir fail?
+* config-file should allow ignoring repo uid/gid
+* remote get
+* remote put
