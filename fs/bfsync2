@@ -347,9 +347,25 @@ def remote_get (url):
     status_line.cleanup()
     print "All files up to date; nothing to do."
     return
-  print
+  status_line.update ("transferring file list...")
+  (host, path) = url.split (":")
+  remote_list_p = subprocess.Popen(["ssh", host, "bfsync2", "remote-ls", path], stdout=subprocess.PIPE).communicate()[0]
+  remote_list = pickle.loads (remote_list_p)
+  hash_needed = dict()
   for hash in object_list:
-    print hash
+    hash_needed[hash] = True
+  tl = TransferList()
+  for remote_file in remote_list:
+    if hash_needed.has_key (remote_file.hash):
+      src = os.path.join (path, "objects", make_object_filename (remote_file.hash))
+      dest = os.path.join (repo_dir, "objects", make_object_filename (remote_file.hash))
+      tl.add (TransferFile (src, dest, remote_file.size, 0400))
+  remote_send_p = subprocess.Popen (["ssh", host, "bfsync2", "remote-send"],
+                                    stdin=subprocess.PIPE,
+                                    stdout=subprocess.PIPE)
+  tl.send_list (remote_send_p.stdin)
+  tl.receive_files (remote_send_p.stdout, True)
+  return
 
 def local_get (src):
   repo_dir = find_repo_dir()
@@ -517,6 +533,11 @@ def cmd_remote_ls():
             file_list += [ remote_file ]
   print pickle.dumps (file_list)
 
+def cmd_remote_send():
+  tl = TransferList()
+  tl.receive_list (sys.stdin)
+  tl.send_files (sys.stdout, False)
+
 command = None
 command_func = None
 arg_iter = sys.argv[1:].__iter__()
@@ -530,7 +551,8 @@ for arg in arg_iter:
     ( "get",            cmd_get, 1),
     ( "pull",           cmd_pull, 0),
     ( "push",           cmd_push, 0),
-    ( "remote-ls",      cmd_remote_ls, 1)
+    ( "remote-ls",      cmd_remote_ls, 1),
+    ( "remote-send",    cmd_remote_send, 0),
   ]
   parse_ok = False
   if command == None:
