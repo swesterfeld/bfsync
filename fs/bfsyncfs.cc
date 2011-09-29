@@ -21,6 +21,7 @@
 
 #include "bfgitfile.hh"
 #include "bfsyncserver.hh"
+#include "bfsyncfs.hh"
 
 #include <fuse.h>
 #include <stdio.h>
@@ -38,7 +39,8 @@
 using std::string;
 using std::vector;
 using std::set;
-using BFSync::Server;
+
+using namespace BFSync;
 
 struct Options {
   string  repo_path;
@@ -260,17 +262,6 @@ new_git_file (GitFile& gf)
   gf.set_ctime_now();
 }
 
-class Mutex
-{
-  pthread_mutex_t mutex;
-public:
-  Mutex();
-  ~Mutex();
-
-  void lock()   { pthread_mutex_lock (&mutex); }
-  void unlock() { pthread_mutex_unlock (&mutex); }
-} mutex;
-
 Mutex::Mutex()
 {
   pthread_mutex_init (&mutex, NULL);
@@ -281,11 +272,7 @@ Mutex::~Mutex()
   pthread_mutex_destroy (&mutex);
 }
 
-struct FSLock
-{
-  FSLock();
-  ~FSLock();
-};
+Mutex mutex;
 
 FSLock::FSLock()
 {

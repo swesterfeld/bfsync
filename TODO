@@ -66,3 +66,4 @@ bfsync2 TODO:
 * config-file should allow ignoring repo uid/gid
 * remote get
 * remote put
+* allow full history get/put
