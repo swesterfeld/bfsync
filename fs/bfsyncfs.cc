@@ -20,6 +20,7 @@
 #define FUSE_USE_VERSION 26
 
 #include "bfgitfile.hh"
+#include "bfsyncserver.hh"
 
 #include <fuse.h>
 #include <stdio.h>
@@ -37,6 +38,7 @@
 using std::string;
 using std::vector;
 using std::set;
+using BFSync::Server;
 
 struct Options {
   string  repo_path;
@@ -1047,6 +1049,13 @@ main (int argc, char *argv[])
   special_files.info += "mount-point \"" + mount_point + "\";\n";
 
   debug ("starting bfsyncfs; info = \n{\n%s}\n", special_files.info.c_str());
+
+  Server server;
+  if (!server.init_socket (repo_path))
+    {
+      printf ("bfsyncfs: initialization of socket failed\n");
+      exit (1);
+    }
 
   /* read */
   bfsync_oper.getattr  = bfsync_getattr;
