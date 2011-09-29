@@ -18,6 +18,7 @@
 */
 
 #include "bfsyncserver.hh"
+#include "bfsyncfs.hh"
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -105,15 +106,21 @@ Server::init_socket (const string& repo_path)
       return false;
     }
 
-  pthread_create (&thread, NULL, thread_start, this);
-
   socket_ok = true;
   return true;
 }
 
 void
+Server::start_thread()
+{
+  if (socket_ok)
+    pthread_create (&thread, NULL, thread_start, this);
+}
+
+void
 Server::run()
 {
+  debug ("Server::run()\n");
   struct pollfd poll_fds[1];
 
   poll_fds[0].fd = socket_fd;
@@ -130,6 +137,7 @@ Server::run()
           int client_fd = accept (socket_fd, (struct sockaddr*) &incoming, &size_in);
           if (client_fd > 0)
             {
+              debug ("Server: handle_client (%d)\n", client_fd);
               handle_client (client_fd);
             }
         }
@@ -207,6 +215,7 @@ void
 Server::handle_client (int client_fd)
 {
   struct pollfd cpoll_fds[1];
+  FSLock *lock = 0;
 
   vector<char> client_req;
 
@@ -231,6 +240,7 @@ Server::handle_client (int client_fd)
               client_req.insert (client_req.end(), buffer, buffer + len);
             }
         }
+      debug ("Server: client_req.size() = %zd\n", client_req.size());
       vector<string> request;
       if (decode (client_req, request))
         {
@@ -250,11 +260,26 @@ Server::handle_client (int client_fd)
                     printf ("%s", request[i].c_str());
                   result.push_back ("ok");
                 }
+              else if (request[0] == "get-lock")
+                {
+                  if (lock)
+                    result.push_back ("fail: lock already acquired");
+                  else
+                    {
+                      lock = new FSLock();
+                      result.push_back ("ok");
+                    }
+                }
             }
           vector<char> rbuffer;
           encode (result, rbuffer);
           write (client_fd, &rbuffer[0], rbuffer.size());
           client_req.clear();
         }
+    }
+  if (lock)
+    {
+      delete lock;
+      lock = NULL;
     }
 }

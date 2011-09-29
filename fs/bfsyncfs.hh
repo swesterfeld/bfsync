@@ -17,6 +17,9 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <stdio.h>
+#include <stdarg.h>
+
 namespace BFSync
 {
 
@@ -36,5 +39,24 @@ struct FSLock
   FSLock();
   ~FSLock();
 };
+
+#define BF_DEBUG 0
+
+FILE *debug_file();
+
+static inline void
+debug (const char *fmt, ...)
+{
+  // no debugging -> return as quickly as possible
+  if (!BF_DEBUG)
+    return;
+
+  va_list ap;
+
+  va_start (ap, fmt);
+  vfprintf (debug_file(), fmt, ap);
+  fflush (debug_file());
+  va_end (ap);
+}
 
 }

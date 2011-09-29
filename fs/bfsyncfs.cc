@@ -58,36 +58,25 @@ enum FileStatus
 struct FileHandle
 {
   int fd;
-  enum { NONE, INFO, LOCK } special_file;
+  enum { NONE, INFO } special_file;
 };
 
 struct SpecialFiles
 {
   string info;
-  string lock;
 } special_files;
 
-static FILE *debug_file = NULL;
+static FILE *bf_debug_file = NULL;
 
-#define DEBUG 0
-
-static inline void
-debug (const char *fmt, ...)
+FILE*
+BFSync::debug_file()
 {
-  // no debugging -> return as quickly as possible
-  if (!DEBUG)
-    return;
+  if (!bf_debug_file)
+    bf_debug_file = fopen ("/tmp/bfsyncfs.log", "w");
 
-  if (!debug_file)
-    debug_file = fopen ("/tmp/bfsyncfs.log", "w");
-
-  va_list ap;
-
-  va_start (ap, fmt);
-  vfprintf (debug_file, fmt, ap);
-  fflush (debug_file);
-  va_end (ap);
+  return bf_debug_file;
 }
+
 // "foo/bar" => [ "foo", "bar" ]
 vector<string>
 split_name (const string& xname)
@@ -277,22 +266,6 @@ Mutex mutex;
 FSLock::FSLock()
 {
   mutex.lock();
-
-  pid_t  pid = 0; // <- no lock by external process
-  string pid_str;
-
-  printf ("FSLock: lock = '%s'\n", special_files.lock.c_str());
-  for (string::const_iterator li = special_files.lock.begin(); li != special_files.lock.end(); li++)
-    {
-      if (*li == '\n')
-        pid = atoi (pid_str.c_str());
-      pid_str += *li;
-    }
-  while (pid > 0 && (kill (pid, 0) == 0))   // lock held by some process
-    {
-      sleep (1);
-    }
-  special_files.lock.clear();
 }
 
 FSLock::~FSLock()
@@ -393,15 +366,6 @@ bfsync_getattr (const char *path, struct stat *stbuf)
       stbuf->st_size = special_files.info.size();
       return 0;
     }
-  else if (string (path) == "/.bfsync/lock")
-    {
-      memset (stbuf, 0, sizeof (struct stat));
-      stbuf->st_mode = 0644 | S_IFREG;
-      stbuf->st_uid  = getuid();
-      stbuf->st_gid  = getgid();
-      stbuf->st_size = special_files.lock.size();
-      return 0;
-    }
   else
     {
       debug ("=> ERROR: %s\n", strerror (errno));
@@ -454,7 +418,6 @@ read_dir_contents (const string& path, vector<string>& entries)
   else if (path == "/.bfsync")
     {
       entries.push_back ("info");
-      entries.push_back ("lock");
     }
 
   return dir_ok;
@@ -507,14 +470,6 @@ bfsync_open (const char *path, struct fuse_file_info *fi)
       fi->fh = reinterpret_cast<uint64_t> (fh);
       return 0;
     }
-  else if (string (path) == "/.bfsync/lock")
-    {
-      FileHandle *fh = new FileHandle;
-      fh->fd = -1;
-      fh->special_file = FileHandle::LOCK;
-      fi->fh = reinterpret_cast<uint64_t> (fh);
-      return 0;
-    }
 
   int accmode = fi->flags & O_ACCMODE;
   if (accmode == O_WRONLY || accmode == O_RDWR)
@@ -557,18 +512,9 @@ bfsync_open (const char *path, struct fuse_file_info *fi)
 static int
 bfsync_release (const char *path, struct fuse_file_info *fi)
 {
-  FileHandle *fh = reinterpret_cast<FileHandle *> (fi->fh);
-
-  // release on .bfsync special files is lock-free
-  if (fh->fd == -1)
-    {
-      delete fh;
-      return 0;
-    }
-
-  // other files protected by lock
   FSLock lock;
 
+  FileHandle *fh = reinterpret_cast<FileHandle *> (fi->fh);
   close (fh->fd);
   delete fh;
   return 0;
@@ -616,14 +562,6 @@ bfsync_write (const char *path, const char *buf, size_t size, off_t offset,
 
   FileHandle *fh = reinterpret_cast<FileHandle *> (fi->fh);
 
-  if (fh->fd == -1 && fh->special_file == FileHandle::LOCK)
-    {
-      string& lock_file = special_files.lock;
-
-      lock_file.resize (size + offset);
-      std::copy (buf, buf + size, lock_file.begin() + offset);
-      return size;
-    }
   ssize_t bytes_written = 0;
 
   if (fh->fd != -1)
@@ -774,13 +712,6 @@ bfsync_truncate (const char *name, off_t off)
 {
   FSLock lock;
 
-  if (string (name) == "/.bfsync/lock")
-    {
-      string& lock_file = special_files.lock;
-
-      lock_file.resize (off);
-      return 0;
-    }
   copy_on_write (name);
 
   if (file_status (name) != FS_CHANGED)
@@ -974,6 +905,8 @@ bfsync_readlink (const char *path, char *buffer, size_t size)
     }
 }
 
+Server server;
+
 static void*
 bfsync_init (struct fuse_conn_info *conn)
 {
@@ -982,6 +915,8 @@ bfsync_init (struct fuse_conn_info *conn)
 
   conn->capable = FUSE_CAP_BIG_WRITES;
   conn->want    = FUSE_CAP_BIG_WRITES;
+
+  server.start_thread();
 
   struct fuse_context* context = fuse_get_context();
   return context->private_data;
@@ -1037,7 +972,6 @@ main (int argc, char *argv[])
 
   debug ("starting bfsyncfs; info = \n{\n%s}\n", special_files.info.c_str());
 
-  Server server;
   if (!server.init_socket (repo_path))
     {
       printf ("bfsyncfs: initialization of socket failed\n");

@@ -35,6 +35,7 @@ public:
   ~Server();
 
   bool init_socket (const std::string& repo_path);
+  void start_thread();
 
   // server thread:
   void run();
