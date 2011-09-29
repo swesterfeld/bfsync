@@ -18,6 +18,7 @@
 */
 
 #include <string>
+#include <vector>
 
 namespace BFSync
 {
@@ -27,12 +28,19 @@ class Server
   bool        socket_ok;
   int         socket_fd;
   std::string socket_path;
+  pthread_t   thread;
 
 public:
   Server();
   ~Server();
 
   bool init_socket (const std::string& repo_path);
+
+  // server thread:
+  void run();
+  void handle_client (int client_fd);
+  bool decode (const std::vector<char>& buffer, std::vector<std::string>& request);
+  void encode (const std::vector<std::string>& result, std::vector<char>& buffer);
 };
 
 }
