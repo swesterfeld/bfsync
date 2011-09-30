@@ -342,7 +342,14 @@ Server::add_file (const string& filename, const string& hash, string& error)
     }
 
   if (lstat (object_filename.c_str(), &obj_stat) == 0)    // hash is already known
-    return true;
+    {
+      if (unlink (new_filename.c_str()) != 0)
+        {
+          error = "can't remove file '" + new_filename + "'";
+          return false;
+        }
+      return true;
+    }
 
   string dirname = get_dirname (object_filename);
   if (lstat (dirname.c_str(), &d_stat) != 0)

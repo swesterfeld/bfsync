@@ -558,6 +558,15 @@ tests += [ ("mtime-ctime-never-zero", test_mtime_ctime_never_zero) ]
 
 #####
 
+def test_commit_same():
+  write_file ("mnt/subdir/file1", "unimportant content")
+  write_file ("mnt/subdir/file2", "unimportant content")
+  commit()
+
+tests += [ ("commit-same", test_commit_same) ]
+
+#####
+
 def start_bfsyncfs():
   if subprocess.call (["./bfsyncfs", "test", "mnt"]) != 0:
     print "can't start bfsyncfs"
