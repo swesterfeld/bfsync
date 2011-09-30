@@ -262,16 +262,155 @@ Mutex::~Mutex()
   pthread_mutex_destroy (&mutex);
 }
 
-Mutex mutex;
+Cond::Cond()
+{
+  pthread_cond_init (&cond, NULL);
+}
 
-FSLock::FSLock (LockType lock_type)
+Cond::~Cond()
+{
+  pthread_cond_destroy (&cond);
+}
+
+struct LockState
+{
+  Mutex mutex;
+  Cond  cond;
+  int   reader_count;
+  int   writer_count;
+  int   reorg_count;
+  int   rdonly_count;
+
+  LockState();
+
+  void lock (FSLock::LockType lock_type);
+  void unlock (FSLock::LockType lock_type);
+} lock_state;
+
+LockState::LockState()
+{
+  reader_count = 0;
+  writer_count = 0;
+  reorg_count = 0;
+  rdonly_count = 0;
+}
+
+void
+LockState::lock (FSLock::LockType lock_type)
 {
   mutex.lock();
+  while (1)
+    {
+      bool got_lock = false;
+
+      switch (lock_type)
+        {
+          /* READ is allowed if:
+             - no other thread writes at the same time
+             - no other thread performs data reorganization (like during commit) at the same time
+
+             Its ok to read if the filesystem is in readonly mode, and its ok to read if another thread
+             is also reading.
+           */
+          case FSLock::READ:
+            if (writer_count == 0 && reorg_count == 0)
+              {
+                got_lock = true;
+                reader_count++;
+              }
+            break;
+          /* WRITE is allowed if:
+             - no other thread reads at the same time
+             - no other thread writes at the same time
+             - no other thread performs data reorganization (like during commit) at the same time
+             - the filesystem is not in readonly mode
+           */
+          case FSLock::WRITE:
+            if (reader_count == 0 && writer_count == 0 && reorg_count == 0 && rdonly_count == 0)
+              {
+                got_lock = true;
+                writer_count++;
+              }
+            break;
+          /* REORG is allowed if:
+             - no other thread reads at the same time
+             - no other thread writes at the same time
+             - no other thread performs data reorganization (like during commit) at the same time
+             - the filesystem is in readonly mode
+
+             Reorg is ok during readonly mode (although reorg writes to the disk, it doesn't
+             change the contents of the filesystem, therefore its technically something different
+             than write).
+           */
+          case FSLock::REORG:
+            if (reader_count == 0 && writer_count == 0 && reorg_count == 0)
+              {
+                got_lock = true;
+                reorg_count++;
+                assert (rdonly_count == 1);
+              }
+            break;
+          /* RDONLY (making the filesystem readonly) is allowed if:
+             - no other thread writes at the same time
+             - no other thread performs data reorganization (like during commit) at the same time
+             - the filesystem is not in readonly mode
+
+             Reads performed in other threads do not affect making the FS readonly.
+           */
+          case FSLock::RDONLY:
+            if (writer_count == 0 && reorg_count == 0 && rdonly_count == 0)
+              {
+                got_lock = true;
+                rdonly_count++;
+              }
+            break;
+          default:
+            g_assert_not_reached();
+        }
+      if (got_lock)
+        break;
+      cond.wait (mutex);
+    }
+  mutex.unlock();
+}
+
+void
+LockState::unlock (FSLock::LockType lock_type)
+{
+  mutex.lock();
+  if (lock_type == FSLock::READ)
+    {
+      assert (reader_count > 0);
+      reader_count--;
+    }
+  if (lock_type == FSLock::WRITE)
+    {
+      assert (writer_count > 0);
+      writer_count--;
+    }
+  if (lock_type == FSLock::REORG)
+    {
+      assert (reorg_count > 0);
+      reorg_count--;
+    }
+  if (lock_type == FSLock::RDONLY)
+    {
+      assert (rdonly_count > 0);
+      rdonly_count--;
+    }
+  cond.broadcast();
+  mutex.unlock();
+}
+
+FSLock::FSLock (LockType lock_type) :
+  lock_type (lock_type)
+{
+  lock_state.lock (lock_type);
 }
 
 FSLock::~FSLock()
 {
-  mutex.unlock();
+  lock_state.unlock (lock_type);
 }
 
 static int

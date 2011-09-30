@@ -25,13 +25,25 @@ namespace BFSync
 
 class Mutex
 {
-  pthread_mutex_t mutex;
 public:
+  pthread_mutex_t mutex;
+
   Mutex();
   ~Mutex();
 
   void lock()   { pthread_mutex_lock (&mutex); }
   void unlock() { pthread_mutex_unlock (&mutex); }
+};
+
+class Cond
+{
+  pthread_cond_t cond;
+public:
+  Cond();
+  ~Cond();
+
+  void broadcast()            { pthread_cond_broadcast (&cond); }
+  void wait (Mutex& mutex)    { pthread_cond_wait (&cond, &mutex.mutex); }
 };
 
 struct FSLock
@@ -41,7 +53,7 @@ struct FSLock
     WRITE,
     REORG,
     RDONLY
-  };
+  } lock_type;
   FSLock (FSLock::LockType lock_type);
   ~FSLock();
 };
