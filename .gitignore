@@ -1,1 +1,17 @@
 *.pyc
+Makefile
+Makefile.in
+configure
+libtool
+build-aux
+INSTALL
+autom4te.cache
+m4
+aclocal.m4
+config.h
+config.h.in
+config.log
+config.status
+stamp-h1
+ChangeLog
+MANIFEST
