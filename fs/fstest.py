@@ -582,7 +582,7 @@ def commit():
 def run_quiet (cmd):
   return subprocess.Popen (cmd, stdout=subprocess.PIPE).wait()
 
-def main (verbose):
+def main (fstest_args):
   # compile
   if subprocess.call (["make"]):
     print "compilation failed"
@@ -595,6 +595,15 @@ def main (verbose):
     subprocess.call (["fusermount", "-u", "mnt"])
   except:
     pass # not mounted
+
+  if fstest_args.r:
+    teardown()
+    setup()
+    # umount fs
+    if subprocess.call (["fusermount", "-u", "mnt"]):
+      print "can't stop bfsyncfs"
+      sys.exit (1)
+    sys.exit (0)
 
   fail_count = 0
   ok_count = 0
@@ -610,7 +619,7 @@ def main (verbose):
     except Exception, e:
       print "FAIL: ", e
       fail_count += 1
-      if verbose:
+      if fstest_args.v:
         print "\n\n"
         print "=================================================="
         traceback.print_exc()
@@ -637,9 +646,7 @@ def main (verbose):
 
 parser = argparse.ArgumentParser (prog='fstest.py')
 parser.add_argument ('-v', action='store_true', help='verbose')
+parser.add_argument ('-r', action='store_true', help='reset')
 fstest_args = parser.parse_args()
 
-if fstest_args.v:
-  main (True)
-else:
-  main (False)
+main (fstest_args)
