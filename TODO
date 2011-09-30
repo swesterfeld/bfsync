@@ -1,37 +1,8 @@
 * use config file from repo, not hardcoded
 * allow mv on directory
-* automatically try to get from own repo first (for renames)
-* age based cache expire
 * detect protocol version
-* use dict() style api for parse_git_files
-* improve file mode tracking
-* add should probably have progress indication (for huge adds)
-* check_untracked should start walking from the repository root, not root_dir
 * cache friendly get would hash and copy file-by-file, since then the data
   is read only once from the physical media
-
-BFSYNC2:
-
-* basic filesystem:
-
-git/files:
-git/files/foo/bar         <- store stat information and blob reference
-
-git/dirs:
-git/dirs/foo              <- store stat information for directory foo FIXME
-
-git/blobs/<some hash>     <- ensure that blob occurred in repos history
-
-blobs:
-blobs/<some hash>         <- store blob data for some files
-
-* overlay filesystem (FUSE):
-
-new/files/foo/bar         <- store stat/content changes for file bar (uncommitted)
-
-new/dirs/foo              <- store stat changes for directory foo
-
-new/rm/foo/bar            <- mark file/directory as removed
 
 ==============================================================================================
 
