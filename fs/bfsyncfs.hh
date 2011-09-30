@@ -36,7 +36,13 @@ public:
 
 struct FSLock
 {
-  FSLock();
+  enum LockType {
+    READ,
+    WRITE,
+    REORG,
+    RDONLY
+  };
+  FSLock (FSLock::LockType lock_type);
   ~FSLock();
 };
 

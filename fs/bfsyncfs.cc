@@ -59,6 +59,7 @@ struct FileHandle
 {
   int fd;
   enum { NONE, INFO } special_file;
+  bool open_for_write;
 };
 
 struct SpecialFiles
@@ -263,7 +264,7 @@ Mutex::~Mutex()
 
 Mutex mutex;
 
-FSLock::FSLock()
+FSLock::FSLock (LockType lock_type)
 {
   mutex.lock();
 }
@@ -284,7 +285,7 @@ bfsync_getattr (const char *path, struct stat *stbuf)
         return 0;
     }
 
-  FSLock lock;
+  FSLock lock (FSLock::READ);
   string git_filename = options.repo_path + "/git/files/" + name2git_name (path);
 
   GitFile git_file;
@@ -427,7 +428,7 @@ static int
 bfsync_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
                 off_t offset, struct fuse_file_info *fi)
 {
-  FSLock lock;
+  FSLock lock (FSLock::READ);
 
   debug ("readdir (\"%s\")\n", path);
 
@@ -458,7 +459,10 @@ bfsync_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
 static int
 bfsync_open (const char *path, struct fuse_file_info *fi)
 {
-  FSLock lock;
+  int accmode = fi->flags & O_ACCMODE;
+  bool open_for_write = (accmode == O_WRONLY || accmode == O_RDWR);
+
+  FSLock lock (open_for_write ? FSLock::WRITE : FSLock::READ);
 
   debug ("open (\"%s\")\n", path);
 
@@ -467,12 +471,12 @@ bfsync_open (const char *path, struct fuse_file_info *fi)
       FileHandle *fh = new FileHandle;
       fh->fd = -1;
       fh->special_file = FileHandle::INFO;
+      fh->open_for_write = false;
       fi->fh = reinterpret_cast<uint64_t> (fh);
       return 0;
     }
 
-  int accmode = fi->flags & O_ACCMODE;
-  if (accmode == O_WRONLY || accmode == O_RDWR)
+  if (open_for_write)
     {
       copy_on_write (path);
 
@@ -500,6 +504,7 @@ bfsync_open (const char *path, struct fuse_file_info *fi)
       FileHandle *fh = new FileHandle;
       fh->fd = fd;
       fh->special_file = FileHandle::NONE;
+      fh->open_for_write = open_for_write;
       fi->fh = reinterpret_cast<uint64_t> (fh);
       return 0;
     }
@@ -512,9 +517,10 @@ bfsync_open (const char *path, struct fuse_file_info *fi)
 static int
 bfsync_release (const char *path, struct fuse_file_info *fi)
 {
-  FSLock lock;
-
   FileHandle *fh = reinterpret_cast<FileHandle *> (fi->fh);
+
+  FSLock lock (fh->open_for_write ? FSLock::WRITE : FSLock::READ);
+
   close (fh->fd);
   delete fh;
   return 0;
@@ -524,7 +530,7 @@ static int
 bfsync_read (const char *path, char *buf, size_t size, off_t offset,
              struct fuse_file_info *fi)
 {
-  FSLock lock;
+  FSLock lock (FSLock::READ);
 
   debug ("read (\"%s\")\n", path);
 
@@ -558,7 +564,7 @@ static int
 bfsync_write (const char *path, const char *buf, size_t size, off_t offset,
               struct fuse_file_info *fi)
 {
-  FSLock lock;
+  FSLock lock (FSLock::WRITE);
 
   FileHandle *fh = reinterpret_cast<FileHandle *> (fi->fh);
 
@@ -573,7 +579,7 @@ bfsync_write (const char *path, const char *buf, size_t size, off_t offset,
 static int
 bfsync_mknod (const char *path, mode_t mode, dev_t dev)
 {
-  FSLock lock;
+  FSLock lock (FSLock::WRITE);
 
   string git_file = options.repo_path + "/git/files/" + name2git_name (path);
 
@@ -628,7 +634,7 @@ bfsync_mknod (const char *path, mode_t mode, dev_t dev)
 int
 bfsync_chmod (const char *name, mode_t mode)
 {
-  FSLock lock;
+  FSLock lock (FSLock::WRITE);
 
   GitFile gf;
 
@@ -651,7 +657,7 @@ bfsync_chmod (const char *name, mode_t mode)
 int
 bfsync_chown (const char *name, uid_t uid, gid_t gid)
 {
-  FSLock lock;
+  FSLock lock (FSLock::WRITE);
 
   GitFile gf;
 
@@ -675,7 +681,7 @@ bfsync_chown (const char *name, uid_t uid, gid_t gid)
 int
 bfsync_utimens (const char *name, const struct timespec times[2])
 {
-  FSLock lock;
+  FSLock lock (FSLock::WRITE);
 
   if (file_status (name) == FS_CHANGED)
     {
@@ -710,7 +716,7 @@ bfsync_utimens (const char *name, const struct timespec times[2])
 int
 bfsync_truncate (const char *name, off_t off)
 {
-  FSLock lock;
+  FSLock lock (FSLock::WRITE);
 
   copy_on_write (name);
 
@@ -729,7 +735,7 @@ bfsync_truncate (const char *name, off_t off)
 static int
 bfsync_unlink (const char *name)
 {
-  FSLock lock;
+  FSLock lock (FSLock::WRITE);
 
   // delete data for changed files
   if (file_status (name) == FS_CHANGED)
@@ -760,7 +766,7 @@ bfsync_unlink (const char *name)
 static int
 bfsync_mkdir (const char *path, mode_t mode)
 {
-  FSLock lock;
+  FSLock lock (FSLock::WRITE);
 
   string filename = options.repo_path + "/new" + path;
 
@@ -788,7 +794,7 @@ bfsync_mkdir (const char *path, mode_t mode)
 static int
 bfsync_rmdir (const char *name)
 {
-  FSLock lock;
+  FSLock lock (FSLock::WRITE);
 
   // check that dir is in fact empty
   vector<string> entries;
@@ -825,7 +831,7 @@ bfsync_rmdir (const char *name)
 static int
 bfsync_rename (const char *old_path, const char *new_path)
 {
-  FSLock lock;
+  FSLock lock (FSLock::WRITE);
 
   string old_git_file = options.repo_path + "/git/files/" + name2git_name (old_path);
   string new_git_file = options.repo_path + "/git/files/" + name2git_name (new_path);
@@ -865,7 +871,7 @@ bfsync_rename (const char *old_path, const char *new_path)
 static int
 bfsync_symlink (const char *from, const char *to)
 {
-  FSLock lock;
+  FSLock lock (FSLock::WRITE);
 
   if (file_status (to) != FS_NONE)
     return -EEXIST;
@@ -885,7 +891,7 @@ bfsync_symlink (const char *from, const char *to)
 static int
 bfsync_readlink (const char *path, char *buffer, size_t size)
 {
-  FSLock lock;
+  FSLock lock (FSLock::READ);
 
   GitFile gf;
   if (gf.parse (options.repo_path + "/git/files/" + name2git_name (path)) && gf.type == FILE_SYMLINK)

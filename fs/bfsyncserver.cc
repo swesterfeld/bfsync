@@ -266,7 +266,7 @@ Server::handle_client (int client_fd)
                     result.push_back ("fail: lock already acquired");
                   else
                     {
-                      lock = new FSLock();
+                      lock = new FSLock (FSLock::RDONLY);
                       result.push_back ("ok");
                     }
                 }
