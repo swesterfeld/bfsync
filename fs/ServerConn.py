@@ -13,7 +13,8 @@ class ServerConn:
       skip += 1
     if content_size != -1:
       if ((skip + 1 + content_size) == len (data)):
-        return data[skip + 1:-1].split ("\0")
+        split_data = data[skip + 1:].split ("\0")
+        return split_data[:-1]
     return False # need more data
 
   def encode (self, msg):
@@ -31,7 +32,7 @@ class ServerConn:
     while True:
       data += self.conn_socket.recv (1024)
       result = self.decode (data)
-      if result:
+      if result != False:
         return result
 
   def get_lock (self):
@@ -42,6 +43,15 @@ class ServerConn:
       else:
         raise Exception (result[0])
     raise Exception ("ServerConn: unable to get lock (bad response received)")
+
+  def add_new (self, new_list):
+    result = self.process_call ([ "add-new" ] + new_list)
+    if result and len (result) == 1:
+      if result[0] == "ok":
+        return
+      else:
+        raise Exception (result[0])
+    raise Exception ("ServerConn: unable to add new file(s) (bad response received)")
 
   def __init__ (self, repo_dir):
     self.conn_socket = socket.socket (socket.AF_UNIX, socket.SOCK_STREAM)
