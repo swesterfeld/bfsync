@@ -219,10 +219,14 @@ def cmd_commit():
     os.remove (commit_msg_filename)
     raise Exception ("commit message is empty")
 
+  # add new files via BFSync::Server
+  add_new_list = []
   for (filename, filetype) in file_list:
     if filetype == FILE_REGULAR:
       hash = hash_cache.compute_hash (filename)
-      server_conn.add_new ([filename, hash])
+      add_new_list += [filename, hash]
+
+  server_conn.add_new (add_new_list)
 
   # commit changes to repo
   os.chdir (os.path.join (repo_path, "git"))
