@@ -42,6 +42,8 @@ public:
   void handle_client (int client_fd);
   bool decode (const std::vector<char>& buffer, std::vector<std::string>& request);
   void encode (const std::vector<std::string>& result, std::vector<char>& buffer);
+
+  bool add_file (const std::string& filename, const std::string& hash, std::string& error_msg);
 };
 
 }

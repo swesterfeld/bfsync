@@ -179,22 +179,22 @@ def cmd_commit():
   os.chdir (os.path.join (repo_path, "new"))
   file_list = []
   hash_list = []
-  if True:
-    for dir, dirs, files in os.walk ("."):
-      for d in dirs:
-        dirname = os.path.normpath (os.path.join (dir, d))
-        if (os.path.islink (dirname)):      # symlinks to directories should be treated as links (not dirs)
-          file_list += [ (dirname, FILE_SYMLINK) ]
-        else:
-          file_list += [ (dirname, FILE_DIR) ]
-      for file in files:
-        filename = os.path.normpath (os.path.join (dir, file))
-        stat = os.lstat (filename)
-        if S_ISREG (stat.st_mode):
-          file_list += [ (filename, FILE_REGULAR) ]
-          hash_list += [ filename ]
-        else:
-          raise Exception ("file '%s' has unknown type - cannot commit" % filename)
+
+  for dir, dirs, files in os.walk ("."):
+    for d in dirs:
+      dirname = os.path.normpath (os.path.join (dir, d))
+      if (os.path.islink (dirname)):      # symlinks to directories should be treated as links (not dirs)
+        file_list += [ (dirname, FILE_SYMLINK) ]
+      else:
+        file_list += [ (dirname, FILE_DIR) ]
+    for file in files:
+      filename = os.path.normpath (os.path.join (dir, file))
+      stat = os.lstat (filename)
+      if S_ISREG (stat.st_mode):
+        file_list += [ (filename, FILE_REGULAR) ]
+        hash_list += [ filename ]
+      else:
+        raise Exception ("file '%s' has unknown type - cannot commit" % filename)
 
   os.chdir (os.path.join (repo_path, "new"))
   hash_cache.hash_all (hash_list)
@@ -219,44 +219,10 @@ def cmd_commit():
     os.remove (commit_msg_filename)
     raise Exception ("commit message is empty")
 
-  time_dict = get_times (file_list)
-
-  # create entries in git/files for newly added files
-  status_line.set_op ("GIT-ADD")
-  count = len (file_list)
-  add_count = 0
   for (filename, filetype) in file_list:
-    try:
-      new_file = os.path.join (repo_path, "new", filename)
-      stat = os.lstat (new_file)
-      if filetype == FILE_REGULAR:
-        hash = hash_cache.compute_hash (new_file)
-        size = stat.st_size
-      mode = stat.st_mode;
-    except Exception, ex:
-      raise
-
-    git_file = os.path.join (repo_path, "git/files", name2git_name (filename))
-    mkdir_recursive (os.path.dirname (git_file))
-
-    gf_attrs = GitFile()
-    gf_attrs.parse (git_file)
-    rehash = False
-    try:
-      rehash = gf_attrs.get ("hash") == "new"
-    except:
-      pass
-    if rehash and filetype == FILE_REGULAR:
-      gf_attrs.set ("size", str (size))
-      gf_attrs.set ("hash", hash)
-      mtimes = time_dict[filename]
-      gf_attrs.set ("mtime", mtimes[0])
-      gf_attrs.set ("mtime_ns", mtimes[1])
-      gf_attrs.save (git_file)
-    add_count += 1
-    status_line.update ("file %d/%d" % (add_count, count))
-
-  status_line.cleanup()
+    if filetype == FILE_REGULAR:
+      hash = hash_cache.compute_hash (filename)
+      server_conn.add_new ([filename, hash])
 
   # commit changes to repo
   os.chdir (os.path.join (repo_path, "git"))
@@ -265,28 +231,6 @@ def cmd_commit():
   if os.system ("git commit -q -a -F %s" % commit_msg_filename) != 0:
     raise Exception ("git commit failed")
   os.remove (commit_msg_filename)
-
-  # copy files into objects/ directory
-  tl = TransferList()
-  have_hash = dict()
-  for (filename, filetype) in file_list:
-    if filetype == FILE_REGULAR:
-      new_file = os.path.join (repo_path, "new", filename)
-      hash = hash_cache.compute_hash (new_file)
-      object_file = os.path.join (repo_path, "objects", make_object_filename (hash))
-      if not validate_object (object_file, hash) and not (hash in have_hash):
-        mkdir_recursive (os.path.dirname (object_file))
-        tl.add (TransferFile (new_file, object_file, os.path.getsize (new_file), 0444))
-        # copy duplicate files only once:
-        have_hash[hash] = True
-  status_line.set_op ("COPY")
-  tl.copy_files()
-
-  # remove files from new/ directory
-  for (filename, filetype) in file_list:
-    if filetype != FILE_DIR:
-      new_file = os.path.join (repo_path, "new", filename)
-      os.remove (new_file)
 
   # remove dirs form new/ directory (sort by length, so delete subdirs first)
   sorted_list = sorted (file_list, key = lambda (name, t): -len (name))

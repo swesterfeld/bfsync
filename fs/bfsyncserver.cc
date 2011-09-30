@@ -19,6 +19,7 @@
 
 #include "bfsyncserver.hh"
 #include "bfsyncfs.hh"
+#include "bfgitfile.hh"
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -270,6 +271,30 @@ Server::handle_client (int client_fd)
                       result.push_back ("ok");
                     }
                 }
+              else if (request[0] == "add-new")
+                {
+                  FSLock add_lock (FSLock::REORG);
+                  bool ok = true;
+
+                  for (size_t i = 1; i + 1 < request.size(); i += 2)
+                    {
+                      string filename   = request[i];
+                      string hash       = request[i + 1];
+                      string error_msg  = "";
+
+                      if (!add_file (filename, hash, error_msg))
+                        {
+                          ok = false;
+                          char *error = g_strdup_printf ("fail: error while adding file '%s', hash '%s'\n%s",
+                                                         filename.c_str(), hash.c_str(), error_msg.c_str());
+                          result.push_back (error);
+                          g_free (error);
+                          break;
+                        }
+                    }
+                  if (ok)
+                    result.push_back ("ok");
+                }
             }
           vector<char> rbuffer;
           encode (result, rbuffer);
@@ -282,4 +307,66 @@ Server::handle_client (int client_fd)
       delete lock;
       lock = NULL;
     }
+}
+
+bool
+Server::add_file (const string& filename, const string& hash, string& error)
+{
+  GitFile gf;
+  string git_filename = Options::the()->repo_path + "/git/files/" + name2git_name (filename);
+  string new_filename = Options::the()->repo_path + "/new/" + filename;
+  string object_filename = make_object_filename (hash);
+
+  struct stat stat, obj_stat, d_stat;
+  if (lstat (new_filename.c_str(), &stat) != 0)
+    {
+      error = "can't lstat filename '" + new_filename + "'";
+      return false;
+    }
+
+  if (!gf.parse (git_filename))
+    {
+      error = "can't parse git file '" + git_filename + "'";
+      return false;
+    }
+
+  gf.hash = hash;
+  gf.size = stat.st_size;
+  gf.mtime = stat.st_mtim.tv_sec;
+  gf.mtime_ns = stat.st_mtim.tv_nsec;
+
+  if (!gf.save (git_filename))
+    {
+      error = "can't save git file '" + git_filename + "'";
+      return false;
+    }
+
+  if (lstat (object_filename.c_str(), &obj_stat) == 0)    // hash is already known
+    return true;
+
+  string dirname = get_dirname (object_filename);
+  if (lstat (dirname.c_str(), &d_stat) != 0)
+    {
+      // need to create hash directory
+      if (mkdir (dirname.c_str(), 0755) != 0)
+        {
+          error = "can't create directory '" + dirname + "'";
+          return false;
+        }
+    }
+
+  // move file to hash repo
+  if (rename (new_filename.c_str(), object_filename.c_str()) != 0)
+    {
+      error = "can't rename file '" + new_filename + "' to '" + object_filename + "'";
+      return false;
+    }
+
+  // set mode to -r--------
+  if (chmod (object_filename.c_str(), 0400) != 0)
+    {
+      error = "can't chmod 0400 file '" + object_filename + "'";
+      return false;
+    }
+  return true;
 }

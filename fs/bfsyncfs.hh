@@ -77,4 +77,22 @@ debug (const char *fmt, ...)
   va_end (ap);
 }
 
+enum
+{
+  GIT_FILENAME = 1,
+  GIT_DIRNAME  = 2
+};
+
+std::string name2git_name (const std::string& name, int type = GIT_FILENAME);
+std::string make_object_filename (const std::string& hash);
+std::string get_dirname (const std::string& filename);
+
+struct Options {
+  std::string  repo_path;
+  std::string  mount_point;
+  bool         mount_debug;
+
+  static Options *the();
+};
+
 }

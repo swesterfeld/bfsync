@@ -42,11 +42,15 @@ using std::set;
 
 using namespace BFSync;
 
-struct Options {
-  string  repo_path;
-  string  mount_point;
-  bool    mount_debug;
-} options;
+namespace BFSync {
+
+Options options;
+
+Options*
+Options::the()
+{
+  return &options;
+}
 
 enum FileStatus
 {
@@ -70,7 +74,7 @@ struct SpecialFiles
 static FILE *bf_debug_file = NULL;
 
 FILE*
-BFSync::debug_file()
+debug_file()
 {
   if (!bf_debug_file)
     bf_debug_file = fopen ("/tmp/bfsyncfs.log", "w");
@@ -105,14 +109,8 @@ split_name (const string& xname)
 }
 
 // "foo/bar/bazz" => d_foo/d_bar/i_bazz
-enum
-{
-  GIT_FILENAME = 1,
-  GIT_DIRNAME  = 2
-};
-
 string
-name2git_name (const string& name, int type = GIT_FILENAME)
+name2git_name (const string& name, int type)
 {
   vector<string> path = split_name (name);
   string result;
@@ -129,6 +127,16 @@ name2git_name (const string& name, int type = GIT_FILENAME)
             result += "d_" + path[i];
         }
     }
+  return result;
+}
+
+string
+get_dirname (const string& dirname)
+{
+  char *dirname_c = g_path_get_dirname (dirname.c_str());
+  string result = dirname_c;
+  g_free (dirname_c);
+
   return result;
 }
 
@@ -1074,6 +1082,8 @@ exit_usage()
 {
   printf ("usage: bfsyncfs [ -d ] repo mount_point\n");
   exit (1);
+}
+
 }
 
 int
