@@ -8,30 +8,65 @@ import traceback
 import argparse
 from stat import *
 
-def teardown():
-  cwd = os.getcwd()
-  if os.path.exists ("mnt/.bfsync"):
+class FuseFS:
+  def init (self):
+    cwd = os.getcwd()
+    if subprocess.call (["mkdir", "-p", "test/new",
+                                        "test/git/files",
+                                        "test/objects",
+                                        "test/.bfsync",
+                                        "mnt"]) != 0:
+      raise Exception ("error during setup (can't create dirs)")
+    if subprocess.call (["git", "init", "-q", "test/git"]) != 0:
+      raise Exception ("error during setup")
+    start_bfsyncfs()
+
+  def commit (self):
+    cwd = os.getcwd()
+    os.chdir ("mnt")
+    if run_quiet ([cwd + "/bfsync2", "commit", "-m", "fstest"]) != 0:
+      raise Exception ("commit failed")
+    os.chdir (cwd)
+
+  def teardown (self):
+    cwd = os.getcwd()
+    if os.path.exists ("mnt/.bfsync"):
+      if subprocess.call (["fusermount", "-u", "mnt"]):
+        print "can't stop bfsyncfs"
+        sys.exit (1)
+    if subprocess.call (["rm", "-rf", cwd + "/test"]) != 0:
+      print "error during teardown"
+      sys.exit (1)
+
+  def umount (self):
     if subprocess.call (["fusermount", "-u", "mnt"]):
       print "can't stop bfsyncfs"
       sys.exit (1)
-  if subprocess.call (["rm", "-rf", cwd + "/test"]) != 0:
-    print "error during teardown"
-    sys.exit (1)
+
+class NativeFS:
+  def init (self):
+    pass
+
+  def commit (self):
+    pass
+
+  def teardown (self):
+    cwd = os.getcwd()
+    if subprocess.call (["rm", "-rf", cwd + "/mnt"]) != 0:
+      print "error during teardown"
+      sys.exit (1)
+    if subprocess.call (["mkdir", "-p", cwd + "/mnt"]) != 0:
+      print "error during teardown"
+      sys.exit (1)
+
+  def umount (self):
+    self.teardown()
+
+def teardown():
+  fs.teardown()
 
 def setup():
-  cwd = os.getcwd()
-  if subprocess.call (["mkdir", "-p", "test/new",
-                                      "test/git/files",
-                                      "test/objects",
-                                      "test/.bfsync",
-                                      "mnt"]) != 0:
-    raise Exception ("error during setup (can't create dirs)")
-  if subprocess.call (["mkdir", "-p", "mnt"]) != 0:
-    raise Exception ("error during setup")
-  if subprocess.call (["git", "init", "-q", "test/git"]) != 0:
-    raise Exception ("error during setup")
-
-  start_bfsyncfs()
+  fs.init()
   if subprocess.call (["mkdir", "-p", "mnt/subdir/subsub"]) != 0:
     raise Exception ("error during setup")
   if subprocess.call (["cp", "-a", "../README", "mnt/README"]) != 0:
@@ -515,6 +550,7 @@ tests += [ ("rename", test_rename) ]
 
 def test_chmod_ctime():
   old_stat = os.stat ("mnt/README")
+  time.sleep (0.1)
   os.chmod ("mnt/README", 0600)
   new_stat = os.stat ("mnt/README")
   if old_stat.st_ctime == new_stat.st_ctime:
@@ -526,12 +562,26 @@ tests += [ ("chmod-ctime", test_chmod_ctime) ]
 
 def test_chown_ctime():
   old_stat = os.stat ("mnt/README")
+  time.sleep (0.1)
   os.chown ("mnt/README", 123, 456)
   new_stat = os.stat ("mnt/README")
   if old_stat.st_ctime == new_stat.st_ctime:
     raise Exception ("ctime unchanged after chown")
 
 tests += [ ("chown-ctime", test_chown_ctime) ]
+
+#####
+
+def test_truncate_ctime():
+  old_stat = os.stat ("mnt/README")
+  time.sleep (0.1)
+  if os.system ("bftesthelper truncate mnt/README 0") != 0:
+    raise Exception ("error truncating via bftesthelper")
+  new_stat = os.stat ("mnt/README")
+  if old_stat.st_ctime == new_stat.st_ctime:
+    raise Exception ("ctime unchanged after truncate")
+
+tests += [ ("truncate-ctime", test_truncate_ctime) ]
 
 #####
 
@@ -591,11 +641,7 @@ def start_bfsyncfs():
     sys.exit (1)
 
 def commit():
-  cwd = os.getcwd()
-  os.chdir ("mnt")
-  if run_quiet ([cwd + "/bfsync2", "commit", "-m", "fstest"]) != 0:
-    raise Exception ("commit failed")
-  os.chdir (cwd)
+  fs.commit()
 
 def run_quiet (cmd):
   return subprocess.Popen (cmd, stdout=subprocess.PIPE).wait()
@@ -658,13 +704,17 @@ def main (fstest_args):
     print "SUMMARY: %d/%d tests failed" % (fail_count, fail_count + ok_count)
 
   # umount fs
-  if subprocess.call (["fusermount", "-u", "mnt"]):
-    print "can't stop bfsyncfs"
-    sys.exit (1)
+  fs.umount()
 
 parser = argparse.ArgumentParser (prog='fstest.py')
 parser.add_argument ('-v', action='store_true', help='verbose')
 parser.add_argument ('-r', action='store_true', help='reset')
+parser.add_argument ('-f', action='store_true', help='test underlying filesystem instead of fuse filesystem')
 fstest_args = parser.parse_args()
+
+if fstest_args.f:
+  fs = NativeFS()
+else:
+  fs = FuseFS()
 
 main (fstest_args)
