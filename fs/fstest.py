@@ -148,6 +148,9 @@ def test_rmdir():
   os.rmdir ("mnt/newdir")
   if os.path.exists ("mnt/newdir"):
     raise Exception ("newdir not deleted")
+  for name in os.listdir ("mnt"):
+    if name == "newdir":
+      raise Exception ("newdir shows up in listdir after delete")
 
 tests += [ ("rmdir", test_rmdir) ]
 
