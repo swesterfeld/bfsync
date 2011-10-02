@@ -649,6 +649,35 @@ tests += [ ("mode-after-append", test_mode_after_append) ]
 
 #####
 
+def test_ctime_after_append():
+  old_stat = os.stat ("mnt/README")
+  time.sleep (0.1)
+  f = open ("mnt/README", "a")
+  f.write ("foo")
+  f.close()
+  new_stat = os.stat ("mnt/README")
+  if old_stat.st_ctime == new_stat.st_ctime:
+    raise Exception ("ctime not changed after append")
+
+tests += [ ("ctime-after-append", test_ctime_after_append) ]
+
+#####
+
+def test_ctime_after_append_commit():
+  old_stat = os.stat ("mnt/README")
+  time.sleep (0.1)
+  f = open ("mnt/README", "a")
+  f.write ("foo")
+  f.close()
+  commit()
+  new_stat = os.stat ("mnt/README")
+  if old_stat.st_ctime == new_stat.st_ctime:
+    raise Exception ("ctime not changed after append+commit")
+
+tests += [ ("ctime-after-append-commit", test_ctime_after_append_commit) ]
+
+#####
+
 def start_bfsyncfs():
   if subprocess.call (["./bfsyncfs", "test", "mnt"]) != 0:
     print "can't start bfsyncfs"
