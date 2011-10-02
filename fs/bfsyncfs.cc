@@ -247,6 +247,8 @@ copy_on_write (const string& path)
               close (old_fd);
               close (new_fd);
             }
+          gf.hash = "new";
+          gf.save (options.repo_path + "/git/files/" + name2git_name (path));
         }
     }
 }
@@ -626,17 +628,6 @@ bfsync_open (const char *path, struct fuse_file_info *fi)
   if (open_for_write)
     {
       copy_on_write (path);
-
-      if (file_status (path) == FS_GIT)
-        {
-          GitFile git_file;
-          new_git_file (git_file);
-          git_file.type = FILE_REGULAR;
-          git_file.mode = 0644;                             // FIXME: open mode?
-          git_file.size = 0;                                // edited by bfsync2 on commit / along with hash
-          git_file.hash = "new";
-          git_file.save (options.repo_path + "/git/files/" + name2git_name (path));
-        }
     }
 
   string filename = file_path (path);
@@ -1005,27 +996,8 @@ bfsync_rename (const char *old_path, const char *new_path)
 
   copy_on_write (old_path);
 
-  rename ((options.repo_path + "/new" + old_path).c_str(),
-          (options.repo_path + "/new" + new_path).c_str());
+  rename ((options.repo_path + "/new" + old_path).c_str(), (options.repo_path + "/new" + new_path).c_str());
 
-#if 0
-  // make del entry if git entry is present
-  if (file_status (old_path) == FS_GIT)
-    {
-      copy_dirs (old_path, FS_DEL);
-
-      int fd = open ((options.repo_path + "/del/" + name2git_name (old_path)).c_str(), O_CREAT|O_WRONLY, 0644);
-      if (fd != -1)
-        {
-          close (fd);
-          return 0;
-        }
-      else
-        {
-          return -errno;
-        }
-    }
-#endif
   return 0;
 }
 
