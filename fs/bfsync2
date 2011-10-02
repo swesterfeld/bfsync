@@ -226,22 +226,43 @@ def cmd_commit():
       hash = hash_cache.compute_hash (filename)
       add_new_list += [filename, hash]
 
-  server_conn.add_new (add_new_list)
+  status_line.set_op ("ADD-NEW")
+  files_added = 0
+  files_total = len (add_new_list) / 2
+  while len (add_new_list) > 0:
+    items = min (len (add_new_list), 200)
+    server_conn.add_new (add_new_list[0:items])
+    add_new_list = add_new_list[items:]
+    files_added += items / 2
+    status_line.update ("file %d/%d" % (files_added, files_total))
+  status_line.cleanup()
 
-  # commit changes to repo
+  # add/remove files to/from git tree
   os.chdir (os.path.join (repo_path, "git"))
+
+  status_line.set_op ("GIT")
+  status_line.update ("add/remove files to/from git tree...")
   if os.system ("git add -A") != 0:
     raise Exception ("git add -A failed")
+
+  # commit changes to repo
+  status_line.update ("committing git tree...")
   if os.system ("git commit -q -a -F %s" % commit_msg_filename) != 0:
     raise Exception ("git commit failed")
   os.remove (commit_msg_filename)
+  status_line.update ("done.")
+  status_line.cleanup()
 
   # remove dirs form new/ directory (sort by length, so delete subdirs first)
+  status_line.set_op ("CLEANUP")
+  status_line.update ("remove empty dirs from new...")
   sorted_list = sorted (file_list, key = lambda (name, t): -len (name))
   for (filename, filetype) in sorted_list:
     if filetype == FILE_DIR:
       new_dir = os.path.join (repo_path, "new", filename)
       os.rmdir (new_dir)
+  status_line.update ("done.")
+  status_line.cleanup()
   return
 
 def strip_git_suffix (s):
