@@ -567,6 +567,21 @@ tests += [ ("commit-same", test_commit_same) ]
 
 #####
 
+def test_dir_rename():
+  x = read_file ("mnt/subdir/x")
+  os.rename ("mnt/subdir", "mnt/rendir")
+  x1 = read_file ("mnt/rendir/x")
+  if x != x1:
+    raise Exception ("x not ok in renamed directory before commit")
+  commit()
+  x2 = read_file ("mnt/rendir/x")
+  if x != x2:
+    raise Exception ("x not ok in renamed directory after commit")
+
+tests += [ ("dir-rename", test_dir_rename) ]
+
+#####
+
 def start_bfsyncfs():
   if subprocess.call (["./bfsyncfs", "test", "mnt"]) != 0:
     print "can't start bfsyncfs"
