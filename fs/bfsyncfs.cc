@@ -963,14 +963,13 @@ bfsync_rmdir (const char *name)
       string git_file = options.repo_path + "/git/files/" + name2git_name (name);
 
       int rc = unlink (git_file.c_str());
-      if (rc == 0)
-        {
-          return 0;
-        }
-      else
-        {
-          return -errno;
-        }
+      if (rc != 0)
+        return -errno;
+
+      string git_dir = options.repo_path + "/git/files/" + name2git_name (name, GIT_DIRNAME);
+      rc = rmdir (git_dir.c_str());
+      if (rc != 0)
+        return -errno;
     }
   return 0;
 }
