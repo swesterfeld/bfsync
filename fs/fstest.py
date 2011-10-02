@@ -635,6 +635,20 @@ tests += [ ("dir-rename", test_dir_rename) ]
 
 #####
 
+def test_mode_after_append():
+  os.chmod ("mnt/README", 0600)
+  old_stat = os.stat ("mnt/README")
+  f = open ("mnt/README", "a")
+  f.write ("foo")
+  f.close()
+  new_stat = os.stat ("mnt/README")
+  if old_stat.st_mode != new_stat.st_mode:
+    raise Exception ("mode changed after append")
+
+tests += [ ("mode-after-append", test_mode_after_append) ]
+
+#####
+
 def start_bfsyncfs():
   if subprocess.call (["./bfsyncfs", "test", "mnt"]) != 0:
     print "can't start bfsyncfs"
