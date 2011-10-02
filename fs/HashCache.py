@@ -18,6 +18,8 @@ class HashCache:
     self.load_cache()
 
   def load_cache (self):
+    if os.getenv ("BFSYNC_NO_HASH_CACHE") == "1":
+      return
     try:
       f = open (os.path.expanduser ('~/.bfsync2_cache'), "r")
       load_time = time.time()
@@ -128,6 +130,8 @@ class HashCache:
     return
 
   def save (self):
+    if os.getenv ("BFSYNC_NO_HASH_CACHE") == "1":
+      return
     # reload cache data in case another bfsync process has added entries to the cache
     self.load_cache()
     try:

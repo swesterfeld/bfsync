@@ -760,4 +760,5 @@ if fstest_args.f:
 else:
   fs = FuseFS()
 
+os.putenv ("BFSYNC_NO_HASH_CACHE", "1")
 main (fstest_args)
