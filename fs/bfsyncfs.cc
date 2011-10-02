@@ -981,11 +981,26 @@ bfsync_rename (const char *old_path, const char *new_path)
   FSLock lock (FSLock::WRITE);
 
   string old_git_file = options.repo_path + "/git/files/" + name2git_name (old_path);
+
+  GitFile gf;
+  if (!gf.parse (options.repo_path + "/git/files/" + name2git_name (old_path)))
+    return -ENOENT;
+
   string new_git_file = options.repo_path + "/git/files/" + name2git_name (new_path);
 
   int rc = rename (old_git_file.c_str(), new_git_file.c_str());
   if (rc != 0)
     return -errno;
+
+  if (gf.type == FILE_DIR)
+    {
+      string old_git_dir = options.repo_path + "/git/files/" + name2git_name (old_path, GIT_DIRNAME);
+      string new_git_dir = options.repo_path + "/git/files/" + name2git_name (new_path, GIT_DIRNAME);
+
+      int rc = rename (old_git_dir.c_str(), new_git_dir.c_str());
+      if (rc != 0)
+        return -errno;
+    }
 
   copy_dirs (new_path);
 
