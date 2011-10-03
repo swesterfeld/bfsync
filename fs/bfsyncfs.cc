@@ -171,9 +171,9 @@ file_path (const string& path)
     return options.repo_path + "/new" + path;
   if (fs == FS_GIT)
     {
-      GitFile gf;
-      if (gf.parse (options.repo_path + "/git/files/" + name2git_name (path)))
-        return make_object_filename (gf.hash);
+      GitFilePtr gf (path);
+      if (gf)
+        return make_object_filename (gf->hash);
     }
   return "";
 }
