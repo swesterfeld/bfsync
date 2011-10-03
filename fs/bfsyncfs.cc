@@ -884,16 +884,13 @@ bfsync_mkdir (const char *path, mode_t mode)
   int rc = mkdir (filename.c_str(), mode);
   if (rc == 0)
     {
-      string git_file = options.repo_path + "/git/files/" + name2git_name (path);
       string git_dir  = options.repo_path + "/git/files/" + name2git_name (path, GIT_DIRNAME);
 
       mkdir (git_dir.c_str(), 0755);
 
-      GitFile gf;
-      new_git_file (gf);
-      gf.type = FILE_DIR;
-      gf.mode = mode;
-      gf.save (git_file);
+      GitFilePtr gf (path, GitFilePtr::NEW);
+      gf.update()->type = FILE_DIR;
+      gf.update()->mode = mode;
       return 0;
     }
 
