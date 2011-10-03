@@ -793,21 +793,14 @@ bfsync_chown (const char *name, uid_t uid, gid_t gid)
 {
   FSLock lock (FSLock::WRITE);
 
-  GitFile gf;
-
-  if (gf.parse (options.repo_path + "/git/files/" + name2git_name (name)))
+  GitFilePtr gf (name);
+  if (gf)
     {
-      gf.uid = uid;
-      gf.gid = gid;
-      gf.set_ctime_now();
-      if (gf.save (options.repo_path + "/git/files/" + name2git_name (name)))
-        {
-          return 0;
-        }
-      else
-        {
-          return -EIO;
-        }
+      gf.update()->uid = uid;
+      gf.update()->gid = gid;
+      gf.update()->set_ctime_now();
+
+      return 0;
     }
   return -ENOENT;
 }
