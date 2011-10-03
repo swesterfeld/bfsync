@@ -28,21 +28,70 @@
 
 using std::string;
 using std::vector;
+using std::map;
 
 namespace BFSync {
 
-GitFilePtr::GitFilePtr (const string& filename, Mode mode)
+GitFileRepo git_file_repo;
+
+static string
+canonify (const string& filename)
 {
-  ptr = new GitFile;
+  // canonify filename, so that it always starts with /  <=>  "/subdir/foo"
+  if (!filename.empty() && filename[0] != '/')
+    return "/" + filename;
+  else
+    return filename;
+}
+
+GitFileRepo*
+GitFileRepo::the()
+{
+  return &git_file_repo;
+}
+
+void
+GitFileRepo::uncache (const string& filename_arg)
+{
+  string filename = canonify (filename_arg);
+
+  GitFile*& cached_ptr = git_file_repo.cache[filename];
+
+  if (cached_ptr)
+    {
+      delete cached_ptr;
+      cached_ptr = 0;
+    }
+}
+
+GitFilePtr::GitFilePtr (const string& filename_arg, Mode mode)
+{
+  string filename = canonify (filename_arg);
 
   string git_filename = Options::the()->repo_path + "/git/files/" + name2git_name (filename);
   if (mode == LOAD)
     {
-      if (!ptr->parse (git_filename))
+      git_file_repo.mutex.lock();
+
+      GitFile*& cached_ptr = git_file_repo.cache[filename];
+      if (cached_ptr)
         {
-          delete ptr;
-          ptr = NULL;
+          ptr = cached_ptr;
         }
+      else
+        {
+          ptr = new GitFile;
+          if (ptr->parse (git_filename))
+            {
+              cached_ptr = ptr;
+            }
+          else
+            {
+              delete ptr;
+              ptr = NULL;
+            }
+        }
+      git_file_repo.mutex.unlock();
     }
   else if (mode == NEW)
     {
@@ -63,7 +112,6 @@ GitFilePtr::~GitFilePtr()
         {
           ptr->save (ptr->git_filename);
         }
-      delete ptr;
       ptr = NULL;
     }
 }

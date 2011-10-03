@@ -17,6 +17,9 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifndef BFSYNC_FS_HH
+#define BFSYNC_FS_HH
+
 #include <stdio.h>
 #include <stdarg.h>
 
@@ -96,3 +99,5 @@ struct Options {
 };
 
 }
+
+#endif /* BFSYNC_FS_HH */

@@ -21,10 +21,13 @@
 #define BFSYNC_GIT_FILE_HH
 
 #include <string>
+#include <map>
 
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+
+#include "bfsyncfs.hh"
 
 namespace BFSync {
 
@@ -89,6 +92,17 @@ public:
     ptr->updated = true;
     return ptr;
   }
+};
+
+class GitFileRepo
+{
+public:
+  std::map<std::string, GitFile*> cache;
+  Mutex                           mutex;
+
+  void uncache (const std::string& filename);
+
+  static GitFileRepo *the();
 };
 
 }

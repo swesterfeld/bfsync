@@ -851,6 +851,8 @@ bfsync_unlink (const char *name)
     {
       string git_file = options.repo_path + "/git/files/" + name2git_name (name);
 
+      GitFileRepo::the()->uncache (name);
+
       int rc = unlink (git_file.c_str());
       if (rc == 0)
         {
@@ -912,6 +914,8 @@ bfsync_rmdir (const char *name)
   if (file_status (name) == FS_GIT)
     {
       string git_file = options.repo_path + "/git/files/" + name2git_name (name);
+
+      GitFileRepo::the()->uncache (name);
 
       int rc = unlink (git_file.c_str());
       if (rc != 0)
