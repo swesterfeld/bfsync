@@ -226,12 +226,12 @@ copy_on_write (const string& path)
     {
       copy_dirs (path);
 
-      GitFile gf;
-      if (gf.parse (options.repo_path + "/git/files/" + name2git_name (path)))
+      GitFilePtr gf (path);
+      if (gf)
         {
           string new_name = options.repo_path + "/new" + path;
 
-          if (gf.type == FILE_REGULAR)
+          if (gf->type == FILE_REGULAR)
             {
               string old_name = file_path (path);
 
@@ -247,8 +247,7 @@ copy_on_write (const string& path)
               close (old_fd);
               close (new_fd);
             }
-          gf.hash = "new";
-          gf.save (options.repo_path + "/git/files/" + name2git_name (path));
+          gf.update()->hash = "new";
         }
     }
 }
