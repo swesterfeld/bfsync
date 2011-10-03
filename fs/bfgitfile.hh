@@ -59,7 +59,7 @@ struct GitFile
   GitFile();
   bool parse (const std::string& filename);
   bool save (const std::string& filename);
-  void set_mtime_now();
+  void set_mtime_ctime_now();
   void set_ctime_now();
 };
 

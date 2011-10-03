@@ -258,8 +258,7 @@ new_git_file (GitFile& gf)
 {
   gf.uid = getuid();
   gf.gid = getgid();
-  gf.set_mtime_now();
-  gf.set_ctime_now();
+  gf.set_mtime_ctime_now();
 }
 
 Mutex::Mutex()
@@ -829,15 +828,20 @@ bfsync_truncate (const char *name, off_t off)
 
   copy_on_write (name);
 
-  if (file_status (name) != FS_CHANGED)
-    return -EINVAL;
-  else
+  GitFilePtr gf (name);
+  if (gf)
     {
       int rc = truncate (file_path (name).c_str(), off);
       if (rc == 0)
-        return 0;
-      else
-        return -errno;
+        {
+          gf.update()->set_mtime_ctime_now();
+          return 0;
+        }
+      return -errno;
+    }
+  else
+    {
+      return -EINVAL;
     }
 }
 

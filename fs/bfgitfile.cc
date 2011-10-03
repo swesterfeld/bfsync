@@ -311,7 +311,7 @@ GitFile::save (const string& filename)
 }
 
 void
-GitFile::set_mtime_now()
+GitFile::set_mtime_ctime_now()
 {
   timespec time_now;
 
@@ -319,6 +319,8 @@ GitFile::set_mtime_now()
     {
       mtime     = time_now.tv_sec;
       mtime_ns  = time_now.tv_nsec;
+      ctime     = time_now.tv_sec;
+      ctime_ns  = time_now.tv_nsec;
     }
 }
 
