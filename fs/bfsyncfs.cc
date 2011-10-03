@@ -437,22 +437,22 @@ bfsync_getattr (const char *path, struct stat *stbuf)
   FSLock lock (FSLock::READ);
   string git_filename = options.repo_path + "/git/files/" + name2git_name (path);
 
-  GitFile git_file;
-  if (git_file.parse (git_filename))
+  GitFilePtr git_file (git_filename);
+  if (git_file)
     {
-      int git_mode = git_file.mode & ~S_IFMT;
+      int git_mode = git_file->mode & ~S_IFMT;
 
       memset (stbuf, 0, sizeof (struct stat));
-      stbuf->st_uid          = git_file.uid;
-      stbuf->st_gid          = git_file.gid;
-      stbuf->st_mtime        = git_file.mtime;
-      stbuf->st_mtim.tv_nsec = git_file.mtime_ns;
-      stbuf->st_ctime        = git_file.ctime;
-      stbuf->st_ctim.tv_nsec = git_file.ctime_ns;
+      stbuf->st_uid          = git_file->uid;
+      stbuf->st_gid          = git_file->gid;
+      stbuf->st_mtime        = git_file->mtime;
+      stbuf->st_mtim.tv_nsec = git_file->mtime_ns;
+      stbuf->st_ctime        = git_file->ctime;
+      stbuf->st_ctim.tv_nsec = git_file->ctime_ns;
       stbuf->st_atim         = stbuf->st_mtim;    // we don't track atime, so set atime == mtime
-      if (git_file.type == FILE_REGULAR)
+      if (git_file->type == FILE_REGULAR)
         {
-          if (git_file.hash == "new")
+          if (git_file->hash == "new")
             {
               // take size and mtime from new file
               struct stat new_stat;
@@ -465,36 +465,36 @@ bfsync_getattr (const char *path, struct stat *stbuf)
             }
           else
             {
-              stbuf->st_size = git_file.size;
+              stbuf->st_size = git_file->size;
             }
           stbuf->st_mode = git_mode | S_IFREG;
         }
-      else if (git_file.type == FILE_SYMLINK)
+      else if (git_file->type == FILE_SYMLINK)
         {
           stbuf->st_mode = git_mode | S_IFLNK;
-          stbuf->st_size = git_file.link.size();
+          stbuf->st_size = git_file->link.size();
         }
-      else if (git_file.type == FILE_DIR)
+      else if (git_file->type == FILE_DIR)
         {
           stbuf->st_mode = git_mode | S_IFDIR;
         }
-      else if (git_file.type == FILE_FIFO)
+      else if (git_file->type == FILE_FIFO)
         {
           stbuf->st_mode = git_mode | S_IFIFO;
         }
-      else if (git_file.type == FILE_SOCKET)
+      else if (git_file->type == FILE_SOCKET)
         {
           stbuf->st_mode = git_mode | S_IFSOCK;
         }
-      else if (git_file.type == FILE_BLOCK_DEV)
+      else if (git_file->type == FILE_BLOCK_DEV)
         {
           stbuf->st_mode = git_mode | S_IFBLK;
-          stbuf->st_rdev = makedev (git_file.major, git_file.minor);
+          stbuf->st_rdev = makedev (git_file->major, git_file->minor);
         }
-      else if (git_file.type == FILE_CHAR_DEV)
+      else if (git_file->type == FILE_CHAR_DEV)
         {
           stbuf->st_mode = git_mode | S_IFCHR;
-          stbuf->st_rdev = makedev (git_file.major, git_file.minor);
+          stbuf->st_rdev = makedev (git_file->major, git_file->minor);
         }
       return 0;
     }

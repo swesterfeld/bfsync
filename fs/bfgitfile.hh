@@ -60,4 +60,36 @@ struct GitFile
   void set_ctime_now();
 };
 
+class GitFilePtr
+{
+  GitFile *ptr;
+public:
+  GitFilePtr (const std::string& filename)
+  {
+    ptr = new GitFile;
+    if (!ptr->parse (filename))
+      {
+        delete ptr;
+        ptr = NULL;
+      }
+  }
+  ~GitFilePtr()
+  {
+    if (ptr)
+      {
+        delete ptr;
+        ptr = NULL;
+      }
+  }
+  operator bool() const
+  {
+    return (ptr != 0);
+  }
+  const GitFile*
+  operator->()
+  {
+    return ptr;
+  }
+};
+
 #endif
