@@ -705,7 +705,15 @@ bfsync_write (const char *path, const char *buf, size_t size, off_t offset,
   ssize_t bytes_written = 0;
 
   if (fh->fd != -1)
-    bytes_written = pwrite (fh->fd, buf, size, offset);
+    {
+      bytes_written = pwrite (fh->fd, buf, size, offset);
+      if (bytes_written > 0)
+        {
+          GitFilePtr gf (path);
+          if (gf)
+            gf.update()->set_mtime_ctime_now();
+        }
+    }
 
   return bytes_written;
 }
