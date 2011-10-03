@@ -1001,14 +1001,14 @@ bfsync_readlink (const char *path, char *buffer, size_t size)
 {
   FSLock lock (FSLock::READ);
 
-  GitFile gf;
-  if (gf.parse (options.repo_path + "/git/files/" + name2git_name (path)) && gf.type == FILE_SYMLINK)
+  GitFilePtr gf (path);
+  if (gf && gf->type == FILE_SYMLINK)
     {
-      int len = gf.link.size();
+      int len = gf->link.size();
 
       if (len >= size)
         len = size - 1;
-      memcpy (buffer, gf.link.c_str(), len);
+      memcpy (buffer, gf->link.c_str(), len);
 
       buffer[len] = 0;
       return 0;
