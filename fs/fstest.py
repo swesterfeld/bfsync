@@ -678,6 +678,20 @@ tests += [ ("ctime-after-append-commit", test_ctime_after_append_commit) ]
 
 #####
 
+def test_symlink_uid():
+  link = "README"
+  os.symlink (link, "mnt/readme-link")
+  stat_file = os.lstat ("mnt/README")
+  stat_link = os.lstat ("mnt/readme-link")
+  if stat_file.st_uid != stat_link.st_uid:
+    raise Exception ("uid diffs %d => %d" % (stat_file.st_uid, stat_link.st_uid))
+  if stat_file.st_gid != stat_link.st_gid:
+    raise Exception ("gid diffs %d => %d" % (stat_file.st_gid, stat_link.st_gid))
+
+tests += [ ("symlink-uid", test_symlink_uid) ]
+
+#####
+
 def start_bfsyncfs():
   if subprocess.call (["./bfsyncfs", "test", "mnt"]) != 0:
     print "can't start bfsyncfs"
