@@ -986,6 +986,7 @@ bfsync_symlink (const char *from, const char *to)
 
   GitFilePtr gf (to, GitFilePtr::NEW);
 
+  gf.update()->mode = 0777;
   gf.update()->type = FILE_SYMLINK;
   gf.update()->link = from;
 

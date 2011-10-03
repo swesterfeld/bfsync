@@ -692,6 +692,17 @@ tests += [ ("symlink-uid", test_symlink_uid) ]
 
 #####
 
+def test_symlink_mode():
+  link = "README"
+  os.symlink (link, "mnt/readme-link")
+  stat_link = os.lstat ("mnt/readme-link")
+  if stat_link.st_mode & 0777 != 0777:
+    raise Exception ("mode diffs mode %o != %o" % (stat_link.st_mode & 0777, 0777))
+
+tests += [ ("symlink-mode", test_symlink_mode) ]
+
+#####
+
 def start_bfsyncfs():
   if subprocess.call (["./bfsyncfs", "test", "mnt"]) != 0:
     print "can't start bfsyncfs"
