@@ -143,10 +143,10 @@ get_dirname (const string& dirname)
 FileStatus
 file_status (const string& path)
 {
-  GitFile gf;
-  if (gf.parse (options.repo_path + "/git/files/" + name2git_name (path)))
+  GitFilePtr gf (path);
+  if (gf)
     {
-      if (gf.hash == "new")
+      if (gf->hash == "new")
         return FS_CHANGED;
       else
         return FS_GIT;
