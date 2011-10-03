@@ -984,16 +984,12 @@ bfsync_symlink (const char *from, const char *to)
   if (file_status (to) != FS_NONE)
     return -EEXIST;
 
-  string git_file = options.repo_path + "/git/files/" + name2git_name (to);
+  GitFilePtr gf (to, GitFilePtr::NEW);
 
-  GitFile gf;
-  gf.type = FILE_SYMLINK;
-  gf.link = from;
+  gf.update()->type = FILE_SYMLINK;
+  gf.update()->link = from;
 
-  if (gf.save (git_file))
-    return 0;
-  else
-    return -EIO;
+  return 0;
 }
 
 static int

@@ -67,7 +67,9 @@ class GitFilePtr
 {
   GitFile *ptr;
 public:
-  GitFilePtr (const std::string& filename);
+  enum Mode { LOAD, NEW };
+
+  GitFilePtr (const std::string& filename, Mode mode = LOAD);
   ~GitFilePtr();
 
   operator bool() const

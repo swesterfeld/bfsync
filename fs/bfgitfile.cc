@@ -30,15 +30,27 @@ using std::string;
 using std::vector;
 using namespace BFSync;
 
-GitFilePtr::GitFilePtr (const string& filename)
+GitFilePtr::GitFilePtr (const string& filename, Mode mode)
 {
   ptr = new GitFile;
 
   string git_filename = Options::the()->repo_path + "/git/files/" + name2git_name (filename);
-  if (!ptr->parse (git_filename))
+  if (mode == LOAD)
     {
-      delete ptr;
-      ptr = NULL;
+      if (!ptr->parse (git_filename))
+        {
+          delete ptr;
+          ptr = NULL;
+        }
+    }
+  else if (mode == NEW)
+    {
+      ptr = new GitFile();
+      ptr->git_filename = git_filename;
+      ptr->uid = getuid();
+      ptr->gid = getgid();
+      ptr->set_mtime_ctime_now();
+      ptr->updated = true;
     }
 }
 
