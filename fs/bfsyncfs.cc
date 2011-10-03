@@ -453,14 +453,12 @@ bfsync_getattr (const char *path, struct stat *stbuf)
         {
           if (git_file->hash == "new")
             {
-              // take size and mtime from new file
+              // take size from new file
               struct stat new_stat;
               string new_filename = options.repo_path + "/new" + path;
               lstat (new_filename.c_str(), &new_stat);
 
               stbuf->st_size = new_stat.st_size;
-              stbuf->st_mtim = new_stat.st_mtim;
-              stbuf->st_atim = new_stat.st_atim;
             }
           else
             {
@@ -813,32 +811,13 @@ bfsync_utimens (const char *name, const struct timespec times[2])
 {
   FSLock lock (FSLock::WRITE);
 
-  if (file_status (name) == FS_CHANGED)
+  GitFilePtr gf (name);
+  if (gf)
     {
-      int rc = utimensat (AT_FDCWD, file_path (name).c_str(), times, AT_SYMLINK_NOFOLLOW);
-      if (rc == 0)
-        return 0;
-      else
-        return -errno;
-    }
-  else
-    {
-      GitFile gf;
-      string git_file = options.repo_path + "/git/files/" + name2git_name (name);
+      gf.update()->mtime    = times[1].tv_sec;
+      gf.update()->mtime_ns = times[1].tv_nsec;
 
-      if (gf.parse (git_file))
-        {
-          gf.mtime    = times[1].tv_sec;
-          gf.mtime_ns = times[1].tv_nsec;
-          if (gf.save (git_file))
-            {
-              return 0;
-            }
-          else
-            {
-              return -EIO; // should never happen
-            }
-        }
+      return 0;
     }
   return -ENOENT;
 }

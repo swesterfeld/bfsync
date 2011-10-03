@@ -332,8 +332,6 @@ Server::add_file (const string& filename, const string& hash, string& error)
 
   gf.hash = hash;
   gf.size = stat.st_size;
-  gf.mtime = stat.st_mtim.tv_sec;
-  gf.mtime_ns = stat.st_mtim.tv_nsec;
 
   if (!gf.save (git_filename))
     {
