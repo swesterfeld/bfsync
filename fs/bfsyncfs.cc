@@ -722,11 +722,8 @@ bfsync_mknod (const char *path, mode_t mode, dev_t dev)
 {
   FSLock lock (FSLock::WRITE);
 
-  string git_file = options.repo_path + "/git/files/" + name2git_name (path);
-
-  GitFile gf;
-  gf.mode = mode & ~S_IFMT;
-  new_git_file (gf);
+  GitFilePtr gf (path, GitFilePtr::NEW);
+  gf.update()->mode = mode & ~S_IFMT;
 
   if (S_ISREG (mode))
     {
@@ -736,8 +733,8 @@ bfsync_mknod (const char *path, mode_t mode, dev_t dev)
       int rc = mknod (filename.c_str(), mode, dev);
       if (rc == 0)
         {
-          gf.type = FILE_REGULAR;
-          gf.hash = "new";
+          gf.update()->type = FILE_REGULAR;
+          gf.update()->hash = "new";
         }
       else
         {
@@ -746,29 +743,28 @@ bfsync_mknod (const char *path, mode_t mode, dev_t dev)
     }
   else if (S_ISFIFO (mode))
     {
-      gf.type = FILE_FIFO;
+      gf.update()->type = FILE_FIFO;
     }
   else if (S_ISSOCK (mode))
     {
-      gf.type = FILE_SOCKET;
+      gf.update()->type = FILE_SOCKET;
     }
   else if (S_ISBLK (mode))
     {
-      gf.type = FILE_BLOCK_DEV;
-      gf.major = major (dev);
-      gf.minor = minor (dev);
+      gf.update()->type = FILE_BLOCK_DEV;
+      gf.update()->major = major (dev);
+      gf.update()->minor = minor (dev);
     }
   else if (S_ISCHR (mode))
     {
-      gf.type = FILE_CHAR_DEV;
-      gf.major = major (dev);
-      gf.minor = minor (dev);
+      gf.update()->type = FILE_CHAR_DEV;
+      gf.update()->major = major (dev);
+      gf.update()->minor = minor (dev);
     }
   else
     {
       return -ENOENT;
     }
-  gf.save (git_file);
   return 0;
 }
 
