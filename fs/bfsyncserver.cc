@@ -57,7 +57,7 @@ Server::~Server()
     }
 }
 
-void*
+static void*
 thread_start (void *arg)
 {
   Server *instance = static_cast<Server *> (arg);

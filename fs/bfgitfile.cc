@@ -28,7 +28,8 @@
 
 using std::string;
 using std::vector;
-using namespace BFSync;
+
+namespace BFSync {
 
 GitFilePtr::GitFilePtr (const string& filename, Mode mode)
 {
@@ -346,4 +347,6 @@ GitFile::set_ctime_now()
       ctime     = time_now.tv_sec;
       ctime_ns  = time_now.tv_nsec;
     }
+}
+
 }

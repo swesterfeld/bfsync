@@ -26,6 +26,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+namespace BFSync {
+
 enum FileType {
   FILE_NONE,
   FILE_REGULAR,
@@ -88,5 +90,7 @@ public:
     return ptr;
   }
 };
+
+}
 
 #endif
