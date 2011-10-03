@@ -312,8 +312,8 @@ Server::handle_client (int client_fd)
 bool
 Server::add_file (const string& filename, const string& hash, string& error)
 {
-  GitFile gf;
-  string git_filename = Options::the()->repo_path + "/git/files/" + name2git_name (filename);
+  GitFilePtr gf (filename);
+
   string new_filename = Options::the()->repo_path + "/new/" + filename;
   string object_filename = make_object_filename (hash);
 
@@ -324,20 +324,14 @@ Server::add_file (const string& filename, const string& hash, string& error)
       return false;
     }
 
-  if (!gf.parse (git_filename))
+  if (!gf)
     {
-      error = "can't parse git file '" + git_filename + "'";
+      error = "can't parse git file for '" + filename + "'";
       return false;
     }
 
-  gf.hash = hash;
-  gf.size = stat.st_size;
-
-  if (!gf.save (git_filename))
-    {
-      error = "can't save git file '" + git_filename + "'";
-      return false;
-    }
+  gf.update()->hash = hash;
+  gf.update()->size = stat.st_size;
 
   if (lstat (object_filename.c_str(), &obj_stat) == 0)    // hash is already known
     {

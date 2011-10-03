@@ -252,14 +252,6 @@ copy_on_write (const string& path)
     }
 }
 
-void
-new_git_file (GitFile& gf)
-{
-  gf.uid = getuid();
-  gf.gid = getgid();
-  gf.set_mtime_ctime_now();
-}
-
 Mutex::Mutex()
 {
   pthread_mutex_init (&mutex, NULL);
