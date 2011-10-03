@@ -435,9 +435,8 @@ bfsync_getattr (const char *path, struct stat *stbuf)
     }
 
   FSLock lock (FSLock::READ);
-  string git_filename = options.repo_path + "/git/files/" + name2git_name (path);
 
-  GitFilePtr git_file (git_filename);
+  GitFilePtr git_file (path);
   if (git_file)
     {
       int git_mode = git_file->mode & ~S_IFMT;
@@ -774,20 +773,13 @@ bfsync_chmod (const char *name, mode_t mode)
 {
   FSLock lock (FSLock::WRITE);
 
-  GitFile gf;
+  GitFilePtr git_file (name);
 
-  if (gf.parse (options.repo_path + "/git/files/" + name2git_name (name)))
+  if (git_file)
     {
-      gf.mode = mode;
-      gf.set_ctime_now();
-      if (gf.save (options.repo_path + "/git/files/" + name2git_name (name)))
-        {
-          return 0;
-        }
-      else
-        {
-          return -EIO;
-        }
+      git_file.update()->mode = mode;
+      git_file.update()->set_ctime_now();
+      return 0;
     }
   return -ENOENT;
 }

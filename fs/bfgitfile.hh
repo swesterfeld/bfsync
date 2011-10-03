@@ -53,6 +53,9 @@ struct GitFile
   dev_t       major;
   dev_t       minor;
 
+  bool        updated;
+  std::string git_filename;
+
   GitFile();
   bool parse (const std::string& filename);
   bool save (const std::string& filename);
@@ -64,23 +67,9 @@ class GitFilePtr
 {
   GitFile *ptr;
 public:
-  GitFilePtr (const std::string& filename)
-  {
-    ptr = new GitFile;
-    if (!ptr->parse (filename))
-      {
-        delete ptr;
-        ptr = NULL;
-      }
-  }
-  ~GitFilePtr()
-  {
-    if (ptr)
-      {
-        delete ptr;
-        ptr = NULL;
-      }
-  }
+  GitFilePtr (const std::string& filename);
+  ~GitFilePtr();
+
   operator bool() const
   {
     return (ptr != 0);
@@ -88,6 +77,12 @@ public:
   const GitFile*
   operator->()
   {
+    return ptr;
+  }
+  GitFile*
+  update() const
+  {
+    ptr->updated = true;
     return ptr;
   }
 };

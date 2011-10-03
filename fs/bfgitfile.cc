@@ -18,6 +18,7 @@
 */
 
 #include "bfgitfile.hh"
+#include "bfsyncfs.hh"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -27,6 +28,32 @@
 
 using std::string;
 using std::vector;
+using namespace BFSync;
+
+GitFilePtr::GitFilePtr (const string& filename)
+{
+  ptr = new GitFile;
+
+  string git_filename = Options::the()->repo_path + "/git/files/" + name2git_name (filename);
+  if (!ptr->parse (git_filename))
+    {
+      delete ptr;
+      ptr = NULL;
+    }
+}
+
+GitFilePtr::~GitFilePtr()
+{
+  if (ptr)
+    {
+      if (ptr->updated)
+        {
+          ptr->save (ptr->git_filename);
+        }
+      delete ptr;
+      ptr = NULL;
+    }
+}
 
 GitFile::GitFile() :
   size      (0),
@@ -37,7 +64,8 @@ GitFile::GitFile() :
   uid       (0),
   gid       (0),
   mode      (0),
-  type      (FILE_NONE)
+  type      (FILE_NONE),
+  updated   (false)
 {
   major = minor = 0;
 }
@@ -45,6 +73,8 @@ GitFile::GitFile() :
 bool
 GitFile::parse (const string& filename)
 {
+  git_filename = filename;
+
   printf ("parse => %s\n", filename.c_str());
 
   FILE *file = fopen (filename.c_str(), "r");
@@ -178,6 +208,7 @@ GitFile::parse (const string& filename)
   if (gid_count != 1)
     result = false;
   fclose (file);
+
   return result;
 }
 
