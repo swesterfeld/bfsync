@@ -709,6 +709,15 @@ tests += [ ("symlink-mode", test_symlink_mode) ]
 
 #####
 
+def test_rmdir_create():
+  os.mkdir ("mnt/foo")
+  os.rmdir ("mnt/foo")
+  write_file ("mnt/foo", "test-content")
+
+tests += [ ("rmdir-create", test_rmdir_create) ]
+
+#####
+
 def start_bfsyncfs():
   if subprocess.call (["./bfsyncfs", "test", "mnt"]) != 0:
     print "can't start bfsyncfs"
