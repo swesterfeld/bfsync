@@ -771,6 +771,9 @@ bfsync_chmod (const char *name, mode_t mode)
 
   if (git_file)
     {
+      if (fuse_get_context()->uid != 0 && fuse_get_context()->uid != git_file->uid)
+        return -EPERM;
+
       git_file.update()->mode = mode;
       git_file.update()->set_ctime_now();
       return 0;
@@ -1045,13 +1048,16 @@ main (int argc, char *argv[])
   string repo_path, mount_point;
 
   options.mount_debug = false;
+  options.mount_all = false;
 
   int opt;
-  while ((opt = getopt (argc, argv, "d")) != -1)
+  while ((opt = getopt (argc, argv, "da")) != -1)
     {
       switch (opt)
         {
           case 'd': options.mount_debug = true;
+                    break;
+          case 'a': options.mount_all = true;
                     break;
           default:  exit_usage();
                     exit (1);
@@ -1117,6 +1123,8 @@ main (int argc, char *argv[])
   my_argv[my_argc++] = g_strdup (options.mount_point.c_str());
   if (options.mount_debug)
     my_argv[my_argc++] = "-d";
+  if (options.mount_all)
+    my_argv[my_argc++] = "-oallow_other";
   my_argv[my_argc] = NULL;
 
   int fuse_rc = fuse_main (my_argc, my_argv, &bfsync_oper, NULL);

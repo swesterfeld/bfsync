@@ -94,6 +94,7 @@ struct Options {
   std::string  repo_path;
   std::string  mount_point;
   bool         mount_debug;
+  bool         mount_all;
 
   static Options *the();
 };
