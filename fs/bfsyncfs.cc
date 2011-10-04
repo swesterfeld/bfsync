@@ -727,6 +727,10 @@ bfsync_mknod (const char *path, mode_t mode, dev_t dev)
       int rc = mknod (filename.c_str(), mode, dev);
       if (rc == 0)
         {
+          GitFilePtr gf_dir (get_dirname (path));
+          if (gf_dir)
+            gf_dir.update()->set_mtime_ctime_now();
+
           gf.update()->type = FILE_REGULAR;
           gf.update()->hash = "new";
         }

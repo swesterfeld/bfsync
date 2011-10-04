@@ -718,6 +718,20 @@ tests += [ ("rmdir-create", test_rmdir_create) ]
 
 #####
 
+def test_open_dir_ctime():
+  stat_subdir = os.lstat ("mnt/subdir")
+  time.sleep (0.1)
+  write_file ("mnt/subdir/newfile", "test-content")
+  new_stat_subdir = os.lstat ("mnt/subdir")
+  if stat_subdir.st_mtime == new_stat_subdir.st_mtime:
+    raise Exception ("open did not change mtime")
+  if stat_subdir.st_ctime == new_stat_subdir.st_ctime:
+    raise Exception ("open did not change mtime")
+
+tests += [ ("open-dir-ctime", test_open_dir_ctime) ]
+
+#####
+
 def start_bfsyncfs():
   if subprocess.call (["./bfsyncfs", "test", "mnt"]) != 0:
     print "can't start bfsyncfs"
