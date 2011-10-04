@@ -1117,5 +1117,9 @@ main (int argc, char *argv[])
     my_argv[my_argc++] = "-d";
   my_argv[my_argc] = NULL;
 
-  return fuse_main (my_argc, my_argv, &bfsync_oper, NULL);
+  int fuse_rc = fuse_main (my_argc, my_argv, &bfsync_oper, NULL);
+
+  GitFileRepo::the()->save_changes();
+
+  return fuse_rc;
 }
