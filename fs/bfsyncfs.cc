@@ -252,6 +252,49 @@ copy_on_write (const string& path)
     }
 }
 
+//------------ permission checks
+
+bool
+search_perm_check (const GitFilePtr& gf, int uid, int gid)
+{
+  printf ("search_perm_check (%s)\n", gf->git_filename.c_str());
+  if (uid == 0)
+    return true;
+
+  if (uid == gf->uid)
+    {
+      if (gf->mode & S_IXUSR)
+        return true;
+    }
+
+  if (gid == gf->gid)
+    {
+      if (gf->mode & S_IXGRP)
+        return true;
+    }
+
+  if (gf->mode & S_IXOTH)
+    return true;
+
+  return false;
+}
+
+bool
+search_perm_ok (const string& name)
+{
+  printf ("search_perm_ok/1 (%s)\n", name.c_str());
+  string dir = get_dirname (name);
+  if (dir == "/")
+    return true;
+
+  printf ("search_perm_ok/2 (%s)\n", dir.c_str());
+  GitFilePtr git_file (dir);
+  if (!git_file || !search_perm_check (git_file, fuse_get_context()->uid, fuse_get_context()->gid))
+    return false;
+  else
+    return search_perm_ok (dir);
+}
+
 Mutex::Mutex()
 {
   pthread_mutex_init (&mutex, NULL);
@@ -614,10 +657,11 @@ bfsync_open (const char *path, struct fuse_file_info *fi)
       return 0;
     }
 
+  if (!search_perm_ok (path))
+    return -EACCES;
+
   if (open_for_write)
-    {
-      copy_on_write (path);
-    }
+    copy_on_write (path);
 
   string filename = file_path (path);
   printf ("open: translated filename = %s\n", filename.c_str());
@@ -764,44 +808,6 @@ bfsync_mknod (const char *path, mode_t mode, dev_t dev)
       return -ENOENT;
     }
   return 0;
-}
-
-bool
-search_perm_check (const GitFilePtr& gf, int uid, int gid)
-{
-  if (uid == 0)
-    return true;
-
-  if (uid == gf->uid)
-    {
-      if (gf->mode & S_IXUSR)
-        return true;
-    }
-
-  if (gid == gf->gid)
-    {
-      if (gf->mode & S_IXGRP)
-        return true;
-    }
-
-  if (gf->mode & S_IXOTH)
-    return true;
-
-  return false;
-}
-
-bool
-search_perm_ok (const string& name)
-{
-  string dir = get_dirname (name);
-  if (dir == "/")
-    return true;
-
-  GitFilePtr git_file (dir);
-  if (!git_file || !search_perm_check (git_file, fuse_get_context()->uid, fuse_get_context()->gid))
-    return false;
-  else
-    return search_perm_ok (dir);
 }
 
 bool
