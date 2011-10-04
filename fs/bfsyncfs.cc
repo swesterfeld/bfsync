@@ -262,21 +262,12 @@ search_perm_check (const GitFilePtr& gf, int uid, int gid)
     return true;
 
   if (uid == gf->uid)
-    {
-      if (gf->mode & S_IXUSR)
-        return true;
-    }
+    return (gf->mode & S_IXUSR);
 
   if (gid == gf->gid)
-    {
-      if (gf->mode & S_IXGRP)
-        return true;
-    }
+    return (gf->mode & S_IXGRP);
 
-  if (gf->mode & S_IXOTH)
-    return true;
-
-  return false;
+  return (gf->mode & S_IXOTH);
 }
 
 bool
@@ -303,21 +294,12 @@ write_perm_ok (const GitFilePtr& gf)
     return true;
 
   if (uid == gf->uid)
-    {
-      if (gf->mode & S_IWUSR)
-        return true;
-    }
+    return (gf->mode & S_IWUSR);
 
   if (gid == gf->gid)
-    {
-      if (gf->mode & S_IWGRP)
-        return true;
-    }
+    return (gf->mode & S_IWGRP);
 
-  if (gf->mode & S_IWOTH)
-    return true;
-
-  return false;
+  return (gf->mode & S_IWOTH);
 }
 
 bool
@@ -330,21 +312,12 @@ read_perm_ok (const GitFilePtr& gf)
     return true;
 
   if (uid == gf->uid)
-    {
-      if (gf->mode & S_IRUSR)
-        return true;
-    }
+    return (gf->mode & S_IRUSR);
 
   if (gid == gf->gid)
-    {
-      if (gf->mode & S_IRGRP)
-        return true;
-    }
+    return (gf->mode & S_IRGRP);
 
-  if (gf->mode & S_IROTH)
-    return true;
-
-  return false;
+  return (gf->mode & S_IROTH);
 }
 
 Mutex::Mutex()
@@ -716,8 +689,16 @@ bfsync_open (const char *path, struct fuse_file_info *fi)
   if (!gf)
     return -ENOENT;
 
-  if (open_for_write && !write_perm_ok (gf))
-    return -EACCES;
+  if (open_for_write)
+    {
+      if (!write_perm_ok (gf))
+        return -EACCES;
+    }
+  else
+    {
+      if (!read_perm_ok (gf))
+        return -EACCES;
+    }
 
   if (open_for_write)
     copy_on_write (path);
