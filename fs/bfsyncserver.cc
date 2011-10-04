@@ -269,6 +269,8 @@ Server::handle_client (int client_fd)
                     {
                       lock = new FSLock (FSLock::RDONLY);
                       result.push_back ("ok");
+
+                      GitFileRepo::the()->save_changes();
                     }
                 }
               else if (request[0] == "add-new")

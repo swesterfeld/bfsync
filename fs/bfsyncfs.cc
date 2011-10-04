@@ -535,6 +535,8 @@ read_dir_contents (const string& path, vector<string>& entries)
   dir = g_dir_open (git_files.c_str(), 0, NULL);
   if (dir)
     {
+      GitFileRepo::the()->save_changes();
+
       const char *name;
       while ((name = g_dir_read_name (dir)))
         {
@@ -952,6 +954,7 @@ bfsync_rename (const char *old_path, const char *new_path)
       string old_git_dir = options.repo_path + "/git/files/" + name2git_name (old_path, GIT_DIRNAME);
       string new_git_dir = options.repo_path + "/git/files/" + name2git_name (new_path, GIT_DIRNAME);
 
+      GitFileRepo::the()->save_changes();
       int rc = rename (old_git_dir.c_str(), new_git_dir.c_str());
       if (rc != 0)
         return -errno;

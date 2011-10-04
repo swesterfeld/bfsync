@@ -101,6 +101,7 @@ public:
   Mutex                           mutex;
 
   void uncache (const std::string& filename);
+  void save_changes();
 
   static GitFileRepo *the();
 };

@@ -53,27 +53,53 @@ GitFileRepo::the()
 void
 GitFileRepo::uncache (const string& filename_arg)
 {
+  git_file_repo.mutex.lock();
+
   string filename = canonify (filename_arg);
 
   GitFile*& cached_ptr = git_file_repo.cache[filename];
 
   if (cached_ptr)
     {
+      // save modifications that were not written to disk until now
+      if (cached_ptr->updated)
+        cached_ptr->save (cached_ptr->git_filename);
+
       delete cached_ptr;
       cached_ptr = 0;
     }
+
+  git_file_repo.mutex.unlock();
+}
+
+void
+GitFileRepo::save_changes()
+{
+  git_file_repo.mutex.lock();
+
+  for (map<string, GitFile*>::iterator ci = cache.begin(); ci != cache.end(); ci++)
+    {
+      GitFile *gf_ptr = ci->second;
+      if (gf_ptr && gf_ptr->updated)
+        {
+          gf_ptr->save (gf_ptr->git_filename);
+          gf_ptr->updated = false;
+        }
+    }
+
+  git_file_repo.mutex.unlock();
 }
 
 GitFilePtr::GitFilePtr (const string& filename_arg, Mode mode)
 {
   string filename = canonify (filename_arg);
 
+  git_file_repo.mutex.lock();
+  GitFile*& cached_ptr = git_file_repo.cache[filename];
+
   string git_filename = Options::the()->repo_path + "/git/files/" + name2git_name (filename);
   if (mode == LOAD)
     {
-      git_file_repo.mutex.lock();
-
-      GitFile*& cached_ptr = git_file_repo.cache[filename];
       if (cached_ptr)
         {
           ptr = cached_ptr;
@@ -81,17 +107,12 @@ GitFilePtr::GitFilePtr (const string& filename_arg, Mode mode)
       else
         {
           ptr = new GitFile;
-          if (ptr->parse (git_filename))
-            {
-              cached_ptr = ptr;
-            }
-          else
+          if (!ptr->parse (git_filename))
             {
               delete ptr;
               ptr = NULL;
             }
         }
-      git_file_repo.mutex.unlock();
     }
   else if (mode == NEW)
     {
@@ -102,18 +123,13 @@ GitFilePtr::GitFilePtr (const string& filename_arg, Mode mode)
       ptr->set_mtime_ctime_now();
       ptr->updated = true;
     }
+  cached_ptr = ptr;
+  git_file_repo.mutex.unlock();
 }
 
 GitFilePtr::~GitFilePtr()
 {
-  if (ptr)
-    {
-      if (ptr->updated)
-        {
-          ptr->save (ptr->git_filename);
-        }
-      ptr = NULL;
-    }
+  ptr = NULL;
 }
 
 GitFile::GitFile() :
