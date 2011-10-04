@@ -314,12 +314,38 @@ write_perm_ok (const GitFilePtr& gf)
         return true;
     }
 
-  if (gf->mode & S_IXOTH)
+  if (gf->mode & S_IWOTH)
     return true;
 
   return false;
 }
 
+bool
+read_perm_ok (const GitFilePtr& gf)
+{
+  const int uid = fuse_get_context()->uid;
+  const int gid = fuse_get_context()->gid;
+
+  if (uid == 0)
+    return true;
+
+  if (uid == gf->uid)
+    {
+      if (gf->mode & S_IRUSR)
+        return true;
+    }
+
+  if (gid == gf->gid)
+    {
+      if (gf->mode & S_IRGRP)
+        return true;
+    }
+
+  if (gf->mode & S_IROTH)
+    return true;
+
+  return false;
+}
 
 Mutex::Mutex()
 {
