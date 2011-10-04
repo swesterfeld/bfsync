@@ -666,7 +666,9 @@ static int
 bfsync_open (const char *path, struct fuse_file_info *fi)
 {
   int accmode = fi->flags & O_ACCMODE;
+  // can both be true (for O_RDWR)
   bool open_for_write = (accmode == O_WRONLY || accmode == O_RDWR);
+  bool open_for_read  = (accmode == O_RDONLY || accmode == O_RDWR);
 
   FSLock lock (open_for_write ? FSLock::WRITE : FSLock::READ);
 
@@ -689,16 +691,11 @@ bfsync_open (const char *path, struct fuse_file_info *fi)
   if (!gf)
     return -ENOENT;
 
-  if (open_for_write)
-    {
-      if (!write_perm_ok (gf))
-        return -EACCES;
-    }
-  else
-    {
-      if (!read_perm_ok (gf))
-        return -EACCES;
-    }
+  if (open_for_write && !write_perm_ok (gf))
+    return -EACCES;
+
+  if (open_for_read && !read_perm_ok (gf))
+    return -EACCES;
 
   if (open_for_write)
     copy_on_write (path);
