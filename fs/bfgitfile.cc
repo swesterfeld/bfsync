@@ -90,7 +90,7 @@ GitFileRepo::save_changes()
   git_file_repo.mutex.unlock();
 }
 
-GitFilePtr::GitFilePtr (const string& filename_arg, Mode mode)
+GitFilePtr::GitFilePtr (const string& filename_arg, Mode mode, fuse_context *context)
 {
   string filename = canonify (filename_arg);
 
@@ -118,8 +118,16 @@ GitFilePtr::GitFilePtr (const string& filename_arg, Mode mode)
     {
       ptr = new GitFile();
       ptr->git_filename = git_filename;
-      ptr->uid = getuid();
-      ptr->gid = getgid();
+      if (context)
+        {
+          ptr->uid = context->uid;
+          ptr->gid = context->gid;
+        }
+      else
+        {
+          ptr->uid = getuid();
+          ptr->gid = getgid();
+        }
       ptr->set_mtime_ctime_now();
       ptr->updated = true;
     }

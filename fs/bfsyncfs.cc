@@ -716,7 +716,7 @@ bfsync_mknod (const char *path, mode_t mode, dev_t dev)
 {
   FSLock lock (FSLock::WRITE);
 
-  GitFilePtr gf (path, GitFilePtr::NEW);
+  GitFilePtr gf (path, GitFilePtr::NEW, fuse_get_context());
   gf.update()->mode = mode & ~S_IFMT;
 
   if (S_ISREG (mode))
@@ -890,7 +890,7 @@ bfsync_mkdir (const char *path, mode_t mode)
 
       mkdir (git_dir.c_str(), 0755);
 
-      GitFilePtr gf (path, GitFilePtr::NEW);
+      GitFilePtr gf (path, GitFilePtr::NEW, fuse_get_context());
       gf.update()->type = FILE_DIR;
       gf.update()->mode = mode;
       return 0;
@@ -985,7 +985,7 @@ bfsync_symlink (const char *from, const char *to)
   if (file_status (to) != FS_NONE)
     return -EEXIST;
 
-  GitFilePtr gf (to, GitFilePtr::NEW);
+  GitFilePtr gf (to, GitFilePtr::NEW, fuse_get_context());
 
   gf.update()->mode = 0777;
   gf.update()->type = FILE_SYMLINK;

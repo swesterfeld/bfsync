@@ -26,6 +26,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <fuse.h>
 
 #include "bfsyncfs.hh"
 
@@ -74,7 +75,7 @@ class GitFilePtr
 public:
   enum Mode { LOAD, NEW };
 
-  GitFilePtr (const std::string& filename, Mode mode = LOAD);
+  GitFilePtr (const std::string& filename, Mode mode = LOAD, fuse_context *context = NULL);
   ~GitFilePtr();
 
   operator bool() const
