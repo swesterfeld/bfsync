@@ -905,9 +905,11 @@ bfsync_rmdir (const char *name)
       return -ENOTEMPTY;
 
   // rmdir new directories
-  if (file_status (name) == FS_CHANGED)
+  struct stat st;
+  string new_dirname = options.repo_path + "/new/" + name;
+  if (lstat (new_dirname.c_str(), &st) == 0)
     {
-      int rc = rmdir (file_path (name).c_str());
+      int rc = rmdir (new_dirname.c_str());
       if (rc != 0)
         return -errno;
     }
