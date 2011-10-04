@@ -774,6 +774,9 @@ bfsync_chmod (const char *name, mode_t mode)
       if (fuse_get_context()->uid != 0 && fuse_get_context()->uid != git_file->uid)
         return -EPERM;
 
+      if (fuse_get_context()->uid != 0 && fuse_get_context()->gid != git_file->gid)
+        mode &= ~S_ISGID;
+
       git_file.update()->mode = mode;
       git_file.update()->set_ctime_now();
       return 0;
