@@ -890,6 +890,9 @@ bfsync_truncate (const char *name, off_t off)
   GitFilePtr gf (name);
   if (gf)
     {
+      if (!search_perm_ok (name))
+        return -EACCES;
+
       if (!write_perm_ok (gf, fuse_get_context()->uid, fuse_get_context()->gid))
         return -EACCES;
 
