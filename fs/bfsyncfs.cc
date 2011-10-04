@@ -794,10 +794,34 @@ search_perm_ok (const string& name)
     return true;
 
   GitFilePtr git_file (dir);
-  if (!search_perm_check (git_file, fuse_get_context()->uid, fuse_get_context()->gid))
+  if (!git_file || !search_perm_check (git_file, fuse_get_context()->uid, fuse_get_context()->gid))
     return false;
   else
     return search_perm_ok (dir);
+}
+
+bool
+write_perm_ok (const GitFilePtr& gf, int uid, int gid)
+{
+  if (uid == 0)
+    return true;
+
+  if (uid == gf->uid)
+    {
+      if (gf->mode & S_IWUSR)
+        return true;
+    }
+
+  if (gid == gf->gid)
+    {
+      if (gf->mode & S_IWGRP)
+        return true;
+    }
+
+  if (gf->mode & S_IXOTH)
+    return true;
+
+  return false;
 }
 
 int
@@ -863,11 +887,14 @@ bfsync_truncate (const char *name, off_t off)
 {
   FSLock lock (FSLock::WRITE);
 
-  copy_on_write (name);
-
   GitFilePtr gf (name);
   if (gf)
     {
+      if (!write_perm_ok (gf, fuse_get_context()->uid, fuse_get_context()->gid))
+        return -EACCES;
+
+      copy_on_write (name);
+
       int rc = truncate (file_path (name).c_str(), off);
       if (rc == 0)
         {
