@@ -282,18 +282,44 @@ search_perm_check (const GitFilePtr& gf, int uid, int gid)
 bool
 search_perm_ok (const string& name)
 {
-  printf ("search_perm_ok/1 (%s)\n", name.c_str());
   string dir = get_dirname (name);
   if (dir == "/")
     return true;
 
-  printf ("search_perm_ok/2 (%s)\n", dir.c_str());
   GitFilePtr git_file (dir);
   if (!git_file || !search_perm_check (git_file, fuse_get_context()->uid, fuse_get_context()->gid))
     return false;
   else
     return search_perm_ok (dir);
 }
+
+bool
+write_perm_ok (const GitFilePtr& gf)
+{
+  const int uid = fuse_get_context()->uid;
+  const int gid = fuse_get_context()->gid;
+
+  if (uid == 0)
+    return true;
+
+  if (uid == gf->uid)
+    {
+      if (gf->mode & S_IWUSR)
+        return true;
+    }
+
+  if (gid == gf->gid)
+    {
+      if (gf->mode & S_IWGRP)
+        return true;
+    }
+
+  if (gf->mode & S_IXOTH)
+    return true;
+
+  return false;
+}
+
 
 Mutex::Mutex()
 {
@@ -660,6 +686,13 @@ bfsync_open (const char *path, struct fuse_file_info *fi)
   if (!search_perm_ok (path))
     return -EACCES;
 
+  GitFilePtr gf (path);
+  if (!gf)
+    return -ENOENT;
+
+  if (open_for_write && !write_perm_ok (gf))
+    return -EACCES;
+
   if (open_for_write)
     copy_on_write (path);
 
@@ -810,30 +843,6 @@ bfsync_mknod (const char *path, mode_t mode, dev_t dev)
   return 0;
 }
 
-bool
-write_perm_ok (const GitFilePtr& gf, int uid, int gid)
-{
-  if (uid == 0)
-    return true;
-
-  if (uid == gf->uid)
-    {
-      if (gf->mode & S_IWUSR)
-        return true;
-    }
-
-  if (gid == gf->gid)
-    {
-      if (gf->mode & S_IWGRP)
-        return true;
-    }
-
-  if (gf->mode & S_IXOTH)
-    return true;
-
-  return false;
-}
-
 int
 bfsync_chmod (const char *name, mode_t mode)
 {
@@ -903,7 +912,7 @@ bfsync_truncate (const char *name, off_t off)
       if (!search_perm_ok (name))
         return -EACCES;
 
-      if (!write_perm_ok (gf, fuse_get_context()->uid, fuse_get_context()->gid))
+      if (!write_perm_ok (gf))
         return -EACCES;
 
       copy_on_write (name);
