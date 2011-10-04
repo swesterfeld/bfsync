@@ -941,6 +941,8 @@ bfsync_rename (const char *old_path, const char *new_path)
   string old_git_file = options.repo_path + "/git/files/" + name2git_name (old_path);
   string new_git_file = options.repo_path + "/git/files/" + name2git_name (new_path);
 
+  GitFileRepo::the()->uncache (old_path);
+
   int rc = rename (old_git_file.c_str(), new_git_file.c_str());
   if (rc != 0)
     return -errno;

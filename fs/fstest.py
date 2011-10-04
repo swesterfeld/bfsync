@@ -538,11 +538,17 @@ def test_rename():
   if read_file ("mnt/xreadme") != orig_readme:
     raise Exception ("contents changed during rename")
   try:
+    os.stat ("mnt/README")
+  except:
+    pass
+  else:
+    raise Exception ("rename left original file behind (stat ok)")
+  try:
     read_file ("mnt/README")
   except:
     pass
   else:
-    raise Exception ("rename left original file behind")
+    raise Exception ("rename left original file behind (read ok)")
 
 tests += [ ("rename", test_rename) ]
 
