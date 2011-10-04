@@ -83,7 +83,7 @@ public:
     return (ptr != 0);
   }
   const GitFile*
-  operator->()
+  operator->() const
   {
     return ptr;
   }
