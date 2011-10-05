@@ -634,6 +634,24 @@ read_dir_contents (const string& path, vector<string>& entries)
 }
 
 static int
+bfsync_opendir (const char *path, struct fuse_file_info *fi)
+{
+  if (!search_perm_ok (path))
+    return -EACCES;
+
+  if (string (path) != "/")
+    {
+      GitFilePtr gf (path);
+      if (!gf)
+        return -ENOENT;
+
+      if (!read_perm_ok (gf))
+        return -EACCES;
+    }
+  return 0;
+}
+
+static int
 bfsync_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
                 off_t offset, struct fuse_file_info *fi)
 {
@@ -1194,6 +1212,7 @@ main (int argc, char *argv[])
 
   /* read */
   bfsync_oper.getattr  = bfsync_getattr;
+  bfsync_oper.opendir  = bfsync_opendir;
   bfsync_oper.readdir  = bfsync_readdir;
   bfsync_oper.read     = bfsync_read;
   bfsync_oper.readlink = bfsync_readlink;
