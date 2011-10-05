@@ -821,6 +821,11 @@ bfsync_mknod (const char *path, mode_t mode, dev_t dev)
   GitFilePtr gf (path, GitFilePtr::NEW, fuse_get_context());
   gf.update()->mode = mode & ~S_IFMT;
 
+  GitFilePtr gf_dir (get_dirname (path));
+
+  if (!write_perm_ok (gf_dir))
+    return -EACCES;
+
   if (S_ISREG (mode))
     {
       copy_dirs (path);
@@ -829,7 +834,6 @@ bfsync_mknod (const char *path, mode_t mode, dev_t dev)
       int rc = mknod (filename.c_str(), mode, dev);
       if (rc == 0)
         {
-          GitFilePtr gf_dir (get_dirname (path));
           if (gf_dir)
             gf_dir.update()->set_mtime_ctime_now();
 
@@ -1244,6 +1248,7 @@ main (int argc, char *argv[])
     my_argv[my_argc++] = "-d";
   if (options.mount_all)
     my_argv[my_argc++] = "-oallow_other";
+  my_argv[my_argc++] = "-oattr_timeout=0";
   my_argv[my_argc] = NULL;
 
   int fuse_rc = fuse_main (my_argc, my_argv, &bfsync_oper, NULL);
