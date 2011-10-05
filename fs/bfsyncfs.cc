@@ -255,7 +255,7 @@ copy_on_write (const string& path)
 //------------ permission checks
 
 bool
-search_perm_check (const GitFilePtr& gf, int uid, int gid)
+search_perm_check (const GitFilePtr& gf, uid_t uid, gid_t gid)
 {
   printf ("search_perm_check (%s)\n", gf->git_filename.c_str());
   if (uid == 0)
@@ -287,8 +287,8 @@ search_perm_ok (const string& name)
 bool
 write_perm_ok (const GitFilePtr& gf)
 {
-  const int uid = fuse_get_context()->uid;
-  const int gid = fuse_get_context()->gid;
+  const uid_t uid = fuse_get_context()->uid;
+  const gid_t gid = fuse_get_context()->gid;
 
   if (uid == 0)
     return true;
@@ -305,8 +305,8 @@ write_perm_ok (const GitFilePtr& gf)
 bool
 read_perm_ok (const GitFilePtr& gf)
 {
-  const int uid = fuse_get_context()->uid;
-  const int gid = fuse_get_context()->gid;
+  const uid_t uid = fuse_get_context()->uid;
+  const gid_t gid = fuse_get_context()->gid;
 
   if (uid == 0)
     return true;
@@ -773,10 +773,10 @@ bfsync_read (const char *path, char *buf, size_t size, off_t offset,
   if (fh->special_file == FileHandle::INFO)
     {
       const string& info = special_files.info;
-      if (offset < info.size())
+      if (offset < (off_t) info.size())
         {
           bytes_read = size;
-          if (offset + bytes_read > info.size())
+          if (offset + bytes_read > (off_t) info.size())
             bytes_read = info.size() - offset;
           memcpy (buf, &info[offset], bytes_read);
         }
@@ -818,13 +818,12 @@ bfsync_mknod (const char *path, mode_t mode, dev_t dev)
 {
   FSLock lock (FSLock::WRITE);
 
-  GitFilePtr gf (path, GitFilePtr::NEW, fuse_get_context());
-  gf.update()->mode = mode & ~S_IFMT;
-
   GitFilePtr gf_dir (get_dirname (path));
-
   if (gf_dir && !write_perm_ok (gf_dir))
     return -EACCES;
+
+  GitFilePtr gf (path, GitFilePtr::NEW, fuse_get_context());
+  gf.update()->mode = mode & ~S_IFMT;
 
   if (S_ISREG (mode))
     {
