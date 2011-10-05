@@ -95,6 +95,7 @@ struct Options {
   std::string  mount_point;
   bool         mount_debug;
   bool         mount_all;
+  bool         mount_fg;
 
   static Options *the();
 };

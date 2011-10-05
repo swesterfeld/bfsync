@@ -473,6 +473,7 @@ tests += [ ("test-dir-mode", test_dir_mode) ]
 #####
 
 def test_commit_uid_gid_cow():
+  os.chmod ("mnt/subdir", 0777)
   os.chown ("mnt/subdir", 123, 456)
   old_stat = os.stat ("mnt/subdir")
   if (old_stat.st_uid != 123 or old_stat.st_gid != 456):

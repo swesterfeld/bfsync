@@ -823,7 +823,7 @@ bfsync_mknod (const char *path, mode_t mode, dev_t dev)
 
   GitFilePtr gf_dir (get_dirname (path));
 
-  if (!write_perm_ok (gf_dir))
+  if (gf_dir && !write_perm_ok (gf_dir))
     return -EACCES;
 
   if (S_ISREG (mode))
@@ -1171,13 +1171,16 @@ main (int argc, char *argv[])
 
   options.mount_debug = false;
   options.mount_all = false;
+  options.mount_fg = false;
 
   int opt;
-  while ((opt = getopt (argc, argv, "da")) != -1)
+  while ((opt = getopt (argc, argv, "daf")) != -1)
     {
       switch (opt)
         {
           case 'd': options.mount_debug = true;
+                    break;
+          case 'f': options.mount_fg = true;
                     break;
           case 'a': options.mount_all = true;
                     break;
@@ -1246,6 +1249,8 @@ main (int argc, char *argv[])
   my_argv[my_argc++] = g_strdup (options.mount_point.c_str());
   if (options.mount_debug)
     my_argv[my_argc++] = "-d";
+  if (options.mount_fg)
+    my_argv[my_argc++] = "-f";
   if (options.mount_all)
     my_argv[my_argc++] = "-oallow_other";
   my_argv[my_argc++] = "-oattr_timeout=0";
