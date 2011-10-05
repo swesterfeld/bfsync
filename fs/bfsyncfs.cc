@@ -274,7 +274,7 @@ bool
 search_perm_ok (const string& name)
 {
   string dir = get_dirname (name);
-  if (dir == "/")
+  if (dir == "/" || dir == "/.bfsync")
     return true;
 
   GitFilePtr git_file (dir);
@@ -493,6 +493,9 @@ bfsync_getattr (const char *path, struct stat *stbuf)
     }
 
   FSLock lock (FSLock::READ);
+
+  if (!search_perm_ok (path))
+    return -EACCES;
 
   GitFilePtr git_file (path);
   if (git_file)
