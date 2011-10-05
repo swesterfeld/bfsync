@@ -965,6 +965,13 @@ bfsync_unlink (const char *name)
 {
   FSLock lock (FSLock::WRITE);
 
+  if (!search_perm_ok (name))
+    return -EACCES;
+
+  GitFilePtr gf_dir (get_dirname (name));
+  if (gf_dir && !write_perm_ok (gf_dir))
+    return -EACCES;
+
   // delete data for changed files
   if (file_status (name) == FS_CHANGED)
     {
@@ -981,15 +988,14 @@ bfsync_unlink (const char *name)
       GitFileRepo::the()->uncache (name);
 
       int rc = unlink (git_file.c_str());
-      if (rc == 0)
-        {
-          return 0;
-        }
-      else
-        {
-          return -errno;
-        }
+      if (rc != 0)
+        return -errno;
     }
+
+  // update directory ctime
+  if (gf_dir)
+    gf_dir.update()->set_mtime_ctime_now();
+
   return 0;
 }
 
@@ -997,6 +1003,10 @@ static int
 bfsync_mkdir (const char *path, mode_t mode)
 {
   FSLock lock (FSLock::WRITE);
+
+  GitFilePtr gf_dir (get_dirname (path));
+  if (gf_dir && !write_perm_ok (gf_dir))
+    return -EACCES;
 
   string filename = options.repo_path + "/new" + path;
 
@@ -1012,6 +1022,10 @@ bfsync_mkdir (const char *path, mode_t mode)
       GitFilePtr gf (path, GitFilePtr::NEW, fuse_get_context());
       gf.update()->type = FILE_DIR;
       gf.update()->mode = mode;
+
+      if (gf_dir)
+        gf_dir.update()->set_mtime_ctime_now();
+
       return 0;
     }
 
