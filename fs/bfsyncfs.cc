@@ -909,6 +909,37 @@ bfsync_chown (const char *name, uid_t uid, gid_t gid)
       if (uid != -1 && fuse_get_context()->uid != 0)
         return -EPERM;
 
+      if (gid != -1 && fuse_get_context()->uid != 0)
+        {
+          if (gf->uid != fuse_get_context()->uid)
+            {
+              return -EPERM;
+            }
+          else
+            {
+              // user may change the group to any group he is member of, if he owns the file
+
+              vector<gid_t> groups (1);
+              size_t n_groups = fuse_getgroups (groups.size(), &groups[0]);
+              groups.resize (n_groups);
+              n_groups = fuse_getgroups (groups.size(), &groups[0]);
+              if (n_groups != groups.size())
+                return -EIO;
+
+              bool can_chown = false;
+              for (vector<gid_t>::iterator gi = groups.begin(); gi != groups.end(); gi++)
+                {
+                  if (gid == *gi)
+                    {
+                      can_chown = true;
+                      break;
+                    }
+                }
+              if (!can_chown)
+                return -EPERM;
+            }
+        }
+
       if (uid != -1)
         gf.update()->uid = uid;
 
