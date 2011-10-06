@@ -130,7 +130,7 @@ Server::run()
 
   while (1)
     {
-      if (poll (poll_fds, 1, -1) > 0)
+      if (poll (poll_fds, 1, 5000) > 0)
         {
           struct sockaddr_un incoming;
           socklen_t size_in = sizeof (struct sockaddr_un);
@@ -141,6 +141,12 @@ Server::run()
               debug ("Server: handle_client (%d)\n", client_fd);
               handle_client (client_fd);
             }
+        }
+      else  // timeout
+        {
+          FSLock lock (FSLock::WRITE); // we don't want anybody to modify stuff while we write
+
+          GitFileRepo::the()->save_changes();
         }
     }
 }
