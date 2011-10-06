@@ -903,7 +903,6 @@ bfsync_chown (const char *name, uid_t uid, gid_t gid)
     return -EACCES;
 
   uid_t context_uid = fuse_get_context()->uid;
-  gid_t context_gid = fuse_get_context()->gid;
 
   GitFilePtr gf (name);
   if (gf)
