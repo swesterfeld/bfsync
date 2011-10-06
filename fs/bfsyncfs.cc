@@ -484,15 +484,9 @@ FSLock::~FSLock()
 static int
 bfsync_getattr (const char *path, struct stat *stbuf)
 {
-  debug ("getattr (\"%s\")\n", path);
-
-  if (string (path) == "/")  // take attrs for / from git/files dir, since we have no own attrs stored for that dir
-    {
-      if (lstat ((options.repo_path + "/git/files/").c_str(), stbuf) == 0)
-        return 0;
-    }
-
   FSLock lock (FSLock::READ);
+
+  debug ("getattr (\"%s\")\n", path);
 
   if (!search_perm_ok (path))
     return -EACCES;

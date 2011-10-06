@@ -19,6 +19,15 @@ class FuseFS:
       raise Exception ("error during setup (can't create dirs)")
     if subprocess.call (["git", "init", "-q", "test/git"]) != 0:
       raise Exception ("error during setup")
+    write_file ("test/git/i_files",
+      "ctime = 1317893102\n" +
+      "ctime_ns = 126239066\n" +
+      "gid = 1001\n" +
+      "mode = 755\n" +
+      "mtime = 1317893102\n" +
+      "mtime_ns = 126239066\n" +
+      "type = dir\n" +
+      "uid = 1001\n");
     start_bfsyncfs()
 
   def commit (self):

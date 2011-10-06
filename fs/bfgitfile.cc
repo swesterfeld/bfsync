@@ -97,7 +97,12 @@ GitFilePtr::GitFilePtr (const string& filename_arg, Mode mode, fuse_context *con
   git_file_repo.mutex.lock();
   GitFile*& cached_ptr = git_file_repo.cache[filename];
 
-  string git_filename = Options::the()->repo_path + "/git/files/" + name2git_name (filename);
+  string git_filename = Options::the()->repo_path + "/git/";
+  if (filename == "/")
+    git_filename += "i_files";
+  else
+    git_filename += "files/" + name2git_name (filename);
+
   if (mode == LOAD)
     {
       if (cached_ptr)
