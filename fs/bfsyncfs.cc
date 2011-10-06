@@ -898,6 +898,12 @@ bfsync_chown (const char *name, uid_t uid, gid_t gid)
 {
   FSLock lock (FSLock::WRITE);
 
+  if (!search_perm_ok (name))
+    return -EACCES;
+
+  uid_t context_uid = fuse_get_context()->uid;
+  gid_t context_gid = fuse_get_context()->gid;
+
   GitFilePtr gf (name);
   if (gf)
     {
@@ -906,12 +912,12 @@ bfsync_chown (const char *name, uid_t uid, gid_t gid)
       if (gf->gid == gid)   // check if this is a nop (change uid to same value)
         gid = -1;
 
-      if (uid != -1 && fuse_get_context()->uid != 0)
+      if (uid != -1 && context_uid != 0)
         return -EPERM;
 
-      if (gid != -1 && fuse_get_context()->uid != 0)
+      if (gid != -1 && context_uid != 0)
         {
-          if (gf->uid != fuse_get_context()->uid)
+          if (gf->uid != context_uid)
             {
               return -EPERM;
             }
@@ -939,6 +945,9 @@ bfsync_chown (const char *name, uid_t uid, gid_t gid)
                 return -EPERM;
             }
         }
+
+      if (context_uid != 0)   // clear setuid/setgid bits for non-root chown
+        gf.update()->mode &= ~(S_ISUID | S_ISGID);
 
       if (uid != -1)
         gf.update()->uid = uid;
