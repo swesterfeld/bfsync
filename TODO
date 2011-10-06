@@ -32,7 +32,6 @@ ENCRYPTED MODE:
 bfsync2 TODO:
 
 * write test: find -cnewer (ctime)
-* dir rename test
 * config-file should allow ignoring repo uid/gid
 * remote get
 * remote put
