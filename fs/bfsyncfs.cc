@@ -718,7 +718,7 @@ bfsync_open (const char *path, struct fuse_file_info *fi)
     copy_on_write (path);
 
   string filename = file_path (path);
-  printf ("open: translated filename = %s\n", filename.c_str());
+  debug ("open: translated filename = %s\n", filename.c_str());
   if (filename == "")
     return -ENOENT;
 
