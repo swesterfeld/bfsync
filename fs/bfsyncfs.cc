@@ -1085,6 +1085,10 @@ bfsync_rmdir (const char *name)
 {
   FSLock lock (FSLock::WRITE);
 
+  GitFilePtr gf_dir (get_dirname (name));
+  if (gf_dir && !write_perm_ok (gf_dir))
+    return -EACCES;
+
   if (!search_perm_ok (name))
     return -EACCES;
 
@@ -1121,7 +1125,6 @@ bfsync_rmdir (const char *name)
         return -errno;
     }
   // update mtime + ctime
-  GitFilePtr gf_dir (get_dirname (name));
   if (gf_dir)
     gf_dir.update()->set_mtime_ctime_now();
   return 0;
