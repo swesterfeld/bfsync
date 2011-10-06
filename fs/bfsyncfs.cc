@@ -1140,6 +1140,17 @@ bfsync_rename (const char *old_path, const char *new_path)
   if (!gf)
     return -ENOENT;
 
+  if (!search_perm_ok (old_path) || !search_perm_ok (new_path))
+    return -EACCES;
+
+  GitFilePtr gf_old_dir (get_dirname (old_path));
+  if (gf_old_dir && !write_perm_ok (gf_old_dir))
+    return -EACCES;
+
+  GitFilePtr gf_new_dir (get_dirname (new_path));
+  if (gf_new_dir && !write_perm_ok (gf_new_dir))
+    return -EACCES;
+
   string old_git_file = options.repo_path + "/git/files/" + name2git_name (old_path);
   string new_git_file = options.repo_path + "/git/files/" + name2git_name (new_path);
 
