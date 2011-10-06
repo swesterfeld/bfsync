@@ -1149,6 +1149,12 @@ bfsync_rename (const char *old_path, const char *new_path)
   if (rc != 0)
     return -errno;
 
+  GitFilePtr new_gf (new_path);
+  if (!new_gf)
+    return -EIO;
+
+  new_gf.update()->set_ctime_now();
+
   if (gf->type == FILE_DIR)
     {
       string old_git_dir = options.repo_path + "/git/files/" + name2git_name (old_path, GIT_DIRNAME);
