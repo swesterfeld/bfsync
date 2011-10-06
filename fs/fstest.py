@@ -94,7 +94,8 @@ def read_file (name):
   f.close()
   return data
 
-tests = []
+tests      = []
+root_tests = []
 
 def test_read():
   if read_file ("mnt/README") != read_file ("../README"):
@@ -288,7 +289,7 @@ def test_commit_uid_gid():
   if old_stat.st_gid != new_stat.st_gid:
     raise Exception ("stat gid diffs %d => %d" % (old_stat.st_gid, new_stat.st_gid))
 
-tests += [ ("commit-uid-gid", test_commit_uid_gid) ]
+root_tests += [ ("commit-uid-gid", test_commit_uid_gid) ]
 
 #####
 
@@ -495,7 +496,7 @@ def test_commit_uid_gid_cow():
   if old_stat.st_gid != new_stat.st_gid:
     raise Exception ("stat gid diffs %d => %d" % (old_stat.st_gid, new_stat.st_gid))
 
-tests += [ ("commit-uid-gid-cow", test_commit_uid_gid_cow) ]
+root_tests += [ ("commit-uid-gid-cow", test_commit_uid_gid_cow) ]
 
 #####
 
@@ -538,7 +539,7 @@ def test_commit_device():
         os.major (old_stat.st_rdev), os.minor (old_stat.st_rdev),
         os.major (new_stat.st_rdev), os.minor (new_stat.st_rdev)))
 
-tests += [ ("commit-device", test_commit_device) ]
+root_tests += [ ("commit-device", test_commit_device) ]
 
 #####
 
@@ -584,7 +585,7 @@ def test_chown_ctime():
   if old_stat.st_ctime == new_stat.st_ctime:
     raise Exception ("ctime unchanged after chown")
 
-tests += [ ("chown-ctime", test_chown_ctime) ]
+root_tests += [ ("chown-ctime", test_chown_ctime) ]
 
 #####
 
@@ -772,7 +773,7 @@ def test_partial_chown():
   if st.st_uid != 123 or st.st_gid != 456:
     raise Exception ("uid/gid not correct")
 
-tests += [ ("partial-chown", test_partial_chown) ]
+root_tests += [ ("partial-chown", test_partial_chown) ]
 
 #####
 
@@ -786,6 +787,11 @@ def commit():
 
 def run_quiet (cmd):
   return subprocess.Popen (cmd, stdout=subprocess.PIPE).wait()
+
+if os.getuid() == 0:
+  tests += root_tests
+else:
+  print "%d root tests skipped, because fstest.py is not running with uid=0.\n" % len (root_tests)
 
 def main (fstest_args):
   # compile
