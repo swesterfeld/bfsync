@@ -482,14 +482,34 @@ FSLock::~FSLock()
 }
 
 static int
-bfsync_getattr (const char *path, struct stat *stbuf)
+bfsync_getattr (const char *path_arg, struct stat *stbuf)
 {
+  const string path = path_arg;
+
   FSLock lock (FSLock::READ);
 
-  debug ("getattr (\"%s\")\n", path);
+  debug ("getattr (\"%s\")\n", path_arg);
 
   if (!search_perm_ok (path))
     return -EACCES;
+
+  if (path == "/.bfsync")
+    {
+      memset (stbuf, 0, sizeof (struct stat));
+      stbuf->st_mode = 0755 | S_IFDIR;
+      stbuf->st_uid  = getuid();
+      stbuf->st_gid  = getgid();
+      return 0;
+    }
+  else if (path == "/.bfsync/info")
+    {
+      memset (stbuf, 0, sizeof (struct stat));
+      stbuf->st_mode = 0644 | S_IFREG;
+      stbuf->st_uid  = getuid();
+      stbuf->st_gid  = getgid();
+      stbuf->st_size = special_files.info.size();
+      return 0;
+    }
 
   GitFilePtr git_file (path);
   if (git_file)
@@ -548,24 +568,6 @@ bfsync_getattr (const char *path, struct stat *stbuf)
           stbuf->st_mode = git_mode | S_IFCHR;
           stbuf->st_rdev = makedev (git_file->major, git_file->minor);
         }
-      return 0;
-    }
-
-  if (string (path) == "/.bfsync")
-    {
-      memset (stbuf, 0, sizeof (struct stat));
-      stbuf->st_mode = 0755 | S_IFDIR;
-      stbuf->st_uid  = getuid();
-      stbuf->st_gid  = getgid();
-      return 0;
-    }
-  else if (string (path) == "/.bfsync/info")
-    {
-      memset (stbuf, 0, sizeof (struct stat));
-      stbuf->st_mode = 0644 | S_IFREG;
-      stbuf->st_uid  = getuid();
-      stbuf->st_gid  = getgid();
-      stbuf->st_size = special_files.info.size();
       return 0;
     }
   else
