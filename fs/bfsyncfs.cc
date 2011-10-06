@@ -1085,6 +1085,9 @@ bfsync_rmdir (const char *name)
 {
   FSLock lock (FSLock::WRITE);
 
+  if (!search_perm_ok (name))
+    return -EACCES;
+
   // check that dir is in fact empty
   vector<string> entries;
   if (read_dir_contents (name, entries))
@@ -1117,6 +1120,10 @@ bfsync_rmdir (const char *name)
       if (rc != 0)
         return -errno;
     }
+  // update mtime + ctime
+  GitFilePtr gf_dir (get_dirname (name));
+  if (gf_dir)
+    gf_dir.update()->set_mtime_ctime_now();
   return 0;
 }
 
