@@ -901,6 +901,11 @@ bfsync_chown (const char *name, uid_t uid, gid_t gid)
   GitFilePtr gf (name);
   if (gf)
     {
+      if (gf->uid == uid)   // check if this is a nop (change uid to same value)
+        uid = -1;
+      if (gf->gid == gid)   // check if this is a nop (change uid to same value)
+        gid = -1;
+
       if (uid != -1 && fuse_get_context()->uid != 0)
         return -EPERM;
 
