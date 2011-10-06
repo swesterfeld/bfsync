@@ -754,6 +754,25 @@ def test_top_dir_mode():
 
 tests += [ ("top-dir-mode", test_top_dir_mode) ]
 
+#####
+
+def test_partial_chown():
+  st_old = os.lstat ("mnt/README")
+  os.chown ("mnt/README", 123, -1)
+  st = os.lstat ("mnt/README")
+  if st_old.st_gid != st.st_gid:
+    raise Exception ("gid changed for partial chown")
+
+  st_old = os.lstat ("mnt/README")
+  os.chown ("mnt/README", -1, 456)
+  st = os.lstat ("mnt/README")
+  if st_old.st_uid != st.st_uid:
+    raise Exception ("uid changed for partial chown")
+
+  if st.st_uid != 123 or st.st_gid != 456:
+    raise Exception ("uid/gid not correct")
+
+tests += [ ("partial-chown", test_partial_chown) ]
 
 #####
 
