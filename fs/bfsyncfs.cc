@@ -1191,6 +1191,10 @@ bfsync_symlink (const char *from, const char *to)
 {
   FSLock lock (FSLock::WRITE);
 
+  GitFilePtr gf_dir (get_dirname (to));
+  if (!gf_dir)
+    return -EIO;
+
   if (file_status (to) != FS_NONE)
     return -EEXIST;
 
@@ -1199,6 +1203,7 @@ bfsync_symlink (const char *from, const char *to)
   gf.update()->mode = 0777;
   gf.update()->type = FILE_SYMLINK;
   gf.update()->link = from;
+  gf_dir.update()->set_mtime_ctime_now();
 
   return 0;
 }
