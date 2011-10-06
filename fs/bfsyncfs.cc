@@ -257,7 +257,7 @@ copy_on_write (const string& path)
 bool
 search_perm_check (const GitFilePtr& gf, uid_t uid, gid_t gid)
 {
-  printf ("search_perm_check (%s)\n", gf->git_filename.c_str());
+  debug ("search_perm_check (%s)\n", gf->git_filename.c_str());
   if (uid == 0)
     return true;
 

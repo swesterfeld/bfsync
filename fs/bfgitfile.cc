@@ -165,7 +165,7 @@ GitFile::parse (const string& filename)
 {
   git_filename = filename;
 
-  printf ("parse => %s\n", filename.c_str());
+  debug ("parse => %s\n", filename.c_str());
 
   FILE *file = fopen (filename.c_str(), "r");
   if (!file)
@@ -191,13 +191,11 @@ GitFile::parse (const string& filename)
                     {
                       size = atoi (val);
                       size_count++;
-                      printf ("size (%s) => %zd\n", filename.c_str(), size);
                     }
                   else if (string (key) == "hash")
                     {
                       hash = val;
                       hash_count++;
-                      printf ("hash (%s) => %s\n", filename.c_str(), hash.c_str());
                     }
                   else if (string (key) == "mtime")
                     {
