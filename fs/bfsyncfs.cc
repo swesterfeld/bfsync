@@ -901,8 +901,12 @@ bfsync_chown (const char *name, uid_t uid, gid_t gid)
   GitFilePtr gf (name);
   if (gf)
     {
-      gf.update()->uid = uid;
-      gf.update()->gid = gid;
+      if (uid != -1)
+        gf.update()->uid = uid;
+
+      if (gid != -1)
+        gf.update()->gid = gid;
+
       gf.update()->set_ctime_now();
 
       return 0;
