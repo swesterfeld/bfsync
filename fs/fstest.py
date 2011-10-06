@@ -742,6 +742,21 @@ tests += [ ("open-dir-ctime", test_open_dir_ctime) ]
 
 #####
 
+def test_top_dir_mode():
+  os.chmod ("mnt", 0700)
+  stat_mnt = os.lstat ("mnt")
+  if (stat_mnt.st_mode & 0777) != 0700:
+    raise Exception ("chmod incorrect")
+  commit()
+  stat_mnt = os.lstat ("mnt")
+  if (stat_mnt.st_mode & 0777) != 0700:
+    raise Exception ("chmod not correct after commit")
+
+tests += [ ("top-dir-mode", test_top_dir_mode) ]
+
+
+#####
+
 def start_bfsyncfs():
   if subprocess.call (["./bfsyncfs", "test", "mnt"]) != 0:
     print "can't start bfsyncfs"
