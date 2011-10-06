@@ -524,6 +524,7 @@ bfsync_getattr (const char *path_arg, struct stat *stbuf)
       stbuf->st_ctime        = git_file->ctime;
       stbuf->st_ctim.tv_nsec = git_file->ctime_ns;
       stbuf->st_atim         = stbuf->st_mtim;    // we don't track atime, so set atime == mtime
+      stbuf->st_nlink        = 1;
       if (git_file->type == FILE_REGULAR)
         {
           if (git_file->hash == "new")
