@@ -901,6 +901,9 @@ bfsync_chown (const char *name, uid_t uid, gid_t gid)
   GitFilePtr gf (name);
   if (gf)
     {
+      if (uid != -1 && fuse_get_context()->uid != 0)
+        return -EPERM;
+
       if (uid != -1)
         gf.update()->uid = uid;
 
