@@ -1195,6 +1195,9 @@ bfsync_symlink (const char *from, const char *to)
   if (!gf_dir)
     return -EIO;
 
+  if (!write_perm_ok (gf_dir))
+    return -EACCES;
+
   if (file_status (to) != FS_NONE)
     return -EEXIST;
 
