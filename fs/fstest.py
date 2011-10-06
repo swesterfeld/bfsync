@@ -22,12 +22,12 @@ class FuseFS:
     write_file ("test/git/i_files",
       "ctime = 1317893102\n" +
       "ctime_ns = 126239066\n" +
-      "gid = 1001\n" +
+      "gid = %d\n" % os.getgid() +
       "mode = 755\n" +
       "mtime = 1317893102\n" +
       "mtime_ns = 126239066\n" +
       "type = dir\n" +
-      "uid = 1001\n");
+      "uid = %d\n" % os.getuid());
     start_bfsyncfs()
 
   def commit (self):
