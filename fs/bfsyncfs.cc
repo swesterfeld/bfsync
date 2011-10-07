@@ -575,7 +575,7 @@ bfsync_getattr (const char *path_arg, struct stat *stbuf)
             {
               // take size from new file
               struct stat new_stat;
-              string new_filename = options.repo_path + "/new" + path;
+              string new_filename = options.repo_path + "/new/" + inode->id;
               lstat (new_filename.c_str(), &new_stat);
 
               stbuf->st_size = new_stat.st_size;
@@ -1030,6 +1030,24 @@ bfsync_chmod (const char *name, mode_t mode)
 {
   FSLock lock (FSLock::WRITE);
 
+  INodePtr inode = inode_from_path (name);
+
+  if (inode)
+    {
+      if (fuse_get_context()->uid != 0 && fuse_get_context()->uid != inode->uid)
+        return -EPERM;
+
+      if (fuse_get_context()->uid != 0 && fuse_get_context()->gid != inode->gid)
+        mode &= ~S_ISGID;
+
+      inode.update()->mode = mode;
+      inode.update()->set_ctime_now();
+      inode.update()->save();
+      return 0;
+    }
+
+  return -ENOENT;
+  // OLD
   if (!search_perm_ok (name))
     return -EACCES;
 
