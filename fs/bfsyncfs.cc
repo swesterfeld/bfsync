@@ -514,7 +514,7 @@ bfsync_getattr (const char *path_arg, struct stat *stbuf)
       return 0;
     }
   INodePtr inode ("root");
-  if (inode)
+  if (inode && path == "/")
     {
       int inode_mode = inode->mode & ~S_IFMT;
 
@@ -573,7 +573,7 @@ bfsync_getattr (const char *path_arg, struct stat *stbuf)
         }
       return 0;
     }
-  return -EIO;
+  return -ENOENT;
 
   GitFilePtr git_file (path);
   if (git_file)
@@ -878,6 +878,57 @@ static int
 bfsync_mknod (const char *path, mode_t mode, dev_t dev)
 {
   FSLock lock (FSLock::WRITE);
+
+  INodePtr inode (fuse_get_context());  // create new inode
+
+  inode.update()->mode = mode & ~S_IFMT;
+
+  if (S_ISREG (mode))
+    {
+      string filename = options.repo_path + "/new/" + inode->id;
+      int rc = mknod (filename.c_str(), mode, dev);
+      if (rc == 0)
+        {
+          inode.update()->type = FILE_REGULAR;
+          inode.update()->hash = "new";
+        }
+      else
+        {
+          return -errno;
+        }
+    }
+  else if (S_ISFIFO (mode))
+    {
+      inode.update()->type = FILE_FIFO;
+    }
+  else if (S_ISSOCK (mode))
+    {
+      inode.update()->type = FILE_SOCKET;
+    }
+  else if (S_ISBLK (mode))
+    {
+      inode.update()->type = FILE_BLOCK_DEV;
+      inode.update()->major = major (dev);
+      inode.update()->minor = minor (dev);
+    }
+  else if (S_ISCHR (mode))
+    {
+      inode.update()->type = FILE_CHAR_DEV;
+      inode.update()->major = major (dev);
+      inode.update()->minor = minor (dev);
+    }
+  else
+    {
+      return -ENOENT;
+    }
+
+  //if (gf_dir)
+    //gf_dir.update()->set_mtime_ctime_now();
+
+  return 0;
+
+  // OLD:
+  return -EIO;
 
   GitFilePtr gf_dir (get_dirname (path));
   if (gf_dir && !write_perm_ok (gf_dir))
