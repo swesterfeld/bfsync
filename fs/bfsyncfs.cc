@@ -492,6 +492,7 @@ INodePtr
 inode_from_path (const string& path)
 {
   INodePtr inode ("root");
+  printf ("inode_from_path (%s)\n", path.c_str());
 
   vector<string> path_vec = split (path);
   for (vector<string>::iterator pi = path_vec.begin(); pi != path_vec.end(); pi++)
@@ -512,10 +513,12 @@ inode_from_path (const string& path)
         }
       if (!found)
         {
+          printf ("  inode = NULL\n");
           return INodePtr::null();
         }
     }
 
+  printf ("  inode = %s\n", inode->id.c_str());
   return inode;
 }
 
@@ -527,9 +530,6 @@ bfsync_getattr (const char *path_arg, struct stat *stbuf)
   FSLock lock (FSLock::READ);
 
   debug ("getattr (\"%s\")\n", path_arg);
-
-  if (!search_perm_ok (path))
-    return -EACCES;
 
   if (path == "/.bfsync")
     {
@@ -696,11 +696,10 @@ read_dir_contents (const string& path, vector<string>& entries)
 {
   bool            dir_ok = true;
 
-  if (path == "/")
+  INodePtr inode = inode_from_path (path);
+  if (inode)
     {
-      INodePtr root ("root");
-
-      vector<LinkPtr> children = root->children();
+      vector<LinkPtr> children = inode->children();
       for (vector<LinkPtr>::iterator ci = children.begin(); ci != children.end(); ci++)
         {
           entries.push_back ((*ci)->name);
@@ -1259,6 +1258,24 @@ bfsync_mkdir (const char *path, mode_t mode)
 {
   FSLock lock (FSLock::WRITE);
 
+  printf ("mkdir: %s\n", path);
+  INodePtr inode_dir = inode_from_path (get_dirname (path));
+  if (!inode_dir)
+    return -ENOENT;
+  printf ("inode is %s\n", inode_dir->id.c_str());
+
+  INodePtr inode (fuse_get_context());  // create new inode
+
+  inode.update()->type = FILE_DIR;
+  inode.update()->mode = mode;
+  inode.update()->save();
+
+  LinkPtr link (inode_dir, inode, get_basename (path));
+
+  inode_dir.update()->set_mtime_ctime_now();
+  return 0;
+
+#if OLD
   GitFilePtr gf_dir (get_dirname (path));
   if (gf_dir && !write_perm_ok (gf_dir))
     return -EACCES;
@@ -1283,8 +1300,8 @@ bfsync_mkdir (const char *path, mode_t mode)
 
       return 0;
     }
-
   return -errno;
+#endif
 }
 
 static int
