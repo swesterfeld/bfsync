@@ -1,0 +1,49 @@
+#include "bflink.hh"
+#include <glib.h>
+#include <string>
+
+using std::string;
+
+namespace BFSync
+{
+
+LinkPtr::LinkPtr (const INodePtr& dir, const INodePtr& inode, const string& filename)
+{
+  ptr     = new Link();
+
+  ptr->vmin    = 1;
+  ptr->vmax    = 1;
+  ptr->dir_id  = dir->id;
+  ptr->node_id = inode->id;
+  ptr->name    = filename;
+
+  ptr->save();
+}
+
+bool
+Link::save()
+{
+  sqlite3 *db = sqlite_db();
+  sqlite3_stmt *stmt_ptr = NULL;
+
+  char *sql_c = g_strdup_printf ("INSERT INTO links VALUES (%d, %d, \"%s\", \"%s\", \"%s\")",
+    vmin, vmax,
+    dir_id.c_str(),
+    node_id.c_str(),
+    name.c_str());
+
+  string sql = sql_c;
+  g_free (sql_c);
+
+  printf ("sql: %s\n", sql.c_str());
+  int rc = sqlite3_prepare_v2 (db, sql.c_str(), sql.size(), &stmt_ptr, NULL);
+  if (rc != SQLITE_OK)
+    return false;
+
+  rc = sqlite3_step (stmt_ptr);
+  if (rc != SQLITE_DONE)
+    return false;
+  return true;
+}
+
+}

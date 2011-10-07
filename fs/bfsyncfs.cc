@@ -21,6 +21,7 @@
 
 #include "bfgitfile.hh"
 #include "bfinode.hh"
+#include "bflink.hh"
 #include "bfsyncserver.hh"
 #include "bfsyncfs.hh"
 #include <sqlite3.h>
@@ -139,6 +140,16 @@ get_dirname (const string& dirname)
   char *dirname_c = g_path_get_dirname (dirname.c_str());
   string result = dirname_c;
   g_free (dirname_c);
+
+  return result;
+}
+
+string
+get_basename (const string& filename)
+{
+  char *basename_c = g_path_get_basename (filename.c_str());
+  string result = basename_c;
+  g_free (basename_c);
 
   return result;
 }
@@ -926,6 +937,8 @@ bfsync_mknod (const char *path, mode_t mode, dev_t dev)
 
   //if (gf_dir)
     //gf_dir.update()->set_mtime_ctime_now();
+  INodePtr root ("root");
+  LinkPtr link (root, inode, get_basename (path));
   ((INode*)(inode.operator->()))->save();
   return 0;
 
