@@ -19,10 +19,12 @@ const int INODES_MODE     = 5;
 const int INODES_TYPE     = 6;
 const int INODES_HASH     = 7;
 const int INODES_LINK     = 8;
-const int INODES_CTIME    = 9;
-const int INODES_CTIME_NS = 10;
-const int INODES_MTIME    = 11;
-const int INODES_MTIME_NS = 12;
+const int INODES_MAJOR    = 9;
+const int INODES_MINOR    = 10;
+const int INODES_CTIME    = 11;
+const int INODES_CTIME_NS = 12;
+const int INODES_MTIME    = 13;
+const int INODES_MTIME_NS = 14;
 
 INodePtr::INodePtr (const string& id) :
   ptr (NULL)
@@ -71,6 +73,8 @@ INodePtr::INodePtr (const string& id) :
 
       ptr->hash     = (const char *) sqlite3_column_text (stmt_ptr, INODES_HASH);
       ptr->link     = (const char *) sqlite3_column_text (stmt_ptr, INODES_LINK);
+      ptr->major    = sqlite3_column_int  (stmt_ptr, INODES_MAJOR);
+      ptr->minor    = sqlite3_column_int  (stmt_ptr, INODES_MINOR);
       ptr->ctime    = sqlite3_column_int  (stmt_ptr, INODES_CTIME);
       ptr->ctime_ns = sqlite3_column_int  (stmt_ptr, INODES_CTIME_NS);
       ptr->mtime    = sqlite3_column_int  (stmt_ptr, INODES_MTIME);
@@ -198,7 +202,7 @@ INode::save()
     }
 
   char *gen_sql = g_strdup_printf ("INSERT INTO inodes VALUES (%d, %d, \"%s\", %d, %d, %d, \"%s\", \"%s\", \"%s\", "
-                                   "%d, %d, %d, %d)",
+                                   "%d, %d, %d, %d, %d, %d)",
     vmin, vmax,
     id.c_str(),
     uid, gid,
@@ -206,6 +210,8 @@ INode::save()
     type_str.c_str(),
     hash.c_str(),
     link.c_str(),
+    (int) major,
+    (int) minor,
     (int) ctime, ctime_ns,
     (int) mtime, mtime_ns);
 
