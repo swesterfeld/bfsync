@@ -794,6 +794,31 @@ bfsync_open (const char *path, struct fuse_file_info *fi)
       return 0;
     }
 
+  INodePtr inode = inode_from_path (path);
+  if (!inode)
+    return -ENOENT;
+
+  if (open_for_write)
+    inode.update()->copy_on_write();
+
+  string filename = inode->file_path();
+  int fd = open (filename.c_str(), fi->flags);
+
+  if (fd != -1)
+    {
+      FileHandle *fh = new FileHandle;
+      fh->fd = fd;
+      fh->special_file = FileHandle::NONE;
+      fh->open_for_write = open_for_write;
+      fi->fh = reinterpret_cast<uint64_t> (fh);
+      return 0;
+    }
+  else
+    {
+      return -errno;
+    }
+
+#ifdef OLD
   if (!search_perm_ok (path))
     return -EACCES;
 
@@ -830,6 +855,7 @@ bfsync_open (const char *path, struct fuse_file_info *fi)
     {
       return -errno;
     }
+#endif
 }
 
 static int
