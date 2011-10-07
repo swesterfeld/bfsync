@@ -932,6 +932,10 @@ bfsync_mknod (const char *path, mode_t mode, dev_t dev)
 {
   FSLock lock (FSLock::WRITE);
 
+  INodePtr dir_inode = inode_from_path (get_dirname (path));
+  if (!dir_inode)
+    return -ENOENT;
+
   INodePtr inode (fuse_get_context());  // create new inode
 
   printf ("mknod\n");
@@ -977,11 +981,10 @@ bfsync_mknod (const char *path, mode_t mode, dev_t dev)
       return -ENOENT;
     }
 
-  //if (gf_dir)
-    //gf_dir.update()->set_mtime_ctime_now();
-  INodePtr root ("root");
-  LinkPtr link (root, inode, get_basename (path));
-  ((INode*)(inode.operator->()))->save();
+  dir_inode.update()->set_mtime_ctime_now();
+
+  LinkPtr link (dir_inode, inode, get_basename (path));
+  inode.update()->save();
   return 0;
 
   // OLD:
@@ -1157,6 +1160,18 @@ bfsync_utimens (const char *name, const struct timespec times[2])
 {
   FSLock lock (FSLock::WRITE);
 
+  INodePtr inode = inode_from_path (name);
+  if (inode)
+    {
+      inode.update()->mtime    = times[1].tv_sec;
+      inode.update()->mtime_ns = times[1].tv_nsec;
+      inode.update()->save();
+
+      return 0;
+    }
+  return -ENOENT;
+
+#ifdef OLD
   GitFilePtr gf (name);
   if (gf)
     {
@@ -1166,6 +1181,7 @@ bfsync_utimens (const char *name, const struct timespec times[2])
       return 0;
     }
   return -ENOENT;
+#endif
 }
 
 int
@@ -1624,7 +1640,7 @@ main (int argc, char *argv[])
       printf ("bfsyncfs: find current version in history table failed\n");
       return 1;
     }
-  printf ("current version is %d\n", current_version);
+  debug ("current version is %d\n", current_version);
 
   int fuse_rc = fuse_main (my_argc, my_argv, &bfsync_oper, NULL);
 
