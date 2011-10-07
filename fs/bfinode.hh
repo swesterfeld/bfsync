@@ -55,6 +55,14 @@ public:
 #include "bflink.hh"
 namespace BFSync
 {
+
+enum FileStatus
+{
+  FS_NONE,
+  FS_RDONLY,
+  FS_CHANGED
+};
+
 struct INode
 {
   int           vmin;
@@ -86,6 +94,9 @@ struct INode
   void          set_ctime_now();
 
   std::vector<LinkPtr> children() const;
+  FileStatus    file_status() const;
+  std::string   file_path() const;
+  void          copy_on_write();
 };
 
 inline INode*

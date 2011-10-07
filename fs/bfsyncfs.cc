@@ -56,13 +56,6 @@ Options::the()
   return &options;
 }
 
-enum FileStatus
-{
-  FS_NONE,
-  FS_GIT,
-  FS_CHANGED
-};
-
 struct FileHandle
 {
   int fd;
@@ -163,7 +156,7 @@ file_status (const string& path)
       if (gf->hash == "new")
         return FS_CHANGED;
       else
-        return FS_GIT;
+        return FS_RDONLY;
     }
   return FS_NONE;
 }
@@ -183,7 +176,7 @@ file_path (const string& path)
   FileStatus fs = file_status (path);
   if (fs == FS_CHANGED)
     return options.repo_path + "/new" + path;
-  if (fs == FS_GIT)
+  if (fs == FS_RDONLY)
     {
       GitFilePtr gf (path);
       if (gf)
@@ -236,7 +229,7 @@ copy_dirs (const string& path)
 void
 copy_on_write (const string& path)
 {
-  if (file_status (path) == FS_GIT)
+  if (file_status (path) == FS_RDONLY)
     {
       copy_dirs (path);
 
@@ -702,8 +695,6 @@ bool
 read_dir_contents (const string& path, vector<string>& entries)
 {
   bool            dir_ok = true;
-  set<string>     file_list;
-  GDir           *dir;
 
   if (path == "/")
     {
@@ -1157,6 +1148,22 @@ bfsync_truncate (const char *name, off_t off)
 {
   FSLock lock (FSLock::WRITE);
 
+  INodePtr inode = inode_from_path (name);
+  if (inode)
+    {
+      inode.update()->copy_on_write();
+
+      int rc = truncate (inode->file_path().c_str(), off);
+      if (rc == 0)
+        {
+          inode.update()->set_mtime_ctime_now();
+          return 0;
+        }
+      return -errno;
+    }
+  return -ENOENT;
+
+  // OLD================================================
   GitFilePtr gf (name);
   if (gf)
     {
@@ -1283,7 +1290,7 @@ bfsync_rmdir (const char *name)
     }
 
   // delete git entry if present
-  if (file_status (name) == FS_GIT)
+  if (file_status (name) == FS_RDONLY)
     {
       string git_file = options.repo_path + "/git/files/" + name2git_name (name);
 
