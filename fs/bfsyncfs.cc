@@ -22,6 +22,7 @@
 #include "bfgitfile.hh"
 #include "bfsyncserver.hh"
 #include "bfsyncfs.hh"
+#include <sqlite3.h>
 
 #include <fuse.h>
 #include <stdio.h>
@@ -39,6 +40,7 @@
 using std::string;
 using std::vector;
 using std::set;
+using std::max;
 
 using namespace BFSync;
 
@@ -1353,6 +1355,49 @@ main (int argc, char *argv[])
   my_argv[my_argc++] = "-oattr_timeout=0";
   my_argv[my_argc] = NULL;
 
+  sqlite3 *db_ptr = NULL;
+
+  string db_path = options.repo_path + "/db";
+  int rc = sqlite3_open (db_path.c_str(), &db_ptr);
+  if (rc != SQLITE_OK)
+    {
+      printf ("bfsyncfs: error opening db: %d\n", rc);
+      return 1;
+    }
+  int current_version = -1;
+  sqlite3_stmt *stmt_ptr = NULL;
+  string query = "SELECT * FROM history";
+  rc = sqlite3_prepare_v2 (db_ptr, query.c_str(), query.size(), &stmt_ptr, NULL);
+
+  if (rc != SQLITE_OK)
+    {
+      printf ("bfsyncfs: error running db query: %d\n", rc);
+      return 1;
+    }
+  for (;;)
+    {
+      rc = sqlite3_step (stmt_ptr);
+      if (rc != SQLITE_ROW)
+        break;
+      int version = sqlite3_column_int (stmt_ptr, 0);
+      const unsigned char *author = sqlite3_column_text (stmt_ptr, 1);
+      const unsigned char *msg = sqlite3_column_text (stmt_ptr, 2);
+      int time = sqlite3_column_int (stmt_ptr, 3);
+      current_version = max (version, current_version);
+      printf ("v=%d a=%s m=%s t=%d\n", version, author, msg, time);
+    }
+  if (rc != SQLITE_DONE)
+    {
+      printf ("bfsyncfs: stmt return %d\n", rc);
+      return 1;
+    }
+  if (current_version == -1)
+    {
+      printf ("bfsyncfs: find current version in history table failed\n");
+      return 1;
+    }
+  printf ("current version is %d\n", current_version);
+  return 0;
   int fuse_rc = fuse_main (my_argc, my_argv, &bfsync_oper, NULL);
 
   GitFileRepo::the()->save_changes();

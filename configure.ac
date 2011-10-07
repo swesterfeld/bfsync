@@ -27,6 +27,16 @@ AC_DEFUN([AC_FUSE_REQUIREMENTS],
     AC_SUBST(FUSE_LIBS)
 ])
 
+dnl
+dnl sqlite3
+dnl
+AC_DEFUN([AC_SQLITE_REQUIREMENTS],
+[
+    PKG_CHECK_MODULES(SQLITE, sqlite3)
+    AC_SUBST(SQLITE_CFLAGS)
+    AC_SUBST(SQLITE_LIBS)
+])
+
 
 dnl ----------------------------- from acbirnet.m4 -------------------------------
 dnl Check whether cc accepts a certain option
@@ -48,6 +58,7 @@ rm -fr conftest*
 
 AC_GLIB_REQUIREMENTS
 AC_FUSE_REQUIREMENTS
+AC_SQLITE_REQUIREMENTS
 
 # Less cluttered build output
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])

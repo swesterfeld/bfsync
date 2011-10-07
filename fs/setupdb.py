@@ -41,7 +41,7 @@ c.execute ('''create table history
                  message text,
                  time    integer
                )''')
-c.execute ('''insert into history values (0, "", "", 0)''')
+c.execute ('''insert into history values (1, "", "", 0)''')
 
 time_now = int (time.time())
 c.execute ("""insert into inodes values (0, 0, "root", %d, %d, %d, "dir", "", %d, 0, %d, 0)""" % (os.getuid(), os.getgid(), 0755, time_now, time_now))
