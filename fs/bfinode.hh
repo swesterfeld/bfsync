@@ -48,10 +48,13 @@ struct INode
 
   bool          updated;
 
+  INode();
+  ~INode();
+
   bool          save();
 
-  void set_mtime_ctime_now();
-  void set_ctime_now();
+  void          set_mtime_ctime_now();
+  void          set_ctime_now();
 };
 
 class INodePtr

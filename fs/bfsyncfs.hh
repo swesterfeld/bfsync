@@ -23,6 +23,9 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <sqlite3.h>
+#include <pthread.h>
+
+#include <string>
 
 namespace BFSync
 {

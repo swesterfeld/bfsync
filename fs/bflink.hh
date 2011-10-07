@@ -32,6 +32,9 @@ struct Link
   std::string  node_id;
   std::string  name;
 
+  Link();
+  ~Link();
+
   bool save();
 };
 

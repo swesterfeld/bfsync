@@ -2,6 +2,7 @@
 
 #include "bfinode.hh"
 #include "bfsyncfs.hh"
+#include "bfleakdebugger.hh"
 
 using std::string;
 
@@ -97,6 +98,21 @@ INodePtr::INodePtr (fuse_context *context)
   ptr->updated = true;
   ptr->save();
 }
+
+/*-------------------------------------------------------------------------------------------*/
+
+static LeakDebugger leak_debugger ("BFSync::INode");
+
+INode::INode()
+{
+  leak_debugger.add (this);
+}
+
+INode::~INode()
+{
+  leak_debugger.del (this);
+}
+
 
 void
 INode::set_mtime_ctime_now()

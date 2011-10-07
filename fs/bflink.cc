@@ -1,4 +1,5 @@
 #include "bflink.hh"
+#include "bfleakdebugger.hh"
 #include <glib.h>
 #include <string>
 
@@ -6,6 +7,7 @@ using std::string;
 
 namespace BFSync
 {
+
 
 LinkPtr::LinkPtr (const INodePtr& dir, const INodePtr& inode, const string& filename)
 {
@@ -18,6 +20,20 @@ LinkPtr::LinkPtr (const INodePtr& dir, const INodePtr& inode, const string& file
   ptr->name    = filename;
 
   ptr->save();
+}
+
+/*-------------------------------------------------------------------------------------------*/
+
+static LeakDebugger leak_debugger ("BFSync::Link");
+
+Link::Link()
+{
+  leak_debugger.add (this);
+}
+
+Link::~Link()
+{
+  leak_debugger.del (this);
 }
 
 bool
