@@ -881,6 +881,8 @@ bfsync_mknod (const char *path, mode_t mode, dev_t dev)
 
   INodePtr inode (fuse_get_context());  // create new inode
 
+  printf ("mknod\n");
+
   inode.update()->mode = mode & ~S_IFMT;
 
   if (S_ISREG (mode))
@@ -924,7 +926,7 @@ bfsync_mknod (const char *path, mode_t mode, dev_t dev)
 
   //if (gf_dir)
     //gf_dir.update()->set_mtime_ctime_now();
-
+  ((INode*)(inode.operator->()))->save();
   return 0;
 
   // OLD:
