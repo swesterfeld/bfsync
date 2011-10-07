@@ -18,10 +18,11 @@ const int INODES_GID      = 4;
 const int INODES_MODE     = 5;
 const int INODES_TYPE     = 6;
 const int INODES_HASH     = 7;
-const int INODES_CTIME    = 8;
-const int INODES_CTIME_NS = 9;
-const int INODES_MTIME    = 10;
-const int INODES_MTIME_NS = 11;
+const int INODES_LINK     = 8;
+const int INODES_CTIME    = 9;
+const int INODES_CTIME_NS = 10;
+const int INODES_MTIME    = 11;
+const int INODES_MTIME_NS = 12;
 
 INodePtr::INodePtr (const string& id) :
   ptr (NULL)
@@ -69,6 +70,7 @@ INodePtr::INodePtr (const string& id) :
         ptr->type = FILE_NONE;
 
       ptr->hash     = (const char *) sqlite3_column_text (stmt_ptr, INODES_HASH);
+      ptr->link     = (const char *) sqlite3_column_text (stmt_ptr, INODES_LINK);
       ptr->ctime    = sqlite3_column_int  (stmt_ptr, INODES_CTIME);
       ptr->ctime_ns = sqlite3_column_int  (stmt_ptr, INODES_CTIME_NS);
       ptr->mtime    = sqlite3_column_int  (stmt_ptr, INODES_MTIME);
@@ -195,13 +197,15 @@ INode::save()
       return false; // unsupported type
     }
 
-  char *gen_sql = g_strdup_printf ("INSERT INTO inodes VALUES (%d, %d, \"%s\", %d, %d, %d, \"%s\", \"%s\", %d, %d, %d, %d)",
+  char *gen_sql = g_strdup_printf ("INSERT INTO inodes VALUES (%d, %d, \"%s\", %d, %d, %d, \"%s\", \"%s\", \"%s\", "
+                                   "%d, %d, %d, %d)",
     vmin, vmax,
     id.c_str(),
     uid, gid,
     mode,
     type_str.c_str(),
     hash.c_str(),
+    link.c_str(),
     (int) ctime, ctime_ns,
     (int) mtime, mtime_ns);
 

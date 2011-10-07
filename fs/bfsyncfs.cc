@@ -1430,6 +1430,24 @@ bfsync_symlink (const char *from, const char *to)
 {
   FSLock lock (FSLock::WRITE);
 
+  INodePtr dir_inode = inode_from_path (get_dirname (to));
+  if (!dir_inode)
+    return -ENOENT;
+
+  INodePtr check_to = inode_from_path (to);
+  if (check_to)
+    return -EEXIST;
+
+  INodePtr inode (fuse_get_context());
+  inode.update()->mode = 0777;
+  inode.update()->type = FILE_SYMLINK;
+  inode.update()->link = from;
+  inode.update()->save();
+
+  LinkPtr link (dir_inode, inode, get_basename (to));
+  dir_inode.update()->set_mtime_ctime_now();
+  return 0;
+#if OLD
   GitFilePtr gf_dir (get_dirname (to));
   if (!gf_dir)
     return -EIO;
@@ -1448,6 +1466,7 @@ bfsync_symlink (const char *from, const char *to)
   gf_dir.update()->set_mtime_ctime_now();
 
   return 0;
+#endif
 }
 
 static int
@@ -1455,6 +1474,23 @@ bfsync_readlink (const char *path, char *buffer, size_t size)
 {
   FSLock lock (FSLock::READ);
 
+  INodePtr inode = inode_from_path (path);
+  if (inode && inode->type == FILE_SYMLINK)
+    {
+      int len = inode->link.size();
+
+      if (len >= size)
+        len = size - 1;
+      memcpy (buffer, inode->link.c_str(), len);
+
+      buffer[len] = 0;
+      return 0;
+    }
+  else
+    {
+      return -ENOENT;
+    }
+#if OLD
   GitFilePtr gf (path);
   if (gf && gf->type == FILE_SYMLINK)
     {
@@ -1471,6 +1507,7 @@ bfsync_readlink (const char *path, char *buffer, size_t size)
     {
       return -ENOENT;
     }
+#endif
 }
 
 Server server;
