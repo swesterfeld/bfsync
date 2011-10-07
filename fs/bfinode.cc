@@ -3,8 +3,10 @@
 #include "bfinode.hh"
 #include "bfsyncfs.hh"
 #include "bfleakdebugger.hh"
+#include "bflink.hh"
 
 using std::string;
+using std::vector;
 
 namespace BFSync {
 
@@ -103,7 +105,9 @@ INodePtr::INodePtr (fuse_context *context)
 
 static LeakDebugger leak_debugger ("BFSync::INode");
 
-INode::INode()
+INode::INode() :
+  vmin (1),
+  vmax (1)
 {
   leak_debugger.add (this);
 }
@@ -143,7 +147,6 @@ INode::set_ctime_now()
 bool
 INode::save()
 {
-  printf ("save()\n");
   sqlite3 *db = sqlite_db();
   sqlite3_stmt *stmt_ptr = NULL;
 
@@ -203,6 +206,43 @@ INode::save()
   if (rc != SQLITE_DONE)
     return false;
   return true;
+}
+
+vector<LinkPtr>
+INode::children() const
+{
+  vector<LinkPtr> result;
+  sqlite3 *db = sqlite_db();
+  sqlite3_stmt *stmt_ptr = NULL;
+
+  char *sql_c = g_strdup_printf ("SELECT * FROM links WHERE dir_id = \"%s\"", id.c_str());
+
+  string sql = sql_c;
+  g_free (sql_c);
+
+  printf ("sql: %s\n", sql.c_str());
+  int rc = sqlite3_prepare_v2 (db, sql.c_str(), sql.size(), &stmt_ptr, NULL);
+  if (rc != SQLITE_OK)
+    return result;
+
+  for (;;)
+    {
+      rc = sqlite3_step (stmt_ptr);
+      if (rc != SQLITE_ROW)
+        break;
+
+      Link *link = new Link();
+
+      link->vmin = sqlite3_column_int (stmt_ptr, 0);
+      link->vmax = sqlite3_column_int (stmt_ptr, 1);
+      link->dir_id = (const char *) sqlite3_column_text (stmt_ptr, 2);
+      link->inode_id = (const char *) sqlite3_column_text (stmt_ptr, 3);
+      link->name = (const char *) sqlite3_column_text (stmt_ptr, 4);
+
+      result.push_back (LinkPtr (link));
+    }
+
+  return result;
 }
 
 }

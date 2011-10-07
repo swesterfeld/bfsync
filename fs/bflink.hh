@@ -29,7 +29,7 @@ struct Link
 {
   int          vmin, vmax;
   std::string  dir_id;
-  std::string  node_id;
+  std::string  inode_id;
   std::string  name;
 
   Link();
@@ -43,6 +43,13 @@ class LinkPtr
   Link *ptr;
 public:
   LinkPtr (const INodePtr& dir, const INodePtr& inode, const std::string& str);
+  LinkPtr (Link *link);
+
+  const Link*
+  operator->() const
+  {
+    return ptr;
+  }
 };
 
 }

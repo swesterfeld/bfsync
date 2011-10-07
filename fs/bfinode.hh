@@ -21,11 +21,38 @@
 #define BFSYNC_INODE_HH
 
 #include <string>
+#include <vector>
+
 #include "bfgitfile.hh" /* BFSync::FileType */
 
 namespace BFSync
 {
 
+class INode;
+class INodePtr
+{
+  INode *ptr;
+public:
+  INodePtr (const std::string&  id);
+  INodePtr (fuse_context       *context);
+
+  operator bool() const
+  {
+    return (ptr != 0);
+  }
+  const INode*
+  operator->() const
+  {
+    return ptr;
+  }
+  inline INode* update() const;
+};
+
+}
+
+#include "bflink.hh"
+namespace BFSync
+{
 struct INode
 {
   int           vmin;
@@ -55,31 +82,16 @@ struct INode
 
   void          set_mtime_ctime_now();
   void          set_ctime_now();
+
+  std::vector<LinkPtr> children() const;
 };
 
-class INodePtr
+inline INode*
+INodePtr::update() const
 {
-  INode *ptr;
-public:
-  INodePtr (const std::string&  id);
-  INodePtr (fuse_context       *context);
-
-  operator bool() const
-  {
-    return (ptr != 0);
-  }
-  const INode*
-  operator->() const
-  {
-    return ptr;
-  }
-  INode*
-  update() const
-  {
-    ptr->updated = true;
-    return ptr;
-  }
-};
+  ptr->updated = true;
+  return ptr;
+}
 
 }
 

@@ -670,28 +670,19 @@ remove_di_prefix (const string& filename)
 bool
 read_dir_contents (const string& path, vector<string>& entries)
 {
-  bool            dir_ok;
+  bool            dir_ok = true;
   set<string>     file_list;
   GDir           *dir;
 
-  string git_files = options.repo_path + "/git/files/" + name2git_name (path, GIT_DIRNAME);
-  dir = g_dir_open (git_files.c_str(), 0, NULL);
-  if (dir)
+  if (path == "/")
     {
-      GitFileRepo::the()->save_changes();
+      INodePtr root ("root");
 
-      const char *name;
-      while ((name = g_dir_read_name (dir)))
+      vector<LinkPtr> children = root->children();
+      for (vector<LinkPtr>::iterator ci = children.begin(); ci != children.end(); ci++)
         {
-          string filename = remove_di_prefix (name);
-          if (file_list.count (filename) == 0)
-            {
-              file_list.insert (filename);
-              entries.push_back (filename);
-            }
+          entries.push_back ((*ci)->name);
         }
-      g_dir_close (dir);
-      dir_ok = true;
     }
   if (path == "/")
     {
@@ -708,6 +699,10 @@ read_dir_contents (const string& path, vector<string>& entries)
 static int
 bfsync_opendir (const char *path, struct fuse_file_info *fi)
 {
+  return 0;
+
+  // OLD:
+
   if (!search_perm_ok (path))
     return -EACCES;
 

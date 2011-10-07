@@ -1,3 +1,4 @@
+#include "bfinode.hh"
 #include "bflink.hh"
 #include "bfleakdebugger.hh"
 #include <glib.h>
@@ -13,13 +14,18 @@ LinkPtr::LinkPtr (const INodePtr& dir, const INodePtr& inode, const string& file
 {
   ptr     = new Link();
 
-  ptr->vmin    = 1;
-  ptr->vmax    = 1;
-  ptr->dir_id  = dir->id;
-  ptr->node_id = inode->id;
-  ptr->name    = filename;
+  ptr->vmin     = 1;
+  ptr->vmax     = 1;
+  ptr->dir_id   = dir->id;
+  ptr->inode_id = inode->id;
+  ptr->name     = filename;
 
   ptr->save();
+}
+
+LinkPtr::LinkPtr (Link *link)
+{
+  ptr = link;
 }
 
 /*-------------------------------------------------------------------------------------------*/
@@ -45,7 +51,7 @@ Link::save()
   char *sql_c = g_strdup_printf ("INSERT INTO links VALUES (%d, %d, \"%s\", \"%s\", \"%s\")",
     vmin, vmax,
     dir_id.c_str(),
-    node_id.c_str(),
+    inode_id.c_str(),
     name.c_str());
 
   string sql = sql_c;
