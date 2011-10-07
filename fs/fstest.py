@@ -24,8 +24,8 @@ class FuseFS:
   def commit (self):
     cwd = os.getcwd()
     os.chdir ("mnt")
-    if run_quiet ([cwd + "/bfsync2", "commit", "-m", "fstest"]) != 0:
-      raise Exception ("commit failed")
+    #if run_quiet ([cwd + "/bfsync2", "commit", "-m", "fstest"]) != 0:
+    #  raise Exception ("commit failed")
     os.chdir (cwd)
 
   def teardown (self):
