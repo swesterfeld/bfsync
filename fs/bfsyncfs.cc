@@ -20,6 +20,7 @@
 #define FUSE_USE_VERSION 26
 
 #include "bfgitfile.hh"
+#include "bfinode.hh"
 #include "bfsyncserver.hh"
 #include "bfsyncfs.hh"
 #include <sqlite3.h>
@@ -512,6 +513,67 @@ bfsync_getattr (const char *path_arg, struct stat *stbuf)
       stbuf->st_size = special_files.info.size();
       return 0;
     }
+  INodePtr inode ("root");
+  if (inode)
+    {
+      int inode_mode = inode->mode & ~S_IFMT;
+
+      memset (stbuf, 0, sizeof (struct stat));
+      stbuf->st_uid          = inode->uid;
+      stbuf->st_gid          = inode->gid;
+      stbuf->st_mtime        = inode->mtime;
+      stbuf->st_mtim.tv_nsec = inode->mtime_ns;
+      stbuf->st_ctime        = inode->ctime;
+      stbuf->st_ctim.tv_nsec = inode->ctime_ns;
+      stbuf->st_atim         = stbuf->st_mtim;    // we don't track atime, so set atime == mtime
+      stbuf->st_nlink        = 1;
+      if (inode->type == FILE_REGULAR)
+        {
+          if (inode->hash == "new")
+            {
+              // take size from new file
+              struct stat new_stat;
+              string new_filename = options.repo_path + "/new" + path;
+              lstat (new_filename.c_str(), &new_stat);
+
+              stbuf->st_size = new_stat.st_size;
+            }
+          else
+            {
+              stbuf->st_size = inode->size;
+            }
+          stbuf->st_mode = inode_mode | S_IFREG;
+        }
+      else if (inode->type == FILE_SYMLINK)
+        {
+          stbuf->st_mode = inode_mode | S_IFLNK;
+          stbuf->st_size = inode->link.size();
+        }
+      else if (inode->type == FILE_DIR)
+        {
+          stbuf->st_mode = inode_mode | S_IFDIR;
+        }
+      else if (inode->type == FILE_FIFO)
+        {
+          stbuf->st_mode = inode_mode | S_IFIFO;
+        }
+      else if (inode->type == FILE_SOCKET)
+        {
+          stbuf->st_mode = inode_mode | S_IFSOCK;
+        }
+      else if (inode->type == FILE_BLOCK_DEV)
+        {
+          stbuf->st_mode = inode_mode | S_IFBLK;
+          stbuf->st_rdev = makedev (inode->major, inode->minor);
+        }
+      else if (inode->type == FILE_CHAR_DEV)
+        {
+          stbuf->st_mode = inode_mode | S_IFCHR;
+          stbuf->st_rdev = makedev (inode->major, inode->minor);
+        }
+      return 0;
+    }
+  return -EIO;
 
   GitFilePtr git_file (path);
   if (git_file)
@@ -1261,6 +1323,14 @@ exit_usage()
   exit (1);
 }
 
+static sqlite3 *db_ptr = NULL;
+
+sqlite3*
+sqlite_db()
+{
+  return db_ptr;
+}
+
 }
 
 int
@@ -1355,7 +1425,6 @@ main (int argc, char *argv[])
   my_argv[my_argc++] = "-oattr_timeout=0";
   my_argv[my_argc] = NULL;
 
-  sqlite3 *db_ptr = NULL;
 
   string db_path = options.repo_path + "/db";
   int rc = sqlite3_open (db_path.c_str(), &db_ptr);
@@ -1384,7 +1453,6 @@ main (int argc, char *argv[])
       const unsigned char *msg = sqlite3_column_text (stmt_ptr, 2);
       int time = sqlite3_column_int (stmt_ptr, 3);
       current_version = max (version, current_version);
-      printf ("v=%d a=%s m=%s t=%d\n", version, author, msg, time);
     }
   if (rc != SQLITE_DONE)
     {
@@ -1397,7 +1465,7 @@ main (int argc, char *argv[])
       return 1;
     }
   printf ("current version is %d\n", current_version);
-  return 0;
+
   int fuse_rc = fuse_main (my_argc, my_argv, &bfsync_oper, NULL);
 
   GitFileRepo::the()->save_changes();

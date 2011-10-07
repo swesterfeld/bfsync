@@ -22,6 +22,7 @@
 
 #include <stdio.h>
 #include <stdarg.h>
+#include <sqlite3.h>
 
 namespace BFSync
 {
@@ -99,6 +100,8 @@ struct Options {
 
   static Options *the();
 };
+
+sqlite3 *sqlite_db();
 
 }
 
