@@ -495,6 +495,37 @@ FSLock::~FSLock()
   lock_state.unlock (lock_type);
 }
 
+INodePtr
+inode_from_path (const string& path)
+{
+  INodePtr inode ("root");
+
+  vector<string> path_vec = split (path);
+  for (vector<string>::iterator pi = path_vec.begin(); pi != path_vec.end(); pi++)
+    {
+      vector<LinkPtr> children = inode->children();
+
+      bool found = false;
+      for (vector<LinkPtr>::iterator ci = children.begin(); ci != children.end(); ci++)
+        {
+          const LinkPtr& child_link = *ci;
+
+          if (child_link->name == *pi)
+            {
+              inode = INodePtr (child_link->inode_id);
+              found = true;
+              break;
+            }
+        }
+      if (!found)
+        {
+          return INodePtr::null();
+        }
+    }
+
+  return inode;
+}
+
 static int
 bfsync_getattr (const char *path_arg, struct stat *stbuf)
 {
@@ -524,8 +555,8 @@ bfsync_getattr (const char *path_arg, struct stat *stbuf)
       stbuf->st_size = special_files.info.size();
       return 0;
     }
-  INodePtr inode ("root");
-  if (inode && path == "/")
+  INodePtr inode = inode_from_path (path);
+  if (inode)
     {
       int inode_mode = inode->mode & ~S_IFMT;
 

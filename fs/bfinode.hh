@@ -32,6 +32,7 @@ class INode;
 class INodePtr
 {
   INode *ptr;
+  INodePtr();
 public:
   INodePtr (const std::string&  id);
   INodePtr (fuse_context       *context);
@@ -46,6 +47,7 @@ public:
     return ptr;
   }
   inline INode* update() const;
+  static INodePtr null();
 };
 
 }

@@ -101,6 +101,17 @@ INodePtr::INodePtr (fuse_context *context)
   ptr->save();
 }
 
+INodePtr::INodePtr() :
+  ptr (NULL)
+{
+}
+
+INodePtr
+INodePtr::null()
+{
+  return INodePtr();
+}
+
 /*-------------------------------------------------------------------------------------------*/
 
 static LeakDebugger leak_debugger ("BFSync::INode");
