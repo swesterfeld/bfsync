@@ -243,6 +243,8 @@ INode::load (const string& id)
 
   string sql = "SELECT * FROM inodes WHERE id = \"" + id + "\" AND vmin >= 1 AND vmax <= 1;";
 
+  debug ("sql: %s\n", sql.c_str());
+  double start_t = gettime();
   int rc = sqlite3_prepare_v2 (db, sql.c_str(), sql.size(), &stmt_ptr, NULL);
   if (rc != SQLITE_OK)
     return false;
@@ -292,14 +294,17 @@ INode::load (const string& id)
     }
   if (!found)
     return false;
+  double end_t = gettime();
+  debug ("time for sql %.2f ms\n", (end_t - start_t) * 1000);
 
   // load links
   char *sql_c = g_strdup_printf ("SELECT * FROM links WHERE dir_id = \"%s\"", id.c_str());
   sql = sql_c;
   g_free (sql_c);
 
-  printf ("sql: %s\n", sql.c_str());
+  debug ("sql: %s\n", sql.c_str());
 
+  start_t = gettime();
   rc = sqlite3_prepare_v2 (db, sql.c_str(), sql.size(), &stmt_ptr, NULL);
   if (rc != SQLITE_OK)
     return false;
@@ -320,6 +325,7 @@ INode::load (const string& id)
 
       links.push_back (LinkPtr (link));
     }
+  debug ("time for sql %.2f ms\n", (gettime() - start_t) * 1000);
 
   return found;
 }
