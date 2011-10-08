@@ -89,6 +89,7 @@ struct INode
   ~INode();
 
   bool          save();
+  bool          load (const std::string& id);
 
   void          set_mtime_ctime_now();
   void          set_ctime_now();
@@ -105,6 +106,17 @@ INodePtr::update() const
   ptr->updated = true;
   return ptr;
 }
+
+class INodeRepo
+{
+public:
+  std::map<std::string, INode*> cache;
+  Mutex                         mutex;
+
+  void save_changes();
+
+  static INodeRepo *the();
+};
 
 }
 

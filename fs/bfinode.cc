@@ -7,8 +7,35 @@
 
 using std::string;
 using std::vector;
+using std::map;
 
 namespace BFSync {
+
+INodeRepo inode_repo;
+
+INodeRepo*
+INodeRepo::the()
+{
+  return &inode_repo;
+}
+
+void
+INodeRepo::save_changes()
+{
+  inode_repo.mutex.lock();
+
+  for (map<string, INode*>::iterator ci = cache.begin(); ci != cache.end(); ci++)
+    {
+      INode *inode_ptr = ci->second;
+      if (inode_ptr && inode_ptr->updated)
+        {
+          inode_ptr->save();
+          inode_ptr->updated = false;
+        }
+    }
+
+  inode_repo.mutex.unlock();
+}
 
 const int INODES_VMIN     = 0;
 const int INODES_VMAX     = 1;
@@ -29,57 +56,25 @@ const int INODES_MTIME_NS = 14;
 INodePtr::INodePtr (const string& id) :
   ptr (NULL)
 {
-  sqlite3 *db = sqlite_db();
-  sqlite3_stmt *stmt_ptr = NULL;
+  inode_repo.mutex.lock();
 
-  string sql = "SELECT * FROM inodes WHERE id = \"" + id + "\" AND vmin >= 1 AND vmax <= 1;";
-
-  int rc = sqlite3_prepare_v2 (db, sql.c_str(), sql.size(), &stmt_ptr, NULL);
-  if (rc != SQLITE_OK)
-    return;
-
-  ptr = new INode;
-  for (;;)
+  INode*& cached_ptr = inode_repo.cache[id];
+  if (cached_ptr)
     {
-      rc = sqlite3_step (stmt_ptr);
-      if (rc != SQLITE_ROW)
-        break;
-
-      ptr->vmin     = sqlite3_column_int  (stmt_ptr, INODES_VMIN);
-      ptr->vmax     = sqlite3_column_int  (stmt_ptr, INODES_VMAX);
-      ptr->id       = (const char *) sqlite3_column_text (stmt_ptr, INODES_ID);
-      ptr->uid      = sqlite3_column_int  (stmt_ptr, INODES_UID);
-      ptr->gid      = sqlite3_column_int  (stmt_ptr, INODES_GID);
-      ptr->mode     = sqlite3_column_int  (stmt_ptr, INODES_MODE);
-
-      string val = (const char *) sqlite3_column_text (stmt_ptr, INODES_TYPE);
-
-      if (val == "file")
-        ptr->type = FILE_REGULAR;
-      else if (val == "symlink")
-        ptr->type = FILE_SYMLINK;
-      else if (val == "dir")
-        ptr->type = FILE_DIR;
-      else if (val == "fifo")
-        ptr->type = FILE_FIFO;
-      else if (val == "socket")
-        ptr->type = FILE_SOCKET;
-      else if (val == "blockdev")
-        ptr->type = FILE_BLOCK_DEV;
-      else if (val == "chardev")
-        ptr->type = FILE_CHAR_DEV;
-      else
-        ptr->type = FILE_NONE;
-
-      ptr->hash     = (const char *) sqlite3_column_text (stmt_ptr, INODES_HASH);
-      ptr->link     = (const char *) sqlite3_column_text (stmt_ptr, INODES_LINK);
-      ptr->major    = sqlite3_column_int  (stmt_ptr, INODES_MAJOR);
-      ptr->minor    = sqlite3_column_int  (stmt_ptr, INODES_MINOR);
-      ptr->ctime    = sqlite3_column_int  (stmt_ptr, INODES_CTIME);
-      ptr->ctime_ns = sqlite3_column_int  (stmt_ptr, INODES_CTIME_NS);
-      ptr->mtime    = sqlite3_column_int  (stmt_ptr, INODES_MTIME);
-      ptr->mtime_ns = sqlite3_column_int  (stmt_ptr, INODES_MTIME_NS);
+      ptr = cached_ptr;
     }
+  else
+    {
+      ptr = new INode;
+      if (!ptr->load (id))
+        {
+          delete ptr;
+          ptr = NULL;
+        }
+    }
+  cached_ptr = ptr;
+
+  inode_repo.mutex.unlock();
 }
 
 static string
@@ -227,6 +222,66 @@ INode::save()
   if (rc != SQLITE_DONE)
     return false;
   return true;
+}
+
+bool
+INode::load (const string& id)
+{
+  bool found = false;
+
+  sqlite3 *db = sqlite_db();
+  sqlite3_stmt *stmt_ptr = NULL;
+
+  string sql = "SELECT * FROM inodes WHERE id = \"" + id + "\" AND vmin >= 1 AND vmax <= 1;";
+
+  int rc = sqlite3_prepare_v2 (db, sql.c_str(), sql.size(), &stmt_ptr, NULL);
+  if (rc != SQLITE_OK)
+    return false;
+
+  for (;;)
+    {
+      rc = sqlite3_step (stmt_ptr);
+      if (rc != SQLITE_ROW)
+        break;
+
+      vmin     = sqlite3_column_int  (stmt_ptr, INODES_VMIN);
+      vmax     = sqlite3_column_int  (stmt_ptr, INODES_VMAX);
+      this->id = (const char *) sqlite3_column_text (stmt_ptr, INODES_ID);
+      uid      = sqlite3_column_int  (stmt_ptr, INODES_UID);
+      gid      = sqlite3_column_int  (stmt_ptr, INODES_GID);
+      mode     = sqlite3_column_int  (stmt_ptr, INODES_MODE);
+
+      string val = (const char *) sqlite3_column_text (stmt_ptr, INODES_TYPE);
+
+      if (val == "file")
+        type = FILE_REGULAR;
+      else if (val == "symlink")
+        type = FILE_SYMLINK;
+      else if (val == "dir")
+        type = FILE_DIR;
+      else if (val == "fifo")
+        type = FILE_FIFO;
+      else if (val == "socket")
+        type = FILE_SOCKET;
+      else if (val == "blockdev")
+        type = FILE_BLOCK_DEV;
+      else if (val == "chardev")
+        type = FILE_CHAR_DEV;
+      else
+        type = FILE_NONE;
+
+      hash     = (const char *) sqlite3_column_text (stmt_ptr, INODES_HASH);
+      link     = (const char *) sqlite3_column_text (stmt_ptr, INODES_LINK);
+      major    = sqlite3_column_int  (stmt_ptr, INODES_MAJOR);
+      minor    = sqlite3_column_int  (stmt_ptr, INODES_MINOR);
+      ctime    = sqlite3_column_int  (stmt_ptr, INODES_CTIME);
+      ctime_ns = sqlite3_column_int  (stmt_ptr, INODES_CTIME_NS);
+      mtime    = sqlite3_column_int  (stmt_ptr, INODES_MTIME);
+      mtime_ns = sqlite3_column_int  (stmt_ptr, INODES_MTIME_NS);
+
+      found = true;
+    }
+  return found;
 }
 
 vector<LinkPtr>

@@ -20,6 +20,7 @@
 #include "bfsyncserver.hh"
 #include "bfsyncfs.hh"
 #include "bfgitfile.hh"
+#include "bfinode.hh"
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -147,6 +148,7 @@ Server::run()
           FSLock lock (FSLock::WRITE); // we don't want anybody to modify stuff while we write
 
           GitFileRepo::the()->save_changes();
+          INodeRepo::the()->save_changes();
         }
     }
 }

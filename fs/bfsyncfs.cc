@@ -920,10 +920,7 @@ bfsync_write (const char *path, const char *buf, size_t size, off_t offset,
         {
           INodePtr inode = inode_from_path (path);
           if (inode)
-            {
-              inode.update()->set_mtime_ctime_now();
-              inode.update()->save();
-            }
+            inode.update()->set_mtime_ctime_now();
         }
     }
 
@@ -940,8 +937,6 @@ bfsync_mknod (const char *path, mode_t mode, dev_t dev)
     return -ENOENT;
 
   INodePtr inode (fuse_get_context());  // create new inode
-
-  printf ("mknod\n");
 
   inode.update()->mode = mode & ~S_IFMT;
 
@@ -1685,6 +1680,7 @@ main (int argc, char *argv[])
   int fuse_rc = fuse_main (my_argc, my_argv, &bfsync_oper, NULL);
 
   GitFileRepo::the()->save_changes();
+  INodeRepo::the()->save_changes();
 
   return fuse_rc;
 }
