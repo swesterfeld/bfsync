@@ -88,7 +88,7 @@ struct INode
   INode();
   ~INode();
 
-  bool          save();
+  bool          save (std::string& sql);
   bool          load (const std::string& id);
 
   void          set_mtime_ctime_now();

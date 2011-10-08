@@ -24,16 +24,31 @@ INodeRepo::save_changes()
 {
   inode_repo.mutex.lock();
 
+  string sql = "BEGIN;\n";
+
   for (map<string, INode*>::iterator ci = cache.begin(); ci != cache.end(); ci++)
     {
       INode *inode_ptr = ci->second;
       if (inode_ptr && inode_ptr->updated)
         {
-          inode_ptr->save();
+          string sql_part;
+
+          inode_ptr->save (sql_part);
           inode_ptr->updated = false;
+
+          sql += sql_part + ";\n";
         }
     }
 
+  sql += "COMMIT;\n";
+
+  debug ("sql: %s\n", sql.c_str());
+
+  int rc = sqlite3_exec (sqlite_db(), sql.c_str(), NULL, NULL, NULL);
+  if (rc == SQLITE_OK)
+    {
+      debug ("sql exec OK\n");
+    }
   inode_repo.mutex.unlock();
 }
 
@@ -160,11 +175,8 @@ INode::set_ctime_now()
 }
 
 bool
-INode::save()
+INode::save (string& sql)
 {
-  sqlite3 *db = sqlite_db();
-  sqlite3_stmt *stmt_ptr = NULL;
-
   string type_str;
   if (type == FILE_REGULAR)
     {
@@ -213,17 +225,8 @@ INode::save()
     (int) ctime, ctime_ns,
     (int) mtime, mtime_ns);
 
-  string sql = gen_sql;
+  sql = gen_sql;
   g_free (gen_sql);
-
-  printf ("sql: %s\n", sql.c_str());
-  int rc = sqlite3_prepare_v2 (db, sql.c_str(), sql.size(), &stmt_ptr, NULL);
-  if (rc != SQLITE_OK)
-    return false;
-
-  rc = sqlite3_step (stmt_ptr);
-  if (rc != SQLITE_DONE)
-    return false;
   return true;
 }
 

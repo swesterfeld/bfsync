@@ -1677,5 +1677,9 @@ main (int argc, char *argv[])
   GitFileRepo::the()->save_changes();
   INodeRepo::the()->save_changes();
 
+  if (sqlite3_close (db_ptr) != SQLITE_OK)
+    {
+      printf ("bfsyncfs: can't close db\n");
+    }
   return fuse_rc;
 }

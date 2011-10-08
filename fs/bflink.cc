@@ -57,7 +57,7 @@ Link::save()
   string sql = sql_c;
   g_free (sql_c);
 
-  printf ("sql: %s\n", sql.c_str());
+  debug ("sql: %s\n", sql.c_str());
   int rc = sqlite3_prepare_v2 (db, sql.c_str(), sql.size(), &stmt_ptr, NULL);
   if (rc != SQLITE_OK)
     return false;
