@@ -9,20 +9,6 @@ using std::string;
 namespace BFSync
 {
 
-
-LinkPtr::LinkPtr (const INodePtr& dir, const INodePtr& inode, const string& filename)
-{
-  ptr     = new Link();
-
-  ptr->vmin     = 1;
-  ptr->vmax     = 1;
-  ptr->dir_id   = dir->id;
-  ptr->inode_id = inode->id;
-  ptr->name     = filename;
-
-  ptr->save();
-}
-
 LinkPtr::LinkPtr (Link *link)
 {
   ptr = link;

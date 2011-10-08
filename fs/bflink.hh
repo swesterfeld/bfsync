@@ -42,7 +42,6 @@ class LinkPtr
 {
   Link *ptr;
 public:
-  LinkPtr (const INodePtr& dir, const INodePtr& inode, const std::string& str);
   LinkPtr (Link *link);
 
   const Link*
