@@ -58,13 +58,15 @@ Link::save()
   g_free (sql_c);
 
   debug ("sql: %s\n", sql.c_str());
+  double start_t = gettime();
   int rc = sqlite3_prepare_v2 (db, sql.c_str(), sql.size(), &stmt_ptr, NULL);
   if (rc != SQLITE_OK)
     return false;
-
+  debug ("sql prepare: %.2f ms\n", 1000 * (gettime() - start_t));
   rc = sqlite3_step (stmt_ptr);
   if (rc != SQLITE_DONE)
     return false;
+  debug ("sql prepare+step: %.2f ms\n", 1000 * (gettime() - start_t));
   return true;
 }
 

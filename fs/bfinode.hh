@@ -83,6 +83,8 @@ struct INode
   dev_t         major;
   dev_t         minor;
 
+  std::vector<LinkPtr> links;
+
   bool          updated;
 
   INode();
@@ -98,6 +100,7 @@ struct INode
   FileStatus    file_status() const;
   std::string   file_path() const;
   void          copy_on_write();
+  void          add_link (INodePtr to, const std::string& name);
 };
 
 inline INode*

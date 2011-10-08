@@ -1,4 +1,5 @@
 #include <glib.h>
+#include <sys/time.h>
 
 #include "bfinode.hh"
 #include "bfsyncfs.hh"
@@ -43,12 +44,14 @@ INodeRepo::save_changes()
   sql += "COMMIT;\n";
 
   debug ("sql: %s\n", sql.c_str());
-
+  double start_t = gettime();
   int rc = sqlite3_exec (sqlite_db(), sql.c_str(), NULL, NULL, NULL);
   if (rc == SQLITE_OK)
     {
       debug ("sql exec OK\n");
     }
+  double end_t = gettime();
+  debug ("time for sql: %.2fms\n", (end_t - start_t) * 1000);
   inode_repo.mutex.unlock();
 }
 
@@ -287,25 +290,19 @@ INode::load (const string& id)
 
       found = true;
     }
-  return found;
-}
+  if (!found)
+    return false;
 
-vector<LinkPtr>
-INode::children() const
-{
-  vector<LinkPtr> result;
-  sqlite3 *db = sqlite_db();
-  sqlite3_stmt *stmt_ptr = NULL;
-
+  // load links
   char *sql_c = g_strdup_printf ("SELECT * FROM links WHERE dir_id = \"%s\"", id.c_str());
-
-  string sql = sql_c;
+  sql = sql_c;
   g_free (sql_c);
 
   printf ("sql: %s\n", sql.c_str());
-  int rc = sqlite3_prepare_v2 (db, sql.c_str(), sql.size(), &stmt_ptr, NULL);
+
+  rc = sqlite3_prepare_v2 (db, sql.c_str(), sql.size(), &stmt_ptr, NULL);
   if (rc != SQLITE_OK)
-    return result;
+    return false;
 
   for (;;)
     {
@@ -321,10 +318,16 @@ INode::children() const
       link->inode_id = (const char *) sqlite3_column_text (stmt_ptr, 3);
       link->name = (const char *) sqlite3_column_text (stmt_ptr, 4);
 
-      result.push_back (LinkPtr (link));
+      links.push_back (LinkPtr (link));
     }
 
-  return result;
+  return found;
+}
+
+vector<LinkPtr>
+INode::children() const
+{
+  return links;
 }
 
 string
@@ -371,6 +374,20 @@ INode::copy_on_write()
 
       hash = "new";
     }
+}
+
+void
+INode::add_link (INodePtr to, const string& name)
+{
+  Link *link = new Link();
+
+  link->vmin = 1;
+  link->vmax = 1;
+  link->dir_id = id;
+  link->inode_id = to->id;
+  link->name = name;
+
+  links.push_back (LinkPtr (link));
 }
 
 }

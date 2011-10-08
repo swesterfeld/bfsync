@@ -26,6 +26,7 @@
 #include "bfsyncfs.hh"
 #include <sqlite3.h>
 
+#include <sys/time.h>
 #include <fuse.h>
 #include <stdio.h>
 #include <string.h>
@@ -257,6 +258,15 @@ copy_on_write (const string& path)
           gf.update()->hash = "new";
         }
     }
+}
+
+double
+gettime()
+{
+  timeval tv;
+  gettimeofday (&tv, 0);
+
+  return tv.tv_sec + tv.tv_usec / 1000000.0;
 }
 
 //------------ permission checks
@@ -980,8 +990,7 @@ bfsync_mknod (const char *path, mode_t mode, dev_t dev)
     }
 
   dir_inode.update()->set_mtime_ctime_now();
-
-  LinkPtr link (dir_inode, inode, get_basename (path));
+  dir_inode.update()->add_link (inode, get_basename (path));
   return 0;
 
   // OLD:
@@ -1280,8 +1289,7 @@ bfsync_mkdir (const char *path, mode_t mode)
   inode.update()->type = FILE_DIR;
   inode.update()->mode = mode;
 
-  LinkPtr link (inode_dir, inode, get_basename (path));
-
+  inode_dir.update()->add_link (inode, get_basename (path));
   inode_dir.update()->set_mtime_ctime_now();
   return 0;
 
@@ -1437,7 +1445,7 @@ bfsync_symlink (const char *from, const char *to)
   inode.update()->type = FILE_SYMLINK;
   inode.update()->link = from;
 
-  LinkPtr link (dir_inode, inode, get_basename (to));
+  dir_inode.update()->add_link (inode, get_basename (to));
   dir_inode.update()->set_mtime_ctime_now();
   return 0;
 #if OLD

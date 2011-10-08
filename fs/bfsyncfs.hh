@@ -84,6 +84,8 @@ debug (const char *fmt, ...)
   va_end (ap);
 }
 
+double gettime();
+
 enum
 {
   GIT_FILENAME = 1,
