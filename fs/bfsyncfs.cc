@@ -918,9 +918,12 @@ bfsync_write (const char *path, const char *buf, size_t size, off_t offset,
       bytes_written = pwrite (fh->fd, buf, size, offset);
       if (bytes_written > 0)
         {
-          GitFilePtr gf (path);
-          if (gf)
-            gf.update()->set_mtime_ctime_now();
+          INodePtr inode = inode_from_path (path);
+          if (inode)
+            {
+              inode.update()->set_mtime_ctime_now();
+              inode.update()->save();
+            }
         }
     }
 
