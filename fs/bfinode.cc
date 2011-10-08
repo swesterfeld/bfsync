@@ -99,7 +99,10 @@ INodePtr::INodePtr (fuse_context *context)
   ptr->gid = context->gid;
   ptr->set_mtime_ctime_now();
   ptr->updated = true;
-  ptr->save();
+
+  inode_repo.mutex.lock();
+  inode_repo.cache[ptr->id] = ptr;
+  inode_repo.mutex.unlock();
 }
 
 INodePtr::INodePtr() :

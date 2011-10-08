@@ -982,7 +982,6 @@ bfsync_mknod (const char *path, mode_t mode, dev_t dev)
   dir_inode.update()->set_mtime_ctime_now();
 
   LinkPtr link (dir_inode, inode, get_basename (path));
-  inode.update()->save();
   return 0;
 
   // OLD:
@@ -1059,7 +1058,6 @@ bfsync_chmod (const char *name, mode_t mode)
 
       inode.update()->mode = mode;
       inode.update()->set_ctime_now();
-      inode.update()->save();
       return 0;
     }
 
@@ -1163,7 +1161,6 @@ bfsync_utimens (const char *name, const struct timespec times[2])
     {
       inode.update()->mtime    = times[1].tv_sec;
       inode.update()->mtime_ns = times[1].tv_nsec;
-      inode.update()->save();
 
       return 0;
     }
@@ -1282,7 +1279,6 @@ bfsync_mkdir (const char *path, mode_t mode)
 
   inode.update()->type = FILE_DIR;
   inode.update()->mode = mode;
-  inode.update()->save();
 
   LinkPtr link (inode_dir, inode, get_basename (path));
 
@@ -1440,7 +1436,6 @@ bfsync_symlink (const char *from, const char *to)
   inode.update()->mode = 0777;
   inode.update()->type = FILE_SYMLINK;
   inode.update()->link = from;
-  inode.update()->save();
 
   LinkPtr link (dir_inode, inode, get_basename (to));
   dir_inode.update()->set_mtime_ctime_now();
