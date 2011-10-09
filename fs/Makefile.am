@@ -7,5 +7,5 @@ noinst_PROGRAMS = bftesthelper sqlperf
 bfsyncfs_SOURCES = bfsyncfs.cc bfsyncserver.cc bfgitfile.cc bfinode.cc bflink.cc bfleakdebugger.cc
 bfsyncfs_LDADD = $(GLIB_LIBS) $(FUSE_LIBS)
 
-sqlperf_SOURCES = sqlperf.cc
+sqlperf_SOURCES = sqlperf.cc bfsql.cc
 sqlperf_LDADD = $(GLIB_LIBS) $(FUSE_LIBS)
