@@ -12,7 +12,6 @@ class FuseFS:
   def init (self):
     cwd = os.getcwd()
     if subprocess.call (["mkdir", "-p", "test/new",
-                                        "test/git/files",
                                         "test/objects",
                                         "test/.bfsync",
                                         "mnt"]) != 0:
@@ -34,7 +33,7 @@ class FuseFS:
       if subprocess.call (["fusermount", "-u", "mnt"]):
         print "can't stop bfsyncfs"
         sys.exit (1)
-    if subprocess.call (["rm", "-rf", cwd + "/test"]) != 0:
+    if subprocess.call (["rm", "-rf", cwd + "/test/new", cwd + "/test/objects", cwd + "/test/.bfsync"]) != 0:
       print "error during teardown"
       sys.exit (1)
 
