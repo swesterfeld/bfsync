@@ -3,7 +3,8 @@ Makefile.in
 .deps
 .libs
 *.pyc
-bf*.o
+*.o
+sqlperf
 bfsyncfs
 bfsyncstat
 mnt
