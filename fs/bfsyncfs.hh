@@ -106,8 +106,6 @@ struct Options {
   static Options *the();
 };
 
-sqlite3 *sqlite_db();
-
 }
 
 #endif /* BFSYNC_FS_HH */

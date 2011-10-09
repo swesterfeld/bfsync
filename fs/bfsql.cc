@@ -66,6 +66,15 @@ SQLStatement::bind_int (int pos, int value)
 }
 
 void
+SQLStatement::bind_str (int pos, const string& str)
+{
+  int rc = sqlite3_bind_text (stmt_ptr, pos, str.c_str(), -1, SQLITE_TRANSIENT);
+
+  if (rc != SQLITE_OK)
+    m_success = false;
+}
+
+void
 SQLStatement::step()
 {
   int rc = sqlite3_step (stmt_ptr);

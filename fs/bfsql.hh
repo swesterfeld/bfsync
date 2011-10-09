@@ -44,6 +44,7 @@ public:
   void step();
 
   void bind_int (int pos, int value);
+  void bind_str (int pos, const std::string& str);
 
   bool success() const;
 };

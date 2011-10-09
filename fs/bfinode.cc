@@ -5,6 +5,7 @@
 #include "bfsyncfs.hh"
 #include "bfleakdebugger.hh"
 #include "bflink.hh"
+#include "bfsql.hh"
 
 using std::string;
 using std::vector;
@@ -25,33 +26,35 @@ INodeRepo::save_changes()
 {
   inode_repo.mutex.lock();
 
-  string sql = "BEGIN;\n";
+  SQLStatement stmt ("insert into inodes values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);");
 
+  double start_t = gettime();
+
+  stmt.begin();
   for (map<string, INode*>::iterator ci = cache.begin(); ci != cache.end(); ci++)
     {
       INode *inode_ptr = ci->second;
       if (inode_ptr && inode_ptr->updated)
         {
-          string sql_part;
+          stmt.reset();
 
-          inode_ptr->save (sql_part);
+          inode_ptr->save (stmt);
           inode_ptr->updated = false;
 
-          sql += sql_part + ";\n";
+          stmt.step();
         }
     }
+  debug ("time for sql prepare: %.2fms\n", (gettime() - start_t) * 1000);
+  stmt.commit();
 
-  sql += "COMMIT;\n";
+  if (stmt.success())
+    debug ("sql exec OK\n");
+  else
+    debug ("sql exec FAIL\n");
 
-  debug ("sql: %s\n", sql.c_str());
-  double start_t = gettime();
-  int rc = sqlite3_exec (sqlite_db(), sql.c_str(), NULL, NULL, NULL);
-  if (rc == SQLITE_OK)
-    {
-      debug ("sql exec OK\n");
-    }
   double end_t = gettime();
   debug ("time for sql: %.2fms\n", (end_t - start_t) * 1000);
+
   inode_repo.mutex.unlock();
 }
 
@@ -178,7 +181,7 @@ INode::set_ctime_now()
 }
 
 bool
-INode::save (string& sql)
+INode::save (SQLStatement& stmt)
 {
   string type_str;
   if (type == FILE_REGULAR)
@@ -214,22 +217,22 @@ INode::save (string& sql)
       return false; // unsupported type
     }
 
-  char *gen_sql = g_strdup_printf ("INSERT INTO inodes VALUES (%d, %d, \"%s\", %d, %d, %d, \"%s\", \"%s\", \"%s\", "
-                                   "%d, %d, %d, %d, %d, %d)",
-    vmin, vmax,
-    id.c_str(),
-    uid, gid,
-    mode,
-    type_str.c_str(),
-    hash.c_str(),
-    link.c_str(),
-    (int) major,
-    (int) minor,
-    (int) ctime, ctime_ns,
-    (int) mtime, mtime_ns);
+  stmt.bind_int (1 + INODES_VMIN, vmin);
+  stmt.bind_int (1 + INODES_VMAX, vmax);
+  stmt.bind_str (1 + INODES_ID, id);
+  stmt.bind_int (1 + INODES_UID, uid);
+  stmt.bind_int (1 + INODES_GID, gid);
+  stmt.bind_int (1 + INODES_MODE, mode);
+  stmt.bind_str (1 + INODES_TYPE, type_str);
+  stmt.bind_str (1 + INODES_HASH, hash);
+  stmt.bind_str (1 + INODES_LINK, link);
+  stmt.bind_int (1 + INODES_MAJOR, major);
+  stmt.bind_int (1 + INODES_MINOR, minor);
+  stmt.bind_int (1 + INODES_CTIME, ctime);
+  stmt.bind_int (1 + INODES_CTIME_NS, ctime_ns);
+  stmt.bind_int (1 + INODES_MTIME, mtime);
+  stmt.bind_int (1 + INODES_MTIME_NS, mtime_ns);
 
-  sql = gen_sql;
-  g_free (gen_sql);
   return true;
 }
 

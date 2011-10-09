@@ -1537,14 +1537,6 @@ exit_usage()
   exit (1);
 }
 
-static sqlite3 *db_ptr = NULL;
-
-sqlite3*
-sqlite_db()
-{
-  return db_ptr;
-}
-
 }
 
 int
@@ -1641,7 +1633,7 @@ main (int argc, char *argv[])
 
 
   string db_path = options.repo_path + "/db";
-  int rc = sqlite3_open (db_path.c_str(), &db_ptr);
+  int rc = sqlite_open (db_path);
   if (rc != SQLITE_OK)
     {
       printf ("bfsyncfs: error opening db: %d\n", rc);
@@ -1650,7 +1642,7 @@ main (int argc, char *argv[])
   int current_version = -1;
   sqlite3_stmt *stmt_ptr = NULL;
   string query = "SELECT * FROM history";
-  rc = sqlite3_prepare_v2 (db_ptr, query.c_str(), query.size(), &stmt_ptr, NULL);
+  rc = sqlite3_prepare_v2 (sqlite_db(), query.c_str(), query.size(), &stmt_ptr, NULL);
 
   if (rc != SQLITE_OK)
     {
@@ -1685,7 +1677,7 @@ main (int argc, char *argv[])
   GitFileRepo::the()->save_changes();
   INodeRepo::the()->save_changes();
 
-  if (sqlite3_close (db_ptr) != SQLITE_OK)
+  if (sqlite3_close (sqlite_db()) != SQLITE_OK)
     {
       printf ("bfsyncfs: can't close db\n");
     }
