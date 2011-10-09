@@ -4,46 +4,49 @@ import sqlite3
 import os
 import time
 
-try:
-  os.remove ("test/db")
-except:
-  pass
+reinit_tables = not os.path.exists ('test/db')
 
 conn = sqlite3.connect ('test/db')
 c = conn.cursor()
-c.execute ('''create table inodes
-               (
-                 vmin     integer,
-                 vmax     integer,
-                 id       text,
-                 uid      integer,
-                 gid      integer,
-                 mode     integer,
-                 type     text,
-                 hash     text,
-                 link     text,
-                 major    integer,
-                 minor    integer,
-                 ctime    integer,
-                 ctime_ns integer,
-                 mtime    integer,
-                 mtime_ns integer
-               )''')
-c.execute ('''create table links
-               (
-                 vmin     integer,
-                 vmax     integer,
-                 dir_id   text,
-                 inode_id text,
-                 name     text
-               )''')
-c.execute ('''create table history
-               (
-                 version integer,
-                 author  text,
-                 message text,
-                 time    integer
-               )''')
+if reinit_tables:
+  c.execute ('''create table inodes
+                 (
+                   vmin     integer,
+                   vmax     integer,
+                   id       text,
+                   uid      integer,
+                   gid      integer,
+                   mode     integer,
+                   type     text,
+                   hash     text,
+                   link     text,
+                   major    integer,
+                   minor    integer,
+                   ctime    integer,
+                   ctime_ns integer,
+                   mtime    integer,
+                   mtime_ns integer
+                 )''')
+  c.execute ('''create table links
+                 (
+                   vmin     integer,
+                   vmax     integer,
+                   dir_id   text,
+                   inode_id text,
+                   name     text
+                 )''')
+  c.execute ('''create table history
+                 (
+                   version integer,
+                   author  text,
+                   message text,
+                   time    integer
+                 )''')
+else:
+  c.execute ('''DELETE FROM inodes''')
+  c.execute ('''DELETE FROM links''')
+  c.execute ('''DELETE FROM history''')
+
 c.execute ('''insert into history values (1, "", "", 0)''')
 
 time_now = int (time.time())
