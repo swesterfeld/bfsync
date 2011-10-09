@@ -37,6 +37,9 @@ public:
   SQLStatement (const std::string& sql);
   ~SQLStatement();
 
+  void begin();
+  void commit();
+
   void reset();
   void step();
 

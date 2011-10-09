@@ -86,4 +86,22 @@ SQLStatement::~SQLStatement()
   sqlite3_finalize (stmt_ptr);
 }
 
+void
+SQLStatement::begin()
+{
+  int rc = sqlite3_exec (sqlite_db(), "begin", NULL, NULL, NULL);
+
+  if (rc != SQLITE_OK)
+    m_success = false;
+}
+
+void
+SQLStatement::commit()
+{
+  int rc = sqlite3_exec (sqlite_db(), "commit", NULL, NULL, NULL);
+
+  if (rc != SQLITE_OK)
+    m_success = false;
+}
+
 }

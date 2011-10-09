@@ -24,16 +24,18 @@ perf_repeat_stmt()
 {
   SQLStatement stmt ("insert into inodes values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);");
 
+  stmt.begin();
   for (size_t j = 0; j < 300000; j++)
     {
       stmt.reset();
-      //stmt.clear_bindings();
 
       for (int i = 0; i < 15; i++)
         stmt.bind_int (1 + i, j * 100 + i);
 
       stmt.step();
     }
+  stmt.commit();
+
   printf ("success=%s\n", stmt.success() ? "true" : "false");
   return true;
 }
@@ -41,7 +43,7 @@ perf_repeat_stmt()
 bool
 perf_exec()
 {
-  string sql;
+  string sql = "begin;";
 
   for (int i = 0; i < 300000; i++)
     {
@@ -49,6 +51,7 @@ perf_exec()
       sql += sql_c;
       g_free (sql_c);
     }
+  sql += "commit;";
 
   int rc = sqlite3_exec (sqlite_db(), sql.c_str(), NULL, NULL, NULL);
   if (rc != SQLITE_OK)
@@ -72,7 +75,6 @@ main()
   for (int i = 0; i < 2; i++)
     {
       double start_t = gettime();
-      rc = sqlite3_exec (sqlite_db(), "begin", NULL, NULL, NULL);
       if (i == 0)
         {
           printf ("perf_repeat_stmt...\n");
@@ -83,7 +85,6 @@ main()
           printf ("perf_exec...\n");
           perf_exec();
         }
-      rc = sqlite3_exec (sqlite_db(), "commit", NULL, NULL, NULL);
       double end_t = gettime();
 
       printf ("time for sql: %.2fms\n", (end_t - start_t) * 1000);
