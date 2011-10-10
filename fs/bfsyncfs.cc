@@ -105,28 +105,6 @@ split_name (const string& xname)
   return (result);
 }
 
-// "foo/bar/bazz" => d_foo/d_bar/i_bazz
-string
-name2git_name (const string& name, int type)
-{
-  vector<string> path = split_name (name);
-  string result;
-
-  for (size_t i = 0; i < path.size(); i++)
-    {
-      if (i + 1 < path.size())    // not last element
-        result += "d_" + path[i] + "/";
-      else                        // last element
-        {
-          if (type == GIT_FILENAME)
-            result += "i_" + path[i];
-          else // dirname
-            result += "d_" + path[i];
-        }
-    }
-  return result;
-}
-
 string
 get_dirname (const string& dirname)
 {
@@ -471,20 +449,6 @@ bfsync_getattr (const char *path_arg, struct stat *stbuf)
       return 0;
     }
   return -ENOENT;
-}
-
-string
-remove_di_prefix (const string& filename)
-{
-  // d_foo => foo
-  // i_foo => foo
-  // foo => xxx_foo;
-  if (filename.size() > 2 && filename[1] == '_')
-    {
-      if (filename[0] == 'd' || filename[0] == 'i')
-        return filename.substr (2);
-    }
-  return "xxx_" + filename;
 }
 
 bool

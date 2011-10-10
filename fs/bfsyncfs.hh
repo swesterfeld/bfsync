@@ -92,7 +92,6 @@ enum
   GIT_DIRNAME  = 2
 };
 
-std::string name2git_name (const std::string& name, int type = GIT_FILENAME);
 std::string make_object_filename (const std::string& hash);
 std::string get_dirname (const std::string& filename);
 
