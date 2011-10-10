@@ -28,6 +28,8 @@ INodeRepo::save_changes()
 
   SQLStatement inode_stmt ("insert into inodes values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
   SQLStatement link_stmt ("insert into links values (?,?,?,?,?)");
+  SQLStatement del_inode_stmt ("DELETE FROM inodes WHERE id=?");
+  SQLStatement del_links_stmt ("DELETE FROM links WHERE dir_id=?");
 
   double start_t = gettime();
 
@@ -37,6 +39,14 @@ INodeRepo::save_changes()
       INode *inode_ptr = ci->second;
       if (inode_ptr && inode_ptr->updated)
         {
+          del_inode_stmt.reset();
+          del_inode_stmt.bind_str (1, inode_ptr->id);
+          del_inode_stmt.step();
+
+          del_links_stmt.reset();
+          del_links_stmt.bind_str (1, inode_ptr->id);
+          del_links_stmt.step();
+
           inode_ptr->save (inode_stmt, link_stmt);
           inode_ptr->updated = false;
         }
@@ -44,7 +54,7 @@ INodeRepo::save_changes()
   debug ("time for sql prepare: %.2fms\n", (gettime() - start_t) * 1000);
   inode_stmt.commit();
 
-  if (inode_stmt.success() && link_stmt.success())
+  if (inode_stmt.success() && link_stmt.success() && del_inode_stmt.success() && del_links_stmt.success())
     debug ("sql exec OK\n");
   else
     debug ("sql exec FAIL\n");
