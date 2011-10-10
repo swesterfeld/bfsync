@@ -91,7 +91,7 @@ struct INode
   INode();
   ~INode();
 
-  bool          save (SQLStatement& stmt);
+  bool          save (SQLStatement& inode_stmt, SQLStatement& link_stmt);
   bool          load (const std::string& id);
 
   void          set_mtime_ctime_now();

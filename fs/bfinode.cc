@@ -26,28 +26,25 @@ INodeRepo::save_changes()
 {
   inode_repo.mutex.lock();
 
-  SQLStatement stmt ("insert into inodes values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);");
+  SQLStatement inode_stmt ("insert into inodes values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+  SQLStatement link_stmt ("insert into links values (?,?,?,?,?)");
 
   double start_t = gettime();
 
-  stmt.begin();
+  inode_stmt.begin();
   for (map<string, INode*>::iterator ci = cache.begin(); ci != cache.end(); ci++)
     {
       INode *inode_ptr = ci->second;
       if (inode_ptr && inode_ptr->updated)
         {
-          stmt.reset();
-
-          inode_ptr->save (stmt);
+          inode_ptr->save (inode_stmt, link_stmt);
           inode_ptr->updated = false;
-
-          stmt.step();
         }
     }
   debug ("time for sql prepare: %.2fms\n", (gettime() - start_t) * 1000);
-  stmt.commit();
+  inode_stmt.commit();
 
-  if (stmt.success())
+  if (inode_stmt.success() && link_stmt.success())
     debug ("sql exec OK\n");
   else
     debug ("sql exec FAIL\n");
@@ -181,7 +178,7 @@ INode::set_ctime_now()
 }
 
 bool
-INode::save (SQLStatement& stmt)
+INode::save (SQLStatement& stmt, SQLStatement& link_stmt)
 {
   string type_str;
   if (type == FILE_REGULAR)
@@ -217,6 +214,7 @@ INode::save (SQLStatement& stmt)
       return false; // unsupported type
     }
 
+  stmt.reset();
   stmt.bind_int (1 + INODES_VMIN, vmin);
   stmt.bind_int (1 + INODES_VMAX, vmax);
   stmt.bind_str (1 + INODES_ID, id);
@@ -232,7 +230,20 @@ INode::save (SQLStatement& stmt)
   stmt.bind_int (1 + INODES_CTIME_NS, ctime_ns);
   stmt.bind_int (1 + INODES_MTIME, mtime);
   stmt.bind_int (1 + INODES_MTIME_NS, mtime_ns);
+  stmt.step();
 
+  for (vector<LinkPtr>::iterator li = links.begin(); li != links.end(); li++)
+    {
+      LinkPtr& lp = *li;
+
+      link_stmt.reset();
+      link_stmt.bind_int (1, lp->vmin);
+      link_stmt.bind_int (2, lp->vmax);
+      link_stmt.bind_str (3, lp->dir_id);
+      link_stmt.bind_str (4, lp->inode_id);
+      link_stmt.bind_str (5, lp->name);
+      link_stmt.step();
+    }
   return true;
 }
 
