@@ -1235,6 +1235,7 @@ bfsync_truncate (const char *name, off_t off)
     }
 }
 
+// FIXME: should check that name is not directory
 static int
 bfsync_unlink (const char *name)
 {
@@ -1345,11 +1346,40 @@ bfsync_mkdir (const char *path, mode_t mode)
 #endif
 }
 
+// FIXME: should check that name is a directory
 static int
 bfsync_rmdir (const char *name)
 {
   FSLock lock (FSLock::WRITE);
 
+  INodePtr inode_dir = inode_from_path (get_dirname (name));
+  if (!inode_dir)
+    return -ENOENT;
+
+  // check that dir is in fact empty
+  vector<string> entries;
+  if (read_dir_contents (name, entries))
+    if (!entries.empty())
+      return -ENOTEMPTY;
+
+  string dirname = get_basename (name);
+  vector<LinkPtr> links = inode_dir->children();
+
+  for (vector<LinkPtr>::iterator li = links.begin(); li != links.end(); li++)
+    {
+      LinkPtr& lp = *li;
+
+      if (lp->name == dirname)
+        {
+          lp.update()->deleted = true;
+
+          inode_dir.update()->set_mtime_ctime_now();
+          return 0;
+        }
+    }
+  return -ENOENT;
+
+#if OLD
   GitFilePtr gf_dir (get_dirname (name));
   if (gf_dir && !write_perm_ok (gf_dir))
     return -EACCES;
@@ -1393,6 +1423,7 @@ bfsync_rmdir (const char *name)
   if (gf_dir)
     gf_dir.update()->set_mtime_ctime_now();
   return 0;
+#endif
 }
 
 static int
