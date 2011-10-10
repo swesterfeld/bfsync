@@ -36,8 +36,6 @@ struct Link
 
   Link();
   ~Link();
-
-  bool save();
 };
 
 class LinkPtr

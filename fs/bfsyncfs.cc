@@ -663,7 +663,7 @@ bfsync_mknod (const char *path, mode_t mode, dev_t dev)
   if (S_ISREG (mode))
     {
       string filename = options.repo_path + "/new/" + inode->id;
-      int rc = mknod (filename.c_str(), mode, dev);
+      int rc = mknod (filename.c_str(), 0600, dev);
       if (rc == 0)
         {
           inode.update()->type = FILE_REGULAR;
