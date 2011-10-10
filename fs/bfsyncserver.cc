@@ -19,7 +19,6 @@
 
 #include "bfsyncserver.hh"
 #include "bfsyncfs.hh"
-#include "bfgitfile.hh"
 #include "bfinode.hh"
 
 #include <sys/types.h>
@@ -147,7 +146,6 @@ Server::run()
         {
           FSLock lock (FSLock::WRITE); // we don't want anybody to modify stuff while we write
 
-          GitFileRepo::the()->save_changes();
           INodeRepo::the()->save_changes();
         }
     }
@@ -278,7 +276,7 @@ Server::handle_client (int client_fd)
                       lock = new FSLock (FSLock::RDONLY);
                       result.push_back ("ok");
 
-                      GitFileRepo::the()->save_changes();
+                      INodeRepo::the()->save_changes();
                     }
                 }
               else if (request[0] == "add-new")
@@ -322,6 +320,7 @@ Server::handle_client (int client_fd)
 bool
 Server::add_file (const string& filename, const string& hash, string& error)
 {
+#if OLD
   GitFilePtr gf (filename);
 
   string new_filename = Options::the()->repo_path + "/new/" + filename;
@@ -377,5 +376,6 @@ Server::add_file (const string& filename, const string& hash, string& error)
       error = "can't chmod 0400 file '" + object_filename + "'";
       return false;
     }
+#endif
   return true;
 }

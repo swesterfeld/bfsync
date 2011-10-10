@@ -22,12 +22,26 @@
 
 #include <string>
 #include <vector>
+#include <map>
 
-#include "bfgitfile.hh" /* BFSync::FileType */
+#include <fuse.h>
+
 #include "bfsql.hh"
+#include "bfsyncfs.hh"
 
 namespace BFSync
 {
+
+enum FileType {
+  FILE_NONE,
+  FILE_REGULAR,
+  FILE_SYMLINK,
+  FILE_DIR,
+  FILE_FIFO,
+  FILE_SOCKET,
+  FILE_BLOCK_DEV,
+  FILE_CHAR_DEV
+};
 
 class INode;
 class INodePtr

@@ -19,7 +19,6 @@
 
 #define FUSE_USE_VERSION 26
 
-#include "bfgitfile.hh"
 #include "bfinode.hh"
 #include "bflink.hh"
 #include "bfsyncserver.hh"
@@ -148,20 +147,6 @@ get_basename (const string& filename)
   return result;
 }
 
-FileStatus
-file_status (const string& path)
-{
-  GitFilePtr gf (path);
-  if (gf)
-    {
-      if (gf->hash == "new")
-        return FS_CHANGED;
-      else
-        return FS_RDONLY;
-    }
-  return FS_NONE;
-}
-
 string
 make_object_filename (const string& hash)
 {
@@ -170,21 +155,6 @@ make_object_filename (const string& hash)
   return options.repo_path + "/objects/" + hash.substr (0, 2) + "/" + hash.substr (2);
 }
 
-
-string
-file_path (const string& path)
-{
-  FileStatus fs = file_status (path);
-  if (fs == FS_CHANGED)
-    return options.repo_path + "/new" + path;
-  if (fs == FS_RDONLY)
-    {
-      GitFilePtr gf (path);
-      if (gf)
-        return make_object_filename (gf->hash);
-    }
-  return "";
-}
 
 vector<string>
 split (const string& path)
@@ -210,56 +180,6 @@ split (const string& path)
   return result;
 }
 
-void
-copy_dirs (const string& path)
-{
-  vector<string> dirs = split (path);
-  if (dirs.empty())
-    return;
-
-  dirs.pop_back();
-
-  string dir_path = options.repo_path + "/new";
-  for (vector<string>::iterator di = dirs.begin(); di != dirs.end(); di++)
-    {
-      dir_path += "/" + *di;
-      mkdir (dir_path.c_str(), 0755);
-    }
-}
-
-void
-copy_on_write (const string& path)
-{
-  if (file_status (path) == FS_RDONLY)
-    {
-      copy_dirs (path);
-
-      GitFilePtr gf (path);
-      if (gf)
-        {
-          string new_name = options.repo_path + "/new" + path;
-
-          if (gf->type == FILE_REGULAR)
-            {
-              string old_name = file_path (path);
-
-              int old_fd = open (old_name.c_str(), O_RDONLY);
-              int new_fd = open (new_name.c_str(), O_WRONLY | O_CREAT, 0644);
-
-              vector<unsigned char> buffer (4096);
-              ssize_t read_bytes;
-              while ((read_bytes = read (old_fd, &buffer[0], buffer.size())) > 0)
-                {
-                  write (new_fd, &buffer[0], read_bytes);
-                }
-              close (old_fd);
-              close (new_fd);
-            }
-          gf.update()->hash = "new";
-        }
-    }
-}
-
 double
 gettime()
 {
@@ -267,74 +187,6 @@ gettime()
   gettimeofday (&tv, 0);
 
   return tv.tv_sec + tv.tv_usec / 1000000.0;
-}
-
-//------------ permission checks
-
-bool
-search_perm_check (const GitFilePtr& gf, uid_t uid, gid_t gid)
-{
-  debug ("search_perm_check (%s)\n", gf->git_filename.c_str());
-  if (uid == 0)
-    return true;
-
-  if (uid == gf->uid)
-    return (gf->mode & S_IXUSR);
-
-  if (gid == gf->gid)
-    return (gf->mode & S_IXGRP);
-
-  return (gf->mode & S_IXOTH);
-}
-
-bool
-search_perm_ok (const string& name)
-{
-  string dir = get_dirname (name);
-  if (dir == "/" || dir == "/.bfsync")
-    return true;
-
-  GitFilePtr git_file (dir);
-  if (!git_file || !search_perm_check (git_file, fuse_get_context()->uid, fuse_get_context()->gid))
-    return false;
-  else
-    return search_perm_ok (dir);
-}
-
-bool
-write_perm_ok (const GitFilePtr& gf)
-{
-  const uid_t uid = fuse_get_context()->uid;
-  const gid_t gid = fuse_get_context()->gid;
-
-  if (uid == 0)
-    return true;
-
-  if (uid == gf->uid)
-    return (gf->mode & S_IWUSR);
-
-  if (gid == gf->gid)
-    return (gf->mode & S_IWGRP);
-
-  return (gf->mode & S_IWOTH);
-}
-
-bool
-read_perm_ok (const GitFilePtr& gf)
-{
-  const uid_t uid = fuse_get_context()->uid;
-  const gid_t gid = fuse_get_context()->gid;
-
-  if (uid == 0)
-    return true;
-
-  if (uid == gf->uid)
-    return (gf->mode & S_IRUSR);
-
-  if (gid == gf->gid)
-    return (gf->mode & S_IRGRP);
-
-  return (gf->mode & S_IROTH);
 }
 
 Mutex::Mutex()
@@ -619,72 +471,6 @@ bfsync_getattr (const char *path_arg, struct stat *stbuf)
       return 0;
     }
   return -ENOENT;
-
-  GitFilePtr git_file (path);
-  if (git_file)
-    {
-      int git_mode = git_file->mode & ~S_IFMT;
-
-      memset (stbuf, 0, sizeof (struct stat));
-      stbuf->st_uid          = git_file->uid;
-      stbuf->st_gid          = git_file->gid;
-      stbuf->st_mtime        = git_file->mtime;
-      stbuf->st_mtim.tv_nsec = git_file->mtime_ns;
-      stbuf->st_ctime        = git_file->ctime;
-      stbuf->st_ctim.tv_nsec = git_file->ctime_ns;
-      stbuf->st_atim         = stbuf->st_mtim;    // we don't track atime, so set atime == mtime
-      stbuf->st_nlink        = 1;
-      if (git_file->type == FILE_REGULAR)
-        {
-          if (git_file->hash == "new")
-            {
-              // take size from new file
-              struct stat new_stat;
-              string new_filename = options.repo_path + "/new" + path;
-              lstat (new_filename.c_str(), &new_stat);
-
-              stbuf->st_size = new_stat.st_size;
-            }
-          else
-            {
-              stbuf->st_size = git_file->size;
-            }
-          stbuf->st_mode = git_mode | S_IFREG;
-        }
-      else if (git_file->type == FILE_SYMLINK)
-        {
-          stbuf->st_mode = git_mode | S_IFLNK;
-          stbuf->st_size = git_file->link.size();
-        }
-      else if (git_file->type == FILE_DIR)
-        {
-          stbuf->st_mode = git_mode | S_IFDIR;
-        }
-      else if (git_file->type == FILE_FIFO)
-        {
-          stbuf->st_mode = git_mode | S_IFIFO;
-        }
-      else if (git_file->type == FILE_SOCKET)
-        {
-          stbuf->st_mode = git_mode | S_IFSOCK;
-        }
-      else if (git_file->type == FILE_BLOCK_DEV)
-        {
-          stbuf->st_mode = git_mode | S_IFBLK;
-          stbuf->st_rdev = makedev (git_file->major, git_file->minor);
-        }
-      else if (git_file->type == FILE_CHAR_DEV)
-        {
-          stbuf->st_mode = git_mode | S_IFCHR;
-          stbuf->st_rdev = makedev (git_file->major, git_file->minor);
-        }
-      return 0;
-    }
-  else
-    {
-      debug ("=> ERROR: %s\n", strerror (errno));
-      return -errno;
-    }
 }
 
 string
@@ -731,22 +517,6 @@ read_dir_contents (const string& path, vector<string>& entries)
 static int
 bfsync_opendir (const char *path, struct fuse_file_info *fi)
 {
-  return 0;
-
-  // OLD:
-
-  if (!search_perm_ok (path))
-    return -EACCES;
-
-  if (string (path) != "/")
-    {
-      GitFilePtr gf (path);
-      if (!gf)
-        return -ENOENT;
-
-      if (!read_perm_ok (gf))
-        return -EACCES;
-    }
   return 0;
 }
 
@@ -827,45 +597,6 @@ bfsync_open (const char *path, struct fuse_file_info *fi)
     {
       return -errno;
     }
-
-#ifdef OLD
-  if (!search_perm_ok (path))
-    return -EACCES;
-
-  GitFilePtr gf (path);
-  if (!gf)
-    return -ENOENT;
-
-  if (open_for_write && !write_perm_ok (gf))
-    return -EACCES;
-
-  if (open_for_read && !read_perm_ok (gf))
-    return -EACCES;
-
-  if (open_for_write)
-    copy_on_write (path);
-
-  string filename = file_path (path);
-  debug ("open: translated filename = %s\n", filename.c_str());
-  if (filename == "")
-    return -ENOENT;
-
-  int fd = open (filename.c_str(), fi->flags);
-
-  if (fd != -1)
-    {
-      FileHandle *fh = new FileHandle;
-      fh->fd = fd;
-      fh->special_file = FileHandle::NONE;
-      fh->open_for_write = open_for_write;
-      fi->fh = reinterpret_cast<uint64_t> (fh);
-      return 0;
-    }
-  else
-    {
-      return -errno;
-    }
-#endif
 }
 
 static int
@@ -993,62 +724,6 @@ bfsync_mknod (const char *path, mode_t mode, dev_t dev)
   dir_inode.update()->set_mtime_ctime_now();
   dir_inode.update()->add_link (inode, get_basename (path));
   return 0;
-
-  // OLD:
-  return -EIO;
-
-  GitFilePtr gf_dir (get_dirname (path));
-  if (gf_dir && !write_perm_ok (gf_dir))
-    return -EACCES;
-
-  GitFilePtr gf (path, GitFilePtr::NEW, fuse_get_context());
-  gf.update()->mode = mode & ~S_IFMT;
-
-  if (S_ISREG (mode))
-    {
-      copy_dirs (path);
-
-      string filename = options.repo_path + "/new" + path;
-      int rc = mknod (filename.c_str(), mode, dev);
-      if (rc == 0)
-        {
-          gf.update()->type = FILE_REGULAR;
-          gf.update()->hash = "new";
-        }
-      else
-        {
-          return -errno;
-        }
-    }
-  else if (S_ISFIFO (mode))
-    {
-      gf.update()->type = FILE_FIFO;
-    }
-  else if (S_ISSOCK (mode))
-    {
-      gf.update()->type = FILE_SOCKET;
-    }
-  else if (S_ISBLK (mode))
-    {
-      gf.update()->type = FILE_BLOCK_DEV;
-      gf.update()->major = major (dev);
-      gf.update()->minor = minor (dev);
-    }
-  else if (S_ISCHR (mode))
-    {
-      gf.update()->type = FILE_CHAR_DEV;
-      gf.update()->major = major (dev);
-      gf.update()->minor = minor (dev);
-    }
-  else
-    {
-      return -ENOENT;
-    }
-
-  if (gf_dir)
-    gf_dir.update()->set_mtime_ctime_now();
-
-  return 0;
 }
 
 int
@@ -1072,32 +747,13 @@ bfsync_chmod (const char *name, mode_t mode)
     }
 
   return -ENOENT;
-  // OLD
-  if (!search_perm_ok (name))
-    return -EACCES;
-
-  GitFilePtr git_file (name);
-
-  if (git_file)
-    {
-      if (fuse_get_context()->uid != 0 && fuse_get_context()->uid != git_file->uid)
-        return -EPERM;
-
-      if (fuse_get_context()->uid != 0 && fuse_get_context()->gid != git_file->gid)
-        mode &= ~S_ISGID;
-
-      git_file.update()->mode = mode;
-      git_file.update()->set_ctime_now();
-      return 0;
-    }
-  return -ENOENT;
 }
 
 int
 bfsync_chown (const char *name, uid_t uid, gid_t gid)
 {
   FSLock lock (FSLock::WRITE);
-
+#if OLD
   if (!search_perm_ok (name))
     return -EACCES;
 
@@ -1159,6 +815,7 @@ bfsync_chown (const char *name, uid_t uid, gid_t gid)
       return 0;
     }
   return -ENOENT;
+#endif
 }
 
 int
@@ -1175,18 +832,6 @@ bfsync_utimens (const char *name, const struct timespec times[2])
       return 0;
     }
   return -ENOENT;
-
-#ifdef OLD
-  GitFilePtr gf (name);
-  if (gf)
-    {
-      gf.update()->mtime    = times[1].tv_sec;
-      gf.update()->mtime_ns = times[1].tv_nsec;
-
-      return 0;
-    }
-  return -ENOENT;
-#endif
 }
 
 int
@@ -1208,31 +853,6 @@ bfsync_truncate (const char *name, off_t off)
       return -errno;
     }
   return -ENOENT;
-
-  // OLD================================================
-  GitFilePtr gf (name);
-  if (gf)
-    {
-      if (!search_perm_ok (name))
-        return -EACCES;
-
-      if (!write_perm_ok (gf))
-        return -EACCES;
-
-      copy_on_write (name);
-
-      int rc = truncate (file_path (name).c_str(), off);
-      if (rc == 0)
-        {
-          gf.update()->set_mtime_ctime_now();
-          return 0;
-        }
-      return -errno;
-    }
-  else
-    {
-      return -EINVAL;
-    }
 }
 
 // FIXME: should check that name is not directory
@@ -1261,40 +881,6 @@ bfsync_unlink (const char *name)
         }
     }
   return -ENOENT;
-#if OLD
-  if (!search_perm_ok (name))
-    return -EACCES;
-
-  GitFilePtr gf_dir (get_dirname (name));
-  if (gf_dir && !write_perm_ok (gf_dir))
-    return -EACCES;
-
-  // delete data for changed files
-  if (file_status (name) == FS_CHANGED)
-    {
-      int rc = unlink (file_path (name).c_str());
-      if (rc != 0)
-        return -errno;
-    }
-
-  // delete git entry if present
-  if (file_status (name) != FS_NONE)
-    {
-      string git_file = options.repo_path + "/git/files/" + name2git_name (name);
-
-      GitFileRepo::the()->uncache (name);
-
-      int rc = unlink (git_file.c_str());
-      if (rc != 0)
-        return -errno;
-    }
-
-  // update directory ctime
-  if (gf_dir)
-    gf_dir.update()->set_mtime_ctime_now();
-
-  return 0;
-#endif
 }
 
 static int
@@ -1316,34 +902,6 @@ bfsync_mkdir (const char *path, mode_t mode)
   inode_dir.update()->add_link (inode, get_basename (path));
   inode_dir.update()->set_mtime_ctime_now();
   return 0;
-
-#if OLD
-  GitFilePtr gf_dir (get_dirname (path));
-  if (gf_dir && !write_perm_ok (gf_dir))
-    return -EACCES;
-
-  string filename = options.repo_path + "/new" + path;
-
-  copy_dirs (path);
-
-  int rc = mkdir (filename.c_str(), mode);
-  if (rc == 0)
-    {
-      string git_dir  = options.repo_path + "/git/files/" + name2git_name (path, GIT_DIRNAME);
-
-      mkdir (git_dir.c_str(), 0755);
-
-      GitFilePtr gf (path, GitFilePtr::NEW, fuse_get_context());
-      gf.update()->type = FILE_DIR;
-      gf.update()->mode = mode;
-
-      if (gf_dir)
-        gf_dir.update()->set_mtime_ctime_now();
-
-      return 0;
-    }
-  return -errno;
-#endif
 }
 
 // FIXME: should check that name is a directory
@@ -1378,52 +936,6 @@ bfsync_rmdir (const char *name)
         }
     }
   return -ENOENT;
-
-#if OLD
-  GitFilePtr gf_dir (get_dirname (name));
-  if (gf_dir && !write_perm_ok (gf_dir))
-    return -EACCES;
-
-  if (!search_perm_ok (name))
-    return -EACCES;
-
-  // check that dir is in fact empty
-  vector<string> entries;
-  if (read_dir_contents (name, entries))
-    if (!entries.empty())
-      return -ENOTEMPTY;
-
-  // rmdir new directories
-  struct stat st;
-  string new_dirname = options.repo_path + "/new/" + name;
-  if (lstat (new_dirname.c_str(), &st) == 0)
-    {
-      int rc = rmdir (new_dirname.c_str());
-      if (rc != 0)
-        return -errno;
-    }
-
-  // delete git entry if present
-  if (file_status (name) == FS_RDONLY)
-    {
-      string git_file = options.repo_path + "/git/files/" + name2git_name (name);
-
-      GitFileRepo::the()->uncache (name);
-
-      int rc = unlink (git_file.c_str());
-      if (rc != 0)
-        return -errno;
-
-      string git_dir = options.repo_path + "/git/files/" + name2git_name (name, GIT_DIRNAME);
-      rc = rmdir (git_dir.c_str());
-      if (rc != 0)
-        return -errno;
-    }
-  // update mtime + ctime
-  if (gf_dir)
-    gf_dir.update()->set_mtime_ctime_now();
-  return 0;
-#endif
 }
 
 static int
@@ -1446,57 +958,6 @@ bfsync_rename (const char *old_path, const char *new_path)
   inode_old_dir.update()->unlink (get_basename (old_path));
 
   return 0;
-
-#if OLD
-  GitFilePtr gf (old_path);
-  if (!gf)
-    return -ENOENT;
-
-  if (!search_perm_ok (old_path) || !search_perm_ok (new_path))
-    return -EACCES;
-
-  GitFilePtr gf_old_dir (get_dirname (old_path));
-  if (gf_old_dir && !write_perm_ok (gf_old_dir))
-    return -EACCES;
-
-  GitFilePtr gf_new_dir (get_dirname (new_path));
-  if (gf_new_dir && !write_perm_ok (gf_new_dir))
-    return -EACCES;
-
-  string old_git_file = options.repo_path + "/git/files/" + name2git_name (old_path);
-  string new_git_file = options.repo_path + "/git/files/" + name2git_name (new_path);
-
-  GitFileRepo::the()->uncache (old_path);
-
-  int rc = rename (old_git_file.c_str(), new_git_file.c_str());
-  if (rc != 0)
-    return -errno;
-
-  GitFilePtr new_gf (new_path);
-  if (!new_gf)
-    return -EIO;
-
-  new_gf.update()->set_ctime_now();
-
-  if (gf->type == FILE_DIR)
-    {
-      string old_git_dir = options.repo_path + "/git/files/" + name2git_name (old_path, GIT_DIRNAME);
-      string new_git_dir = options.repo_path + "/git/files/" + name2git_name (new_path, GIT_DIRNAME);
-
-      GitFileRepo::the()->save_changes();
-      int rc = rename (old_git_dir.c_str(), new_git_dir.c_str());
-      if (rc != 0)
-        return -errno;
-    }
-
-  copy_dirs (new_path);
-
-  copy_on_write (old_path);
-
-  rename ((options.repo_path + "/new" + old_path).c_str(), (options.repo_path + "/new" + new_path).c_str());
-
-  return 0;
-#endif
 }
 
 static int
@@ -1520,26 +981,6 @@ bfsync_symlink (const char *from, const char *to)
   dir_inode.update()->add_link (inode, get_basename (to));
   dir_inode.update()->set_mtime_ctime_now();
   return 0;
-#if OLD
-  GitFilePtr gf_dir (get_dirname (to));
-  if (!gf_dir)
-    return -EIO;
-
-  if (!write_perm_ok (gf_dir))
-    return -EACCES;
-
-  if (file_status (to) != FS_NONE)
-    return -EEXIST;
-
-  GitFilePtr gf (to, GitFilePtr::NEW, fuse_get_context());
-
-  gf.update()->mode = 0777;
-  gf.update()->type = FILE_SYMLINK;
-  gf.update()->link = from;
-  gf_dir.update()->set_mtime_ctime_now();
-
-  return 0;
-#endif
 }
 
 static int
@@ -1563,24 +1004,6 @@ bfsync_readlink (const char *path, char *buffer, size_t size)
     {
       return -ENOENT;
     }
-#if OLD
-  GitFilePtr gf (path);
-  if (gf && gf->type == FILE_SYMLINK)
-    {
-      int len = gf->link.size();
-
-      if (len >= size)
-        len = size - 1;
-      memcpy (buffer, gf->link.c_str(), len);
-
-      buffer[len] = 0;
-      return 0;
-    }
-  else
-    {
-      return -ENOENT;
-    }
-#endif
 }
 
 Server server;
@@ -1727,9 +1150,6 @@ main (int argc, char *argv[])
       if (rc != SQLITE_ROW)
         break;
       int version = sqlite3_column_int (stmt_ptr, 0);
-      const unsigned char *author = sqlite3_column_text (stmt_ptr, 1);
-      const unsigned char *msg = sqlite3_column_text (stmt_ptr, 2);
-      int time = sqlite3_column_int (stmt_ptr, 3);
       current_version = max (version, current_version);
     }
   if (rc != SQLITE_DONE)
@@ -1746,7 +1166,6 @@ main (int argc, char *argv[])
 
   int fuse_rc = fuse_main (my_argc, my_argv, &bfsync_oper, NULL);
 
-  GitFileRepo::the()->save_changes();
   INodeRepo::the()->save_changes();
 
   if (sqlite3_close (sqlite_db()) != SQLITE_OK)
