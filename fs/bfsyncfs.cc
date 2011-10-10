@@ -514,7 +514,7 @@ inode_from_path (const string& path)
         {
           const LinkPtr& child_link = *ci;
 
-          if (child_link->name == *pi)
+          if (child_link->name == *pi && !child_link->deleted)
             {
               inode = INodePtr (child_link->inode_id);
               found = true;
@@ -712,7 +712,8 @@ read_dir_contents (const string& path, vector<string>& entries)
       vector<LinkPtr> children = inode->children();
       for (vector<LinkPtr>::iterator ci = children.begin(); ci != children.end(); ci++)
         {
-          entries.push_back ((*ci)->name);
+          if (!(*ci)->deleted)
+            entries.push_back ((*ci)->name);
         }
     }
   if (path == "/")
@@ -1239,6 +1240,27 @@ bfsync_unlink (const char *name)
 {
   FSLock lock (FSLock::WRITE);
 
+  INodePtr inode_dir = inode_from_path (get_dirname (name));
+  if (!inode_dir)
+    return -ENOENT;
+
+  string filename = get_basename (name);
+  vector<LinkPtr> links = inode_dir->children();
+
+  for (vector<LinkPtr>::iterator li = links.begin(); li != links.end(); li++)
+    {
+      LinkPtr& lp = *li;
+
+      if (lp->name == filename)
+        {
+          lp.update()->deleted = true;
+
+          inode_dir.update()->set_mtime_ctime_now();
+          return 0;
+        }
+    }
+  return -ENOENT;
+#if OLD
   if (!search_perm_ok (name))
     return -EACCES;
 
@@ -1271,6 +1293,7 @@ bfsync_unlink (const char *name)
     gf_dir.update()->set_mtime_ctime_now();
 
   return 0;
+#endif
 }
 
 static int

@@ -18,7 +18,8 @@ LinkPtr::LinkPtr (Link *link)
 
 static LeakDebugger leak_debugger ("BFSync::Link");
 
-Link::Link()
+Link::Link() :
+  deleted (false)
 {
   leak_debugger.add (this);
 }

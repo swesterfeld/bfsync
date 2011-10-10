@@ -246,13 +246,16 @@ INode::save (SQLStatement& stmt, SQLStatement& link_stmt)
     {
       LinkPtr& lp = *li;
 
-      link_stmt.reset();
-      link_stmt.bind_int (1, lp->vmin);
-      link_stmt.bind_int (2, lp->vmax);
-      link_stmt.bind_str (3, lp->dir_id);
-      link_stmt.bind_str (4, lp->inode_id);
-      link_stmt.bind_str (5, lp->name);
-      link_stmt.step();
+      if (!lp->deleted)
+        {
+          link_stmt.reset();
+          link_stmt.bind_int (1, lp->vmin);
+          link_stmt.bind_int (2, lp->vmax);
+          link_stmt.bind_str (3, lp->dir_id);
+          link_stmt.bind_str (4, lp->inode_id);
+          link_stmt.bind_str (5, lp->name);
+          link_stmt.step();
+        }
     }
   return true;
 }

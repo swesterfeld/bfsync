@@ -31,6 +31,8 @@ struct Link
   std::string  dir_id;
   std::string  inode_id;
   std::string  name;
+  bool         deleted;
+  bool         updated;
 
   Link();
   ~Link();
@@ -49,6 +51,13 @@ public:
   {
     return ptr;
   }
+  Link*
+  update() const
+  {
+    ptr->updated = true;
+    return ptr;
+  }
+
 };
 
 }
