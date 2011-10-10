@@ -102,6 +102,7 @@ struct INode
   std::string   file_path() const;
   void          copy_on_write();
   void          add_link (INodePtr to, const std::string& name);
+  bool          unlink (const std::string& name);
 };
 
 inline INode*

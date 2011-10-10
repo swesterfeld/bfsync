@@ -423,4 +423,20 @@ INode::add_link (INodePtr to, const string& name)
   links.push_back (LinkPtr (link));
 }
 
+bool
+INode::unlink (const string& name)
+{
+  for (vector<LinkPtr>::iterator li = links.begin(); li != links.end(); li++)
+    {
+      LinkPtr& lp = *li;
+
+      if (lp->name == name)
+        {
+          lp.update()->deleted = true;
+          return true;
+        }
+    }
+  return false;
+}
+
 }
