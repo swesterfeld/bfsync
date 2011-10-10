@@ -439,4 +439,38 @@ INode::unlink (const string& name)
   return false;
 }
 
+bool
+INode::write_perm_ok() const
+{
+  const fuse_context *ctx = fuse_get_context();
+
+  if (ctx->uid == 0)
+    return true;
+
+  if (ctx->uid == uid)
+    return (mode & S_IWUSR);
+
+  if (ctx->gid == gid)
+    return (mode & S_IWGRP);
+
+  return (mode & S_IWOTH);
+}
+
+bool
+INode::search_perm_ok() const
+{
+  const fuse_context *ctx = fuse_get_context();
+
+  if (ctx->uid == 0)
+    return true;
+
+  if (ctx->uid == uid)
+    return (mode & S_IXUSR);
+
+  if (ctx->gid == gid)
+    return (mode & S_IXGRP);
+
+  return (mode & S_IXOTH);
+}
+
 }

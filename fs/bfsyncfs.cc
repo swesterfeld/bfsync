@@ -328,8 +328,10 @@ FSLock::~FSLock()
   lock_state.unlock (lock_type);
 }
 
+enum IFPStatus { IFP_OK, IFP_ERR_NOENT, IFP_ERR_PERM };
+
 INodePtr
-inode_from_path (const string& path)
+inode_from_path (const string& path, IFPStatus& status)
 {
   INodePtr inode ("root");
   printf ("inode_from_path (%s)\n", path.c_str());
@@ -337,6 +339,11 @@ inode_from_path (const string& path)
   vector<string> path_vec = split (path);
   for (vector<string>::iterator pi = path_vec.begin(); pi != path_vec.end(); pi++)
     {
+      if (!inode->search_perm_ok())
+        {
+          status = IFP_ERR_PERM;
+          return INodePtr::null();
+        }
       vector<LinkPtr> children = inode->children();
 
       bool found = false;
@@ -354,11 +361,13 @@ inode_from_path (const string& path)
       if (!found)
         {
           printf ("  inode = NULL\n");
+          status = IFP_ERR_NOENT;
           return INodePtr::null();
         }
     }
 
   printf ("  inode = %s\n", inode->id.c_str());
+  status = IFP_OK;
   return inode;
 }
 
@@ -388,7 +397,8 @@ bfsync_getattr (const char *path_arg, struct stat *stbuf)
       stbuf->st_size = special_files.info.size();
       return 0;
     }
-  INodePtr inode = inode_from_path (path);
+  IFPStatus ifp;
+  INodePtr  inode = inode_from_path (path, ifp);
   if (inode)
     {
       int inode_mode = inode->mode & ~S_IFMT;
@@ -456,7 +466,8 @@ read_dir_contents (const string& path, vector<string>& entries)
 {
   bool            dir_ok = true;
 
-  INodePtr inode = inode_from_path (path);
+  IFPStatus ifp;
+  INodePtr inode = inode_from_path (path, ifp);
   if (inode)
     {
       vector<LinkPtr> children = inode->children();
@@ -538,7 +549,8 @@ bfsync_open (const char *path, struct fuse_file_info *fi)
       return 0;
     }
 
-  INodePtr inode = inode_from_path (path);
+  IFPStatus ifp;
+  INodePtr  inode = inode_from_path (path, ifp);
   if (!inode)
     return -ENOENT;
 
@@ -624,7 +636,8 @@ bfsync_write (const char *path, const char *buf, size_t size, off_t offset,
       bytes_written = pwrite (fh->fd, buf, size, offset);
       if (bytes_written > 0)
         {
-          INodePtr inode = inode_from_path (path);
+          IFPStatus ifp;
+          INodePtr inode = inode_from_path (path, ifp);
           if (inode)
             inode.update()->set_mtime_ctime_now();
         }
@@ -638,7 +651,8 @@ bfsync_mknod (const char *path, mode_t mode, dev_t dev)
 {
   FSLock lock (FSLock::WRITE);
 
-  INodePtr dir_inode = inode_from_path (get_dirname (path));
+  IFPStatus ifp;
+  INodePtr dir_inode = inode_from_path (get_dirname (path), ifp);
   if (!dir_inode)
     return -ENOENT;
 
@@ -695,7 +709,8 @@ bfsync_chmod (const char *name, mode_t mode)
 {
   FSLock lock (FSLock::WRITE);
 
-  INodePtr inode = inode_from_path (name);
+  IFPStatus ifp;
+  INodePtr inode = inode_from_path (name, ifp);
 
   if (inode)
     {
@@ -718,7 +733,8 @@ bfsync_chown (const char *name, uid_t uid, gid_t gid)
 {
   FSLock lock (FSLock::WRITE);
 
-  INodePtr inode = inode_from_path (name);
+  IFPStatus ifp;
+  INodePtr inode = inode_from_path (name, ifp);
   if (!inode)
     return -ENOENT;
 
@@ -777,7 +793,8 @@ bfsync_utimens (const char *name, const struct timespec times[2])
 {
   FSLock lock (FSLock::WRITE);
 
-  INodePtr inode = inode_from_path (name);
+  IFPStatus ifp;
+  INodePtr inode = inode_from_path (name, ifp);
   if (inode)
     {
       inode.update()->mtime    = times[1].tv_sec;
@@ -793,20 +810,28 @@ bfsync_truncate (const char *name, off_t off)
 {
   FSLock lock (FSLock::WRITE);
 
-  INodePtr inode = inode_from_path (name);
-  if (inode)
+  IFPStatus ifp;
+  INodePtr inode = inode_from_path (name, ifp);
+  if (!inode)
     {
-      inode.update()->copy_on_write();
-
-      int rc = truncate (inode->file_path().c_str(), off);
-      if (rc == 0)
-        {
-          inode.update()->set_mtime_ctime_now();
-          return 0;
-        }
-      return -errno;
+      if (ifp == IFP_ERR_NOENT)
+        return -ENOENT;
+      if (ifp == IFP_ERR_PERM)
+        return -EACCES;
     }
-  return -ENOENT;
+
+  if (!inode->write_perm_ok())
+    return -EACCES;
+
+  inode.update()->copy_on_write();
+
+  int rc = truncate (inode->file_path().c_str(), off);
+  if (rc == 0)
+    {
+      inode.update()->set_mtime_ctime_now();
+      return 0;
+    }
+  return -errno;
 }
 
 // FIXME: should check that name is not directory
@@ -815,7 +840,8 @@ bfsync_unlink (const char *name)
 {
   FSLock lock (FSLock::WRITE);
 
-  INodePtr inode_dir = inode_from_path (get_dirname (name));
+  IFPStatus ifp;
+  INodePtr inode_dir = inode_from_path (get_dirname (name), ifp);
   if (!inode_dir)
     return -ENOENT;
 
@@ -843,7 +869,8 @@ bfsync_mkdir (const char *path, mode_t mode)
   FSLock lock (FSLock::WRITE);
 
   printf ("mkdir: %s\n", path);
-  INodePtr inode_dir = inode_from_path (get_dirname (path));
+  IFPStatus ifp;
+  INodePtr inode_dir = inode_from_path (get_dirname (path), ifp);
   if (!inode_dir)
     return -ENOENT;
   printf ("inode is %s\n", inode_dir->id.c_str());
@@ -864,7 +891,8 @@ bfsync_rmdir (const char *name)
 {
   FSLock lock (FSLock::WRITE);
 
-  INodePtr inode_dir = inode_from_path (get_dirname (name));
+  IFPStatus ifp;
+  INodePtr inode_dir = inode_from_path (get_dirname (name), ifp);
   if (!inode_dir)
     return -ENOENT;
 
@@ -897,16 +925,17 @@ bfsync_rename (const char *old_path, const char *new_path)
 {
   FSLock lock (FSLock::WRITE);
 
-  INodePtr inode_old = inode_from_path (old_path);
+  IFPStatus ifp;
+  INodePtr inode_old = inode_from_path (old_path, ifp);
   if (!inode_old)
     return -ENOENT;
 
-  INodePtr inode_new = inode_from_path (new_path);
+  INodePtr inode_new = inode_from_path (new_path, ifp);
   if (inode_new)
     return -EEXIST;
 
-  INodePtr inode_old_dir = inode_from_path (get_dirname (old_path));
-  INodePtr inode_new_dir = inode_from_path (get_dirname (new_path));
+  INodePtr inode_old_dir = inode_from_path (get_dirname (old_path), ifp);
+  INodePtr inode_new_dir = inode_from_path (get_dirname (new_path), ifp);
 
   inode_new_dir.update()->add_link (inode_old, get_basename (new_path));
   inode_old_dir.update()->unlink (get_basename (old_path));
@@ -919,11 +948,13 @@ bfsync_symlink (const char *from, const char *to)
 {
   FSLock lock (FSLock::WRITE);
 
-  INodePtr dir_inode = inode_from_path (get_dirname (to));
+  IFPStatus ifp;
+
+  INodePtr dir_inode = inode_from_path (get_dirname (to), ifp);
   if (!dir_inode)
     return -ENOENT;
 
-  INodePtr check_to = inode_from_path (to);
+  INodePtr check_to = inode_from_path (to, ifp);
   if (check_to)
     return -EEXIST;
 
@@ -942,7 +973,8 @@ bfsync_readlink (const char *path, char *buffer, size_t size)
 {
   FSLock lock (FSLock::READ);
 
-  INodePtr inode = inode_from_path (path);
+  IFPStatus ifp;
+  INodePtr inode = inode_from_path (path, ifp);
   if (inode && inode->type == FILE_SYMLINK)
     {
       int len = inode->link.size();
@@ -965,15 +997,16 @@ bfsync_link (const char *old_path, const char *new_path)
 {
   FSLock lock (FSLock::WRITE);
 
-  INodePtr inode_old = inode_from_path (old_path);
+  IFPStatus ifp;
+  INodePtr inode_old = inode_from_path (old_path, ifp);
   if (!inode_old)
     return -ENOENT;
 
-  INodePtr inode_new = inode_from_path (new_path);
+  INodePtr inode_new = inode_from_path (new_path, ifp);
   if (inode_new)
     return -EEXIST;
 
-  INodePtr inode_new_dir = inode_from_path (get_dirname (new_path));
+  INodePtr inode_new_dir = inode_from_path (get_dirname (new_path), ifp);
   if (!inode_new_dir)
     return -ENOENT;
 

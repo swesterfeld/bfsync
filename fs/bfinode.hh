@@ -117,6 +117,9 @@ struct INode
   void          copy_on_write();
   void          add_link (INodePtr to, const std::string& name);
   bool          unlink (const std::string& name);
+
+  bool          write_perm_ok() const;
+  bool          search_perm_ok() const;
 };
 
 inline INode*
