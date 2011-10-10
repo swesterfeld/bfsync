@@ -826,7 +826,7 @@ bfsync_unlink (const char *name)
     {
       LinkPtr& lp = *li;
 
-      if (lp->name == filename)
+      if (lp->name == filename && !lp->deleted)
         {
           lp.update()->deleted = true;
 
