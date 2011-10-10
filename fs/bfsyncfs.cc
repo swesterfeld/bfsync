@@ -1092,15 +1092,15 @@ main (int argc, char *argv[])
   char *my_argv[32] = { NULL, };
   int my_argc = 0;
 
-  my_argv[my_argc++] = "bfsyncfs";
+  my_argv[my_argc++] = g_strdup ("bfsyncfs");
   my_argv[my_argc++] = g_strdup (options.mount_point.c_str());
   if (options.mount_debug)
-    my_argv[my_argc++] = "-d";
+    my_argv[my_argc++] = g_strdup ("-d");
   if (options.mount_fg)
-    my_argv[my_argc++] = "-f";
+    my_argv[my_argc++] = g_strdup ("-f");
   if (options.mount_all)
-    my_argv[my_argc++] = "-oallow_other";
-  my_argv[my_argc++] = "-oattr_timeout=0";
+    my_argv[my_argc++] = g_strdup ("-oallow_other");
+  my_argv[my_argc++] = g_strdup ("-oattr_timeout=0");
   my_argv[my_argc] = NULL;
 
 
