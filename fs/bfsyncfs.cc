@@ -960,6 +960,28 @@ bfsync_readlink (const char *path, char *buffer, size_t size)
     }
 }
 
+static int
+bfsync_link (const char *old_path, const char *new_path)
+{
+  FSLock lock (FSLock::WRITE);
+
+  INodePtr inode_old = inode_from_path (old_path);
+  if (!inode_old)
+    return -ENOENT;
+
+  INodePtr inode_new = inode_from_path (new_path);
+  if (inode_new)
+    return -EEXIST;
+
+  INodePtr inode_new_dir = inode_from_path (get_dirname (new_path));
+  if (!inode_new_dir)
+    return -ENOENT;
+
+  inode_new_dir.update()->add_link (inode_old, get_basename (new_path));
+  return 0;
+}
+
+
 Server server;
 
 static void*
@@ -1065,6 +1087,7 @@ main (int argc, char *argv[])
   bfsync_oper.rename   = bfsync_rename;
   bfsync_oper.symlink  = bfsync_symlink;
   bfsync_oper.rmdir    = bfsync_rmdir;
+  bfsync_oper.link     = bfsync_link;
 
   char *my_argv[32] = { NULL, };
   int my_argc = 0;
