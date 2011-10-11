@@ -842,21 +842,11 @@ bfsync_unlink (const char *name)
     return -ENOENT;
 
   string filename = get_basename (name);
-  vector<LinkPtr> links = inode_dir->children();
+  if (!inode_dir.update()->unlink (filename))
+    return -ENOENT;
 
-  for (vector<LinkPtr>::iterator li = links.begin(); li != links.end(); li++)
-    {
-      LinkPtr& lp = *li;
-
-      if (lp->name == filename && !lp->deleted)
-        {
-          lp.update()->deleted = true;
-
-          inode_dir.update()->set_mtime_ctime_now();
-          return 0;
-        }
-    }
-  return -ENOENT;
+  inode_dir.update()->set_mtime_ctime_now();
+  return 0;
 }
 
 static int
@@ -899,21 +889,11 @@ bfsync_rmdir (const char *name)
       return -ENOTEMPTY;
 
   string dirname = get_basename (name);
-  vector<LinkPtr> links = inode_dir->children();
+  if (!inode_dir.update()->unlink (dirname))
+    return -ENOENT;
 
-  for (vector<LinkPtr>::iterator li = links.begin(); li != links.end(); li++)
-    {
-      LinkPtr& lp = *li;
-
-      if (lp->name == dirname && !lp->deleted)
-        {
-          lp.update()->deleted = true;
-
-          inode_dir.update()->set_mtime_ctime_now();
-          return 0;
-        }
-    }
-  return -ENOENT;
+  inode_dir.update()->set_mtime_ctime_now();
+  return 0;
 }
 
 static int

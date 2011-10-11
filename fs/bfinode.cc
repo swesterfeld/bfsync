@@ -433,7 +433,7 @@ INode::unlink (const string& name)
     {
       LinkPtr& lp = *li;
 
-      if (lp->name == name)
+      if (lp->name == name && !lp->deleted)
         {
           lp.update()->deleted = true;
           return true;
