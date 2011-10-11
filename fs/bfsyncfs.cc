@@ -893,6 +893,8 @@ bfsync_unlink (const char *name)
       if (ifp == IFP_ERR_PERM)
         return -EACCES;
     }
+  if (!inode_dir->search_perm_ok() || !inode_dir->write_perm_ok())
+    return -EACCES;
 
   string filename = get_basename (name);
   if (!inode_dir.update()->unlink (filename))
