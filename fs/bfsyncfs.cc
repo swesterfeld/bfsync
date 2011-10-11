@@ -927,6 +927,8 @@ bfsync_rmdir (const char *name)
       if (ifp == IFP_ERR_PERM)
         return -EACCES;
     }
+  if (!inode_dir->search_perm_ok() || !inode_dir->write_perm_ok())
+    return -EACCES;
 
   // check that dir is in fact empty
   vector<string> entries;
