@@ -707,21 +707,23 @@ bfsync_chmod (const char *name, mode_t mode)
 
   IFPStatus ifp;
   INodePtr inode = inode_from_path (name, ifp);
-
-  if (inode)
+  if (!inode)
     {
-      if (fuse_get_context()->uid != 0 && fuse_get_context()->uid != inode->uid)
-        return -EPERM;
-
-      if (fuse_get_context()->uid != 0 && fuse_get_context()->gid != inode->gid)
-        mode &= ~S_ISGID;
-
-      inode.update()->mode = mode;
-      inode.update()->set_ctime_now();
-      return 0;
+      if (ifp == IFP_ERR_NOENT)
+        return -ENOENT;
+      if (ifp == IFP_ERR_PERM)
+        return -EACCES;
     }
 
-  return -ENOENT;
+  if (fuse_get_context()->uid != 0 && fuse_get_context()->uid != inode->uid)
+    return -EPERM;
+
+  if (fuse_get_context()->uid != 0 && fuse_get_context()->gid != inode->gid)
+    mode &= ~S_ISGID;
+
+  inode.update()->mode = mode;
+  inode.update()->set_ctime_now();
+  return 0;
 }
 
 int
