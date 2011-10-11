@@ -987,6 +987,8 @@ bfsync_symlink (const char *from, const char *to)
       if (ifp == IFP_ERR_PERM)
         return -EACCES;
     }
+  if (!dir_inode->write_perm_ok())
+    return -EACCES;
 
   INodePtr check_to = inode_from_path (to, ifp);
   if (check_to)
