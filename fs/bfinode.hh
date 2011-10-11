@@ -138,6 +138,7 @@ class INodeRepo
 {
 public:
   std::map<std::string, INode*> cache;
+  std::map<ino_t, std::string>  new_inodes;
   Mutex                         mutex;
 
   void save_changes();

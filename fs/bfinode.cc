@@ -53,6 +53,17 @@ INodeRepo::save_changes()
           inode_ptr->updated = false;
         }
     }
+
+  // write newly allocated inodes to local_inodes table
+  SQLStatement addi_stmt ("INSERT INTO local_inodes VALUES (?,?)");
+  for (map<ino_t, string>::const_iterator ni = new_inodes.begin(); ni != new_inodes.end(); ni++)
+    {
+      addi_stmt.reset();
+      addi_stmt.bind_str (1, ni->second);
+      addi_stmt.bind_int (2, ni->first);
+      addi_stmt.step();
+    }
+  new_inodes.clear();
   debug ("time for sql prepare: %.2fms (%d inodes needed saving)\n", (gettime() - start_t) * 1000,
          inodes_saved);
   inode_stmt.commit();
@@ -389,19 +400,19 @@ INode::load_or_alloc_ino()
       while (!ino)
         {
           ino = g_random_int_range (1, 2000 * 1000 * 1000);  // 1 .. ~ 2^31
-          searchi_stmt.reset();
-          searchi_stmt.bind_int (1, ino);
-
-          int rc = searchi_stmt.step();
-          if (rc == SQLITE_ROW)  // inode number already in use
+          if (!inode_repo.new_inodes[ino].empty())
             ino = 0;
-        }
+          else
+            {
+              searchi_stmt.reset();
+              searchi_stmt.bind_int (1, ino);
 
-      // create new entry
-      SQLStatement addi_stmt ("INSERT INTO local_inodes VALUES (?,?)");
-      addi_stmt.bind_str (1, id);
-      addi_stmt.bind_int (2, ino);
-      addi_stmt.step();
+              int rc = searchi_stmt.step();
+              if (rc == SQLITE_ROW)  // inode number already in use
+                ino = 0;
+            }
+        }
+      inode_repo.new_inodes[ino] = id;
     }
 }
 
