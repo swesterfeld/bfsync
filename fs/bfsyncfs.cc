@@ -397,66 +397,70 @@ bfsync_getattr (const char *path_arg, struct stat *stbuf)
     }
   IFPStatus ifp;
   INodePtr  inode = inode_from_path (path, ifp);
-  if (inode)
+  if (!inode)
     {
-      int inode_mode = inode->mode & ~S_IFMT;
-
-      memset (stbuf, 0, sizeof (struct stat));
-      stbuf->st_uid          = inode->uid;
-      stbuf->st_gid          = inode->gid;
-      stbuf->st_mtime        = inode->mtime;
-      stbuf->st_mtim.tv_nsec = inode->mtime_ns;
-      stbuf->st_ctime        = inode->ctime;
-      stbuf->st_ctim.tv_nsec = inode->ctime_ns;
-      stbuf->st_atim         = stbuf->st_mtim;    // we don't track atime, so set atime == mtime
-      stbuf->st_nlink        = 1;
-      if (inode->type == FILE_REGULAR)
-        {
-          if (inode->hash == "new")
-            {
-              // take size from new file
-              struct stat new_stat;
-              string new_filename = options.repo_path + "/new/" + inode->id;
-              lstat (new_filename.c_str(), &new_stat);
-
-              stbuf->st_size = new_stat.st_size;
-            }
-          else
-            {
-              stbuf->st_size = inode->size;
-            }
-          stbuf->st_mode = inode_mode | S_IFREG;
-        }
-      else if (inode->type == FILE_SYMLINK)
-        {
-          stbuf->st_mode = inode_mode | S_IFLNK;
-          stbuf->st_size = inode->link.size();
-        }
-      else if (inode->type == FILE_DIR)
-        {
-          stbuf->st_mode = inode_mode | S_IFDIR;
-        }
-      else if (inode->type == FILE_FIFO)
-        {
-          stbuf->st_mode = inode_mode | S_IFIFO;
-        }
-      else if (inode->type == FILE_SOCKET)
-        {
-          stbuf->st_mode = inode_mode | S_IFSOCK;
-        }
-      else if (inode->type == FILE_BLOCK_DEV)
-        {
-          stbuf->st_mode = inode_mode | S_IFBLK;
-          stbuf->st_rdev = makedev (inode->major, inode->minor);
-        }
-      else if (inode->type == FILE_CHAR_DEV)
-        {
-          stbuf->st_mode = inode_mode | S_IFCHR;
-          stbuf->st_rdev = makedev (inode->major, inode->minor);
-        }
-      return 0;
+      if (ifp == IFP_ERR_NOENT)
+        return -ENOENT;
+      if (ifp == IFP_ERR_PERM)
+        return -EACCES;
     }
-  return -ENOENT;
+
+  int inode_mode = inode->mode & ~S_IFMT;
+
+  memset (stbuf, 0, sizeof (struct stat));
+  stbuf->st_uid          = inode->uid;
+  stbuf->st_gid          = inode->gid;
+  stbuf->st_mtime        = inode->mtime;
+  stbuf->st_mtim.tv_nsec = inode->mtime_ns;
+  stbuf->st_ctime        = inode->ctime;
+  stbuf->st_ctim.tv_nsec = inode->ctime_ns;
+  stbuf->st_atim         = stbuf->st_mtim;    // we don't track atime, so set atime == mtime
+  stbuf->st_nlink        = 1;
+  if (inode->type == FILE_REGULAR)
+    {
+      if (inode->hash == "new")
+        {
+          // take size from new file
+          struct stat new_stat;
+          string new_filename = options.repo_path + "/new/" + inode->id;
+          lstat (new_filename.c_str(), &new_stat);
+
+          stbuf->st_size = new_stat.st_size;
+        }
+      else
+        {
+          stbuf->st_size = inode->size;
+        }
+      stbuf->st_mode = inode_mode | S_IFREG;
+    }
+  else if (inode->type == FILE_SYMLINK)
+    {
+      stbuf->st_mode = inode_mode | S_IFLNK;
+      stbuf->st_size = inode->link.size();
+    }
+  else if (inode->type == FILE_DIR)
+    {
+      stbuf->st_mode = inode_mode | S_IFDIR;
+    }
+  else if (inode->type == FILE_FIFO)
+    {
+      stbuf->st_mode = inode_mode | S_IFIFO;
+    }
+  else if (inode->type == FILE_SOCKET)
+    {
+      stbuf->st_mode = inode_mode | S_IFSOCK;
+    }
+  else if (inode->type == FILE_BLOCK_DEV)
+    {
+      stbuf->st_mode = inode_mode | S_IFBLK;
+      stbuf->st_rdev = makedev (inode->major, inode->minor);
+    }
+  else if (inode->type == FILE_CHAR_DEV)
+    {
+      stbuf->st_mode = inode_mode | S_IFCHR;
+      stbuf->st_rdev = makedev (inode->major, inode->minor);
+    }
+  return 0;
 }
 
 bool
@@ -548,7 +552,12 @@ bfsync_open (const char *path, struct fuse_file_info *fi)
   IFPStatus ifp;
   INodePtr  inode = inode_from_path (path, ifp);
   if (!inode)
-    return -ENOENT;
+    {
+      if (ifp == IFP_ERR_NOENT)
+        return -ENOENT;
+      if (ifp == IFP_ERR_PERM)
+        return -EACCES;
+    }
 
   if (open_for_write)
     inode.update()->copy_on_write();
@@ -741,7 +750,12 @@ bfsync_chown (const char *name, uid_t uid, gid_t gid)
   IFPStatus ifp;
   INodePtr inode = inode_from_path (name, ifp);
   if (!inode)
-    return -ENOENT;
+    {
+      if (ifp == IFP_ERR_NOENT)
+        return -ENOENT;
+      if (ifp == IFP_ERR_PERM)
+        return -EACCES;
+    }
 
   uid_t context_uid = fuse_get_context()->uid;
   bool  root_user = (context_uid == 0);
@@ -800,14 +814,18 @@ bfsync_utimens (const char *name, const struct timespec times[2])
 
   IFPStatus ifp;
   INodePtr inode = inode_from_path (name, ifp);
-  if (inode)
+  if (!inode)
     {
-      inode.update()->mtime    = times[1].tv_sec;
-      inode.update()->mtime_ns = times[1].tv_nsec;
-
-      return 0;
+      if (ifp == IFP_ERR_NOENT)
+        return -ENOENT;
+      if (ifp == IFP_ERR_PERM)
+        return -EACCES;
     }
-  return -ENOENT;
+
+  inode.update()->mtime    = times[1].tv_sec;
+  inode.update()->mtime_ns = times[1].tv_nsec;
+
+  return 0;
 }
 
 int
@@ -848,7 +866,12 @@ bfsync_unlink (const char *name)
   IFPStatus ifp;
   INodePtr inode_dir = inode_from_path (get_dirname (name), ifp);
   if (!inode_dir)
-    return -ENOENT;
+    {
+      if (ifp == IFP_ERR_NOENT)
+        return -ENOENT;
+      if (ifp == IFP_ERR_PERM)
+        return -EACCES;
+    }
 
   string filename = get_basename (name);
   if (!inode_dir.update()->unlink (filename))
@@ -867,7 +890,12 @@ bfsync_mkdir (const char *path, mode_t mode)
   IFPStatus ifp;
   INodePtr inode_dir = inode_from_path (get_dirname (path), ifp);
   if (!inode_dir)
-    return -ENOENT;
+    {
+      if (ifp == IFP_ERR_NOENT)
+        return -ENOENT;
+      if (ifp == IFP_ERR_PERM)
+        return -EACCES;
+    }
   printf ("inode is %s\n", inode_dir->id.c_str());
 
   INodePtr inode (fuse_get_context());  // create new inode
@@ -889,7 +917,12 @@ bfsync_rmdir (const char *name)
   IFPStatus ifp;
   INodePtr inode_dir = inode_from_path (get_dirname (name), ifp);
   if (!inode_dir)
-    return -ENOENT;
+    {
+      if (ifp == IFP_ERR_NOENT)
+        return -ENOENT;
+      if (ifp == IFP_ERR_PERM)
+        return -EACCES;
+    }
 
   // check that dir is in fact empty
   vector<string> entries;
@@ -913,7 +946,12 @@ bfsync_rename (const char *old_path, const char *new_path)
   IFPStatus ifp;
   INodePtr inode_old = inode_from_path (old_path, ifp);
   if (!inode_old)
-    return -ENOENT;
+    {
+      if (ifp == IFP_ERR_NOENT)
+        return -ENOENT;
+      if (ifp == IFP_ERR_PERM)
+        return -EACCES;
+    }
 
   INodePtr inode_new = inode_from_path (new_path, ifp);
   if (inode_new)
@@ -937,7 +975,12 @@ bfsync_symlink (const char *from, const char *to)
 
   INodePtr dir_inode = inode_from_path (get_dirname (to), ifp);
   if (!dir_inode)
-    return -ENOENT;
+    {
+      if (ifp == IFP_ERR_NOENT)
+        return -ENOENT;
+      if (ifp == IFP_ERR_PERM)
+        return -EACCES;
+    }
 
   INodePtr check_to = inode_from_path (to, ifp);
   if (check_to)
@@ -960,21 +1003,25 @@ bfsync_readlink (const char *path, char *buffer, size_t size)
 
   IFPStatus ifp;
   INodePtr inode = inode_from_path (path, ifp);
-  if (inode && inode->type == FILE_SYMLINK)
+  if (!inode)
     {
-      int len = inode->link.size();
-
-      if (len >= size)
-        len = size - 1;
-      memcpy (buffer, inode->link.c_str(), len);
-
-      buffer[len] = 0;
-      return 0;
+      if (ifp == IFP_ERR_NOENT)
+        return -ENOENT;
+      if (ifp == IFP_ERR_PERM)
+        return -EACCES;
     }
-  else
-    {
-      return -ENOENT;
-    }
+
+  if (inode->type != FILE_SYMLINK)
+    return -EINVAL;
+
+  int len = inode->link.size();
+
+  if (len >= size)
+    len = size - 1;
+  memcpy (buffer, inode->link.c_str(), len);
+
+  buffer[len] = 0;
+  return 0;
 }
 
 static int
