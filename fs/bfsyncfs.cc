@@ -650,7 +650,14 @@ bfsync_mknod (const char *path, mode_t mode, dev_t dev)
   IFPStatus ifp;
   INodePtr dir_inode = inode_from_path (get_dirname (path), ifp);
   if (!dir_inode)
-    return -ENOENT;
+    {
+      if (ifp == IFP_ERR_NOENT)
+        return -ENOENT;
+      if (ifp == IFP_ERR_PERM)
+        return -EACCES;
+    }
+  if (!dir_inode->search_perm_ok() || !dir_inode->write_perm_ok())
+    return -EACCES;
 
   INodePtr inode (fuse_get_context());  // create new inode
 
