@@ -1020,6 +1020,15 @@ bfsync_rename (const char *old_path, const char *new_path)
     }
 
   INodePtr inode_new = inode_from_path (new_path, ifp);
+  if (inode_new && inode_new->type == FILE_DIR)
+    {
+      // check that dir is empty
+      vector<string> entries;
+      if (read_dir_contents (new_path, entries))
+        if (!entries.empty())
+          return -EEXIST;
+    }
+
 
   INodePtr inode_old_dir = inode_from_path (get_dirname (old_path), ifp);
   if (!inode_old_dir->write_perm_ok())
