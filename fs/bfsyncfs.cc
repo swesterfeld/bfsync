@@ -896,10 +896,20 @@ bfsync_unlink (const char *name)
   if (!inode_dir->search_perm_ok() || !inode_dir->write_perm_ok())
     return -EACCES;
 
+  INodePtr inode = inode_from_path (name, ifp);
+  if (!inode)
+    {
+      if (ifp == IFP_ERR_NOENT)
+        return -ENOENT;
+      if (ifp == IFP_ERR_PERM)
+        return -EACCES;
+    }
+
   string filename = get_basename (name);
   if (!inode_dir.update()->unlink (filename))
     return -ENOENT;
 
+  inode.update()->set_ctime_now();
   inode_dir.update()->set_mtime_ctime_now();
   return 0;
 }
