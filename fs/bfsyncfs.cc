@@ -1001,6 +1001,7 @@ bfsync_rename (const char *old_path, const char *new_path)
 
   inode_new_dir.update()->add_link (inode_old, get_basename (new_path));
   inode_old_dir.update()->unlink (get_basename (old_path));
+  inode_old.update()->set_ctime_now();
 
   return 0;
 }
