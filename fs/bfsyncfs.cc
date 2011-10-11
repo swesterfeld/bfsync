@@ -416,6 +416,7 @@ bfsync_getattr (const char *path_arg, struct stat *stbuf)
   stbuf->st_ctim.tv_nsec = inode->ctime_ns;
   stbuf->st_atim         = stbuf->st_mtim;    // we don't track atime, so set atime == mtime
   stbuf->st_nlink        = inode->nlink;
+  stbuf->st_ino          = inode->ino;
   if (inode->type == FILE_REGULAR)
     {
       if (inode->hash == "new")
@@ -1282,6 +1283,7 @@ main (int argc, char *argv[])
   if (options.mount_all)
     my_argv[my_argc++] = g_strdup ("-oallow_other");
   my_argv[my_argc++] = g_strdup ("-oattr_timeout=0");
+  my_argv[my_argc++] = g_strdup ("-ouse_ino");
   my_argv[my_argc] = NULL;
 
 

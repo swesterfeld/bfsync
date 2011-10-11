@@ -74,13 +74,14 @@ SQLStatement::bind_str (int pos, const string& str)
     m_success = false;
 }
 
-void
+int
 SQLStatement::step()
 {
   int rc = sqlite3_step (stmt_ptr);
 
   if (rc != SQLITE_DONE)
     m_success = false;
+  return rc;
 }
 
 bool
@@ -111,6 +112,12 @@ SQLStatement::commit()
 
   if (rc != SQLITE_OK)
     m_success = false;
+}
+
+int
+SQLStatement::column_int (int pos)
+{
+  return sqlite3_column_int (stmt_ptr, pos);
 }
 
 }

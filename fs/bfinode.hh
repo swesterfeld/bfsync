@@ -98,6 +98,7 @@ struct INode
   dev_t         major;
   dev_t         minor;
   int           nlink;
+  ino_t         ino;       /* inode number */
 
   std::vector<LinkPtr> links;
 
@@ -122,6 +123,8 @@ struct INode
   bool          read_perm_ok() const;
   bool          write_perm_ok() const;
   bool          search_perm_ok() const;
+
+  void          load_or_alloc_ino();
 };
 
 inline INode*

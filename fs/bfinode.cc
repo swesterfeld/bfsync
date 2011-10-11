@@ -131,6 +131,7 @@ INodePtr::INodePtr (fuse_context *context)
   ptr->gid = context->gid;
   ptr->nlink = 0;
   ptr->set_mtime_ctime_now();
+  ptr->load_or_alloc_ino();
   ptr->updated = true;
 
   inode_repo.mutex.lock();
@@ -361,7 +362,47 @@ INode::load (const string& id)
     }
   debug ("time for sql %.2f ms\n", (gettime() - start_t) * 1000);
 
+  load_or_alloc_ino();
   return found;
+}
+
+void
+INode::load_or_alloc_ino()
+{
+  // load inode number
+  ino = 0;
+  SQLStatement loadi_stmt ("SELECT * FROM local_inodes WHERE id = ?");
+  loadi_stmt.bind_str (1, id);
+  for (;;)
+    {
+      int rc = loadi_stmt.step();
+      if (rc != SQLITE_ROW)
+        break;
+      ino = loadi_stmt.column_int (0);
+    }
+
+  // need to create new entry
+  if (!ino)
+    {
+      SQLStatement searchi_stmt ("SELECT * FROM local_inodes WHERE ino = ?");
+
+      while (!ino)
+        {
+          ino = g_random_int_range (1, 2000 * 1000 * 1000);  // 1 .. ~ 2^31
+          searchi_stmt.reset();
+          searchi_stmt.bind_int (1, ino);
+
+          int rc = searchi_stmt.step();
+          if (rc == SQLITE_ROW)  // inode number already in use
+            ino = 0;
+        }
+
+      // create new entry
+      SQLStatement addi_stmt ("INSERT INTO local_inodes VALUES (?,?)");
+      addi_stmt.bind_str (1, id);
+      addi_stmt.bind_int (2, ino);
+      addi_stmt.step();
+    }
 }
 
 vector<LinkPtr>

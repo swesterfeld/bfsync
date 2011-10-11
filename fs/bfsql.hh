@@ -41,10 +41,12 @@ public:
   void commit();
 
   void reset();
-  void step();
+  int  step();
 
   void bind_int (int pos, int value);
   void bind_str (int pos, const std::string& str);
+
+  int column_int (int pos);
 
   bool success() const;
 };

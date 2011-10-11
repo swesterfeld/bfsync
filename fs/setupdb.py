@@ -9,7 +9,7 @@ reinit_tables = not os.path.exists ('test/db')
 conn = sqlite3.connect ('test/db')
 c = conn.cursor()
 if reinit_tables:
-  c.execute ('''create table inodes
+  c.execute ('''CREATE TABLE inodes
                  (
                    vmin     integer,
                    vmax     integer,
@@ -29,7 +29,7 @@ if reinit_tables:
                    mtime_ns integer
                  )''')
   c.execute ('''CREATE INDEX inodes_idx ON inodes (id)''')
-  c.execute ('''create table links
+  c.execute ('''CREATE TABLE links
                  (
                    vmin     integer,
                    vmax     integer,
@@ -38,14 +38,21 @@ if reinit_tables:
                    name     text
                  )''')
   c.execute ('''CREATE INDEX links_idx ON links (dir_id)''')
-  c.execute ('''create table history
+  c.execute ('''CREATE TABLE history
                  (
                    version integer,
                    author  text,
                    message text,
                    time    integer
                  )''')
+  c.execute ('''CREATE TABLE local_inodes
+                 (
+                   id      text,
+                   ino     integer
+                 )''')
+  c.execute ('''CREATE INDEX local_inodes_idx ON local_inodes (id, ino)''')
 else:
+  c.execute ('''DELETE FROM local_inodes''')
   c.execute ('''DELETE FROM inodes''')
   c.execute ('''DELETE FROM links''')
   c.execute ('''DELETE FROM history''')
