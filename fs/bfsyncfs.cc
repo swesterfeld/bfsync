@@ -905,7 +905,7 @@ bfsync_rmdir (const char *name)
     {
       LinkPtr& lp = *li;
 
-      if (lp->name == dirname)
+      if (lp->name == dirname && !lp->deleted)
         {
           lp.update()->deleted = true;
 
