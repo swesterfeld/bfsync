@@ -50,7 +50,8 @@ if reinit_tables:
                    id      text,
                    ino     integer
                  )''')
-  c.execute ('''CREATE INDEX local_inodes_idx ON local_inodes (id, ino)''')
+  c.execute ('''CREATE INDEX local_inodes_idx_id ON local_inodes (id)''')
+  c.execute ('''CREATE INDEX local_inodes_idx_ino ON local_inodes (ino)''')
 else:
   c.execute ('''DELETE FROM local_inodes''')
   c.execute ('''DELETE FROM inodes''')

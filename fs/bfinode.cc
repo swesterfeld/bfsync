@@ -30,6 +30,7 @@ INodeRepo::save_changes()
   SQLStatement link_stmt ("insert into links values (?,?,?,?,?)");
   SQLStatement del_inode_stmt ("DELETE FROM inodes WHERE id=?");
   SQLStatement del_links_stmt ("DELETE FROM links WHERE dir_id=?");
+  SQLStatement addi_stmt ("INSERT INTO local_inodes VALUES (?,?)");
 
   double start_t = gettime();
 
@@ -55,7 +56,6 @@ INodeRepo::save_changes()
     }
 
   // write newly allocated inodes to local_inodes table
-  SQLStatement addi_stmt ("INSERT INTO local_inodes VALUES (?,?)");
   for (map<ino_t, string>::const_iterator ni = new_inodes.begin(); ni != new_inodes.end(); ni++)
     {
       addi_stmt.reset();
