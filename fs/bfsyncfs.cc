@@ -905,6 +905,15 @@ bfsync_unlink (const char *name)
         return -EACCES;
     }
 
+  // sticky directory
+  if (inode_dir->mode & S_ISVTX)
+    {
+      const uid_t uid = fuse_get_context()->uid;
+
+      if (uid != 0 && inode_dir->uid != uid && inode->uid != uid)
+        return -EACCES;
+    }
+
   string filename = get_basename (name);
   if (!inode_dir.update()->unlink (filename))
     return -ENOENT;
