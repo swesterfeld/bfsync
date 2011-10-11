@@ -896,6 +896,10 @@ bfsync_mkdir (const char *path, mode_t mode)
       if (ifp == IFP_ERR_PERM)
         return -EACCES;
     }
+
+  if (!inode_dir->write_perm_ok())
+    return -EACCES;
+
   printf ("inode is %s\n", inode_dir->id.c_str());
 
   INodePtr inode (fuse_get_context());  // create new inode
