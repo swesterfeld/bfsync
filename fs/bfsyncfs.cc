@@ -494,6 +494,22 @@ read_dir_contents (const string& path, vector<string>& entries)
 static int
 bfsync_opendir (const char *path, struct fuse_file_info *fi)
 {
+  IFPStatus ifp;
+  INodePtr dir_inode = inode_from_path (path, ifp);
+  if (!dir_inode)
+    {
+      if (ifp == IFP_ERR_NOENT)
+        return -ENOENT;
+      if (ifp == IFP_ERR_PERM)
+        return -EACCES;
+    }
+
+  if (!dir_inode->search_perm_ok())
+    return -EACCES;
+
+  if (!dir_inode->read_perm_ok())
+    return -EACCES;
+
   return 0;
 }
 
@@ -558,6 +574,11 @@ bfsync_open (const char *path, struct fuse_file_info *fi)
       if (ifp == IFP_ERR_PERM)
         return -EACCES;
     }
+  if (open_for_write && !inode->write_perm_ok())
+    return -EACCES;
+
+  if (open_for_read && !inode->read_perm_ok())
+    return -EACCES;
 
   if (open_for_write)
     inode.update()->copy_on_write();

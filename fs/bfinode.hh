@@ -118,6 +118,7 @@ struct INode
   void          add_link (INodePtr to, const std::string& name);
   bool          unlink (const std::string& name);
 
+  bool          read_perm_ok() const;
   bool          write_perm_ok() const;
   bool          search_perm_ok() const;
 };

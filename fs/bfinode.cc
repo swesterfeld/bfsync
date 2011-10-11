@@ -443,6 +443,23 @@ INode::unlink (const string& name)
 }
 
 bool
+INode::read_perm_ok() const
+{
+  const fuse_context *ctx = fuse_get_context();
+
+  if (ctx->uid == 0)
+    return true;
+
+  if (ctx->uid == uid)
+    return (mode & S_IRUSR);
+
+  if (ctx->gid == gid)
+    return (mode & S_IRGRP);
+
+  return (mode & S_IROTH);
+}
+
+bool
 INode::write_perm_ok() const
 {
   const fuse_context *ctx = fuse_get_context();
