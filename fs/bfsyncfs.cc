@@ -997,7 +997,12 @@ bfsync_rename (const char *old_path, const char *new_path)
     return -EEXIST;
 
   INodePtr inode_old_dir = inode_from_path (get_dirname (old_path), ifp);
+  if (!inode_old_dir->write_perm_ok())
+    return -EACCES;
+
   INodePtr inode_new_dir = inode_from_path (get_dirname (new_path), ifp);
+  if (!inode_new_dir->write_perm_ok())
+    return -EACCES;
 
   inode_new_dir.update()->add_link (inode_old, get_basename (new_path));
   inode_old_dir.update()->unlink (get_basename (old_path));
