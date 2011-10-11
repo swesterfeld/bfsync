@@ -1086,6 +1086,8 @@ bfsync_link (const char *old_path, const char *new_path)
     return -EACCES;
 
   inode_new_dir.update()->add_link (inode_old, get_basename (new_path));
+  inode_new_dir.update()->set_mtime_ctime_now();
+  inode_old.update()->set_ctime_now();
   return 0;
 }
 
