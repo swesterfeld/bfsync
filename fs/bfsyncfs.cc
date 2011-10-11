@@ -972,6 +972,24 @@ bfsync_rmdir (const char *name)
   if (!inode_dir->search_perm_ok() || !inode_dir->write_perm_ok())
     return -EACCES;
 
+  INodePtr inode = inode_from_path (name, ifp);
+  if (!inode)
+    {
+      if (ifp == IFP_ERR_NOENT)
+        return -ENOENT;
+      if (ifp == IFP_ERR_PERM)
+        return -EACCES;
+    }
+
+  // sticky directory
+  if (inode_dir->mode & S_ISVTX)
+    {
+      const uid_t uid = fuse_get_context()->uid;
+
+      if (uid != 0 && inode_dir->uid != uid && inode->uid != uid)
+        return -EACCES;
+    }
+
   // check that dir is in fact empty
   vector<string> entries;
   if (read_dir_contents (name, entries))
