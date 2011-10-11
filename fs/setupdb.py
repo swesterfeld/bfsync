@@ -22,6 +22,7 @@ if reinit_tables:
                    link     text,
                    major    integer,
                    minor    integer,
+                   nlink    integer,    /* number of hard links */
                    ctime    integer,
                    ctime_ns integer,
                    mtime    integer,
@@ -52,7 +53,7 @@ else:
 c.execute ('''insert into history values (1, "", "", 0)''')
 
 time_now = int (time.time())
-c.execute ("""insert into inodes values (1, 1, "root", %d, %d, %d, "dir", "", "", 0, 0, %d, 0, %d, 0)""" % (
+c.execute ("""insert into inodes values (1, 1, "root", %d, %d, %d, "dir", "", "", 0, 0, 1, %d, 0, %d, 0)""" % (
   os.getuid(), os.getgid(), 0755, time_now, time_now
 ))
 conn.commit()

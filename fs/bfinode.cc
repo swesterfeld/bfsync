@@ -26,7 +26,7 @@ INodeRepo::save_changes()
 {
   inode_repo.mutex.lock();
 
-  SQLStatement inode_stmt ("insert into inodes values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+  SQLStatement inode_stmt ("insert into inodes values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
   SQLStatement link_stmt ("insert into links values (?,?,?,?,?)");
   SQLStatement del_inode_stmt ("DELETE FROM inodes WHERE id=?");
   SQLStatement del_links_stmt ("DELETE FROM links WHERE dir_id=?");
@@ -79,10 +79,11 @@ const int INODES_HASH     = 7;
 const int INODES_LINK     = 8;
 const int INODES_MAJOR    = 9;
 const int INODES_MINOR    = 10;
-const int INODES_CTIME    = 11;
-const int INODES_CTIME_NS = 12;
-const int INODES_MTIME    = 13;
-const int INODES_MTIME_NS = 14;
+const int INODES_NLINK    = 11;
+const int INODES_CTIME    = 12;
+const int INODES_CTIME_NS = 13;
+const int INODES_MTIME    = 14;
+const int INODES_MTIME_NS = 15;
 
 INodePtr::INodePtr (const string& id) :
   ptr (NULL)
@@ -128,6 +129,7 @@ INodePtr::INodePtr (fuse_context *context)
   ptr->id = gen_id();
   ptr->uid = context->uid;
   ptr->gid = context->gid;
+  ptr->nlink = 0;
   ptr->set_mtime_ctime_now();
   ptr->updated = true;
 
@@ -239,6 +241,7 @@ INode::save (SQLStatement& stmt, SQLStatement& link_stmt)
   stmt.bind_str (1 + INODES_LINK, link);
   stmt.bind_int (1 + INODES_MAJOR, major);
   stmt.bind_int (1 + INODES_MINOR, minor);
+  stmt.bind_int (1 + INODES_NLINK, nlink);
   stmt.bind_int (1 + INODES_CTIME, ctime);
   stmt.bind_int (1 + INODES_CTIME_NS, ctime_ns);
   stmt.bind_int (1 + INODES_MTIME, mtime);
@@ -315,6 +318,7 @@ INode::load (const string& id)
       link     = (const char *) sqlite3_column_text (stmt_ptr, INODES_LINK);
       major    = sqlite3_column_int  (stmt_ptr, INODES_MAJOR);
       minor    = sqlite3_column_int  (stmt_ptr, INODES_MINOR);
+      nlink    = sqlite3_column_int  (stmt_ptr, INODES_NLINK);
       ctime    = sqlite3_column_int  (stmt_ptr, INODES_CTIME);
       ctime_ns = sqlite3_column_int  (stmt_ptr, INODES_CTIME_NS);
       mtime    = sqlite3_column_int  (stmt_ptr, INODES_MTIME);
@@ -423,6 +427,8 @@ INode::add_link (INodePtr to, const string& name)
   link->inode_id = to->id;
   link->name = name;
 
+  to.update()->nlink++;
+
   links.push_back (LinkPtr (link));
 }
 
@@ -435,6 +441,11 @@ INode::unlink (const string& name)
 
       if (lp->name == name && !lp->deleted)
         {
+          INodePtr inode (lp->inode_id);
+
+          if (inode)
+            inode.update()->nlink--;
+
           lp.update()->deleted = true;
           return true;
         }

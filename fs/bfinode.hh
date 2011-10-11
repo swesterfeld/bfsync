@@ -97,6 +97,7 @@ struct INode
   FileType      type;
   dev_t         major;
   dev_t         minor;
+  int           nlink;
 
   std::vector<LinkPtr> links;
 

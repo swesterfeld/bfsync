@@ -415,7 +415,7 @@ bfsync_getattr (const char *path_arg, struct stat *stbuf)
   stbuf->st_ctime        = inode->ctime;
   stbuf->st_ctim.tv_nsec = inode->ctime_ns;
   stbuf->st_atim         = stbuf->st_mtim;    // we don't track atime, so set atime == mtime
-  stbuf->st_nlink        = 1;
+  stbuf->st_nlink        = inode->nlink;
   if (inode->type == FILE_REGULAR)
     {
       if (inode->hash == "new")
