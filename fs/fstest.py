@@ -780,6 +780,26 @@ tests += [ ("rename-replace", test_rename_replace) ]
 
 #####
 
+def test_link_inode():
+  os.link ("mnt/README", "mnt/LREADME")
+  xsize = os.path.getsize ("mnt/README")
+  ysize = os.path.getsize ("mnt/LREADME")
+  if xsize != ysize:
+    raise Exception ("file size not identical")
+  xst = os.lstat ("mnt/README")
+  yst = os.lstat ("mnt/LREADME")
+  if xst.st_ino != yst.st_ino:
+    raise Exception ("link inode not identical")
+  write_file ("mnt/README", "blub")
+  xblub = read_file ("mnt/README")
+  yblub = read_file ("mnt/LREADME")
+  if xblub != yblub:
+    raise Exception ("link change didn't affect both files")
+
+tests += [ ("link-inode", test_link_inode) ]
+
+#####
+
 def start_bfsyncfs():
   if subprocess.call (["./bfsyncfs", "test", "mnt"]) != 0:
     print "can't start bfsyncfs"
