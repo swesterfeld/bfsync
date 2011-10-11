@@ -767,6 +767,19 @@ root_tests += [ ("partial-chown", test_partial_chown) ]
 
 #####
 
+def test_rename_replace():
+  xsize = os.path.getsize ("mnt/README")
+  write_file ("mnt/foo", "foo")
+  os.rename ("mnt/README", "mnt/foo")
+  if os.path.exists ("mnt/README"):
+    raise Exception ("file not properly renamed")
+  if os.path.getsize ("mnt/foo") != xsize:
+    raise Exception ("file size is wrong")
+
+tests += [ ("rename-replace", test_rename_replace) ]
+
+#####
+
 def start_bfsyncfs():
   if subprocess.call (["./bfsyncfs", "test", "mnt"]) != 0:
     print "can't start bfsyncfs"
