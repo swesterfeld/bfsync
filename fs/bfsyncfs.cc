@@ -1027,6 +1027,15 @@ bfsync_rename (const char *old_path, const char *new_path)
   if (!inode_old_dir->write_perm_ok())
     return -EACCES;
 
+  // sticky directory
+  if (inode_old_dir->mode & S_ISVTX)
+    {
+      const uid_t uid = fuse_get_context()->uid;
+
+      if (uid != 0 && inode_old_dir->uid != uid && inode_old->uid != uid)
+        return -EACCES;
+    }
+
   INodePtr inode_new_dir = inode_from_path (get_dirname (new_path), ifp);
   if (!inode_new_dir->write_perm_ok())
     return -EACCES;
