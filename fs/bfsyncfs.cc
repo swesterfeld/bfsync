@@ -1063,7 +1063,12 @@ bfsync_link (const char *old_path, const char *new_path)
   IFPStatus ifp;
   INodePtr inode_old = inode_from_path (old_path, ifp);
   if (!inode_old)
-    return -ENOENT;
+    {
+      if (ifp == IFP_ERR_NOENT)
+        return -ENOENT;
+      if (ifp == IFP_ERR_PERM)
+        return -EACCES;
+    }
 
   INodePtr inode_new = inode_from_path (new_path, ifp);
   if (inode_new)
@@ -1071,7 +1076,14 @@ bfsync_link (const char *old_path, const char *new_path)
 
   INodePtr inode_new_dir = inode_from_path (get_dirname (new_path), ifp);
   if (!inode_new_dir)
-    return -ENOENT;
+    {
+      if (ifp == IFP_ERR_NOENT)
+        return -ENOENT;
+      if (ifp == IFP_ERR_PERM)
+        return -EACCES;
+    }
+  if (!inode_new_dir->search_perm_ok() || !inode_new_dir->write_perm_ok())
+    return -EACCES;
 
   inode_new_dir.update()->add_link (inode_old, get_basename (new_path));
   return 0;
