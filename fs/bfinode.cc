@@ -33,6 +33,7 @@ INodeRepo::save_changes()
 
   double start_t = gettime();
 
+  int inodes_saved = 0;
   inode_stmt.begin();
   for (map<string, INode*>::iterator ci = cache.begin(); ci != cache.end(); ci++)
     {
@@ -47,11 +48,13 @@ INodeRepo::save_changes()
           del_links_stmt.bind_str (1, inode_ptr->id);
           del_links_stmt.step();
 
+          inodes_saved++;
           inode_ptr->save (inode_stmt, link_stmt);
           inode_ptr->updated = false;
         }
     }
-  debug ("time for sql prepare: %.2fms\n", (gettime() - start_t) * 1000);
+  debug ("time for sql prepare: %.2fms (%d inodes needed saving)\n", (gettime() - start_t) * 1000,
+         inodes_saved);
   inode_stmt.commit();
 
   if (inode_stmt.success() && link_stmt.success() && del_inode_stmt.success() && del_links_stmt.success())

@@ -27,6 +27,7 @@ if reinit_tables:
                    mtime    integer,
                    mtime_ns integer
                  )''')
+  c.execute ('''CREATE INDEX inodes_idx ON inodes (id)''')
   c.execute ('''create table links
                  (
                    vmin     integer,
@@ -35,6 +36,7 @@ if reinit_tables:
                    inode_id text,
                    name     text
                  )''')
+  c.execute ('''CREATE INDEX links_idx ON links (dir_id)''')
   c.execute ('''create table history
                  (
                    version integer,

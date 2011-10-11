@@ -378,8 +378,6 @@ bfsync_getattr (const char *path_arg, struct stat *stbuf)
 
   FSLock lock (FSLock::READ);
 
-  debug ("getattr (\"%s\")\n", path_arg);
-
   if (path == "/.bfsync")
     {
       memset (stbuf, 0, sizeof (struct stat));
@@ -536,8 +534,6 @@ bfsync_open (const char *path, struct fuse_file_info *fi)
   bool open_for_read  = (accmode == O_RDONLY || accmode == O_RDWR);
 
   FSLock lock (open_for_write ? FSLock::WRITE : FSLock::READ);
-
-  debug ("open (\"%s\")\n", path);
 
   if (string (path) == "/.bfsync/info")
     {
