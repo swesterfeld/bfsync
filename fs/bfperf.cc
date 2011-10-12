@@ -95,6 +95,12 @@ operator< (const ID& x, const ID& y)
   return x.e < y.e;
 }
 
+inline bool
+operator== (const ID& x, const ID& y)
+{
+  return (x.a == y.a) && (x.b == y.b) && (x.c == y.c) && (x.d == y.d) && (x.e == y.e);
+}
+
 ID
 gen_id()
 {
@@ -133,12 +139,50 @@ perf_id()
   printf ("id/sec:      %10.f\n", N / (end_t - start_t));
 }
 
+void
+perf_id_hash()
+{
+  vector<ID> ids;
+
+  for (size_t i = 0; i < 300000; i++)   // 300000 ~= crude estimate for average files on a linux system
+    ids.push_back (gen_id());
+
+  vector< vector<ID> > hmap (49999); // prime
+  for (size_t i = 0; i < ids.size(); i++)
+    hmap[ids[i].a % 49999].push_back (ids[i]);
+
+  const double start_t = gettime();
+  const size_t N = 3 * 1000 * 1000;
+  for (size_t i = 0; i < N; i++)
+    {
+      int search = g_random_int_range (0, ids.size());
+      const ID& need_id = ids[search];
+      const vector<ID>& v_bucket = hmap[need_id.a % hmap.size()];
+
+      bool found = false;
+      for (vector<ID>::const_iterator hmi = v_bucket.begin(); hmi != v_bucket.end(); hmi++)
+        {
+          if (*hmi == need_id)
+            {
+              found = true;
+              break;
+            }
+        }
+      assert (found);
+    }
+
+  const double end_t = gettime();
+
+  printf ("hash_id/sec: %10.f\n", N / (end_t - start_t));
+}
+
 int
 main()
 {
   perf_split();
   perf_id_str();
   perf_id();
+  perf_id_hash();
 
   return 0;
 }
