@@ -79,32 +79,6 @@ debug_file()
   return bf_debug_file;
 }
 
-// "foo/bar" => [ "foo", "bar" ]
-vector<string>
-split_name (const string& xname)
-{
-  string name = xname + "/";
-  vector<string> result;
-  string s;
-
-  for (size_t i = 0; i < name.size(); i++)
-    {
-      if (name[i] == '/')
-        {
-          if (!s.empty())
-            {
-              result.push_back (s);
-              s.clear();
-            }
-        }
-      else
-        {
-          s += name[i];
-        }
-    }
-  return (result);
-}
-
 string
 get_dirname (const string& dirname)
 {
@@ -131,31 +105,6 @@ make_object_filename (const string& hash)
   if (hash.size() != 40)
     return "";
   return options.repo_path + "/objects/" + hash.substr (0, 2) + "/" + hash.substr (2);
-}
-
-
-vector<string>
-split (const string& path)
-{
-  vector<string> result;
-
-  string s;
-  for (size_t i = 0; i < path.size(); i++)
-    {
-      if (path[i] == '/')
-        {
-          if (!s.empty())
-            {
-              result.push_back (s);
-              s = "";
-            }
-        }
-      else
-        s += path[i];
-    }
-  if (!s.empty())
-    result.push_back (s);
-  return result;
 }
 
 double
@@ -335,8 +284,9 @@ inode_from_path (const string& path, IFPStatus& status)
 {
   INodePtr inode ("root");
 
-  vector<string> path_vec = split (path);
-  for (vector<string>::iterator pi = path_vec.begin(); pi != path_vec.end(); pi++)
+  SplitPath s_path = SplitPath (path.c_str());
+  const char *pi;
+  while ((pi = s_path.next()))
     {
       if (!inode->search_perm_ok())
         {
@@ -350,7 +300,7 @@ inode_from_path (const string& path, IFPStatus& status)
         {
           const LinkPtr& child_link = *ci;
 
-          if (child_link->name == *pi && !child_link->deleted)
+          if (child_link->name == pi && !child_link->deleted)
             {
               inode = INodePtr (child_link->inode_id);
               found = true;

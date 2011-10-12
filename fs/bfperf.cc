@@ -16,16 +16,18 @@ main()
   const char *long_path = "/usr/local/include/frob/bar.h";
 
   double start_t = gettime();
-
-  for (size_t i = 0; i < 1000000; i++)
+  static int N = 20 * 1000 * 1000;
+  int k = 0;
+  for (size_t i = 0; i < N; i++)
     {
-      vector<string> xs = split_name (long_path);
-      assert (xs.size() == 5);
+      SplitPath s_path (long_path);
+      while (s_path.next())
+        k++;
     }
 
   double end_t = gettime();
 
-  printf ("splits/sec:  %.f\n", 1000000 / (end_t - start_t));
+  printf ("splits/sec:  %.f\n", N / (end_t - start_t));
 
   return 0;
 }

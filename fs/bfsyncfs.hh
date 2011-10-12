@@ -24,6 +24,7 @@
 #include <stdarg.h>
 #include <sqlite3.h>
 #include <pthread.h>
+#include <glib.h>
 
 #include <string>
 #include <vector>
@@ -96,7 +97,52 @@ enum
 std::string make_object_filename (const std::string& hash);
 std::string get_dirname (const std::string& filename);
 
-std::vector<std::string> split_name (const std::string& xname);
+class SplitPath
+{
+  char *m_path;
+  char *m_ptr;
+public:
+  SplitPath (const char *path)
+  {
+    m_path  = g_strdup (path);
+    m_ptr   = m_path;
+  }
+  const char*
+  next()
+  {
+    if (!m_ptr)
+      return NULL;
+
+    const char *start_ptr = m_ptr;
+
+    while (*m_ptr != '/' && *m_ptr != 0)
+      m_ptr++;
+
+    int len = m_ptr - start_ptr;
+    if (*m_ptr == 0) // end of string
+      {
+        m_ptr = NULL;
+      }
+    else // found "/"
+      {
+        *m_ptr++ = 0;
+      }
+    // return path component only if non-empty
+    if (len > 0)
+      {
+        return start_ptr;
+      }
+    else
+      {
+        return next();
+      }
+  }
+  ~SplitPath()
+  {
+    g_free (m_path);
+  }
+};
+
 
 struct Options {
   std::string  repo_path;
