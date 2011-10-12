@@ -1186,7 +1186,7 @@ exit_usage()
 }
 
 int
-main (int argc, char *argv[])
+bfsyncfs_main (int argc, char **argv)
 {
   string repo_path, mount_point;
 

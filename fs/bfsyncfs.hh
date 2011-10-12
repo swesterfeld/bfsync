@@ -26,6 +26,7 @@
 #include <pthread.h>
 
 #include <string>
+#include <vector>
 
 namespace BFSync
 {
@@ -95,6 +96,8 @@ enum
 std::string make_object_filename (const std::string& hash);
 std::string get_dirname (const std::string& filename);
 
+std::vector<std::string> split_name (const std::string& xname);
+
 struct Options {
   std::string  repo_path;
   std::string  mount_point;
@@ -106,5 +109,7 @@ struct Options {
 };
 
 }
+
+int bfsyncfs_main (int argc, char **argv);
 
 #endif /* BFSYNC_FS_HH */
