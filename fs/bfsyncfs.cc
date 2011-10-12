@@ -334,7 +334,6 @@ INodePtr
 inode_from_path (const string& path, IFPStatus& status)
 {
   INodePtr inode ("root");
-  printf ("inode_from_path (%s)\n", path.c_str());
 
   vector<string> path_vec = split (path);
   for (vector<string>::iterator pi = path_vec.begin(); pi != path_vec.end(); pi++)
@@ -360,13 +359,10 @@ inode_from_path (const string& path, IFPStatus& status)
         }
       if (!found)
         {
-          printf ("  inode = NULL\n");
           status = IFP_ERR_NOENT;
           return INodePtr::null();
         }
     }
-
-  printf ("  inode = %s\n", inode->id.c_str());
   status = IFP_OK;
   return inode;
 }
@@ -929,7 +925,6 @@ bfsync_mkdir (const char *path, mode_t mode)
 {
   FSLock lock (FSLock::WRITE);
 
-  printf ("mkdir: %s\n", path);
   IFPStatus ifp;
   INodePtr inode_dir = inode_from_path (get_dirname (path), ifp);
   if (!inode_dir)
@@ -942,8 +937,6 @@ bfsync_mkdir (const char *path, mode_t mode)
 
   if (!inode_dir->write_perm_ok())
     return -EACCES;
-
-  printf ("inode is %s\n", inode_dir->id.c_str());
 
   INodePtr inode (fuse_get_context());  // create new inode
 
