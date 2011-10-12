@@ -36,8 +36,7 @@ perf_repeat_stmt()
     }
   stmt.commit();
 
-  printf ("success=%s\n", stmt.success() ? "true" : "false");
-  return true;
+  return stmt.success();
 }
 
 bool
@@ -62,6 +61,22 @@ perf_exec()
   return true;
 }
 
+bool
+perf_del()
+{
+  SQLStatement stmt ("DELETE FROM inodes WHERE id = ?");
+  stmt.begin();
+  for (size_t j = 0; j < 300000; j++)
+    {
+      stmt.reset();
+      stmt.bind_int (1, g_random_int_range (0, 300000) * 100 + 2);
+      stmt.step();
+    }
+  stmt.commit();
+
+  return stmt.success();
+}
+
 int
 main()
 {
@@ -72,21 +87,28 @@ main()
       return 1;
     }
 
-  for (int i = 0; i < 2; i++)
+  for (int i = 0; i < 3; i++)
     {
       double start_t = gettime();
+      bool   success = false;
       if (i == 0)
         {
           printf ("perf_repeat_stmt...\n");
-          perf_repeat_stmt();
+          success = perf_repeat_stmt();
         }
       else if (i == 1)
         {
           printf ("perf_exec...\n");
-          perf_exec();
+          success = perf_exec();
+        }
+      else if (i == 2)
+        {
+          printf ("perf_del...\n");
+          success = perf_del();
         }
       double end_t = gettime();
 
+      printf ("success:      %s\n", success ? "true" : "false");
       printf ("time for sql: %.2fms\n", (end_t - start_t) * 1000);
       printf ("inserts/sec:  %.f\n", 300000 / (end_t - start_t));
     }
