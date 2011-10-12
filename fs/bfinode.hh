@@ -100,7 +100,7 @@ struct INode
   int           nlink;
   ino_t         ino;       /* inode number */
 
-  std::vector<LinkPtr> links;
+  std::map<std::string, LinkPtr> links;
 
   bool          updated;
 
@@ -113,7 +113,6 @@ struct INode
   void          set_mtime_ctime_now();
   void          set_ctime_now();
 
-  std::vector<LinkPtr> children() const;
   FileStatus    file_status() const;
   std::string   file_path() const;
   void          copy_on_write();
@@ -125,6 +124,8 @@ struct INode
   bool          search_perm_ok() const;
 
   void          load_or_alloc_ino();
+  void          get_child_names (std::vector<std::string>& names) const;
+  INodePtr      get_child (const std::string& name) const;
 };
 
 inline INode*

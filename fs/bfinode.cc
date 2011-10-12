@@ -265,9 +265,9 @@ INode::save (SQLStatement& stmt, SQLStatement& link_stmt)
   stmt.bind_int   (1 + INODES_MTIME_NS, mtime_ns);
   stmt.step();
 
-  for (vector<LinkPtr>::iterator li = links.begin(); li != links.end(); li++)
+  for (map<string, LinkPtr>::iterator li = links.begin(); li != links.end(); li++)
     {
-      LinkPtr& lp = *li;
+      LinkPtr& lp = li->second;
 
       if (!lp->deleted)
         {
@@ -365,7 +365,7 @@ INode::load (const string& id)
       link->inode_id = load_links.column_text (3);
       link->name = load_links.column_text (4);
 
-      links.push_back (LinkPtr (link));
+      links[link->name] = LinkPtr (link);
     }
   debug ("time for sql %.2f ms\n", (gettime() - start_t) * 1000);
 
@@ -414,12 +414,6 @@ INode::load_or_alloc_ino()
         }
       inode_repo.new_inodes[ino] = id;
     }
-}
-
-vector<LinkPtr>
-INode::children() const
-{
-  return links;
 }
 
 string
@@ -481,26 +475,22 @@ INode::add_link (INodePtr to, const string& name)
 
   to.update()->nlink++;
 
-  links.push_back (LinkPtr (link));
+  links[name] = LinkPtr (link);
 }
 
 bool
 INode::unlink (const string& name)
 {
-  for (vector<LinkPtr>::iterator li = links.begin(); li != links.end(); li++)
+  LinkPtr& lp = links[name];
+  if (lp->name == name && !lp->deleted)
     {
-      LinkPtr& lp = *li;
+      INodePtr inode (lp->inode_id);
 
-      if (lp->name == name && !lp->deleted)
-        {
-          INodePtr inode (lp->inode_id);
+      if (inode)
+        inode.update()->nlink--;
 
-          if (inode)
-            inode.update()->nlink--;
-
-          lp.update()->deleted = true;
-          return true;
-        }
+      lp.update()->deleted = true;
+      return true;
     }
   return false;
 }
@@ -554,6 +544,31 @@ INode::search_perm_ok() const
     return (mode & S_IXGRP);
 
   return (mode & S_IXOTH);
+}
+
+void
+INode::get_child_names (vector<string>& names) const
+{
+  for (map<string, LinkPtr>::const_iterator li = links.begin(); li != links.end(); li++)
+    {
+      const LinkPtr& lp = li->second;
+      if (!lp->deleted)
+        names.push_back (lp->name);
+    }
+}
+
+INodePtr
+INode::get_child (const string& name) const
+{
+  map<string, LinkPtr>::const_iterator li = links.find (name);
+
+  if (li == links.end())
+    return INodePtr::null();
+
+  if (li->second->deleted)
+    return INodePtr::null();
+
+  return INodePtr (li->second->inode_id);
 }
 
 }

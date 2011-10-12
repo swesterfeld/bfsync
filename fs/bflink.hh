@@ -42,7 +42,7 @@ class LinkPtr
 {
   Link *ptr;
 public:
-  LinkPtr (Link *link);
+  LinkPtr (Link *link = NULL);
 
   const Link*
   operator->() const

@@ -293,21 +293,8 @@ inode_from_path (const string& path, IFPStatus& status)
           status = IFP_ERR_PERM;
           return INodePtr::null();
         }
-      vector<LinkPtr> children = inode->children();
-
-      bool found = false;
-      for (vector<LinkPtr>::iterator ci = children.begin(); ci != children.end(); ci++)
-        {
-          const LinkPtr& child_link = *ci;
-
-          if (child_link->name == pi && !child_link->deleted)
-            {
-              inode = INodePtr (child_link->inode_id);
-              found = true;
-              break;
-            }
-        }
-      if (!found)
+      inode = inode->get_child (pi);
+      if (!inode)
         {
           status = IFP_ERR_NOENT;
           return INodePtr::null();
@@ -419,12 +406,7 @@ read_dir_contents (const string& path, vector<string>& entries)
   INodePtr inode = inode_from_path (path, ifp);
   if (inode)
     {
-      vector<LinkPtr> children = inode->children();
-      for (vector<LinkPtr>::iterator ci = children.begin(); ci != children.end(); ci++)
-        {
-          if (!(*ci)->deleted)
-            entries.push_back ((*ci)->name);
-        }
+      inode->get_child_names (entries);
     }
   if (path == "/")
     {
