@@ -2,16 +2,32 @@
 #include <assert.h>
 
 #include <vector>
+#include <map>
 
 #include "bfsyncfs.hh"
 
 using std::string;
 using std::vector;
+using std::map;
 
 using namespace BFSync;
 
-int
-main()
+static string
+gen_id_str()
+{
+  string id;
+  // globally (across all versions/hosts) uniq id, with the same amount of information as a SHA1-hash
+  while (id.size() < 40)
+    {
+      char hex[32];
+      sprintf (hex, "%08x", g_random_int());
+      id += hex;
+    }
+  return id;
+}
+
+void
+perf_split()
 {
   const char *long_path = "/usr/local/include/frob/bar.h";
 
@@ -27,7 +43,102 @@ main()
 
   double end_t = gettime();
 
-  printf ("splits/sec:  %.f\n", N / (end_t - start_t));
+  printf ("splits/sec:  %10.f\n", N / (end_t - start_t));
+}
+
+void
+perf_id_str()
+{
+  vector<string>  ids;
+  for (size_t i = 0; i < 300000; i++)   // 300000 ~= crude estimate for average files on a linux system
+    ids.push_back (gen_id_str());
+
+  map<string,int> id_map;
+  for (size_t i = 0; i < ids.size(); i++)
+    id_map[ids[i]] = i;
+
+  const double start_t = gettime();
+  const size_t N = 1 * 1000 * 1000;
+
+  for (size_t i = 0; i < N; i++)
+    {
+      int search = g_random_int_range (0, ids.size());
+      if (id_map[ids[search]] != search)
+        assert (false);
+    }
+
+  const double end_t = gettime();
+
+  printf ("id-str/sec:  %10.f\n", N / (end_t - start_t));
+}
+
+struct ID
+{
+  guint32 a, b, c, d, e;
+};
+
+inline bool
+operator< (const ID& x, const ID& y)
+{
+  if (x.a != y.a)
+    return x.a < y.a;
+
+  if (x.b != y.b)
+    return x.b < y.b;
+
+  if (x.c != y.c)
+    return x.c < y.c;
+
+  if (x.d != y.d)
+    return x.d < y.d;
+
+  return x.e < y.e;
+}
+
+ID
+gen_id()
+{
+  ID result;
+  result.a = g_random_int();
+  result.b = g_random_int();
+  result.c = g_random_int();
+  result.d = g_random_int();
+  result.e = g_random_int();
+  return result;
+}
+
+void
+perf_id()
+{
+  vector<ID> ids;
+
+  for (size_t i = 0; i < 300000; i++)   // 300000 ~= crude estimate for average files on a linux system
+    ids.push_back (gen_id());
+
+  map<ID,int> id_map;
+  for (size_t i = 0; i < ids.size(); i++)
+    id_map[ids[i]] = i;
+
+  const double start_t = gettime();
+  const size_t N = 3 * 1000 * 1000;
+  for (size_t i = 0; i < N; i++)
+    {
+      int search = g_random_int_range (0, ids.size());
+      if (id_map[ids[search]] != search)
+        assert (false);
+    }
+
+  const double end_t = gettime();
+
+  printf ("id/sec:      %10.f\n", N / (end_t - start_t));
+}
+
+int
+main()
+{
+  perf_split();
+  perf_id_str();
+  perf_id();
 
   return 0;
 }
