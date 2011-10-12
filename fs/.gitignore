@@ -4,6 +4,9 @@ Makefile.in
 .libs
 *.pyc
 *.o
+*.lo
+*.la
+bfperf
 sqlperf
 bfsyncfs
 bfsyncstat
