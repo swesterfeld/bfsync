@@ -149,15 +149,15 @@ perf_id_hash()
 
   vector< vector<ID> > hmap (49999); // prime
   for (size_t i = 0; i < ids.size(); i++)
-    hmap[ids[i].a % 49999].push_back (ids[i]);
+    hmap[ids[i].b % 49999].push_back (ids[i]);
 
   const double start_t = gettime();
   const size_t N = 3 * 1000 * 1000;
   for (size_t i = 0; i < N; i++)
     {
-      int search = g_random_int_range (0, ids.size());
+      int search = i % ids.size();
       const ID& need_id = ids[search];
-      const vector<ID>& v_bucket = hmap[need_id.a % hmap.size()];
+      const vector<ID>& v_bucket = hmap[need_id.b % hmap.size()];
 
       bool found = false;
       for (vector<ID>::const_iterator hmi = v_bucket.begin(); hmi != v_bucket.end(); hmi++)
