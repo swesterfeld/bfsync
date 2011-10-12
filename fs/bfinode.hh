@@ -140,6 +140,7 @@ public:
   std::map<std::string, INode*> cache;
   std::map<ino_t, std::string>  new_inodes;
   Mutex                         mutex;
+  SQLStatementStore             sql_statements;
 
   void save_changes();
 

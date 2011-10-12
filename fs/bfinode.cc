@@ -26,11 +26,16 @@ INodeRepo::save_changes()
 {
   inode_repo.mutex.lock();
 
-  SQLStatement inode_stmt ("insert into inodes values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
-  SQLStatement link_stmt ("insert into links values (?,?,?,?,?)");
-  SQLStatement del_inode_stmt ("DELETE FROM inodes WHERE id=?");
-  SQLStatement del_links_stmt ("DELETE FROM links WHERE dir_id=?");
-  SQLStatement addi_stmt ("INSERT INTO local_inodes VALUES (?,?)");
+  SQLStatement& inode_stmt = inode_repo.sql_statements.get
+    ("INSERT INTO inodes VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+  SQLStatement& link_stmt = inode_repo.sql_statements.get
+    ("INSERT INTO links VALUES (?,?,?,?,?)");
+  SQLStatement& del_inode_stmt = inode_repo.sql_statements.get
+    ("DELETE FROM inodes WHERE id=?");
+  SQLStatement& del_links_stmt = inode_repo.sql_statements.get
+    ("DELETE FROM links WHERE dir_id=?");
+  SQLStatement& addi_stmt = inode_repo.sql_statements.get
+   ("INSERT INTO local_inodes VALUES (?,?)");
 
   double start_t = gettime();
 
@@ -42,11 +47,11 @@ INodeRepo::save_changes()
       if (inode_ptr && inode_ptr->updated)
         {
           del_inode_stmt.reset();
-          del_inode_stmt.bind_str (1, inode_ptr->id);
+          del_inode_stmt.bind_text (1, inode_ptr->id);
           del_inode_stmt.step();
 
           del_links_stmt.reset();
-          del_links_stmt.bind_str (1, inode_ptr->id);
+          del_links_stmt.bind_text (1, inode_ptr->id);
           del_links_stmt.step();
 
           inodes_saved++;
@@ -59,7 +64,7 @@ INodeRepo::save_changes()
   for (map<ino_t, string>::const_iterator ni = new_inodes.begin(); ni != new_inodes.end(); ni++)
     {
       addi_stmt.reset();
-      addi_stmt.bind_str (1, ni->second);
+      addi_stmt.bind_text (1, ni->second);
       addi_stmt.bind_int (2, ni->first);
       addi_stmt.step();
     }
@@ -242,22 +247,22 @@ INode::save (SQLStatement& stmt, SQLStatement& link_stmt)
     }
 
   stmt.reset();
-  stmt.bind_int (1 + INODES_VMIN, vmin);
-  stmt.bind_int (1 + INODES_VMAX, vmax);
-  stmt.bind_str (1 + INODES_ID, id);
-  stmt.bind_int (1 + INODES_UID, uid);
-  stmt.bind_int (1 + INODES_GID, gid);
-  stmt.bind_int (1 + INODES_MODE, mode);
-  stmt.bind_str (1 + INODES_TYPE, type_str);
-  stmt.bind_str (1 + INODES_HASH, hash);
-  stmt.bind_str (1 + INODES_LINK, link);
-  stmt.bind_int (1 + INODES_MAJOR, major);
-  stmt.bind_int (1 + INODES_MINOR, minor);
-  stmt.bind_int (1 + INODES_NLINK, nlink);
-  stmt.bind_int (1 + INODES_CTIME, ctime);
-  stmt.bind_int (1 + INODES_CTIME_NS, ctime_ns);
-  stmt.bind_int (1 + INODES_MTIME, mtime);
-  stmt.bind_int (1 + INODES_MTIME_NS, mtime_ns);
+  stmt.bind_int   (1 + INODES_VMIN, vmin);
+  stmt.bind_int   (1 + INODES_VMAX, vmax);
+  stmt.bind_text  (1 + INODES_ID, id);
+  stmt.bind_int   (1 + INODES_UID, uid);
+  stmt.bind_int   (1 + INODES_GID, gid);
+  stmt.bind_int   (1 + INODES_MODE, mode);
+  stmt.bind_text  (1 + INODES_TYPE, type_str);
+  stmt.bind_text  (1 + INODES_HASH, hash);
+  stmt.bind_text  (1 + INODES_LINK, link);
+  stmt.bind_int   (1 + INODES_MAJOR, major);
+  stmt.bind_int   (1 + INODES_MINOR, minor);
+  stmt.bind_int   (1 + INODES_NLINK, nlink);
+  stmt.bind_int   (1 + INODES_CTIME, ctime);
+  stmt.bind_int   (1 + INODES_CTIME_NS, ctime_ns);
+  stmt.bind_int   (1 + INODES_MTIME, mtime);
+  stmt.bind_int   (1 + INODES_MTIME_NS, mtime_ns);
   stmt.step();
 
   for (vector<LinkPtr>::iterator li = links.begin(); li != links.end(); li++)
@@ -267,11 +272,11 @@ INode::save (SQLStatement& stmt, SQLStatement& link_stmt)
       if (!lp->deleted)
         {
           link_stmt.reset();
-          link_stmt.bind_int (1, lp->vmin);
-          link_stmt.bind_int (2, lp->vmax);
-          link_stmt.bind_str (3, lp->dir_id);
-          link_stmt.bind_str (4, lp->inode_id);
-          link_stmt.bind_str (5, lp->name);
+          link_stmt.bind_int  (1, lp->vmin);
+          link_stmt.bind_int  (2, lp->vmax);
+          link_stmt.bind_text (3, lp->dir_id);
+          link_stmt.bind_text (4, lp->inode_id);
+          link_stmt.bind_text (5, lp->name);
           link_stmt.step();
         }
     }
@@ -283,31 +288,27 @@ INode::load (const string& id)
 {
   bool found = false;
 
-  sqlite3 *db = sqlite_db();
-  sqlite3_stmt *stmt_ptr = NULL;
+  SQLStatement& load_inode = inode_repo.sql_statements.get
+    ("SELECT * FROM inodes WHERE id = ? AND vmin >= 1 AND vmax <= 1;");
 
-  string sql = "SELECT * FROM inodes WHERE id = \"" + id + "\" AND vmin >= 1 AND vmax <= 1;";
-
-  debug ("sql: %s\n", sql.c_str());
   double start_t = gettime();
-  int rc = sqlite3_prepare_v2 (db, sql.c_str(), sql.size(), &stmt_ptr, NULL);
-  if (rc != SQLITE_OK)
-    return false;
+  load_inode.reset();
+  load_inode.bind_text (1, id);
 
   for (;;)
     {
-      rc = sqlite3_step (stmt_ptr);
+      int rc = load_inode.step();
       if (rc != SQLITE_ROW)
         break;
 
-      vmin     = sqlite3_column_int  (stmt_ptr, INODES_VMIN);
-      vmax     = sqlite3_column_int  (stmt_ptr, INODES_VMAX);
-      this->id = (const char *) sqlite3_column_text (stmt_ptr, INODES_ID);
-      uid      = sqlite3_column_int  (stmt_ptr, INODES_UID);
-      gid      = sqlite3_column_int  (stmt_ptr, INODES_GID);
-      mode     = sqlite3_column_int  (stmt_ptr, INODES_MODE);
+      vmin     = load_inode.column_int  (INODES_VMIN);
+      vmax     = load_inode.column_int  (INODES_VMAX);
+      this->id = load_inode.column_text (INODES_ID);
+      uid      = load_inode.column_int  (INODES_UID);
+      gid      = load_inode.column_int  (INODES_GID);
+      mode     = load_inode.column_int  (INODES_MODE);
 
-      string val = (const char *) sqlite3_column_text (stmt_ptr, INODES_TYPE);
+      string val = load_inode.column_text (INODES_TYPE);
 
       if (val == "file")
         type = FILE_REGULAR;
@@ -326,15 +327,15 @@ INode::load (const string& id)
       else
         type = FILE_NONE;
 
-      hash     = (const char *) sqlite3_column_text (stmt_ptr, INODES_HASH);
-      link     = (const char *) sqlite3_column_text (stmt_ptr, INODES_LINK);
-      major    = sqlite3_column_int  (stmt_ptr, INODES_MAJOR);
-      minor    = sqlite3_column_int  (stmt_ptr, INODES_MINOR);
-      nlink    = sqlite3_column_int  (stmt_ptr, INODES_NLINK);
-      ctime    = sqlite3_column_int  (stmt_ptr, INODES_CTIME);
-      ctime_ns = sqlite3_column_int  (stmt_ptr, INODES_CTIME_NS);
-      mtime    = sqlite3_column_int  (stmt_ptr, INODES_MTIME);
-      mtime_ns = sqlite3_column_int  (stmt_ptr, INODES_MTIME_NS);
+      hash     = load_inode.column_text (INODES_HASH);
+      link     = load_inode.column_text (INODES_LINK);
+      major    = load_inode.column_int  (INODES_MAJOR);
+      minor    = load_inode.column_int  (INODES_MINOR);
+      nlink    = load_inode.column_int  (INODES_NLINK);
+      ctime    = load_inode.column_int  (INODES_CTIME);
+      ctime_ns = load_inode.column_int  (INODES_CTIME_NS);
+      mtime    = load_inode.column_int  (INODES_MTIME);
+      mtime_ns = load_inode.column_int  (INODES_MTIME_NS);
 
       found = true;
     }
@@ -344,30 +345,25 @@ INode::load (const string& id)
   debug ("time for sql %.2f ms\n", (end_t - start_t) * 1000);
 
   // load links
-  char *sql_c = g_strdup_printf ("SELECT * FROM links WHERE dir_id = \"%s\"", id.c_str());
-  sql = sql_c;
-  g_free (sql_c);
-
-  debug ("sql: %s\n", sql.c_str());
+  SQLStatement& load_links = inode_repo.sql_statements.get
+    ("SELECT * FROM links WHERE dir_id = ?");
 
   start_t = gettime();
-  rc = sqlite3_prepare_v2 (db, sql.c_str(), sql.size(), &stmt_ptr, NULL);
-  if (rc != SQLITE_OK)
-    return false;
-
+  load_links.reset();
+  load_links.bind_text (1, id);
   for (;;)
     {
-      rc = sqlite3_step (stmt_ptr);
+      int rc = load_links.step();
       if (rc != SQLITE_ROW)
         break;
 
       Link *link = new Link();
 
-      link->vmin = sqlite3_column_int (stmt_ptr, 0);
-      link->vmax = sqlite3_column_int (stmt_ptr, 1);
-      link->dir_id = (const char *) sqlite3_column_text (stmt_ptr, 2);
-      link->inode_id = (const char *) sqlite3_column_text (stmt_ptr, 3);
-      link->name = (const char *) sqlite3_column_text (stmt_ptr, 4);
+      link->vmin = load_links.column_int (0);
+      link->vmax = load_links.column_int (1);
+      link->dir_id = load_links.column_text (2);
+      link->inode_id = load_links.column_text (3);
+      link->name = load_links.column_text (4);
 
       links.push_back (LinkPtr (link));
     }
@@ -382,8 +378,10 @@ INode::load_or_alloc_ino()
 {
   // load inode number
   ino = 0;
-  SQLStatement loadi_stmt ("SELECT * FROM local_inodes WHERE id = ?");
-  loadi_stmt.bind_str (1, id);
+  SQLStatement& loadi_stmt = inode_repo.sql_statements.get (
+    "SELECT * FROM local_inodes WHERE id = ?"
+  );
+  loadi_stmt.bind_text (1, id);
   for (;;)
     {
       int rc = loadi_stmt.step();
@@ -395,7 +393,9 @@ INode::load_or_alloc_ino()
   // need to create new entry
   if (!ino)
     {
-      SQLStatement searchi_stmt ("SELECT * FROM local_inodes WHERE ino = ?");
+      SQLStatement& searchi_stmt = inode_repo.sql_statements.get (
+        "SELECT * FROM local_inodes WHERE ino = ?"
+      );
 
       while (!ino)
         {

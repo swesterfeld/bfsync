@@ -22,6 +22,7 @@
 
 #include <sqlite3.h>
 #include <string>
+#include <map>
 
 namespace BFSync
 {
@@ -44,11 +45,21 @@ public:
   int  step();
 
   void bind_int (int pos, int value);
-  void bind_str (int pos, const std::string& str);
+  void bind_text (int pos, const std::string& str);
 
-  int column_int (int pos);
+  int          column_int (int pos);
+  std::string  column_text (int pos);
 
   bool success() const;
+};
+
+class SQLStatementStore
+{
+  std::map<std::string, SQLStatement *> stmt_map;
+public:
+  ~SQLStatementStore();
+
+  SQLStatement& get (const std::string& str);
 };
 
 }

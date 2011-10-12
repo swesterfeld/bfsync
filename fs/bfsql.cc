@@ -20,6 +20,7 @@
 #include "bfsql.hh"
 
 using std::string;
+using std::map;
 
 namespace BFSync
 {
@@ -66,7 +67,7 @@ SQLStatement::bind_int (int pos, int value)
 }
 
 void
-SQLStatement::bind_str (int pos, const string& str)
+SQLStatement::bind_text (int pos, const string& str)
 {
   int rc = sqlite3_bind_text (stmt_ptr, pos, str.c_str(), -1, SQLITE_TRANSIENT);
 
@@ -118,6 +119,33 @@ int
 SQLStatement::column_int (int pos)
 {
   return sqlite3_column_int (stmt_ptr, pos);
+}
+
+string
+SQLStatement::column_text (int pos)
+{
+  return (const char *) sqlite3_column_text (stmt_ptr, pos);
+}
+
+//---------------------------
+
+SQLStatementStore::~SQLStatementStore()
+{
+  for (map<string, SQLStatement*>::const_iterator si = stmt_map.begin(); si != stmt_map.end(); si++)
+    {
+      if (si->second)
+        delete si->second;
+    }
+  stmt_map.clear();
+}
+
+SQLStatement&
+SQLStatementStore::get (const string& sql)
+{
+  SQLStatement*& result = stmt_map[sql];
+  if (!result)
+    result = new SQLStatement (sql);
+  return *result;
 }
 
 }
