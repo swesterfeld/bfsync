@@ -25,6 +25,7 @@
 #include <sqlite3.h>
 #include <pthread.h>
 #include <glib.h>
+#include <sys/stat.h>
 
 #include <string>
 #include <vector>
@@ -153,6 +154,8 @@ struct Options {
 
   static Options *the();
 };
+
+int bfsync_getattr (const char *path_arg, struct stat *stbuf);
 
 }
 
