@@ -35,6 +35,7 @@ struct ID
   std::string str() const;
 
   static ID gen_new();
+  static ID root();
 };
 
 inline bool

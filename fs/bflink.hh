@@ -21,6 +21,7 @@
 #define BFSYNC_LINK_HH
 
 #include "bfinode.hh"
+#include "bfidhash.hh"
 
 namespace BFSync
 {
@@ -28,8 +29,8 @@ namespace BFSync
 struct Link
 {
   int          vmin, vmax;
-  std::string  dir_id;
-  std::string  inode_id;
+  ID           dir_id;
+  ID           inode_id;
   std::string  name;
   bool         deleted;
   bool         updated;

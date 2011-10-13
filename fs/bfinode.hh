@@ -28,6 +28,7 @@
 
 #include "bfsql.hh"
 #include "bfsyncfs.hh"
+#include "bfidhash.hh"
 
 namespace BFSync
 {
@@ -49,8 +50,8 @@ class INodePtr
   INode *ptr;
   INodePtr();
 public:
-  INodePtr (const std::string&  id);
-  INodePtr (fuse_context       *context);
+  INodePtr (const ID&      id);
+  INodePtr (fuse_context  *context);
 
   operator bool() const
   {
@@ -83,7 +84,7 @@ struct INode
   int           vmin;
   int           vmax;
 
-  std::string   id;
+  ID            id;
   uid_t         uid;
   gid_t         gid;
   size_t        size;
@@ -108,7 +109,7 @@ struct INode
   ~INode();
 
   bool          save (SQLStatement& inode_stmt, SQLStatement& link_stmt);
-  bool          load (const std::string& id);
+  bool          load (const ID& id);
 
   void          set_mtime_ctime_now();
   void          set_ctime_now();
@@ -138,10 +139,10 @@ INodePtr::update() const
 class INodeRepo
 {
 public:
-  std::map<std::string, INode*> cache;
-  std::map<ino_t, std::string>  new_inodes;
-  Mutex                         mutex;
-  SQLStatementStore             sql_statements;
+  std::map<ID, INode*> cache;
+  std::map<ino_t, ID>  new_inodes;
+  Mutex                mutex;
+  SQLStatementStore    sql_statements;
 
   void save_changes();
 

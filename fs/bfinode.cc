@@ -41,17 +41,17 @@ INodeRepo::save_changes()
 
   int inodes_saved = 0;
   inode_stmt.begin();
-  for (map<string, INode*>::iterator ci = cache.begin(); ci != cache.end(); ci++)
+  for (map<ID, INode*>::iterator ci = cache.begin(); ci != cache.end(); ci++)
     {
       INode *inode_ptr = ci->second;
       if (inode_ptr && inode_ptr->updated)
         {
           del_inode_stmt.reset();
-          del_inode_stmt.bind_text (1, inode_ptr->id);
+          del_inode_stmt.bind_text (1, inode_ptr->id.str());
           del_inode_stmt.step();
 
           del_links_stmt.reset();
-          del_links_stmt.bind_text (1, inode_ptr->id);
+          del_links_stmt.bind_text (1, inode_ptr->id.str());
           del_links_stmt.step();
 
           inodes_saved++;
@@ -61,10 +61,10 @@ INodeRepo::save_changes()
     }
 
   // write newly allocated inodes to local_inodes table
-  for (map<ino_t, string>::const_iterator ni = new_inodes.begin(); ni != new_inodes.end(); ni++)
+  for (map<ino_t, ID>::const_iterator ni = new_inodes.begin(); ni != new_inodes.end(); ni++)
     {
       addi_stmt.reset();
-      addi_stmt.bind_text (1, ni->second);
+      addi_stmt.bind_text (1, ni->second.str());
       addi_stmt.bind_int (2, ni->first);
       addi_stmt.step();
     }
@@ -101,7 +101,7 @@ const int INODES_CTIME_NS = 13;
 const int INODES_MTIME    = 14;
 const int INODES_MTIME_NS = 15;
 
-INodePtr::INodePtr (const string& id) :
+INodePtr::INodePtr (const ID& id) :
   ptr (NULL)
 {
   inode_repo.mutex.lock();
@@ -249,7 +249,7 @@ INode::save (SQLStatement& stmt, SQLStatement& link_stmt)
   stmt.reset();
   stmt.bind_int   (1 + INODES_VMIN, vmin);
   stmt.bind_int   (1 + INODES_VMAX, vmax);
-  stmt.bind_text  (1 + INODES_ID, id);
+  stmt.bind_text  (1 + INODES_ID, id.str());
   stmt.bind_int   (1 + INODES_UID, uid);
   stmt.bind_int   (1 + INODES_GID, gid);
   stmt.bind_int   (1 + INODES_MODE, mode);
@@ -274,8 +274,8 @@ INode::save (SQLStatement& stmt, SQLStatement& link_stmt)
           link_stmt.reset();
           link_stmt.bind_int  (1, lp->vmin);
           link_stmt.bind_int  (2, lp->vmax);
-          link_stmt.bind_text (3, lp->dir_id);
-          link_stmt.bind_text (4, lp->inode_id);
+          link_stmt.bind_text (3, lp->dir_id.str());
+          link_stmt.bind_text (4, lp->inode_id.str());
           link_stmt.bind_text (5, lp->name);
           link_stmt.step();
         }
@@ -284,7 +284,7 @@ INode::save (SQLStatement& stmt, SQLStatement& link_stmt)
 }
 
 bool
-INode::load (const string& id)
+INode::load (const ID& id)
 {
   bool found = false;
 
@@ -293,7 +293,7 @@ INode::load (const string& id)
 
   double start_t = gettime();
   load_inode.reset();
-  load_inode.bind_text (1, id);
+  load_inode.bind_text (1, id.str());
 
   for (;;)
     {
@@ -350,7 +350,7 @@ INode::load (const string& id)
 
   start_t = gettime();
   load_links.reset();
-  load_links.bind_text (1, id);
+  load_links.bind_text (1, id.str());
   for (;;)
     {
       int rc = load_links.step();
@@ -370,7 +370,8 @@ INode::load (const string& id)
   debug ("time for sql %.2f ms\n", (gettime() - start_t) * 1000);
 
   load_or_alloc_ino();
-  return found;
+  updated = false;
+  return true;
 }
 
 void
@@ -381,7 +382,8 @@ INode::load_or_alloc_ino()
   SQLStatement& loadi_stmt = inode_repo.sql_statements.get (
     "SELECT * FROM local_inodes WHERE id = ?"
   );
-  loadi_stmt.bind_text (1, id);
+  loadi_stmt.reset();
+  loadi_stmt.bind_text (1, id.str());
   for (;;)
     {
       int rc = loadi_stmt.step();
@@ -400,7 +402,8 @@ INode::load_or_alloc_ino()
       while (!ino)
         {
           ino = g_random_int_range (1, 2000 * 1000 * 1000);  // 1 .. ~ 2^31
-          if (!inode_repo.new_inodes[ino].empty())
+          map<ino_t, ID>::const_iterator ni = inode_repo.new_inodes.find (ino);
+          if (ni != inode_repo.new_inodes.end())  // recently allocated & in use
             ino = 0;
           else
             {
@@ -421,7 +424,7 @@ INode::file_path() const
 {
   FileStatus fs = file_status();
   if (fs == FS_CHANGED)
-    return Options::the()->repo_path + "/new/" + id;
+    return Options::the()->repo_path + "/new/" + id.str();
 
   if (fs == FS_RDONLY)
     return make_object_filename (hash);
@@ -443,7 +446,7 @@ INode::copy_on_write()
 {
   if (file_status() == FS_RDONLY && type == FILE_REGULAR)
     {
-      string new_name = Options::the()->repo_path + "/new/" + id;
+      string new_name = Options::the()->repo_path + "/new/" + id.str();
       string old_name = file_path();
 
       int old_fd = open (old_name.c_str(), O_RDONLY);

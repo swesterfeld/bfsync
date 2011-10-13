@@ -106,4 +106,18 @@ ID::gen_new()
   return result;
 }
 
+ID
+ID::root()
+{
+  ID result;
+
+  result.a = 0;
+  result.b = 0;
+  result.c = 0;
+  result.d = 0;
+  result.e = 0;
+
+  return result;
+}
+
 }

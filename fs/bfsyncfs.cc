@@ -282,7 +282,7 @@ enum IFPStatus { IFP_OK, IFP_ERR_NOENT, IFP_ERR_PERM };
 INodePtr
 inode_from_path (const string& path, IFPStatus& status)
 {
-  INodePtr inode ("root");
+  INodePtr inode (ID::root());
 
   SplitPath s_path = SplitPath (path.c_str());
   const char *pi;
@@ -304,7 +304,7 @@ inode_from_path (const string& path, IFPStatus& status)
   return inode;
 }
 
-static int
+int
 bfsync_getattr (const char *path_arg, struct stat *stbuf)
 {
   const string path = path_arg;
@@ -356,7 +356,7 @@ bfsync_getattr (const char *path_arg, struct stat *stbuf)
         {
           // take size from new file
           struct stat new_stat;
-          string new_filename = options.repo_path + "/new/" + inode->id;
+          string new_filename = options.repo_path + "/new/" + inode->id.str();
           lstat (new_filename.c_str(), &new_stat);
 
           stbuf->st_size = new_stat.st_size;
@@ -624,7 +624,7 @@ bfsync_mknod (const char *path, mode_t mode, dev_t dev)
 
   if (S_ISREG (mode))
     {
-      string filename = options.repo_path + "/new/" + inode->id;
+      string filename = options.repo_path + "/new/" + inode->id.str();
       int rc = mknod (filename.c_str(), 0600, dev);
       if (rc == 0)
         {

@@ -153,14 +153,30 @@ perf_getattr()
   system ("touch mnt/xtest/ytest/ztest/foo");
 
   struct stat st;
-  const double start_t = gettime();
-  const size_t N = 100 * 1000;
+
+  // stat on builtin file
+  double start_t = gettime();
+  const size_t NI = 300 * 1000;
+  for (size_t i = 0; i < NI; i++)
+    {
+      int r = stat ("mnt/.bfsync/info", &st);
+      assert (r == 0);
+    }
+  double end_t = gettime();
+
+  print_result ("info_stat/sec", NI / (end_t - start_t));
+
+  // stat on real file
+  start_t = gettime();
+
+  const size_t N = 300 * 1000;
   for (size_t i = 0; i < N; i++)
     {
       int r = stat ("mnt/xtest/ytest/ztest/foo", &st);
       assert (r == 0);
     }
-  const double end_t = gettime();
+
+  end_t = gettime();
 
   print_result ("stat/sec", N / (end_t - start_t));
 }
@@ -211,7 +227,6 @@ main()
   perf_id_hash();
   perf_str2id();
   perf_id2str();
-
   FILE *test = fopen ("mnt/.bfsync/info", "r");
   if (!test)
     {
