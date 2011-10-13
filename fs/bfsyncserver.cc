@@ -303,6 +303,20 @@ Server::handle_client (int client_fd)
                   if (ok)
                     result.push_back ("ok");
                 }
+              else if (request[0] == "load-all-inodes")
+                {
+                  double t = gettime();
+                  SQLStatement stmt ("SELECT * FROM inodes");
+                  while (stmt.step() == SQLITE_ROW)
+                    {
+                      INodePtr ptr (stmt.column_text (2));
+                    }
+                  double te = gettime();
+
+                  char *msg = g_strdup_printf ("loading took %.2f ms", (te - t) * 1000);
+                  result.push_back (msg);
+                  g_free (msg);
+                }
             }
           vector<char> rbuffer;
           encode (result, rbuffer);

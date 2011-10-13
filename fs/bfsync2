@@ -508,6 +508,20 @@ def cmd_remote_send():
   tl.receive_list (sys.stdin)
   tl.send_files (sys.stdout, False)
 
+def cmd_debug_load_all_inodes():
+  bfsync_dir = find_bfsync_dir()
+
+  bfsync_info = parse_config (bfsync_dir + "/info")
+
+  repo_path = bfsync_info.get ("repo-path")
+  if len (repo_path) != 1:
+    raise Exception ("bad repo path")
+  repo_path = repo_path[0]
+
+  os.chdir (repo_path)
+  server_conn = ServerConn (repo_path)
+  print server_conn.process_call (["load-all-inodes"])
+
 command = None
 command_func = None
 arg_iter = sys.argv[1:].__iter__()
@@ -523,6 +537,7 @@ for arg in arg_iter:
     ( "push",           cmd_push, 0),
     ( "remote-ls",      cmd_remote_ls, 1),
     ( "remote-send",    cmd_remote_send, 0),
+    ( "debug-load-all-inodes",  cmd_debug_load_all_inodes, 0),
   ]
   parse_ok = False
   if command == None:
