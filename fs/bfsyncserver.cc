@@ -20,6 +20,7 @@
 #include "bfsyncserver.hh"
 #include "bfsyncfs.hh"
 #include "bfinode.hh"
+#include "bfsyncfs.hh"
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -316,6 +317,31 @@ Server::handle_client (int client_fd)
                   char *msg = g_strdup_printf ("loading took %.2f ms", (te - t) * 1000);
                   result.push_back (msg);
                   g_free (msg);
+                }
+              else if (request[0] == "perf-getattr")
+                {
+                  string filename = request[1];
+                  int    count    = atoi (request[2].c_str());
+
+                  struct stat st;
+                  double time = gettime();
+                  for (int i = 0; i < count; i++)
+                    {
+                      int rc = bfsync_getattr (filename.c_str(), &st);
+                      if (rc != 0)
+                        {
+                          result.push_back ("fail");
+                          break;
+                        }
+                    }
+                  time = gettime() - time;
+                  if (!result.size())
+                    {
+                      char *msg = g_strdup_printf ("getattr took %.2f ms <=> %.f getattr/s",
+                                                   time * 1000, count / time);
+                      result.push_back (msg);
+                      g_free (msg);
+                    }
                 }
             }
           vector<char> rbuffer;
