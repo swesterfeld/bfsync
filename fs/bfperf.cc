@@ -9,6 +9,7 @@
 #include <map>
 
 #include "bfsyncfs.hh"
+#include "bfidhash.hh"
 
 using std::string;
 using std::vector;
@@ -82,54 +83,13 @@ perf_id_str()
   print_result ("id-str/sec", N / (end_t - start_t));
 }
 
-struct ID
-{
-  guint32 a, b, c, d, e;
-};
-
-inline bool
-operator< (const ID& x, const ID& y)
-{
-  if (x.a != y.a)
-    return x.a < y.a;
-
-  if (x.b != y.b)
-    return x.b < y.b;
-
-  if (x.c != y.c)
-    return x.c < y.c;
-
-  if (x.d != y.d)
-    return x.d < y.d;
-
-  return x.e < y.e;
-}
-
-inline bool
-operator== (const ID& x, const ID& y)
-{
-  return (x.a == y.a) && (x.b == y.b) && (x.c == y.c) && (x.d == y.d) && (x.e == y.e);
-}
-
-ID
-gen_id()
-{
-  ID result;
-  result.a = g_random_int();
-  result.b = g_random_int();
-  result.c = g_random_int();
-  result.d = g_random_int();
-  result.e = g_random_int();
-  return result;
-}
-
 void
 perf_id()
 {
   vector<ID> ids;
 
   for (size_t i = 0; i < 300000; i++)   // 300000 ~= crude estimate for average files on a linux system
-    ids.push_back (gen_id());
+    ids.push_back (ID::gen_new());
 
   map<ID,int> id_map;
   for (size_t i = 0; i < ids.size(); i++)
@@ -155,7 +115,7 @@ perf_id_hash()
   vector<ID> ids;
 
   for (size_t i = 0; i < 300000; i++)   // 300000 ~= crude estimate for average files on a linux system
-    ids.push_back (gen_id());
+    ids.push_back (ID::gen_new());
 
   vector< vector<ID> > hmap (49999); // prime
   for (size_t i = 0; i < ids.size(); i++)
@@ -205,6 +165,43 @@ perf_getattr()
   print_result ("stat/sec", N / (end_t - start_t));
 }
 
+void
+perf_str2id()
+{
+  vector<string> ids;
+  for (size_t i = 0; i < 300000; i++)   // 300000 ~= crude estimate for average files on a linux system
+    ids.push_back (gen_id_str());
+
+  const double start_t = gettime();
+  const size_t N = 1000 * 1000;
+  for (size_t i = 0; i < N; i++)
+    {
+      BFSync::ID id (ids[i % ids.size()]);
+    }
+  const double end_t = gettime();
+
+  print_result ("str2id/sec", N / (end_t - start_t));
+}
+
+void
+perf_id2str()
+{
+  vector<ID> ids;
+  for (size_t i = 0; i < 300000; i++)   // 300000 ~= crude estimate for average files on a linux system
+    ids.push_back (ID (gen_id_str()));
+
+  const double start_t = gettime();
+  const size_t N = 1000 * 1000;
+  for (size_t i = 0; i < N; i++)
+    {
+      string sid = ids[i % ids.size()].str();
+    }
+  const double end_t = gettime();
+
+  print_result ("id2str/sec", N / (end_t - start_t));
+}
+
+
 int
 main()
 {
@@ -212,6 +209,8 @@ main()
   perf_id_str();
   perf_id();
   perf_id_hash();
+  perf_str2id();
+  perf_id2str();
 
   FILE *test = fopen ("mnt/.bfsync/info", "r");
   if (!test)
