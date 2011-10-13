@@ -1,5 +1,9 @@
 #include <sys/time.h>
 #include <assert.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include <vector>
 #include <map>
@@ -26,6 +30,12 @@ gen_id_str()
   return id;
 }
 
+static void
+print_result (const string& name, double value)
+{
+  printf ("%-12s%10.f\n", (name + ":").c_str(), value);
+}
+
 void
 perf_split()
 {
@@ -43,7 +53,7 @@ perf_split()
 
   double end_t = gettime();
 
-  printf ("splits/sec:  %10.f\n", N / (end_t - start_t));
+  print_result ("splits/sec", N / (end_t - start_t));
 }
 
 void
@@ -69,7 +79,7 @@ perf_id_str()
 
   const double end_t = gettime();
 
-  printf ("id-str/sec:  %10.f\n", N / (end_t - start_t));
+  print_result ("id-str/sec", N / (end_t - start_t));
 }
 
 struct ID
@@ -136,7 +146,7 @@ perf_id()
 
   const double end_t = gettime();
 
-  printf ("id/sec:      %10.f\n", N / (end_t - start_t));
+  print_result ("id/sec", N / (end_t - start_t));
 }
 
 void
@@ -173,7 +183,26 @@ perf_id_hash()
 
   const double end_t = gettime();
 
-  printf ("hash_id/sec: %10.f\n", N / (end_t - start_t));
+  print_result ("hash_id/sec", N / (end_t - start_t));
+}
+
+void
+perf_getattr()
+{
+  system ("mkdir -p mnt/xtest/ytest/ztest");
+  system ("touch mnt/xtest/ytest/ztest/foo");
+
+  struct stat st;
+  const double start_t = gettime();
+  const size_t N = 100 * 1000;
+  for (size_t i = 0; i < N; i++)
+    {
+      int r = stat ("mnt/xtest/ytest/ztest/foo", &st);
+      assert (r == 0);
+    }
+  const double end_t = gettime();
+
+  print_result ("stat/sec", N / (end_t - start_t));
 }
 
 int
@@ -184,5 +213,12 @@ main()
   perf_id();
   perf_id_hash();
 
+  FILE *test = fopen ("mnt/.bfsync/info", "r");
+  if (!test)
+    {
+      printf ("bfsyncfs not mounted => no tests started\n");
+      return 0;
+    }
+  perf_getattr();
   return 0;
 }
