@@ -188,7 +188,6 @@ def cmd_commit():
     filename = os.path.join (repo_path, "new", id[0:2], id[2:])
     hash_list += [ filename ]
     file_list += [ (filename, id) ]
-  c.close()
 
   hash_cache.hash_all (hash_list)
   status_line.cleanup()
@@ -209,6 +208,14 @@ def cmd_commit():
     files_added += items / 2
     status_line.update ("file %d/%d" % (files_added, files_total))
   status_line.cleanup()
+
+  VERSION = 1
+  c.execute ('''UPDATE inodes SET vmax=? WHERE vmax = ?''', (VERSION + 1, VERSION))
+  c.execute ('''UPDATE links SET vmax=? WHERE vmax = ?''', (VERSION + 1, VERSION))
+  c.execute ('''UPDATE history SET message="commit message", author="author" WHERE version=?''', str (VERSION))
+  c.execute ('''INSERT INTO history VALUES (?,?,?,?)''', (VERSION + 1, "", "", 0))
+  conn.commit()
+  c.close()
   return
 
   # add/remove files to/from git tree
