@@ -125,24 +125,10 @@ INodePtr::INodePtr (const ID& id) :
   inode_repo.mutex.unlock();
 }
 
-static string
-gen_id()
-{
-  string id;
-  // globally (across all versions/hosts) uniq id, with the same amount of information as a SHA1-hash
-  while (id.size() < 40)
-    {
-      char hex[32];
-      sprintf (hex, "%08x", g_random_int());
-      id += hex;
-    }
-  return id;
-}
-
 INodePtr::INodePtr (fuse_context *context)
 {
   ptr = new INode();
-  ptr->id = gen_id();
+  ptr->id = ID::gen_new();
   ptr->uid = context->uid;
   ptr->gid = context->gid;
   ptr->nlink = 0;
@@ -302,7 +288,7 @@ INode::load (const ID& id)
 
       vmin     = load_inode.column_int  (INODES_VMIN);
       vmax     = load_inode.column_int  (INODES_VMAX);
-      this->id = load_inode.column_text (INODES_ID);
+      this->id = load_inode.column_id   (INODES_ID);
       uid      = load_inode.column_int  (INODES_UID);
       gid      = load_inode.column_int  (INODES_GID);
       mode     = load_inode.column_int  (INODES_MODE);
@@ -357,8 +343,8 @@ INode::load (const ID& id)
 
       link->vmin = load_links.column_int (0);
       link->vmax = load_links.column_int (1);
-      link->dir_id = load_links.column_text (2);
-      link->inode_id = load_links.column_text (3);
+      link->dir_id = load_links.column_id (2);
+      link->inode_id = load_links.column_id (3);
       link->name = load_links.column_text (4);
 
       links[link->name] = LinkPtr (link);

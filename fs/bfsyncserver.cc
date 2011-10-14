@@ -310,7 +310,7 @@ Server::handle_client (int client_fd)
                   SQLStatement stmt ("SELECT * FROM inodes");
                   while (stmt.step() == SQLITE_ROW)
                     {
-                      INodePtr ptr (stmt.column_text (2));
+                      INodePtr ptr (stmt.column_id (2));
                     }
                   double te = gettime();
 

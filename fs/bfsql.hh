@@ -23,6 +23,7 @@
 #include <sqlite3.h>
 #include <string>
 #include <map>
+#include "bfidhash.hh"
 
 namespace BFSync
 {
@@ -47,9 +48,21 @@ public:
   void bind_int (int pos, int value);
   void bind_text (int pos, const std::string& str);
 
-  int          column_int (int pos);
-  std::string  column_text (int pos);
-
+  int
+  column_int (int pos) const
+  {
+    return sqlite3_column_int (stmt_ptr, pos);
+  }
+  std::string
+  column_text (int pos) const
+  {
+    return (const char *) sqlite3_column_text (stmt_ptr, pos);
+  }
+  ID
+  column_id (int pos) const
+  {
+    return ID ((const char *) sqlite3_column_text (stmt_ptr, pos));
+  }
   bool success() const;
 };
 

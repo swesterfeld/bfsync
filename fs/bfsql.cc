@@ -115,18 +115,6 @@ SQLStatement::commit()
     m_success = false;
 }
 
-int
-SQLStatement::column_int (int pos)
-{
-  return sqlite3_column_int (stmt_ptr, pos);
-}
-
-string
-SQLStatement::column_text (int pos)
-{
-  return (const char *) sqlite3_column_text (stmt_ptr, pos);
-}
-
 //---------------------------
 
 SQLStatementStore::~SQLStatementStore()
