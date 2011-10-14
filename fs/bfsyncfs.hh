@@ -166,11 +166,10 @@ private:
   Context (const Context& other);
 
 public:
-  Context () :
-    fc (fuse_get_context())
-  {
-  }
+  Context();
+
   const fuse_context *fc;
+  int                 version;
 };
 
 

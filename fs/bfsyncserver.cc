@@ -107,7 +107,6 @@ Server::init_socket (const string& repo_path)
       close (socket_fd);
       return false;
     }
-
   socket_ok = true;
   return true;
 }

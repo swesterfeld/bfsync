@@ -6,7 +6,8 @@ noinst_PROGRAMS = bftesthelper sqlperf bfperf
 
 lib_LTLIBRARIES = libbfsync.la
 
-libbfsync_la_SOURCES = bfsyncfs.cc bflink.cc bfinode.cc bfleakdebugger.cc bfsql.cc bfsyncserver.cc bfidhash.cc
+libbfsync_la_SOURCES = bfsyncfs.cc bflink.cc bfinode.cc bfleakdebugger.cc bfsql.cc bfsyncserver.cc bfidhash.cc \
+                       bfhistory.cc
 libbfsync_la_LIBADD = $(GLIB_LIBS) $(FUSE_LIBS)
 
 bfsyncfs_SOURCES = bfmain.cc

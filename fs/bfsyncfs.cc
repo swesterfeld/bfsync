@@ -21,6 +21,7 @@
 #include "bflink.hh"
 #include "bfsyncserver.hh"
 #include "bfsyncfs.hh"
+#include "bfhistory.hh"
 #include <sqlite3.h>
 
 #include <sys/time.h>
@@ -273,6 +274,12 @@ FSLock::FSLock (LockType lock_type) :
 FSLock::~FSLock()
 {
   lock_state.unlock (lock_type);
+}
+
+Context::Context () :
+  fc (fuse_get_context()),
+  version (History::the()->current_version())
+{
 }
 
 enum IFPStatus { IFP_OK, IFP_ERR_NOENT, IFP_ERR_PERM };
@@ -688,10 +695,10 @@ bfsync_chmod (const char *name, mode_t mode)
         return -EACCES;
     }
 
-  if (fuse_get_context()->uid != 0 && fuse_get_context()->uid != inode->uid)
+  if (ctx.fc->uid != 0 && ctx.fc->uid != inode->uid)
     return -EPERM;
 
-  if (fuse_get_context()->uid != 0 && fuse_get_context()->gid != inode->gid)
+  if (ctx.fc->uid != 0 && ctx.fc->gid != inode->gid)
     mode &= ~S_ISGID;
 
   inode.update()->mode = mode;
@@ -715,7 +722,7 @@ bfsync_chown (const char *name, uid_t uid, gid_t gid)
         return -EACCES;
     }
 
-  uid_t context_uid = fuse_get_context()->uid;
+  uid_t context_uid = ctx.fc->uid;
   bool  root_user = (context_uid == 0);
 
   if (inode->uid == uid)   // check if this is a nop (change uid to same value)
@@ -923,7 +930,7 @@ bfsync_rmdir (const char *name)
   // sticky directory
   if (inode_dir->mode & S_ISVTX)
     {
-      const uid_t uid = fuse_get_context()->uid;
+      const uid_t uid = ctx.fc->uid;
 
       if (uid != 0 && inode_dir->uid != uid && inode->uid != uid)
         return -EACCES;
@@ -977,7 +984,7 @@ bfsync_rename (const char *old_path, const char *new_path)
   // sticky old directory
   if (inode_old_dir->mode & S_ISVTX)
     {
-      const uid_t uid = fuse_get_context()->uid;
+      const uid_t uid = ctx.fc->uid;
 
       if (uid != 0 && inode_old_dir->uid != uid && inode_old->uid != uid)
         return -EACCES;
@@ -1236,35 +1243,8 @@ bfsyncfs_main (int argc, char **argv)
       printf ("bfsyncfs: error opening db: %d\n", rc);
       return 1;
     }
-  int current_version = -1;
-  sqlite3_stmt *stmt_ptr = NULL;
-  string query = "SELECT * FROM history";
-  rc = sqlite3_prepare_v2 (sqlite_db(), query.c_str(), query.size(), &stmt_ptr, NULL);
-
-  if (rc != SQLITE_OK)
-    {
-      printf ("bfsyncfs: error running db query: %d\n", rc);
-      return 1;
-    }
-  for (;;)
-    {
-      rc = sqlite3_step (stmt_ptr);
-      if (rc != SQLITE_ROW)
-        break;
-      int version = sqlite3_column_int (stmt_ptr, 0);
-      current_version = max (version, current_version);
-    }
-  if (rc != SQLITE_DONE)
-    {
-      printf ("bfsyncfs: stmt return %d\n", rc);
-      return 1;
-    }
-  if (current_version == -1)
-    {
-      printf ("bfsyncfs: find current version in history table failed\n");
-      return 1;
-    }
-  debug ("current version is %d\n", current_version);
+  History::the()->read();
+  int current_version = History::the()->current_version();
 
   int fuse_rc = fuse_main (my_argc, my_argv, &bfsync_oper, NULL);
 
