@@ -16,6 +16,7 @@ try:
   f = open (mount_point + "/.bfsync/info")
   f.close()
   subprocess.call (["fusermount", "-u", mount_point])
+  print "bfsyncfs stopped."
 except:
   pass # not mounted
 
