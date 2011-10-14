@@ -42,18 +42,57 @@ public:
   void begin();
   void commit();
 
-  void reset();
-  int  step();
+  void
+  reset()
+  {
+    int rc = sqlite3_reset (stmt_ptr);
 
-  void bind_int (int pos, int value);
-  void bind_text (int pos, const std::string& str);
+    if (rc != SQLITE_OK)
+      m_success = false;
+  }
 
+  int
+  step()
+  {
+    int rc = sqlite3_step (stmt_ptr);
+
+    if (rc != SQLITE_DONE)
+      m_success = false;
+    return rc;
+  }
+
+  bool
+  success() const
+  {
+    return m_success;
+  }
+
+  // bind
+  void
+  bind_int (int pos, int value)
+  {
+    int rc = sqlite3_bind_int (stmt_ptr, pos, value);
+
+    if (rc != SQLITE_OK)
+      m_success = false;
+  }
+
+  void
+  bind_text (int pos, const std::string& str)
+  {
+    int rc = sqlite3_bind_text (stmt_ptr, pos, str.c_str(), -1, SQLITE_TRANSIENT);
+
+    if (rc != SQLITE_OK)
+      m_success = false;
+  }
+
+  // columns
   int
   column_int (int pos) const
   {
     return sqlite3_column_int (stmt_ptr, pos);
   }
-  std::string
+  const char*
   column_text (int pos) const
   {
     return (const char *) sqlite3_column_text (stmt_ptr, pos);
@@ -63,7 +102,6 @@ public:
   {
     return ID ((const char *) sqlite3_column_text (stmt_ptr, pos));
   }
-  bool success() const;
 };
 
 class SQLStatementStore

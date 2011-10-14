@@ -48,49 +48,6 @@ SQLStatement::SQLStatement (const string& sql) :
     m_success = false;
 }
 
-void
-SQLStatement::reset()
-{
-  int rc = sqlite3_reset (stmt_ptr);
-
-  if (rc != SQLITE_OK)
-    m_success = false;
-}
-
-void
-SQLStatement::bind_int (int pos, int value)
-{
-  int rc = sqlite3_bind_int (stmt_ptr, pos, value);
-
-  if (rc != SQLITE_OK)
-    m_success = false;
-}
-
-void
-SQLStatement::bind_text (int pos, const string& str)
-{
-  int rc = sqlite3_bind_text (stmt_ptr, pos, str.c_str(), -1, SQLITE_TRANSIENT);
-
-  if (rc != SQLITE_OK)
-    m_success = false;
-}
-
-int
-SQLStatement::step()
-{
-  int rc = sqlite3_step (stmt_ptr);
-
-  if (rc != SQLITE_DONE)
-    m_success = false;
-  return rc;
-}
-
-bool
-SQLStatement::success() const
-{
-  return m_success;
-}
-
 SQLStatement::~SQLStatement()
 {
   // finalize
