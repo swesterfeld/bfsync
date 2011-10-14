@@ -358,12 +358,16 @@ Server::handle_client (int client_fd)
 }
 
 bool
-Server::add_file (const string& filename, const string& hash, string& error)
+Server::add_file (const string& id, const string& hash, string& error)
 {
-#if OLD
-  GitFilePtr gf (filename);
+  INodePtr inode (id);
+  if (!inode)
+    {
+      error = "inode '" + id + "' not found";
+      return false;
+    }
 
-  string new_filename = Options::the()->repo_path + "/new/" + filename;
+  string new_filename = inode->new_file_path();
   string object_filename = make_object_filename (hash);
 
   struct stat stat, obj_stat, d_stat;
@@ -373,14 +377,8 @@ Server::add_file (const string& filename, const string& hash, string& error)
       return false;
     }
 
-  if (!gf)
-    {
-      error = "can't parse git file for '" + filename + "'";
-      return false;
-    }
-
-  gf.update()->hash = hash;
-  gf.update()->size = stat.st_size;
+  inode.update()->hash = hash;
+  inode.update()->size = stat.st_size;
 
   if (lstat (object_filename.c_str(), &obj_stat) == 0)    // hash is already known
     {
@@ -416,6 +414,5 @@ Server::add_file (const string& filename, const string& hash, string& error)
       error = "can't chmod 0400 file '" + object_filename + "'";
       return false;
     }
-#endif
   return true;
 }

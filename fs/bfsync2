@@ -30,6 +30,7 @@ import HashCache
 import StatusLine
 import shutil
 import argparse
+import sqlite3
 
 from utils import mkdir_recursive
 from TransferList import TransferList, TransferFile
@@ -176,55 +177,27 @@ def cmd_commit():
   server_conn = ServerConn (repo_path)
   server_conn.get_lock()
 
-  os.chdir (os.path.join (repo_path, "new"))
-  file_list = []
   hash_list = []
+  file_list = []
 
-  for dir, dirs, files in os.walk ("."):
-    for d in dirs:
-      dirname = os.path.normpath (os.path.join (dir, d))
-      if (os.path.islink (dirname)):      # symlinks to directories should be treated as links (not dirs)
-        file_list += [ (dirname, FILE_SYMLINK) ]
-      else:
-        file_list += [ (dirname, FILE_DIR) ]
-    for file in files:
-      filename = os.path.normpath (os.path.join (dir, file))
-      stat = os.lstat (filename)
-      if S_ISREG (stat.st_mode):
-        file_list += [ (filename, FILE_REGULAR) ]
-        hash_list += [ filename ]
-      else:
-        raise Exception ("file '%s' has unknown type - cannot commit" % filename)
+  conn = sqlite3.connect (os.path.join (repo_path, 'db'))
+  c = conn.cursor()
+  c.execute ('''SELECT id FROM inodes WHERE hash = "new"''')
+  for row in c:
+    id = row[0]
+    filename = os.path.join (repo_path, "new", id[0:2], id[2:])
+    hash_list += [ filename ]
+    file_list += [ (filename, id) ]
+  c.close()
 
-  os.chdir (os.path.join (repo_path, "new"))
   hash_cache.hash_all (hash_list)
   status_line.cleanup()
 
-  (fd,commit_msg_filename) = tempfile.mkstemp (prefix = "bfsync_commit_")
-  f = os.fdopen (fd, "w")
-  if commit_args.m:
-    f.write (commit_args.m)
-  f.write("\n")
-  for (filename, filetype) in file_list:
-    f.write ("# add ")
-    if (filetype == FILE_SYMLINK):
-      f.write ("symlink ")
-    elif (filetype == FILE_DIR):
-      f.write ("dir ")
-    f.write ("%s\n" % filename)
-  f.close()
-  if not commit_args.m:
-    os.system ("vim %s" % commit_msg_filename)
-  if not commit_msg_ok (commit_msg_filename):
-    os.remove (commit_msg_filename)
-    raise Exception ("commit message is empty")
-
   # add new files via BFSync::Server
   add_new_list = []
-  for (filename, filetype) in file_list:
-    if filetype == FILE_REGULAR:
-      hash = hash_cache.compute_hash (filename)
-      add_new_list += [filename, hash]
+  for (filename, id) in file_list:
+    hash = hash_cache.compute_hash (filename)
+    add_new_list += [id, hash]
 
   status_line.set_op ("ADD-NEW")
   files_added = 0
@@ -236,6 +209,7 @@ def cmd_commit():
     files_added += items / 2
     status_line.update ("file %d/%d" % (files_added, files_total))
   status_line.cleanup()
+  return
 
   # add/remove files to/from git tree
   os.chdir (os.path.join (repo_path, "git"))
