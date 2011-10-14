@@ -343,6 +343,16 @@ Server::handle_client (int client_fd)
                   result.push_back (msg);
                   g_free (msg);
                 }
+              else if (request[0] == "save-changes")
+                {
+                  if (!lock)
+                    result.push_back ("fail: save-changes requires using get-lock first");
+                  else
+                    {
+                      result.push_back ("ok");
+                      INodeRepo::the()->save_changes();
+                    }
+                }
               else if (request[0] == "perf-getattr")
                 {
                   string filename = request[1];

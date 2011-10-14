@@ -44,6 +44,15 @@ class ServerConn:
         raise Exception (result[0])
     raise Exception ("ServerConn: unable to get lock (bad response received)")
 
+  def save_changes (self):
+    result = self.process_call (["save-changes"])
+    if result and len (result) == 1:
+      if result[0] == "ok":
+        return
+      else:
+        raise Exception (result[0])
+    raise Exception ("ServerConn: unable to save changes (bad response received)")
+
   def add_new (self, new_list):
     result = self.process_call ([ "add-new" ] + new_list)
     if result and len (result) == 1:

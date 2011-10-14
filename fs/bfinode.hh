@@ -110,7 +110,7 @@ public:
   ~INode();
 
   bool          save (SQLStatement& inode_stmt, SQLStatement& link_stmt);
-  bool          load (const ID& id);
+  bool          load (const Context& ctx, const ID& id);
 
   void          set_mtime_ctime_now();
   void          set_ctime_now();

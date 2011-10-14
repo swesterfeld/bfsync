@@ -209,7 +209,13 @@ def cmd_commit():
     status_line.update ("file %d/%d" % (files_added, files_total))
   status_line.cleanup()
 
+  server_conn.save_changes()
+
   VERSION = 1
+  c.execute ('''SELECT version FROM history''')
+  for row in c:
+    VERSION = max (row[0], VERSION)
+
   c.execute ('''UPDATE inodes SET vmax=? WHERE vmax = ?''', (VERSION + 1, VERSION))
   c.execute ('''UPDATE links SET vmax=? WHERE vmax = ?''', (VERSION + 1, VERSION))
   c.execute ('''UPDATE history SET message="commit message", author="author" WHERE version=?''', str (VERSION))

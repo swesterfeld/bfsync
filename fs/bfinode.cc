@@ -125,7 +125,7 @@ INodePtr::INodePtr (const Context& ctx, const ID& id) :
   else
     {
       ptr = new INode;
-      if (!ptr->load (id))
+      if (!ptr->load (ctx, id))
         {
           delete ptr;
           ptr = NULL;
@@ -281,15 +281,17 @@ INode::save (SQLStatement& stmt, SQLStatement& link_stmt)
 }
 
 bool
-INode::load (const ID& id)
+INode::load (const Context& ctx, const ID& id)
 {
   bool found = false;
 
   SQLStatement& load_inode = inode_repo.sql_statements.get
-    ("SELECT * FROM inodes WHERE id = ? AND vmin >= 1 AND vmax <= 1;");
+    ("SELECT * FROM inodes WHERE id = ? AND ? >= vmin AND ? <= vmax");
 
   load_inode.reset();
   load_inode.bind_text (1, id.str());
+  load_inode.bind_int (2, ctx.version);
+  load_inode.bind_int (3, ctx.version);
 
   for (;;)
     {

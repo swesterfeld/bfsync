@@ -288,6 +288,11 @@ INodePtr
 inode_from_path (const Context& ctx, const string& path, IFPStatus& status)
 {
   INodePtr inode (ctx, ID::root());
+  if (!inode)
+    {
+      printf ("root not found\n");
+      return INodePtr::null();
+    }
 
   SplitPath s_path = SplitPath (path.c_str());
   const char *pi;
