@@ -287,7 +287,7 @@ enum IFPStatus { IFP_OK, IFP_ERR_NOENT, IFP_ERR_PERM };
 INodePtr
 inode_from_path (const Context& ctx, const string& path, IFPStatus& status)
 {
-  INodePtr inode (ID::root());
+  INodePtr inode (ctx, ID::root());
 
   SplitPath s_path = SplitPath (path.c_str());
   const char *pi;
@@ -298,7 +298,7 @@ inode_from_path (const Context& ctx, const string& path, IFPStatus& status)
           status = IFP_ERR_PERM;
           return INodePtr::null();
         }
-      inode = inode->get_child (pi);
+      inode = inode->get_child (ctx, pi);
       if (!inode)
         {
           status = IFP_ERR_NOENT;
@@ -862,7 +862,7 @@ bfsync_unlink (const char *name)
     }
 
   string filename = get_basename (name);
-  if (!inode_dir.update()->unlink (filename))
+  if (!inode_dir.update()->unlink (ctx, filename))
     return -ENOENT;
 
   inode.update()->set_ctime_now();
@@ -943,7 +943,7 @@ bfsync_rmdir (const char *name)
       return -ENOTEMPTY;
 
   string dirname = get_basename (name);
-  if (!inode_dir.update()->unlink (dirname))
+  if (!inode_dir.update()->unlink (ctx, dirname))
     return -ENOENT;
 
   inode_dir.update()->set_mtime_ctime_now();
@@ -1004,10 +1004,10 @@ bfsync_rename (const char *old_path, const char *new_path)
     }
 
   if (inode_new)   // rename-replace
-    inode_new_dir.update()->unlink (get_basename (new_path));
+    inode_new_dir.update()->unlink (ctx, get_basename (new_path));
 
   inode_new_dir.update()->add_link (inode_old, get_basename (new_path));
-  inode_old_dir.update()->unlink (get_basename (old_path));
+  inode_old_dir.update()->unlink (ctx, get_basename (old_path));
   inode_old.update()->set_ctime_now();
 
   return 0;

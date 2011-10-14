@@ -48,7 +48,7 @@ class INodePtr
   INode *ptr;
   INodePtr();
 public:
-  INodePtr (const ID&      id);
+  INodePtr (const Context& ctx, const ID& id);
   INodePtr (const Context& ctx);
 
   operator bool() const
@@ -120,7 +120,7 @@ public:
   std::string   file_path() const;
   void          copy_on_write();
   void          add_link (INodePtr to, const std::string& name);
-  bool          unlink (const std::string& name);
+  bool          unlink (const Context& ctx, const std::string& name);
 
   bool          read_perm_ok (const Context& ctx) const;
   bool          write_perm_ok (const Context& ctx) const;
@@ -128,7 +128,7 @@ public:
 
   void          load_or_alloc_ino();
   void          get_child_names (std::vector<std::string>& names) const;
-  INodePtr      get_child (const std::string& name) const;
+  INodePtr      get_child (const Context& ctx, const std::string& name) const;
 };
 
 inline INode*
@@ -140,11 +140,14 @@ INodePtr::update() const
 
 class INodeRepo
 {
+private:
+  std::map<int, std::map<ID, INode*> > cache;
+
 public:
-  std::map<ID, INode*> cache;
-  std::map<ino_t, ID>  new_inodes;
-  Mutex                mutex;
-  SQLStatementStore    sql_statements;
+  std::map<ino_t, ID>   new_inodes;
+  Mutex                 mutex;
+  SQLStatementStore     sql_statements;
+  std::map<ID, INode*>& get_cache (const Context& ctx);
 
   void save_changes();
 

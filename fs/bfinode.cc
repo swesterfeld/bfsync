@@ -21,6 +21,12 @@ INodeRepo::the()
   return &inode_repo;
 }
 
+map<ID, INode*>&
+INodeRepo::get_cache (const Context& ctx)
+{
+  return cache[ctx.version];
+}
+
 void
 INodeRepo::save_changes()
 {
@@ -41,22 +47,27 @@ INodeRepo::save_changes()
 
   int inodes_saved = 0;
   inode_stmt.begin();
-  for (map<ID, INode*>::iterator ci = cache.begin(); ci != cache.end(); ci++)
+  for (map<int, map<ID, INode*> >::iterator meta_i = cache.begin(); meta_i != cache.end(); meta_i++)
     {
-      INode *inode_ptr = ci->second;
-      if (inode_ptr && inode_ptr->updated)
+      map<ID, INode*>& version_cache = meta_i->second;
+
+      for (map<ID, INode*>::iterator ci = version_cache.begin(); ci != version_cache.end(); ci++)
         {
-          del_inode_stmt.reset();
-          del_inode_stmt.bind_text (1, inode_ptr->id.str());
-          del_inode_stmt.step();
+          INode *inode_ptr = ci->second;
+          if (inode_ptr && inode_ptr->updated)
+            {
+              del_inode_stmt.reset();
+              del_inode_stmt.bind_text (1, inode_ptr->id.str());
+              del_inode_stmt.step();
 
-          del_links_stmt.reset();
-          del_links_stmt.bind_text (1, inode_ptr->id.str());
-          del_links_stmt.step();
+              del_links_stmt.reset();
+              del_links_stmt.bind_text (1, inode_ptr->id.str());
+              del_links_stmt.step();
 
-          inodes_saved++;
-          inode_ptr->save (inode_stmt, link_stmt);
-          inode_ptr->updated = false;
+              inodes_saved++;
+              inode_ptr->save (inode_stmt, link_stmt);
+              inode_ptr->updated = false;
+            }
         }
     }
 
@@ -101,12 +112,12 @@ const int INODES_CTIME_NS = 13;
 const int INODES_MTIME    = 14;
 const int INODES_MTIME_NS = 15;
 
-INodePtr::INodePtr (const ID& id) :
+INodePtr::INodePtr (const Context& ctx, const ID& id) :
   ptr (NULL)
 {
   inode_repo.mutex.lock();
 
-  INode*& cached_ptr = inode_repo.cache[id];
+  INode*& cached_ptr = inode_repo.get_cache (ctx)[id];
   if (cached_ptr)
     {
       ptr = cached_ptr;
@@ -137,7 +148,7 @@ INodePtr::INodePtr (const Context& ctx)
   ptr->updated = true;
 
   inode_repo.mutex.lock();
-  inode_repo.cache[ptr->id] = ptr;
+  inode_repo.get_cache (ctx) [ptr->id] = ptr;
   inode_repo.mutex.unlock();
 }
 
@@ -477,12 +488,12 @@ INode::add_link (INodePtr to, const string& name)
 }
 
 bool
-INode::unlink (const string& name)
+INode::unlink (const Context& ctx, const string& name)
 {
   LinkPtr& lp = links[name];
   if (lp->name == name && !lp->deleted)
     {
-      INodePtr inode (lp->inode_id);
+      INodePtr inode (ctx, lp->inode_id);
 
       if (inode)
         inode.update()->nlink--;
@@ -550,7 +561,7 @@ INode::get_child_names (vector<string>& names) const
 }
 
 INodePtr
-INode::get_child (const string& name) const
+INode::get_child (const Context& ctx, const string& name) const
 {
   map<string, LinkPtr>::const_iterator li = links.find (name);
 
@@ -560,7 +571,7 @@ INode::get_child (const string& name) const
   if (li->second->deleted)
     return INodePtr::null();
 
-  return INodePtr (li->second->inode_id);
+  return INodePtr (ctx, li->second->inode_id);
 }
 
 }

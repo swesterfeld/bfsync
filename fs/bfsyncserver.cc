@@ -331,9 +331,10 @@ Server::handle_client (int client_fd)
                 {
                   double t = gettime();
                   SQLStatement stmt ("SELECT * FROM inodes");
+                  Context ctx;
                   while (stmt.step() == SQLITE_ROW)
                     {
-                      INodePtr ptr (stmt.column_id (2));
+                      INodePtr ptr (ctx, stmt.column_id (2));
                     }
                   double te = gettime();
 
@@ -383,7 +384,8 @@ Server::handle_client (int client_fd)
 bool
 Server::add_file (const string& id, const string& hash, string& error)
 {
-  INodePtr inode (id);
+  Context  ctx;
+  INodePtr inode (ctx, id);
   if (!inode)
     {
       error = "inode '" + id + "' not found";
