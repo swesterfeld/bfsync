@@ -16,6 +16,8 @@ class FuseFS:
                                         "test/.bfsync",
                                         "mnt"]) != 0:
       raise Exception ("error during setup (can't create dirs)")
+    for i in range (0, 256):
+      os.mkdir ("test/new/%02x" % i)
     if subprocess.call (["./setupdb.py"]) != 0:
       raise Exception ("error during setup")
     start_bfsyncfs()

@@ -356,8 +356,7 @@ bfsync_getattr (const char *path_arg, struct stat *stbuf)
         {
           // take size from new file
           struct stat new_stat;
-          string new_filename = options.repo_path + "/new/" + inode->id.str();
-          lstat (new_filename.c_str(), &new_stat);
+          lstat (inode->file_path().c_str(), &new_stat);
 
           stbuf->st_size = new_stat.st_size;
         }
@@ -624,7 +623,7 @@ bfsync_mknod (const char *path, mode_t mode, dev_t dev)
 
   if (S_ISREG (mode))
     {
-      string filename = options.repo_path + "/new/" + inode->id.str();
+      string filename = inode->new_file_path();
       int rc = mknod (filename.c_str(), 0600, dev);
       if (rc == 0)
         {

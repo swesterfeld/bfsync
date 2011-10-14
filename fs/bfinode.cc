@@ -423,12 +423,18 @@ INode::load_or_alloc_ino()
 }
 
 string
+INode::new_file_path() const
+{
+  string id_str = id.str();
+  return Options::the()->repo_path + "/new/" + id_str.substr (0, 2) + "/" + id_str.substr (2);
+}
+
+string
 INode::file_path() const
 {
   FileStatus fs = file_status();
   if (fs == FS_CHANGED)
-    return Options::the()->repo_path + "/new/" + id.str();
-
+    return new_file_path();
   if (fs == FS_RDONLY)
     return make_object_filename (hash);
 
@@ -449,8 +455,8 @@ INode::copy_on_write()
 {
   if (file_status() == FS_RDONLY && type == FILE_REGULAR)
     {
-      string new_name = Options::the()->repo_path + "/new/" + id.str();
       string old_name = file_path();
+      string new_name = new_file_path();
 
       int old_fd = open (old_name.c_str(), O_RDONLY);
       int new_fd = open (new_name.c_str(), O_WRONLY | O_CREAT, 0644);

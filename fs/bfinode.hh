@@ -118,6 +118,7 @@ public:
   void          set_ctime_now();
 
   FileStatus    file_status() const;
+  std::string   new_file_path() const;
   std::string   file_path() const;
   void          copy_on_write();
   void          add_link (INodePtr to, const std::string& name);
