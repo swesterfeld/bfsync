@@ -369,6 +369,8 @@ INode::load (const ID& id)
   return true;
 }
 
+vector<ino_t> INode::ino_pool;
+
 void
 INode::load_or_alloc_ino()
 {
@@ -390,26 +392,32 @@ INode::load_or_alloc_ino()
   // need to create new entry
   if (!ino)
     {
-      SQLStatement& searchi_stmt = inode_repo.sql_statements.get (
-        "SELECT * FROM local_inodes WHERE ino = ?"
-      );
-
-      while (!ino)
+      while (ino_pool.empty())
         {
-          ino = g_random_int_range (1, 2000 * 1000 * 1000);  // 1 .. ~ 2^31
-          map<ino_t, ID>::const_iterator ni = inode_repo.new_inodes.find (ino);
-          if (ni != inode_repo.new_inodes.end())  // recently allocated & in use
-            ino = 0;
-          else
-            {
-              searchi_stmt.reset();
-              searchi_stmt.bind_int (1, ino);
+          SQLStatement& searchi_stmt = inode_repo.sql_statements.get (
+            "SELECT * FROM local_inodes WHERE ino in (?, ?, ?, ?, ?, "
+                                                    " ?, ?, ?, ?, ?, "
+                                                    " ?, ?, ?, ?, ?, "
+                                                    " ?, ?, ?, ?, ?)"
+          );
 
-              int rc = searchi_stmt.step();
-              if (rc == SQLITE_ROW)  // inode number already in use
-                ino = 0;
+          searchi_stmt.reset();
+          while (ino_pool.size() != 20)
+            {
+              ino = g_random_int_range (1, 2 * 1000 * 1000 * 1000);  // 1 .. ~ 2^31
+              map<ino_t, ID>::const_iterator ni = inode_repo.new_inodes.find (ino);
+              if (ni == inode_repo.new_inodes.end())  // not recently allocated & in use
+                {
+                  searchi_stmt.bind_int (1 + ino_pool.size(), ino);
+                  ino_pool.push_back (ino);
+                }
             }
+          int rc = searchi_stmt.step();
+          if (rc == SQLITE_ROW)  // (at least one) inode numbers already in use
+            ino_pool.clear();
         }
+      ino = ino_pool.back();
+      ino_pool.pop_back();
       inode_repo.new_inodes[ino] = id;
     }
 }

@@ -79,8 +79,11 @@ enum FileStatus
   FS_CHANGED
 };
 
-struct INode
+class INode
 {
+  static std::vector<ino_t> ino_pool;
+
+public:
   int           vmin;
   int           vmax;
 
