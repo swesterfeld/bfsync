@@ -291,7 +291,6 @@ INode::load (const ID& id)
   SQLStatement& load_inode = inode_repo.sql_statements.get
     ("SELECT * FROM inodes WHERE id = ? AND vmin >= 1 AND vmax <= 1;");
 
-  double start_t = gettime();
   load_inode.reset();
   load_inode.bind_text (1, id.str());
 
@@ -341,14 +340,11 @@ INode::load (const ID& id)
     }
   if (!found)
     return false;
-  double end_t = gettime();
-  debug ("time for sql %.2f ms\n", (end_t - start_t) * 1000);
 
   // load links
   SQLStatement& load_links = inode_repo.sql_statements.get
     ("SELECT * FROM links WHERE dir_id = ?");
 
-  start_t = gettime();
   load_links.reset();
   load_links.bind_text (1, id.str());
   for (;;)
@@ -367,7 +363,6 @@ INode::load (const ID& id)
 
       links[link->name] = LinkPtr (link);
     }
-  debug ("time for sql %.2f ms\n", (gettime() - start_t) * 1000);
 
   load_or_alloc_ino();
   updated = false;
