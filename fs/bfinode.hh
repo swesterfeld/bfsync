@@ -24,8 +24,6 @@
 #include <vector>
 #include <map>
 
-#include <fuse.h>
-
 #include "bfsql.hh"
 #include "bfsyncfs.hh"
 #include "bfidhash.hh"
@@ -51,7 +49,7 @@ class INodePtr
   INodePtr();
 public:
   INodePtr (const ID&      id);
-  INodePtr (fuse_context  *context);
+  INodePtr (const Context& ctx);
 
   operator bool() const
   {
@@ -124,9 +122,9 @@ public:
   void          add_link (INodePtr to, const std::string& name);
   bool          unlink (const std::string& name);
 
-  bool          read_perm_ok() const;
-  bool          write_perm_ok() const;
-  bool          search_perm_ok() const;
+  bool          read_perm_ok (const Context& ctx) const;
+  bool          write_perm_ok (const Context& ctx) const;
+  bool          search_perm_ok (const Context& ctx) const;
 
   void          load_or_alloc_ino();
   void          get_child_names (std::vector<std::string>& names) const;

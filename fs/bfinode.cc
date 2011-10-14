@@ -125,12 +125,12 @@ INodePtr::INodePtr (const ID& id) :
   inode_repo.mutex.unlock();
 }
 
-INodePtr::INodePtr (fuse_context *context)
+INodePtr::INodePtr (const Context& ctx)
 {
   ptr = new INode();
   ptr->id = ID::gen_new();
-  ptr->uid = context->uid;
-  ptr->gid = context->gid;
+  ptr->uid = ctx.fc->uid;
+  ptr->gid = ctx.fc->gid;
   ptr->nlink = 0;
   ptr->set_mtime_ctime_now();
   ptr->load_or_alloc_ino();
@@ -494,51 +494,45 @@ INode::unlink (const string& name)
 }
 
 bool
-INode::read_perm_ok() const
+INode::read_perm_ok (const Context& ctx) const
 {
-  const fuse_context *ctx = fuse_get_context();
-
-  if (ctx->uid == 0)
+  if (ctx.fc->uid == 0)
     return true;
 
-  if (ctx->uid == uid)
+  if (ctx.fc->uid == uid)
     return (mode & S_IRUSR);
 
-  if (ctx->gid == gid)
+  if (ctx.fc->gid == gid)
     return (mode & S_IRGRP);
 
   return (mode & S_IROTH);
 }
 
 bool
-INode::write_perm_ok() const
+INode::write_perm_ok (const Context& ctx) const
 {
-  const fuse_context *ctx = fuse_get_context();
-
-  if (ctx->uid == 0)
+  if (ctx.fc->uid == 0)
     return true;
 
-  if (ctx->uid == uid)
+  if (ctx.fc->uid == uid)
     return (mode & S_IWUSR);
 
-  if (ctx->gid == gid)
+  if (ctx.fc->gid == gid)
     return (mode & S_IWGRP);
 
   return (mode & S_IWOTH);
 }
 
 bool
-INode::search_perm_ok() const
+INode::search_perm_ok (const Context& ctx) const
 {
-  const fuse_context *ctx = fuse_get_context();
-
-  if (ctx->uid == 0)
+  if (ctx.fc->uid == 0)
     return true;
 
-  if (ctx->uid == uid)
+  if (ctx.fc->uid == uid)
     return (mode & S_IXUSR);
 
-  if (ctx->gid == gid)
+  if (ctx.fc->gid == gid)
     return (mode & S_IXGRP);
 
   return (mode & S_IXOTH);

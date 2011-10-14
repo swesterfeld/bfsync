@@ -20,6 +20,9 @@
 #ifndef BFSYNC_FS_HH
 #define BFSYNC_FS_HH
 
+#define FUSE_USE_VERSION 26
+
+#include <fuse.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <sqlite3.h>
@@ -156,6 +159,20 @@ struct Options {
 };
 
 int bfsync_getattr (const char *path_arg, struct stat *stbuf);
+
+class Context
+{
+private:
+  Context (const Context& other);
+
+public:
+  Context () :
+    fc (fuse_get_context())
+  {
+  }
+  const fuse_context *fc;
+};
+
 
 }
 
