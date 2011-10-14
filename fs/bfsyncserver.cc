@@ -21,6 +21,7 @@
 #include "bfsyncfs.hh"
 #include "bfinode.hh"
 #include "bfsyncfs.hh"
+#include "bfhistory.hh"
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -379,6 +380,8 @@ Server::handle_client (int client_fd)
       delete lock;
       lock = NULL;
     }
+  // update history (relevant after commits)
+  History::the()->read();
 }
 
 bool
