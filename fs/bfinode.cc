@@ -139,6 +139,8 @@ INodePtr::INodePtr (const Context& ctx, const ID& id) :
 INodePtr::INodePtr (const Context& ctx)
 {
   ptr = new INode();
+  ptr->vmin = ctx.version;
+  ptr->vmax = ctx.version;
   ptr->id = ID::gen_new();
   ptr->uid = ctx.fc->uid;
   ptr->gid = ctx.fc->gid;
@@ -167,9 +169,7 @@ INodePtr::null()
 
 static LeakDebugger leak_debugger ("BFSync::INode");
 
-INode::INode() :
-  vmin (1),
-  vmax (1)
+INode::INode()
 {
   leak_debugger.add (this);
 }
@@ -474,12 +474,12 @@ INode::copy_on_write()
 }
 
 void
-INode::add_link (INodePtr to, const string& name)
+INode::add_link (const Context& ctx, INodePtr to, const string& name)
 {
   Link *link = new Link();
 
-  link->vmin = 1;
-  link->vmax = 1;
+  link->vmin = ctx.version;
+  link->vmax = ctx.version;
   link->dir_id = id;
   link->inode_id = to->id;
   link->name = name;

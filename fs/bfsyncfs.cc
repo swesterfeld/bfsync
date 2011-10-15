@@ -680,7 +680,7 @@ bfsync_mknod (const char *path, mode_t mode, dev_t dev)
     }
 
   dir_inode.update()->set_mtime_ctime_now();
-  dir_inode.update()->add_link (inode, get_basename (path));
+  dir_inode.update()->add_link (ctx, inode, get_basename (path));
   return 0;
 }
 
@@ -899,7 +899,7 @@ bfsync_mkdir (const char *path, mode_t mode)
   inode.update()->type = FILE_DIR;
   inode.update()->mode = mode;
 
-  inode_dir.update()->add_link (inode, get_basename (path));
+  inode_dir.update()->add_link (ctx, inode, get_basename (path));
   inode_dir.update()->set_mtime_ctime_now();
   return 0;
 }
@@ -1011,7 +1011,7 @@ bfsync_rename (const char *old_path, const char *new_path)
   if (inode_new)   // rename-replace
     inode_new_dir.update()->unlink (ctx, get_basename (new_path));
 
-  inode_new_dir.update()->add_link (inode_old, get_basename (new_path));
+  inode_new_dir.update()->add_link (ctx, inode_old, get_basename (new_path));
   inode_old_dir.update()->unlink (ctx, get_basename (old_path));
   inode_old.update()->set_ctime_now();
 
@@ -1046,7 +1046,7 @@ bfsync_symlink (const char *from, const char *to)
   inode.update()->type = FILE_SYMLINK;
   inode.update()->link = from;
 
-  dir_inode.update()->add_link (inode, get_basename (to));
+  dir_inode.update()->add_link (ctx, inode, get_basename (to));
   dir_inode.update()->set_mtime_ctime_now();
   return 0;
 }
@@ -1111,7 +1111,7 @@ bfsync_link (const char *old_path, const char *new_path)
   if (!inode_new_dir->search_perm_ok (ctx) || !inode_new_dir->write_perm_ok (ctx))
     return -EACCES;
 
-  inode_new_dir.update()->add_link (inode_old, get_basename (new_path));
+  inode_new_dir.update()->add_link (ctx, inode_old, get_basename (new_path));
   inode_new_dir.update()->set_mtime_ctime_now();
   inode_old.update()->set_ctime_now();
   return 0;

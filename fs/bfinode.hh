@@ -119,7 +119,7 @@ public:
   std::string   new_file_path() const;
   std::string   file_path() const;
   void          copy_on_write();
-  void          add_link (INodePtr to, const std::string& name);
+  void          add_link (const Context& ctx, INodePtr to, const std::string& name);
   bool          unlink (const Context& ctx, const std::string& name);
 
   bool          read_perm_ok (const Context& ctx) const;
