@@ -33,7 +33,7 @@ INodeRepo::save_changes()
   inode_repo.mutex.lock();
 
   SQLStatement& inode_stmt = inode_repo.sql_statements.get
-    ("INSERT INTO inodes VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+    ("INSERT INTO inodes VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
   SQLStatement& link_stmt = inode_repo.sql_statements.get
     ("INSERT INTO links VALUES (?,?,?,?,?)");
   SQLStatement& del_inode_stmt = inode_repo.sql_statements.get
@@ -104,13 +104,14 @@ const int INODES_MODE     = 5;
 const int INODES_TYPE     = 6;
 const int INODES_HASH     = 7;
 const int INODES_LINK     = 8;
-const int INODES_MAJOR    = 9;
-const int INODES_MINOR    = 10;
-const int INODES_NLINK    = 11;
-const int INODES_CTIME    = 12;
-const int INODES_CTIME_NS = 13;
-const int INODES_MTIME    = 14;
-const int INODES_MTIME_NS = 15;
+const int INODES_SIZE     = 9;
+const int INODES_MAJOR    = 10;
+const int INODES_MINOR    = 11;
+const int INODES_NLINK    = 12;
+const int INODES_CTIME    = 13;
+const int INODES_CTIME_NS = 14;
+const int INODES_MTIME    = 15;
+const int INODES_MTIME_NS = 16;
 
 INodePtr::INodePtr (const Context& ctx, const ID& id) :
   ptr (NULL)
@@ -253,6 +254,7 @@ INode::save (SQLStatement& stmt, SQLStatement& link_stmt)
   stmt.bind_text  (1 + INODES_TYPE, type_str);
   stmt.bind_text  (1 + INODES_HASH, hash);
   stmt.bind_text  (1 + INODES_LINK, link);
+  stmt.bind_int   (1 + INODES_SIZE, size);
   stmt.bind_int   (1 + INODES_MAJOR, major);
   stmt.bind_int   (1 + INODES_MINOR, minor);
   stmt.bind_int   (1 + INODES_NLINK, nlink);
@@ -327,6 +329,7 @@ INode::load (const Context& ctx, const ID& id)
 
       hash     = load_inode.column_text (INODES_HASH);
       link     = load_inode.column_text (INODES_LINK);
+      size     = load_inode.column_int  (INODES_SIZE);
       major    = load_inode.column_int  (INODES_MAJOR);
       minor    = load_inode.column_int  (INODES_MINOR);
       nlink    = load_inode.column_int  (INODES_NLINK);
