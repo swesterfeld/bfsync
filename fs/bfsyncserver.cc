@@ -353,6 +353,16 @@ Server::handle_client (int client_fd)
                       INodeRepo::the()->save_changes();
                     }
                 }
+              else if (request[0] == "clear-cache")
+                {
+                  if (!lock)
+                    result.push_back ("fail: clear-cache requires using get-lock first");
+                  else
+                    {
+                      result.push_back ("ok");
+                      INodeRepo::the()->clear_cache();
+                    }
+                }
               else if (request[0] == "perf-getattr")
                 {
                   string filename = request[1];

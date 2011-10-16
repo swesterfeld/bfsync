@@ -28,7 +28,13 @@ INodeRepo::get_cache (const Context& ctx)
 }
 
 void
-INodeRepo::save_changes()
+INodeRepo::clear_cache()
+{
+  save_changes (SC_CLEAR_CACHE);
+}
+
+void
+INodeRepo::save_changes (SaveChangesMode sc)
 {
   inode_repo.mutex.lock();
 
@@ -91,6 +97,9 @@ INodeRepo::save_changes()
 
   double end_t = gettime();
   debug ("time for sql: %.2fms\n", (end_t - start_t) * 1000);
+
+  if (sc == SC_CLEAR_CACHE)
+    cache.clear();
 
   inode_repo.mutex.unlock();
 }

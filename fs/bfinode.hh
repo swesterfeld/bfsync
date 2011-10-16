@@ -149,7 +149,10 @@ public:
   SQLStatementStore     sql_statements;
   std::map<ID, INode*>& get_cache (const Context& ctx);
 
-  void save_changes();
+  enum SaveChangesMode { SC_NORMAL, SC_CLEAR_CACHE };
+
+  void save_changes (SaveChangesMode sc = SC_NORMAL);
+  void clear_cache();
 
   static INodeRepo *the();
 };

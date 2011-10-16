@@ -25,8 +25,8 @@ class FuseFS:
   def commit (self):
     cwd = os.getcwd()
     os.chdir ("mnt")
-    #if run_quiet ([cwd + "/bfsync2", "commit", "-m", "fstest"]) != 0:
-    #  raise Exception ("commit failed")
+    if run_quiet ([cwd + "/bfsync2", "commit", "-m", "fstest"]) != 0:
+      raise Exception ("commit failed")
     os.chdir (cwd)
 
   def teardown (self):
@@ -74,6 +74,13 @@ def setup():
     raise Exception ("error during setup")
   write_file ("mnt/subdir/x", "File X\n")
   commit()
+
+def clear_cache():
+  cwd = os.getcwd()
+  os.chdir ("mnt")
+  if run_quiet ([cwd + "/bfsync2", "debug-clear-cache"]) != 0:
+    raise Exception ("commit failed")
+  os.chdir (cwd)
 
 def write_file (name, data):
   f = open (name, "w")
@@ -805,10 +812,28 @@ tests += [ ("link-inode", test_link_inode) ]
 
 def test_commits_dir():
   os.stat ("mnt/.bfsync/commits")
+  os.stat ("mnt/.bfsync/commits/1/README")
+  os.stat ("mnt/.bfsync/commits/1/subdir")
 
 bf_tests += [ ("commits-dir", test_commits_dir) ]
 
 #####
+
+def test_commits_rm():
+  start_size = os.path.getsize ("mnt/README")
+  os.remove ("mnt/README")
+  commit()
+  clear_cache()
+  st = os.stat ("mnt/.bfsync/commits/1/README")
+  if st.st_size != start_size:
+    raise ("README in commits dir wrong")
+  if os.path.exists ("mnt/.bfsync/commits/2/README"):
+    raise ("README not removed in commits dir")
+
+bf_tests += [ ("commits-rm", test_commits_rm) ]
+
+#####
+
 
 def start_bfsyncfs():
   if subprocess.call (["./bfsyncfs", "test", "mnt"]) != 0:
