@@ -34,7 +34,7 @@ gen_id_str()
 static void
 print_result (const string& name, double value)
 {
-  printf ("%-12s%10.f\n", (name + ":").c_str(), value);
+  printf ("%-15s%10.f\n", (name + ":").c_str(), value);
 }
 
 void

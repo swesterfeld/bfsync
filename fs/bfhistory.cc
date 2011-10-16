@@ -18,11 +18,13 @@
 */
 
 #include "bfhistory.hh"
+#include "bfsyncfs.hh"
 #include "bfsql.hh"
 #include <stdio.h>
 #include <stdlib.h>
 
 using std::max;
+using std::vector;
 
 namespace BFSync
 {
@@ -39,6 +41,12 @@ int
 History::current_version()
 {
   return m_current_version;
+}
+
+const vector<int>&
+History::all_versions()
+{
+  return m_all_versions;
 }
 
 void
@@ -62,7 +70,7 @@ History::read()
       printf ("bfsyncfs: find current version in history table failed\n");
       exit (1);
     }
-  printf ("current version is %d\n", m_current_version);
+  debug ("current version is %d\n", m_current_version);
 }
 
 }

@@ -315,11 +315,73 @@ inode_from_path (const Context& ctx, const string& path, IFPStatus& status)
 }
 
 int
+bfsyncdir_getattr (const string& path, struct stat *stbuf)
+{
+  SplitPath s_path (path.c_str());
+  vector<string> pvec;
+
+  const char *p;
+  while ((p = s_path.next()))
+    {
+      pvec.push_back (p);
+    }
+  if (pvec.empty())
+    return -EIO;
+
+  if (pvec[0] != ".bfsync")
+    return -ENOENT;
+
+  if (pvec.size() == 2)
+    {
+      if (pvec[1] == "info")
+        {
+          memset (stbuf, 0, sizeof (struct stat));
+          stbuf->st_mode = 0644 | S_IFREG;
+          stbuf->st_uid  = getuid();
+          stbuf->st_gid  = getgid();
+          stbuf->st_size = special_files.info.size();
+          return 0;
+        }
+      if (pvec[1] == "commits")
+        {
+          memset (stbuf, 0, sizeof (struct stat));
+          stbuf->st_mode = 0755 | S_IFDIR;
+          stbuf->st_uid  = getuid();
+          stbuf->st_gid  = getgid();
+          return 0;
+        }
+    }
+  if (pvec.size() == 3 && pvec[1] == "commits")
+    {
+      int v = atoi (pvec[2].c_str());
+      if (v != History::the()->current_version())
+        {
+          const vector<int>& hversions = History::the()->all_versions();
+          for (size_t i = 0; i < hversions.size(); i++)
+            {
+              if (v == hversions[i])
+                {
+                  memset (stbuf, 0, sizeof (struct stat));
+                  stbuf->st_mode = 0755 | S_IFDIR;
+                  stbuf->st_uid  = getuid();
+                  stbuf->st_gid  = getgid();
+                  return 0;
+                }
+            }
+        }
+    }
+  return -ENOENT;
+}
+
+int
 bfsync_getattr (const char *path_arg, struct stat *stbuf)
 {
   const string path = path_arg;
 
   FSLock lock (FSLock::READ);
+
+  if (path.substr (0, 9) == "/.bfsync/")
+    return bfsyncdir_getattr (path, stbuf);
 
   if (path == "/.bfsync")
     {
@@ -327,15 +389,6 @@ bfsync_getattr (const char *path_arg, struct stat *stbuf)
       stbuf->st_mode = 0755 | S_IFDIR;
       stbuf->st_uid  = getuid();
       stbuf->st_gid  = getgid();
-      return 0;
-    }
-  else if (path == "/.bfsync/info")
-    {
-      memset (stbuf, 0, sizeof (struct stat));
-      stbuf->st_mode = 0644 | S_IFREG;
-      stbuf->st_uid  = getuid();
-      stbuf->st_gid  = getgid();
-      stbuf->st_size = special_files.info.size();
       return 0;
     }
   Context ctx;
@@ -426,15 +479,36 @@ read_dir_contents (const Context& ctx, const string& path, vector<string>& entri
   else if (path == "/.bfsync")
     {
       entries.push_back ("info");
+      entries.push_back ("commits");
+    }
+  else if (path == "/.bfsync/commits")
+    {
+      const vector<int>& all_versions = History::the()->all_versions();
+
+      for (vector<int>::const_iterator vi = all_versions.begin(); vi != all_versions.end(); vi++)
+        {
+          int v = *vi;
+          if (v != History::the()->current_version())
+            {
+              char *v_str = g_strdup_printf ("%d", v);
+              entries.push_back (v_str);
+              g_free (v_str);
+            }
+        }
     }
 
   return dir_ok;
 }
 
 static int
-bfsync_opendir (const char *path, struct fuse_file_info *fi)
+bfsync_opendir (const char *path_arg, struct fuse_file_info *fi)
 {
+  string path = path_arg;
+
   FSLock lock (FSLock::READ);
+
+  if (path == "/.bfsync" || path == "/.bfsync/commits")
+    return 0;
 
   Context ctx;
   IFPStatus ifp;

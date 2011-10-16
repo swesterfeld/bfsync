@@ -87,7 +87,8 @@ def read_file (name):
   return data
 
 tests      = []
-root_tests = []
+bf_tests   = []   # tests that only work on FuseFS
+root_tests = []   # tests that only work as root
 
 def test_read():
   if read_file ("mnt/README") != read_file ("../README"):
@@ -802,6 +803,13 @@ tests += [ ("link-inode", test_link_inode) ]
 
 #####
 
+def test_commits_dir():
+  os.stat ("mnt/.bfsync/commits")
+
+bf_tests += [ ("commits-dir", test_commits_dir) ]
+
+#####
+
 def start_bfsyncfs():
   if subprocess.call (["./bfsyncfs", "test", "mnt"]) != 0:
     print "can't start bfsyncfs"
@@ -888,6 +896,7 @@ if fstest_args.f:
   fs = NativeFS()
 else:
   fs = FuseFS()
+  tests += bf_tests
 
 os.putenv ("BFSYNC_NO_HASH_CACHE", "1")
 main (fstest_args)
