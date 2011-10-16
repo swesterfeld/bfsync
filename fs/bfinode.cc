@@ -342,10 +342,12 @@ INode::load (const Context& ctx, const ID& id)
 
   // load links
   SQLStatement& load_links = inode_repo.sql_statements.get
-    ("SELECT * FROM links WHERE dir_id = ?");
+    ("SELECT * FROM links WHERE dir_id = ? AND ? >= vmin AND ? <= vmax");
 
   load_links.reset();
   load_links.bind_text (1, id.str());
+  load_links.bind_int (2, ctx.version);
+  load_links.bind_int (3, ctx.version);
   for (;;)
     {
       int rc = load_links.step();

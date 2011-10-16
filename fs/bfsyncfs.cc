@@ -282,6 +282,48 @@ Context::Context () :
 {
 }
 
+int
+version_map_path (string& path)
+{
+  static const char *prefix = "/.bfsync/commits/";
+  static int prefix_len = strlen (prefix);
+
+  if (strncmp (path.c_str(), prefix, prefix_len) != 0)
+    return -1; // no need to do mapping
+
+  SplitPath s_path (path.c_str());
+  vector<string> p_vec;
+  const char *p;
+  while ((p = s_path.next()))
+    p_vec.push_back (p);
+
+  if (p_vec.size() < 3)
+    return -1;
+  if (p_vec[0] != ".bfsync" || p_vec[1] != "commits")
+    return -1;
+  // search version in history
+  int version = -1;
+
+  const vector<int>& versions = History::the()->all_versions();
+  for (size_t i = 0; i < versions.size(); i++)
+    {
+      char buffer[64];
+      sprintf (buffer, "%d", versions[i]);
+      if (buffer == p_vec[2])
+        version = versions[i];
+    }
+  if (version == -1) // not found
+    return -1;
+
+  path.clear();
+  for (size_t i = 3; i < p_vec.size(); i++)
+    path += "/" + p_vec[i];
+  if (path.empty())
+    path = "/";
+
+  return version;
+}
+
 enum IFPStatus { IFP_OK, IFP_ERR_NOENT, IFP_ERR_PERM };
 
 INodePtr
@@ -376,9 +418,14 @@ bfsyncdir_getattr (const string& path, struct stat *stbuf)
 int
 bfsync_getattr (const char *path_arg, struct stat *stbuf)
 {
-  const string path = path_arg;
+  string path = path_arg;
 
   FSLock lock (FSLock::READ);
+
+  Context ctx;
+  int version = version_map_path (path);
+  if (version > 0)
+    ctx.version = version;
 
   if (path.substr (0, 9) == "/.bfsync/")
     return bfsyncdir_getattr (path, stbuf);
@@ -391,7 +438,6 @@ bfsync_getattr (const char *path_arg, struct stat *stbuf)
       stbuf->st_gid  = getgid();
       return 0;
     }
-  Context ctx;
 
   IFPStatus ifp;
   INodePtr  inode = inode_from_path (ctx, path, ifp);
@@ -507,10 +553,14 @@ bfsync_opendir (const char *path_arg, struct fuse_file_info *fi)
 
   FSLock lock (FSLock::READ);
 
+  Context ctx;
+  int version = version_map_path (path);
+  if (version > 0)
+    ctx.version = version;
+
   if (path == "/.bfsync" || path == "/.bfsync/commits")
     return 0;
 
-  Context ctx;
   IFPStatus ifp;
   INodePtr dir_inode = inode_from_path (ctx, path, ifp);
   if (!dir_inode)
@@ -531,13 +581,18 @@ bfsync_opendir (const char *path_arg, struct fuse_file_info *fi)
 }
 
 static int
-bfsync_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
+bfsync_readdir (const char *path_arg, void *buf, fuse_fill_dir_t filler,
                 off_t offset, struct fuse_file_info *fi)
 {
+  string path = path_arg;
+
   FSLock lock (FSLock::READ);
   Context ctx;
+  int version = version_map_path (path);
+  if (version > 0)
+    ctx.version = version;
 
-  debug ("readdir (\"%s\")\n", path);
+  debug ("readdir (\"%s\")\n", path.c_str());
 
   (void) offset;
   (void) fi;
@@ -564,8 +619,9 @@ bfsync_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
 }
 
 static int
-bfsync_open (const char *path, struct fuse_file_info *fi)
+bfsync_open (const char *path_arg, struct fuse_file_info *fi)
 {
+  string path = path_arg;
   int accmode = fi->flags & O_ACCMODE;
   // can both be true (for O_RDWR)
   bool open_for_write = (accmode == O_WRONLY || accmode == O_RDWR);
@@ -573,6 +629,9 @@ bfsync_open (const char *path, struct fuse_file_info *fi)
 
   FSLock lock (open_for_write ? FSLock::WRITE : FSLock::READ);
   Context ctx;
+  int version = version_map_path (path);
+  if (version > 0)
+    ctx.version = version;
 
   if (string (path) == "/.bfsync/info")
     {
