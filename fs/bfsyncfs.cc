@@ -425,18 +425,22 @@ bfsync_getattr (const char *path_arg, struct stat *stbuf)
   Context ctx;
   int version = version_map_path (path);
   if (version > 0)
-    ctx.version = version;
-
-  if (path.substr (0, 9) == "/.bfsync/")
-    return bfsyncdir_getattr (path, stbuf);
-
-  if (path == "/.bfsync")
     {
-      memset (stbuf, 0, sizeof (struct stat));
-      stbuf->st_mode = 0755 | S_IFDIR;
-      stbuf->st_uid  = getuid();
-      stbuf->st_gid  = getgid();
-      return 0;
+      ctx.version = version;
+    }
+  else
+    {
+      if (path.substr (0, 9) == "/.bfsync/")
+        return bfsyncdir_getattr (path, stbuf);
+
+      if (path == "/.bfsync")
+        {
+          memset (stbuf, 0, sizeof (struct stat));
+          stbuf->st_mode = 0755 | S_IFDIR;
+          stbuf->st_uid  = getuid();
+          stbuf->st_gid  = getgid();
+          return 0;
+        }
     }
 
   IFPStatus ifp;
@@ -518,6 +522,11 @@ read_dir_contents (const Context& ctx, const string& path, vector<string>& entri
     {
       inode->get_child_names (entries);
     }
+
+  // bfsync directory (not in .bfsync/commits/N)
+  if (ctx.version != History::the()->current_version())
+    return dir_ok;
+
   if (path == "/")
     {
       entries.push_back (".bfsync");
@@ -556,10 +565,14 @@ bfsync_opendir (const char *path_arg, struct fuse_file_info *fi)
   Context ctx;
   int version = version_map_path (path);
   if (version > 0)
-    ctx.version = version;
-
-  if (path == "/.bfsync" || path == "/.bfsync/commits")
-    return 0;
+    {
+      ctx.version = version;
+    }
+  else
+    {
+      if (path == "/.bfsync" || path == "/.bfsync/commits")
+        return 0;
+    }
 
   IFPStatus ifp;
   INodePtr dir_inode = inode_from_path (ctx, path, ifp);
@@ -631,7 +644,11 @@ bfsync_open (const char *path_arg, struct fuse_file_info *fi)
   Context ctx;
   int version = version_map_path (path);
   if (version > 0)
-    ctx.version = version;
+    {
+      if (open_for_write)
+        return -EROFS;
+      ctx.version = version;
+    }
 
   if (string (path) == "/.bfsync/info")
     {
@@ -726,11 +743,16 @@ bfsync_read (const char *path, char *buf, size_t size, off_t offset,
 }
 
 static int
-bfsync_write (const char *path, const char *buf, size_t size, off_t offset,
+bfsync_write (const char *path_arg, const char *buf, size_t size, off_t offset,
               struct fuse_file_info *fi)
 {
+  string path = path_arg;
+
   FSLock lock (FSLock::WRITE);
   Context ctx;
+  int version = version_map_path (path);
+  if (version > 0)
+    return -EROFS;
 
   FileHandle *fh = reinterpret_cast<FileHandle *> (fi->fh);
 
@@ -752,10 +774,15 @@ bfsync_write (const char *path, const char *buf, size_t size, off_t offset,
 }
 
 static int
-bfsync_mknod (const char *path, mode_t mode, dev_t dev)
+bfsync_mknod (const char *path_arg, mode_t mode, dev_t dev)
 {
+  string path = path_arg;
+
   FSLock lock (FSLock::WRITE);
   Context ctx;
+  int version = version_map_path (path);
+  if (version > 0)
+    return -EROFS;
 
   IFPStatus ifp;
   INodePtr dir_inode = inode_from_path (ctx, get_dirname (path), ifp);
@@ -818,10 +845,15 @@ bfsync_mknod (const char *path, mode_t mode, dev_t dev)
 }
 
 int
-bfsync_chmod (const char *name, mode_t mode)
+bfsync_chmod (const char *name_arg, mode_t mode)
 {
+  string name = name_arg;
+
   FSLock lock (FSLock::WRITE);
   Context ctx;
+  int version = version_map_path (name);
+  if (version > 0)
+    return -EROFS;
 
   IFPStatus ifp;
   INodePtr inode = inode_from_path (ctx, name, ifp);
@@ -845,10 +877,15 @@ bfsync_chmod (const char *name, mode_t mode)
 }
 
 int
-bfsync_chown (const char *name, uid_t uid, gid_t gid)
+bfsync_chown (const char *name_arg, uid_t uid, gid_t gid)
 {
+  string name = name_arg;
+
   FSLock lock (FSLock::WRITE);
   Context ctx;
+  int version = version_map_path (name);
+  if (version > 0)
+    return -EROFS;
 
   IFPStatus ifp;
   INodePtr inode = inode_from_path (ctx, name, ifp);
@@ -911,10 +948,15 @@ bfsync_chown (const char *name, uid_t uid, gid_t gid)
 }
 
 int
-bfsync_utimens (const char *name, const struct timespec times[2])
+bfsync_utimens (const char *name_arg, const struct timespec times[2])
 {
+  string name = name_arg;
+
   FSLock lock (FSLock::WRITE);
   Context ctx;
+  int version = version_map_path (name);
+  if (version > 0)
+    return -EROFS;
 
   IFPStatus ifp;
   INodePtr inode = inode_from_path (ctx, name, ifp);
@@ -933,10 +975,15 @@ bfsync_utimens (const char *name, const struct timespec times[2])
 }
 
 int
-bfsync_truncate (const char *name, off_t off)
+bfsync_truncate (const char *name_arg, off_t off)
 {
+  string name = name_arg;
+
   FSLock lock (FSLock::WRITE);
   Context ctx;
+  int version = version_map_path (name);
+  if (version > 0)
+    return -EROFS;
 
   IFPStatus ifp;
   INodePtr inode = inode_from_path (ctx, name, ifp);
@@ -964,10 +1011,14 @@ bfsync_truncate (const char *name, off_t off)
 
 // FIXME: should check that name is not directory
 static int
-bfsync_unlink (const char *name)
+bfsync_unlink (const char *name_arg)
 {
+  string name = name_arg;
   FSLock lock (FSLock::WRITE);
   Context ctx;
+  int version = version_map_path (name);
+  if (version > 0)
+    return -EROFS;
 
   IFPStatus ifp;
   INodePtr inode_dir = inode_from_path (ctx, get_dirname (name), ifp);
@@ -1009,10 +1060,15 @@ bfsync_unlink (const char *name)
 }
 
 static int
-bfsync_mkdir (const char *path, mode_t mode)
+bfsync_mkdir (const char *path_arg, mode_t mode)
 {
+  string path = path_arg;
+
   FSLock lock (FSLock::WRITE);
   Context ctx;
+  int version = version_map_path (path);
+  if (version > 0)
+    return -EROFS;
 
   IFPStatus ifp;
   INodePtr inode_dir = inode_from_path (ctx, get_dirname (path), ifp);
@@ -1039,10 +1095,15 @@ bfsync_mkdir (const char *path, mode_t mode)
 
 // FIXME: should check that name is a directory
 static int
-bfsync_rmdir (const char *name)
+bfsync_rmdir (const char *name_arg)
 {
+  string name = name_arg;
+
   FSLock lock (FSLock::WRITE);
   Context ctx;
+  int version = version_map_path (name);
+  if (version > 0)
+    return -EROFS;
 
   IFPStatus ifp;
   INodePtr inode_dir = inode_from_path (ctx, get_dirname (name), ifp);
@@ -1089,10 +1150,22 @@ bfsync_rmdir (const char *name)
 }
 
 static int
-bfsync_rename (const char *old_path, const char *new_path)
+bfsync_rename (const char *old_path_arg, const char *new_path_arg)
 {
+  string old_path = old_path_arg;
+  string new_path = new_path_arg;
+
   FSLock lock (FSLock::WRITE);
   Context ctx;
+
+  int version;
+  version = version_map_path (old_path);
+  if (version > 0)
+    return -EROFS;
+
+  version = version_map_path (new_path);
+  if (version > 0)
+    return -EROFS;
 
   IFPStatus ifp;
   INodePtr inode_old = inode_from_path (ctx, old_path, ifp);
@@ -1152,10 +1225,16 @@ bfsync_rename (const char *old_path, const char *new_path)
 }
 
 static int
-bfsync_symlink (const char *from, const char *to)
+bfsync_symlink (const char *from_arg, const char *to_arg)
 {
+  string from = from_arg;
+  string to   = to_arg;
+
   FSLock lock (FSLock::WRITE);
   Context ctx;
+  int version = version_map_path (to);
+  if (version > 0)
+    return -EROFS;
 
   IFPStatus ifp;
 
@@ -1185,10 +1264,15 @@ bfsync_symlink (const char *from, const char *to)
 }
 
 static int
-bfsync_readlink (const char *path, char *buffer, size_t size)
+bfsync_readlink (const char *path_arg, char *buffer, size_t size)
 {
+  string path = path_arg;
+
   FSLock lock (FSLock::READ);
   Context ctx;
+  int version = version_map_path (path);
+  if (version > 0)
+    ctx.version = version;
 
   IFPStatus ifp;
   INodePtr inode = inode_from_path (ctx, path, ifp);
@@ -1214,10 +1298,22 @@ bfsync_readlink (const char *path, char *buffer, size_t size)
 }
 
 static int
-bfsync_link (const char *old_path, const char *new_path)
+bfsync_link (const char *old_path_arg, const char *new_path_arg)
 {
+  string old_path = old_path_arg;
+  string new_path = new_path_arg;
+
   FSLock lock (FSLock::WRITE);
   Context ctx;
+
+  int version;
+  version = version_map_path (old_path);
+  if (version > 0)
+    return -EROFS;
+
+  version = version_map_path (new_path);
+  if (version > 0)
+    return -EROFS;
 
   IFPStatus ifp;
   INodePtr inode_old = inode_from_path (ctx, old_path, ifp);
