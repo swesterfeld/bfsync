@@ -441,8 +441,8 @@ Server::add_file (const string& id, const string& hash, string& error)
   string dirname = get_dirname (object_filename);
   if (lstat (dirname.c_str(), &d_stat) != 0)
     {
-      // need to create hash directory
-      if (mkdir (dirname.c_str(), 0755) != 0)
+      // need to create hash directory, mode drwx------
+      if (mkdir (dirname.c_str(), 0700) != 0)
         {
           error = "can't create directory '" + dirname + "'";
           return false;
