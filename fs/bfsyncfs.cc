@@ -1478,7 +1478,6 @@ bfsyncfs_main (int argc, char **argv)
       return 1;
     }
   History::the()->read();
-  int current_version = History::the()->current_version();
 
   int fuse_rc = fuse_main (my_argc, my_argv, &bfsync_oper, NULL);
 
