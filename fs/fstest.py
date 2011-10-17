@@ -11,13 +11,14 @@ from stat import *
 class FuseFS:
   def init (self):
     cwd = os.getcwd()
-    if subprocess.call (["mkdir", "-p", "test/new",
-                                        "test/objects",
-                                        "test/.bfsync",
-                                        "mnt"]) != 0:
+    if subprocess.call (["mkdir", "-m", "0700", "-p", "test/new",
+                                                      "test/objects",
+                                                      "test/.bfsync"]) != 0:
+      raise Exception ("error during setup (can't create dirs)")
+    if subprocess.call (["mkdir", "-p", "mnt"]) != 0:
       raise Exception ("error during setup (can't create dirs)")
     for i in range (0, 256):
-      os.mkdir ("test/new/%02x" % i)
+      os.mkdir ("test/new/%02x" % i, 0700)
     if subprocess.call (["./setupdb.py"]) != 0:
       raise Exception ("error during setup")
     start_bfsyncfs()
