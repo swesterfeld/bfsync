@@ -22,14 +22,17 @@ gettime()
 bool
 perf_repeat_stmt()
 {
-  SQLStatement stmt ("insert into inodes values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);");
+  SQLStatement stmt ("insert into inodes values (?,?,?,?,?,"
+                                                "?,?,?,?,?,"
+                                                "?,?,?,?,?,"
+                                                "?,?);");
 
   stmt.begin();
   for (size_t j = 0; j < 300000; j++)
     {
       stmt.reset();
 
-      for (int i = 0; i < 16; i++)
+      for (int i = 0; i < 17; i++)
         stmt.bind_int (1 + i, j * 100 + i);
 
       stmt.step();
@@ -46,7 +49,7 @@ perf_exec()
 
   for (int i = 0; i < 300000; i++)
     {
-      char *sql_c = g_strdup_printf ("insert into inodes values (1, 1, 'root', 0, 0, 123, 'dir', '', '', 0, 0, 1, %d, 0, 0, 0);", i);
+      char *sql_c = g_strdup_printf ("insert into inodes values (1, 1, 'root', 0, 0, 123, 'dir', '', '', 0, 0, 1, %d, 0, 0, 0, 0);", i);
       sql += sql_c;
       g_free (sql_c);
     }
