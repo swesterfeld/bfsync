@@ -188,7 +188,10 @@ public:
   void save_changes (SaveChangesMode sc = SC_NORMAL);
   void clear_cache();
   void free_sql_statements();
-  void delete_unused_inodes();
+
+  enum DeleteMode { DM_ALL, DM_SOME };
+  void delete_unused_inodes (DeleteMode dmode);
+  int  cached_inode_count();
 
   static INodeRepo *the();
 };

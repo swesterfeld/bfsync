@@ -172,6 +172,7 @@ Server::run()
           FSLock lock (FSLock::WRITE); // we don't want anybody to modify stuff while we write
 
           INodeRepo::the()->save_changes();
+          INodeRepo::the()->delete_unused_inodes (INodeRepo::DM_SOME);
         }
     }
 }

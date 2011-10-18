@@ -120,7 +120,7 @@ INodeRepo::free_sql_statements()
 }
 
 void
-INodeRepo::delete_unused_inodes()
+INodeRepo::delete_unused_inodes (DeleteMode dmode)
 {
   mutex.lock();
 
@@ -138,8 +138,14 @@ INodeRepo::delete_unused_inodes()
           INode* inode_ptr = ci->second;
           if (inode_ptr && inode_ptr->has_zero_refs() && !inode_ptr->updated)
             {
-              del_inodes.insert (inode_ptr);
-              version_cache.erase (ci);
+              bool del = true;                          // dmode == DM_ALL <-> delete all
+              if (dmode == DM_SOME)
+                del = g_random_int_range (0, 100) <= 5; // randomly delete 5%
+              if (del)
+                {
+                  del_inodes.insert (inode_ptr);
+                  version_cache.erase (ci);
+                }
             }
           ci = nexti;
         }
@@ -150,6 +156,27 @@ INodeRepo::delete_unused_inodes()
     delete *di;
 
   mutex.unlock();
+}
+
+int
+INodeRepo::cached_inode_count()
+{
+  mutex.lock();
+  set<INode*> inodes;
+  for (map<int, map<ID, INode*> >::iterator meta_i = cache.begin(); meta_i != cache.end(); meta_i++)
+    {
+      map<ID, INode*>& version_cache = meta_i->second;
+
+      for (map<ID, INode*>::iterator ci = version_cache.begin(); ci != version_cache.end(); ci++)
+        {
+          INode* inode_ptr = ci->second;
+          if (inode_ptr)
+            inodes.insert (inode_ptr);
+        }
+    }
+  mutex.unlock();
+
+  return inodes.size();
 }
 
 const int INODES_VMIN     = 0;

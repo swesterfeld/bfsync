@@ -67,6 +67,16 @@ struct SpecialFiles
   string info;
 } special_files;
 
+string
+get_info()
+{
+  string info = special_files.info;
+  char *inode_count = g_strdup_printf ("cached-inodes %d;\n", INodeRepo::the()->cached_inode_count());
+  info += inode_count;
+  g_free (inode_count);
+  return info;
+}
+
 static FILE *bf_debug_file = NULL;
 
 FILE*
@@ -377,11 +387,13 @@ bfsyncdir_getattr (const string& path, struct stat *stbuf)
     {
       if (pvec[1] == "info")
         {
+          string info = get_info();
+
           memset (stbuf, 0, sizeof (struct stat));
           stbuf->st_mode = 0644 | S_IFREG;
           stbuf->st_uid  = getuid();
           stbuf->st_gid  = getgid();
-          stbuf->st_size = special_files.info.size();
+          stbuf->st_size = info.size();
           return 0;
         }
       if (pvec[1] == "commits")
@@ -725,7 +737,7 @@ bfsync_read (const char *path, char *buf, size_t size, off_t offset,
 
   if (fh->special_file == FileHandle::INFO)
     {
-      const string& info = special_files.info;
+      string info = get_info();
       if (offset < (off_t) info.size())
         {
           bytes_read = size;
@@ -1483,7 +1495,7 @@ bfsyncfs_main (int argc, char **argv)
 
   INodeRepo::the()->save_changes();
   INodeRepo::the()->free_sql_statements();
-  INodeRepo::the()->delete_unused_inodes();
+  INodeRepo::the()->delete_unused_inodes (INodeRepo::DM_ALL);
 
   if (sqlite3_close (sqlite_db()) != SQLITE_OK)
     {
