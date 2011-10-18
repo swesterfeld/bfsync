@@ -38,15 +38,15 @@ INodeRepo::save_changes (SaveChangesMode sc)
 {
   inode_repo.mutex.lock();
 
-  SQLStatement& inode_stmt = inode_repo.sql_statements.get
+  SQLStatement& inode_stmt = inode_repo.sql_statements().get
     ("INSERT INTO inodes VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
-  SQLStatement& link_stmt = inode_repo.sql_statements.get
+  SQLStatement& link_stmt = inode_repo.sql_statements().get
     ("INSERT INTO links VALUES (?,?,?,?,?)");
-  SQLStatement& del_inode_stmt = inode_repo.sql_statements.get
+  SQLStatement& del_inode_stmt = inode_repo.sql_statements().get
     ("DELETE FROM inodes WHERE id=?");
-  SQLStatement& del_links_stmt = inode_repo.sql_statements.get
+  SQLStatement& del_links_stmt = inode_repo.sql_statements().get
     ("DELETE FROM links WHERE dir_id=?");
-  SQLStatement& addi_stmt = inode_repo.sql_statements.get
+  SQLStatement& addi_stmt = inode_repo.sql_statements().get
    ("INSERT INTO local_inodes VALUES (?,?)");
 
   double start_t = gettime();
@@ -101,6 +101,18 @@ INodeRepo::save_changes (SaveChangesMode sc)
   if (sc == SC_CLEAR_CACHE)
     cache.clear();
 
+  inode_repo.mutex.unlock();
+}
+
+void
+INodeRepo::free_sql_statements()
+{
+  inode_repo.mutex.lock();
+  if (m_sql_statements)
+    {
+      delete m_sql_statements;
+      m_sql_statements = 0;
+    }
   inode_repo.mutex.unlock();
 }
 
@@ -296,7 +308,7 @@ INode::load (const Context& ctx, const ID& id)
 {
   bool found = false;
 
-  SQLStatement& load_inode = inode_repo.sql_statements.get
+  SQLStatement& load_inode = inode_repo.sql_statements().get
     ("SELECT * FROM inodes WHERE id = ? AND ? >= vmin AND ? <= vmax");
 
   load_inode.reset();
@@ -353,7 +365,7 @@ INode::load (const Context& ctx, const ID& id)
     return false;
 
   // load links
-  SQLStatement& load_links = inode_repo.sql_statements.get
+  SQLStatement& load_links = inode_repo.sql_statements().get
     ("SELECT * FROM links WHERE dir_id = ? AND ? >= vmin AND ? <= vmax");
 
   load_links.reset();
@@ -389,7 +401,7 @@ INode::load_or_alloc_ino()
 {
   // load inode number
   ino = 0;
-  SQLStatement& loadi_stmt = inode_repo.sql_statements.get (
+  SQLStatement& loadi_stmt = inode_repo.sql_statements().get (
     "SELECT * FROM local_inodes WHERE id = ?"
   );
   loadi_stmt.reset();
@@ -407,7 +419,7 @@ INode::load_or_alloc_ino()
     {
       while (ino_pool.empty())
         {
-          SQLStatement& searchi_stmt = inode_repo.sql_statements.get (
+          SQLStatement& searchi_stmt = inode_repo.sql_statements().get (
             "SELECT * FROM local_inodes WHERE ino in (?, ?, ?, ?, ?, "
                                                     " ?, ?, ?, ?, ?, "
                                                     " ?, ?, ?, ?, ?, "

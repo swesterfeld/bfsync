@@ -1482,6 +1482,7 @@ bfsyncfs_main (int argc, char **argv)
   int fuse_rc = fuse_main (my_argc, my_argv, &bfsync_oper, NULL);
 
   INodeRepo::the()->save_changes();
+  INodeRepo::the()->free_sql_statements();
 
   if (sqlite3_close (sqlite_db()) != SQLITE_OK)
     {

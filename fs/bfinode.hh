@@ -141,18 +141,28 @@ INodePtr::update() const
 class INodeRepo
 {
 private:
-  std::map<int, std::map<ID, INode*> > cache;
-
+  std::map<int, std::map<ID, INode*> >   cache;
+  SQLStatementStore                     *m_sql_statements;
 public:
   std::map<ino_t, ID>   new_inodes;
   Mutex                 mutex;
-  SQLStatementStore     sql_statements;
+
+  SQLStatementStore&
+  sql_statements()
+  {
+    if (!m_sql_statements)
+      m_sql_statements = new SQLStatementStore();
+
+    return *m_sql_statements;
+  }
+
   std::map<ID, INode*>& get_cache (const Context& ctx);
 
   enum SaveChangesMode { SC_NORMAL, SC_CLEAR_CACHE };
 
   void save_changes (SaveChangesMode sc = SC_NORMAL);
   void clear_cache();
+  void free_sql_statements();
 
   static INodeRepo *the();
 };
