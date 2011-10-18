@@ -7,9 +7,12 @@
 #include "bflink.hh"
 #include "bfsql.hh"
 
+#include <set>
+
 using std::string;
 using std::vector;
 using std::map;
+using std::set;
 
 namespace BFSync {
 
@@ -116,6 +119,39 @@ INodeRepo::free_sql_statements()
   inode_repo.mutex.unlock();
 }
 
+void
+INodeRepo::delete_unused_inodes()
+{
+  mutex.lock();
+
+  set<INode*> del_inodes;
+  for (map<int, map<ID, INode*> >::iterator meta_i = cache.begin(); meta_i != cache.end(); meta_i++)
+    {
+      map<ID, INode*>& version_cache = meta_i->second;
+
+      map<ID, INode*>::iterator ci = version_cache.begin();
+      while (ci != version_cache.end())
+        {
+          map<ID, INode*>::iterator nexti = ci;
+          nexti++;
+
+          INode* inode_ptr = ci->second;
+          if (inode_ptr && inode_ptr->has_zero_refs() && !inode_ptr->updated)
+            {
+              del_inodes.insert (inode_ptr);
+              version_cache.erase (ci);
+            }
+          ci = nexti;
+        }
+    }
+
+  // actually delete INodes (deduplicated)
+  for (set<INode*>::iterator di = del_inodes.begin(); di != del_inodes.end(); di++)
+    delete *di;
+
+  mutex.unlock();
+}
+
 const int INODES_VMIN     = 0;
 const int INODES_VMAX     = 1;
 const int INODES_ID       = 2;
@@ -143,6 +179,7 @@ INodePtr::INodePtr (const Context& ctx, const ID& id) :
   if (cached_ptr)
     {
       ptr = cached_ptr;
+      ptr->ref();
     }
   else
     {
@@ -187,11 +224,21 @@ INodePtr::null()
   return INodePtr();
 }
 
+INodePtr::~INodePtr()
+{
+  if (ptr)
+    {
+      ptr->unref();
+      ptr = NULL;
+    }
+}
+
 /*-------------------------------------------------------------------------------------------*/
 
 static LeakDebugger leak_debugger ("BFSync::INode");
 
-INode::INode()
+INode::INode() :
+  ref_count (1)
 {
   leak_debugger.add (this);
 }

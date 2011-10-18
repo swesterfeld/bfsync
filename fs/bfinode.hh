@@ -50,6 +50,10 @@ class INodePtr
 public:
   INodePtr (const Context& ctx, const ID& id);
   INodePtr (const Context& ctx);
+  ~INodePtr();
+
+  inline INodePtr (const INodePtr& other);
+  inline INodePtr& operator= (const INodePtr& other);
 
   operator bool() const
   {
@@ -80,6 +84,7 @@ enum FileStatus
 class INode
 {
   static std::vector<ino_t> ino_pool;
+  unsigned int              ref_count;
 
 public:
   int           vmin;
@@ -129,6 +134,26 @@ public:
   void          load_or_alloc_ino();
   void          get_child_names (std::vector<std::string>& names) const;
   INodePtr      get_child (const Context& ctx, const std::string& name) const;
+
+  void
+  ref()
+  {
+    ref_count++;
+  }
+
+  void
+  unref()
+  {
+    g_return_if_fail (ref_count > 0);
+
+    ref_count--;
+  }
+
+  bool
+  has_zero_refs() const
+  {
+    return ref_count == 0;
+  }
 };
 
 inline INode*
@@ -163,9 +188,38 @@ public:
   void save_changes (SaveChangesMode sc = SC_NORMAL);
   void clear_cache();
   void free_sql_statements();
+  void delete_unused_inodes();
 
   static INodeRepo *the();
 };
+
+inline
+INodePtr::INodePtr (const INodePtr& other)
+{
+  INode *new_ptr = other.ptr;
+
+  if (new_ptr)
+    new_ptr->ref();
+
+  ptr = new_ptr;
+}
+
+inline INodePtr&
+INodePtr::operator= (const INodePtr& other)
+{
+  INode *new_ptr = other.ptr;
+  INode *old_ptr = ptr;
+
+  if (new_ptr)
+    new_ptr->ref();
+
+  ptr = new_ptr;
+
+  if (old_ptr)
+    old_ptr->unref();
+
+  return *this;
+}
 
 }
 

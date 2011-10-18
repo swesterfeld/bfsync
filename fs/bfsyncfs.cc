@@ -1483,6 +1483,7 @@ bfsyncfs_main (int argc, char **argv)
 
   INodeRepo::the()->save_changes();
   INodeRepo::the()->free_sql_statements();
+  INodeRepo::the()->delete_unused_inodes();
 
   if (sqlite3_close (sqlite_db()) != SQLITE_OK)
     {

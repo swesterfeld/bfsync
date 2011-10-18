@@ -26,14 +26,36 @@
 namespace BFSync
 {
 
-struct Link
+class Link
 {
+  unsigned int ref_count;
+public:
   int          vmin, vmax;
   ID           dir_id;
   ID           inode_id;
   std::string  name;
   bool         deleted;
   bool         updated;
+
+  void
+  ref()
+  {
+    ref_count++;
+  }
+
+  void
+  unref()
+  {
+    g_return_if_fail (ref_count > 0);
+
+    ref_count--;
+  }
+
+  bool
+  has_zero_refs() const
+  {
+    return ref_count == 0;
+  }
 
   Link();
   ~Link();
@@ -44,6 +66,34 @@ class LinkPtr
   Link *ptr;
 public:
   LinkPtr (Link *link = NULL);
+  ~LinkPtr();
+
+  LinkPtr (const LinkPtr& other)
+  {
+    Link *new_ptr = other.ptr;
+
+    if (new_ptr)
+      new_ptr->ref();
+
+    ptr = new_ptr;
+  }
+
+  LinkPtr&
+  operator= (const LinkPtr& other)
+  {
+    Link *new_ptr = other.ptr;
+    Link *old_ptr = ptr;
+
+    if (new_ptr)
+      new_ptr->ref();
+
+    ptr = new_ptr;
+
+    if (old_ptr)
+      old_ptr->unref();
+
+    return *this;
+  }
 
   const Link*
   operator->() const
