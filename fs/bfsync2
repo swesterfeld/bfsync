@@ -189,8 +189,8 @@ def cmd_commit():
     hash_list += [ filename ]
     file_list += [ (filename, id) ]
 
-  hash_cache.hash_all (hash_list)
-  status_line.cleanup()
+  #hash_cache.hash_all (hash_list)
+  #status_line.cleanup()
 
   # add new files via BFSync::Server
   add_new_list = []
@@ -218,7 +218,7 @@ def cmd_commit():
 
   c.execute ('''UPDATE inodes SET vmax=? WHERE vmax = ?''', (VERSION + 1, VERSION))
   c.execute ('''UPDATE links SET vmax=? WHERE vmax = ?''', (VERSION + 1, VERSION))
-  c.execute ('''UPDATE history SET message="commit message", author="author" WHERE version=?''', str (VERSION))
+  c.execute ('''UPDATE history SET message="commit message", author="author" WHERE version=?''', (VERSION, ))
   c.execute ('''INSERT INTO history VALUES (?,?,?,?)''', (VERSION + 1, "", "", 0))
   conn.commit()
   c.close()
