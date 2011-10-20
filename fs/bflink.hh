@@ -29,6 +29,8 @@ namespace BFSync
 class Link
 {
   unsigned int ref_count;
+  Mutex        ref_mutex;
+
 public:
   int          vmin, vmax;
   ID           dir_id;
@@ -40,20 +42,25 @@ public:
   void
   ref()
   {
+    Lock lock (ref_mutex);
+
     ref_count++;
   }
 
   void
   unref()
   {
-    g_return_if_fail (ref_count > 0);
+    Lock lock (ref_mutex);
 
+    g_return_if_fail (ref_count > 0);
     ref_count--;
   }
 
   bool
-  has_zero_refs() const
+  has_zero_refs()
   {
+    Lock lock (ref_mutex);
+
     return ref_count == 0;
   }
 

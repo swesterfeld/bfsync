@@ -48,6 +48,21 @@ public:
   void unlock() { pthread_mutex_unlock (&mutex); }
 };
 
+class Lock
+{
+  Mutex& mutex;
+public:
+  Lock (Mutex& mutex) :
+    mutex (mutex)
+  {
+    mutex.lock();
+  }
+  ~Lock()
+  {
+    mutex.unlock();
+  }
+};
+
 class Cond
 {
   pthread_cond_t cond;
