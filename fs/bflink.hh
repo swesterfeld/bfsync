@@ -44,6 +44,7 @@ public:
   {
     Lock lock (ref_mutex);
 
+    g_return_if_fail (ref_count > 0);
     ref_count++;
   }
 

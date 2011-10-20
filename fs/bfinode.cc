@@ -24,7 +24,7 @@ INodeRepo::the()
   return &inode_repo;
 }
 
-map<ID, INode*>&
+map<ID, INodePtr>&
 INodeRepo::get_cache (const Context& ctx)
 {
   return cache[ctx.version];
@@ -56,13 +56,13 @@ INodeRepo::save_changes (SaveChangesMode sc)
 
   int inodes_saved = 0;
   inode_stmt.begin();
-  for (map<int, map<ID, INode*> >::iterator meta_i = cache.begin(); meta_i != cache.end(); meta_i++)
+  for (map<int, map<ID, INodePtr> >::iterator meta_i = cache.begin(); meta_i != cache.end(); meta_i++)
     {
-      map<ID, INode*>& version_cache = meta_i->second;
+      map<ID, INodePtr>& version_cache = meta_i->second;
 
-      for (map<ID, INode*>::iterator ci = version_cache.begin(); ci != version_cache.end(); ci++)
+      for (map<ID, INodePtr>::iterator ci = version_cache.begin(); ci != version_cache.end(); ci++)
         {
-          INode *inode_ptr = ci->second;
+          INodePtr inode_ptr = ci->second;
           if (inode_ptr && inode_ptr->updated)
             {
               del_inode_stmt.reset();
@@ -74,8 +74,12 @@ INodeRepo::save_changes (SaveChangesMode sc)
               del_links_stmt.step();
 
               inodes_saved++;
-              inode_ptr->save (inode_stmt, link_stmt);
-              inode_ptr->updated = false;
+
+              // this is a little hacky, since we need to write to INode* ptr to
+              // save & reset updated flag
+              INode *inode = inode_ptr.update();
+              inode->save (inode_stmt, link_stmt);
+              inode->updated = false;
             }
         }
     }
@@ -122,36 +126,28 @@ INodeRepo::delete_unused_inodes (DeleteMode dmode)
 {
   Lock lock (mutex);
 
-  set<INode*> del_inodes;
-  for (map<int, map<ID, INode*> >::iterator meta_i = cache.begin(); meta_i != cache.end(); meta_i++)
+  for (map<int, map<ID, INodePtr> >::iterator meta_i = cache.begin(); meta_i != cache.end(); meta_i++)
     {
-      map<ID, INode*>& version_cache = meta_i->second;
+      map<ID, INodePtr>& version_cache = meta_i->second;
 
-      map<ID, INode*>::iterator ci = version_cache.begin();
+      map<ID, INodePtr>::iterator ci = version_cache.begin();
       while (ci != version_cache.end())
         {
-          map<ID, INode*>::iterator nexti = ci;
+          map<ID, INodePtr>::iterator nexti = ci;
           nexti++;
 
-          INode* inode_ptr = ci->second;
-          if (inode_ptr && inode_ptr->has_zero_refs() && !inode_ptr->updated)
+          INodePtr inode_ptr = ci->second;
+          if (inode_ptr && !inode_ptr->updated)
             {
               bool del = true;                          // dmode == DM_ALL <-> delete all
               if (dmode == DM_SOME)
                 del = g_random_int_range (0, 100) <= 5; // randomly delete 5%
               if (del)
-                {
-                  del_inodes.insert (inode_ptr);
-                  version_cache.erase (ci);
-                }
+                version_cache.erase (ci);
             }
           ci = nexti;
         }
     }
-
-  // actually delete INodes (deduplicated)
-  for (set<INode*>::iterator di = del_inodes.begin(); di != del_inodes.end(); di++)
-    delete *di;
 }
 
 int
@@ -159,16 +155,16 @@ INodeRepo::cached_inode_count()
 {
   Lock lock (mutex);
 
-  set<INode*> inodes;
-  for (map<int, map<ID, INode*> >::iterator meta_i = cache.begin(); meta_i != cache.end(); meta_i++)
+  set<ID> inodes;
+  for (map<int, map<ID, INodePtr> >::iterator meta_i = cache.begin(); meta_i != cache.end(); meta_i++)
     {
-      map<ID, INode*>& version_cache = meta_i->second;
+      map<ID, INodePtr>& version_cache = meta_i->second;
 
-      for (map<ID, INode*>::iterator ci = version_cache.begin(); ci != version_cache.end(); ci++)
+      for (map<ID, INodePtr>::iterator ci = version_cache.begin(); ci != version_cache.end(); ci++)
         {
-          INode* inode_ptr = ci->second;
+          INodePtr inode_ptr = ci->second;
           if (inode_ptr)
-            inodes.insert (inode_ptr);
+            inodes.insert (inode_ptr->id);
         }
     }
   return inodes.size();
@@ -197,11 +193,10 @@ INodePtr::INodePtr (const Context& ctx, const ID& id) :
 {
   Lock lock (inode_repo.mutex);
 
-  INode*& cached_ptr = inode_repo.get_cache (ctx)[id];
+  INodePtr& cached_ptr = inode_repo.get_cache (ctx)[id];
   if (cached_ptr)
     {
-      ptr = cached_ptr;
-      ptr->ref();
+      *this = cached_ptr;
     }
   else
     {
@@ -211,8 +206,8 @@ INodePtr::INodePtr (const Context& ctx, const ID& id) :
           delete ptr;
           ptr = NULL;
         }
+      cached_ptr = *this;
     }
-  cached_ptr = ptr;
 }
 
 INodePtr::INodePtr (const Context& ctx)
@@ -229,7 +224,7 @@ INodePtr::INodePtr (const Context& ctx)
   ptr->updated = true;
 
   Lock lock (inode_repo.mutex);
-  inode_repo.get_cache (ctx) [ptr->id] = ptr;
+  inode_repo.get_cache (ctx) [ptr->id] = *this;
 }
 
 INodePtr::INodePtr() :
@@ -248,6 +243,9 @@ INodePtr::~INodePtr()
   if (ptr)
     {
       ptr->unref();
+      /* eager deletion */
+      if (ptr->has_zero_refs())
+        delete ptr;
       ptr = NULL;
     }
 }

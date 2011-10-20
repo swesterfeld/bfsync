@@ -46,10 +46,10 @@ class INode;
 class INodePtr
 {
   INode *ptr;
-  INodePtr();
 public:
   INodePtr (const Context& ctx, const ID& id);
   INodePtr (const Context& ctx);
+  INodePtr();  // == null()
   ~INodePtr();
 
   inline INodePtr (const INodePtr& other);
@@ -141,6 +141,7 @@ public:
   {
     Lock lock (ref_mutex);
 
+    g_return_if_fail (ref_count > 0);
     ref_count++;
   }
 
@@ -172,7 +173,7 @@ INodePtr::update() const
 class INodeRepo
 {
 private:
-  std::map<int, std::map<ID, INode  *> >  cache;
+  std::map<int, std::map<ID, INodePtr> >  cache;
   SQLStatementStore                      *m_sql_statements;
 public:
   std::map<ino_t, ID>   new_inodes;
@@ -187,7 +188,7 @@ public:
     return *m_sql_statements;
   }
 
-  std::map<ID, INode*>& get_cache (const Context& ctx);
+  std::map<ID, INodePtr>& get_cache (const Context& ctx);
 
   enum SaveChangesMode { SC_NORMAL, SC_CLEAR_CACHE };
 
