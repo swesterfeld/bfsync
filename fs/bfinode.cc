@@ -476,7 +476,7 @@ INode::load_or_alloc_ino()
   // load inode number
   ino = 0;
   SQLStatement& loadi_stmt = inode_repo.sql_statements().get (
-    "SELECT * FROM local_inodes WHERE id = ?"
+    "SELECT ino FROM local_inodes WHERE id = ?"
   );
   loadi_stmt.reset();
   loadi_stmt.bind_text (1, id.str());
