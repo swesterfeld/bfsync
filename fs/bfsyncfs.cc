@@ -41,6 +41,7 @@
 using std::string;
 using std::vector;
 using std::set;
+using std::map;
 using std::max;
 
 using namespace BFSync;
@@ -366,6 +367,22 @@ inode_from_path (const Context& ctx, const string& path, IFPStatus& status)
   return inode;
 }
 
+Mutex               intern_inode_mutex;
+map<string, ino_t>  intern_inode_map;
+ino_t               intern_inode_next = 1;
+
+static ino_t
+intern_inode (const string& path)
+{
+  intern_inode_mutex.lock();
+  ino_t& result = intern_inode_map[path];
+  if (!result)
+    result = intern_inode_next++;
+  intern_inode_mutex.unlock();
+
+  return result;
+}
+
 int
 bfsyncdir_getattr (const string& path, struct stat *stbuf)
 {
@@ -394,6 +411,7 @@ bfsyncdir_getattr (const string& path, struct stat *stbuf)
           stbuf->st_uid  = getuid();
           stbuf->st_gid  = getgid();
           stbuf->st_size = info.size();
+          stbuf->st_ino  = intern_inode (path);
           return 0;
         }
       if (pvec[1] == "commits")
@@ -402,26 +420,8 @@ bfsyncdir_getattr (const string& path, struct stat *stbuf)
           stbuf->st_mode = 0755 | S_IFDIR;
           stbuf->st_uid  = getuid();
           stbuf->st_gid  = getgid();
+          stbuf->st_ino  = intern_inode (path);
           return 0;
-        }
-    }
-  if (pvec.size() == 3 && pvec[1] == "commits")
-    {
-      int v = atoi (pvec[2].c_str());
-      if (v != History::the()->current_version())
-        {
-          const vector<int>& hversions = History::the()->all_versions();
-          for (size_t i = 0; i < hversions.size(); i++)
-            {
-              if (v == hversions[i])
-                {
-                  memset (stbuf, 0, sizeof (struct stat));
-                  stbuf->st_mode = 0755 | S_IFDIR;
-                  stbuf->st_uid  = getuid();
-                  stbuf->st_gid  = getgid();
-                  return 0;
-                }
-            }
         }
     }
   return -ENOENT;
@@ -451,6 +451,7 @@ bfsync_getattr (const char *path_arg, struct stat *stbuf)
           stbuf->st_mode = 0755 | S_IFDIR;
           stbuf->st_uid  = getuid();
           stbuf->st_gid  = getgid();
+          stbuf->st_ino  = intern_inode (path);
           return 0;
         }
     }

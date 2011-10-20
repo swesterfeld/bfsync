@@ -503,7 +503,8 @@ INode::load_or_alloc_ino()
           searchi_stmt.reset();
           while (ino_pool.size() != 20)
             {
-              ino = g_random_int_range (1, 2 * 1000 * 1000 * 1000);  // 1 .. ~ 2^31
+              /* low inode numbers are reserved for .bfsync inodes */
+              ino = g_random_int_range (100 * 1000, 2 * 1000 * 1000 * 1000);  // 100000 .. ~ 2^31
               map<ino_t, ID>::const_iterator ni = inode_repo.new_inodes.find (ino);
               if (ni == inode_repo.new_inodes.end())  // not recently allocated & in use
                 {
