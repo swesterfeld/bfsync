@@ -39,7 +39,7 @@ INodeRepo::clear_cache()
 void
 INodeRepo::save_changes (SaveChangesMode sc)
 {
-  inode_repo.mutex.lock();
+  Lock lock (mutex);
 
   SQLStatement& inode_stmt = inode_repo.sql_statements().get
     ("INSERT INTO inodes VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
@@ -103,26 +103,24 @@ INodeRepo::save_changes (SaveChangesMode sc)
 
   if (sc == SC_CLEAR_CACHE)
     cache.clear();
-
-  inode_repo.mutex.unlock();
 }
 
 void
 INodeRepo::free_sql_statements()
 {
-  inode_repo.mutex.lock();
+  Lock lock (mutex);
+
   if (m_sql_statements)
     {
       delete m_sql_statements;
       m_sql_statements = 0;
     }
-  inode_repo.mutex.unlock();
 }
 
 void
 INodeRepo::delete_unused_inodes (DeleteMode dmode)
 {
-  mutex.lock();
+  Lock lock (mutex);
 
   set<INode*> del_inodes;
   for (map<int, map<ID, INode*> >::iterator meta_i = cache.begin(); meta_i != cache.end(); meta_i++)
@@ -154,14 +152,13 @@ INodeRepo::delete_unused_inodes (DeleteMode dmode)
   // actually delete INodes (deduplicated)
   for (set<INode*>::iterator di = del_inodes.begin(); di != del_inodes.end(); di++)
     delete *di;
-
-  mutex.unlock();
 }
 
 int
 INodeRepo::cached_inode_count()
 {
-  mutex.lock();
+  Lock lock (mutex);
+
   set<INode*> inodes;
   for (map<int, map<ID, INode*> >::iterator meta_i = cache.begin(); meta_i != cache.end(); meta_i++)
     {
@@ -174,8 +171,6 @@ INodeRepo::cached_inode_count()
             inodes.insert (inode_ptr);
         }
     }
-  mutex.unlock();
-
   return inodes.size();
 }
 
@@ -200,7 +195,7 @@ const int INODES_MTIME_NS = 16;
 INodePtr::INodePtr (const Context& ctx, const ID& id) :
   ptr (NULL)
 {
-  inode_repo.mutex.lock();
+  Lock lock (inode_repo.mutex);
 
   INode*& cached_ptr = inode_repo.get_cache (ctx)[id];
   if (cached_ptr)
@@ -218,8 +213,6 @@ INodePtr::INodePtr (const Context& ctx, const ID& id) :
         }
     }
   cached_ptr = ptr;
-
-  inode_repo.mutex.unlock();
 }
 
 INodePtr::INodePtr (const Context& ctx)
@@ -235,9 +228,8 @@ INodePtr::INodePtr (const Context& ctx)
   ptr->load_or_alloc_ino();
   ptr->updated = true;
 
-  inode_repo.mutex.lock();
+  Lock lock (inode_repo.mutex);
   inode_repo.get_cache (ctx) [ptr->id] = ptr;
-  inode_repo.mutex.unlock();
 }
 
 INodePtr::INodePtr() :

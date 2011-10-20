@@ -172,7 +172,7 @@ LockState::LockState()
 void
 LockState::lock (FSLock::LockType lock_type)
 {
-  mutex.lock();
+  Lock lock (mutex);
   while (1)
     {
       bool got_lock = false;
@@ -245,13 +245,12 @@ LockState::lock (FSLock::LockType lock_type)
         break;
       cond.wait (mutex);
     }
-  mutex.unlock();
 }
 
 void
 LockState::unlock (FSLock::LockType lock_type)
 {
-  mutex.lock();
+  Lock lock (mutex);
   if (lock_type == FSLock::READ)
     {
       assert (reader_count > 0);
@@ -273,7 +272,6 @@ LockState::unlock (FSLock::LockType lock_type)
       rdonly_count--;
     }
   cond.broadcast();
-  mutex.unlock();
 }
 
 FSLock::FSLock (LockType lock_type) :
@@ -374,11 +372,10 @@ ino_t               intern_inode_next = 1;
 static ino_t
 intern_inode (const string& path)
 {
-  intern_inode_mutex.lock();
+  Lock lock (intern_inode_mutex);
   ino_t& result = intern_inode_map[path];
   if (!result)
     result = intern_inode_next++;
-  intern_inode_mutex.unlock();
 
   return result;
 }

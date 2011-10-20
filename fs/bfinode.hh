@@ -172,8 +172,8 @@ INodePtr::update() const
 class INodeRepo
 {
 private:
-  std::map<int, std::map<ID, INode*> >   cache;
-  SQLStatementStore                     *m_sql_statements;
+  std::map<int, std::map<ID, INode  *> >  cache;
+  SQLStatementStore                      *m_sql_statements;
 public:
   std::map<ino_t, ID>   new_inodes;
   Mutex                 mutex;

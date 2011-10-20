@@ -31,15 +31,13 @@ LeakDebugger::ptr_add (void *p)
 {
   if (DEBUG)
     {
-      mutex.lock();
+      Lock lock (mutex);
 
       if (ptr_map[p] != 0)
         g_critical ("LeakDebugger: invalid registration of object type %s detected; ptr_map[p] is %d\n",
                     type.c_str(), ptr_map[p]);
 
       ptr_map[p]++;
-
-      mutex.unlock();
     }
 }
 
@@ -48,15 +46,13 @@ LeakDebugger::ptr_del (void *p)
 {
   if (DEBUG)
     {
-      mutex.lock();
+      Lock lock (mutex);
 
       if (ptr_map[p] != 1)
         g_critical ("LeakDebugger: invalid deletion of object type %s detected; ptr_map[p] is %d\n",
                     type.c_str(), ptr_map[p]);
 
       ptr_map[p]--;
-
-      mutex.unlock();
     }
 }
 
