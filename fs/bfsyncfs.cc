@@ -150,10 +150,8 @@ struct LockState
 {
   Mutex mutex;
   Cond  cond;
-  int   reader_count;
-  int   writer_count;
-  int   reorg_count;
-  int   rdonly_count;
+  bool  fs_busy;
+  bool  fs_rdonly;
 
   LockState();
 
@@ -161,12 +159,10 @@ struct LockState
   void unlock (FSLock::LockType lock_type);
 } lock_state;
 
-LockState::LockState()
+LockState::LockState() :
+  fs_busy (false),
+  fs_rdonly (false)
 {
-  reader_count = 0;
-  writer_count = 0;
-  reorg_count = 0;
-  rdonly_count = 0;
 }
 
 void
@@ -175,40 +171,35 @@ LockState::lock (FSLock::LockType lock_type)
   Lock lock (mutex);
   while (1)
     {
-      bool got_lock = false;
-
       switch (lock_type)
         {
           /* READ is allowed if:
-             - no other thread writes at the same time
+             - no other thread reads or writes at the same time
              - no other thread performs data reorganization (like during commit) at the same time
 
-             Its ok to read if the filesystem is in readonly mode, and its ok to read if another thread
-             is also reading.
+             Its ok to read if the filesystem is in readonly mode.
            */
           case FSLock::READ:
-            if (writer_count == 0 && reorg_count == 0)
+            if (!fs_busy)
               {
-                got_lock = true;
-                reader_count++;
+                fs_busy = true;
+                return;
               }
             break;
           /* WRITE is allowed if:
-             - no other thread reads at the same time
-             - no other thread writes at the same time
+             - no other thread reads or writes at the same time
              - no other thread performs data reorganization (like during commit) at the same time
              - the filesystem is not in readonly mode
            */
           case FSLock::WRITE:
-            if (reader_count == 0 && writer_count == 0 && reorg_count == 0 && rdonly_count == 0)
+            if (!fs_busy && !fs_rdonly)
               {
-                got_lock = true;
-                writer_count++;
+                fs_busy = true;
+                return;
               }
             break;
           /* REORG is allowed if:
-             - no other thread reads at the same time
-             - no other thread writes at the same time
+             - no other thread reads or writes at the same time
              - no other thread performs data reorganization (like during commit) at the same time
              - the filesystem is in readonly mode
 
@@ -217,32 +208,29 @@ LockState::lock (FSLock::LockType lock_type)
              than write).
            */
           case FSLock::REORG:
-            if (reader_count == 0 && writer_count == 0 && reorg_count == 0)
+            if (!fs_busy && fs_rdonly)
               {
-                got_lock = true;
-                reorg_count++;
-                assert (rdonly_count == 1);
+                fs_busy = true;
+                return;
               }
             break;
           /* RDONLY (making the filesystem readonly) is allowed if:
-             - no other thread writes at the same time
+             - no other thread reads or writes at the same time
              - no other thread performs data reorganization (like during commit) at the same time
              - the filesystem is not in readonly mode
 
              Reads performed in other threads do not affect making the FS readonly.
            */
           case FSLock::RDONLY:
-            if (writer_count == 0 && reorg_count == 0 && rdonly_count == 0)
+            if (!fs_busy && !fs_rdonly)
               {
-                got_lock = true;
-                rdonly_count++;
+                fs_rdonly = true;
+                return;
               }
             break;
           default:
             g_assert_not_reached();
         }
-      if (got_lock)
-        break;
       cond.wait (mutex);
     }
 }
@@ -253,23 +241,23 @@ LockState::unlock (FSLock::LockType lock_type)
   Lock lock (mutex);
   if (lock_type == FSLock::READ)
     {
-      assert (reader_count > 0);
-      reader_count--;
+      assert (fs_busy);
+      fs_busy = false;
     }
   if (lock_type == FSLock::WRITE)
     {
-      assert (writer_count > 0);
-      writer_count--;
+      assert (fs_busy);
+      fs_busy = false;
     }
   if (lock_type == FSLock::REORG)
     {
-      assert (reorg_count > 0);
-      reorg_count--;
+      assert (fs_busy && fs_rdonly);
+      fs_busy = false;
     }
   if (lock_type == FSLock::RDONLY)
     {
-      assert (rdonly_count > 0);
-      rdonly_count--;
+      assert (fs_rdonly);
+      fs_rdonly = false;
     }
   cond.broadcast();
 }
