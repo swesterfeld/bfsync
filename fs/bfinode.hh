@@ -170,14 +170,24 @@ INodePtr::update() const
   return ptr;
 }
 
+class INodeVersionList
+{
+  std::vector<INodePtr> inodes;
+
+public:
+  size_t size() const;
+  INodePtr& operator[] (size_t pos);
+  void add (INodePtr& inode);
+};
+
 class INodeRepo
 {
 private:
-  std::map<int, std::map<ID, INodePtr> >  cache;
-  SQLStatementStore                      *m_sql_statements;
+  SQLStatementStore              *m_sql_statements;
 public:
-  std::map<ino_t, ID>   new_inodes;
-  Mutex                 mutex;
+  std::map<ID, INodeVersionList>  cache;
+  std::map<ino_t, ID>             new_inodes;
+  Mutex                           mutex;
 
   SQLStatementStore&
   sql_statements()
@@ -187,8 +197,6 @@ public:
 
     return *m_sql_statements;
   }
-
-  std::map<ID, INodePtr>& get_cache (const Context& ctx);
 
   enum SaveChangesMode { SC_NORMAL, SC_CLEAR_CACHE };
 
