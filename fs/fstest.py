@@ -827,14 +827,28 @@ def test_commits_rm():
   clear_cache()
   st = os.stat ("mnt/.bfsync/commits/1/README")
   if st.st_size != start_size:
-    raise ("README in commits dir wrong")
+    raise Exception ("README in commits dir wrong")
   if os.path.exists ("mnt/.bfsync/commits/2/README"):
-    raise ("README not removed in commits dir")
+    raise Exception ("README not removed in commits dir")
 
 bf_tests += [ ("commits-rm", test_commits_rm) ]
 
 #####
 
+def test_commits_change_file():
+  old_readme = read_file ("mnt/README")
+  new_readme = "new contents for README\n"
+  write_file ("mnt/README", new_readme)
+  commit()
+  clear_cache()
+  if read_file ("mnt/.bfsync/commits/1/README") != old_readme:
+    raise Exception ("old README changed")
+  if read_file ("mnt/.bfsync/commits/2/README") != new_readme:
+    raise Exception ("new README not written")
+
+bf_tests += [ ("commits-change-file", test_commits_change_file) ]
+
+#####
 
 def start_bfsyncfs():
   if subprocess.call (["./bfsyncfs", "test", "mnt"]) != 0:
