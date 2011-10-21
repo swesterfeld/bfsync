@@ -302,6 +302,7 @@ Server::handle_client (int client_fd)
                       lock = new FSLock (FSLock::RDONLY);
                       result.push_back ("ok");
 
+                      FSLock sc_lock (FSLock::REORG);
                       INodeRepo::the()->save_changes();
                     }
                 }
@@ -331,6 +332,8 @@ Server::handle_client (int client_fd)
                 }
               else if (request[0] == "load-all-inodes")
                 {
+                  FSLock li_lock (FSLock::READ);
+
                   double t = gettime();
                   SQLStatement stmt ("SELECT * FROM inodes");
                   Context ctx;
@@ -351,6 +354,8 @@ Server::handle_client (int client_fd)
                   else
                     {
                       result.push_back ("ok");
+
+                      FSLock sc_lock (FSLock::REORG);
                       INodeRepo::the()->save_changes();
                     }
                 }
@@ -361,6 +366,8 @@ Server::handle_client (int client_fd)
                   else
                     {
                       result.push_back ("ok");
+
+                      FSLock cc_lock (FSLock::REORG);
                       INodeRepo::the()->clear_cache();
                     }
                 }
