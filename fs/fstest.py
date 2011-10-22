@@ -851,9 +851,11 @@ bf_tests += [ ("commits-change-file", test_commits_change_file) ]
 #####
 
 def start_bfsyncfs():
-  if subprocess.call (["./bfsyncfs", "test", "mnt"]) != 0:
-    print "can't start bfsyncfs"
-    sys.exit (1)
+  if os.system ("""( echo "*** fs start (`date`)"; ./bfsyncfs -f test mnt; echo "*** fs stop (`date`), exit $?"
+                   ) >> fs.log 2>&1 &""") != 0:
+    raise Exception ("can't start bfsyncfs")
+  while not os.path.exists ("mnt/.bfsync/info"):
+    time.sleep (0.1)
 
 def commit():
   fs.commit()
