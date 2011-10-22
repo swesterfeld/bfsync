@@ -65,6 +65,13 @@ public:
     return ptr;
   }
   INode* update() const;
+
+  /* never use this if you can use update() instead */
+  INode*
+  get_ptr_without_update() const
+  {
+    return ptr;
+  }
   static INodePtr null();
 };
 

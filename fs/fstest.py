@@ -876,8 +876,6 @@ def main (fstest_args):
 
   # unmount if mounted
   try:
-    f = open ("mnt/.bfsync/info")
-    f.close()
     subprocess.call (["fusermount", "-u", "mnt"])
   except:
     pass # not mounted

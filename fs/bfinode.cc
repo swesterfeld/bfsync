@@ -81,9 +81,7 @@ INodeRepo::save_changes (SaveChangesMode sc)
 
               inodes_saved++;
 
-              // this is a little hacky, since we need to write to INode* ptr to
-              // save & reset updated flag
-              INode *inode = inode_ptr.update();
+              INode *inode = inode_ptr.get_ptr_without_update();
               inode->save (inode_stmt, link_stmt);
               inode->updated = false;
             }
