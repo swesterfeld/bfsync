@@ -75,6 +75,30 @@ public:
   static INodePtr null();
 };
 
+class INodeLinks;
+class INodeLinksPtr
+{
+  INodeLinks *ptr;
+public:
+  INodeLinksPtr (INodeLinks *inode_links = NULL);
+  inline INodeLinksPtr (const INodeLinksPtr& other);
+  inline INodeLinksPtr& operator= (const INodeLinksPtr& other);
+
+  ~INodeLinksPtr();
+
+  operator bool() const
+  {
+    return (ptr != 0);
+  }
+
+  const INodeLinks*
+  operator->() const
+  {
+    return ptr;
+  }
+  INodeLinks* update() const;
+};
+
 }
 
 #include "bflink.hh"
@@ -115,7 +139,7 @@ public:
   int           nlink;
   ino_t         ino;       /* inode number */
 
-  std::map<std::string, LinkPtr> links;
+  INodeLinksPtr links;
 
   bool          updated;
 
@@ -181,6 +205,37 @@ public:
   void add (INodePtr& inode);
 };
 
+class INodeLinks
+{
+  unsigned int ref_count;
+public:
+  std::map<std::string, LinkPtr> link_map;
+  bool                           updated;
+
+  INodeLinks();
+  ~INodeLinks();
+
+  void
+  ref()
+  {
+    g_return_if_fail (ref_count > 0);
+    ref_count++;
+  }
+
+  void
+  unref()
+  {
+    g_return_if_fail (ref_count > 0);
+    ref_count--;
+  }
+
+  bool
+  has_zero_refs()
+  {
+    return ref_count == 0;
+  }
+};
+
 class INodeRepo
 {
 private:
@@ -188,6 +243,7 @@ private:
 public:
   std::map<ID, INodeVersionList>  cache;
   std::map<ino_t, ID>             new_inodes;
+  std::map<ID, INodeLinksPtr>     links_cache;
   Mutex                           mutex;
 
   SQLStatementStore&
@@ -208,6 +264,7 @@ public:
   enum DeleteMode { DM_ALL, DM_SOME };
   void delete_unused_inodes (DeleteMode dmode);
   int  cached_inode_count();
+  int  cached_dir_count();
 
   static INodeRepo *the();
 };
@@ -228,6 +285,34 @@ INodePtr::operator= (const INodePtr& other)
 {
   INode *new_ptr = other.ptr;
   INode *old_ptr = ptr;
+
+  if (new_ptr)
+    new_ptr->ref();
+
+  ptr = new_ptr;
+
+  if (old_ptr)
+    old_ptr->unref();
+
+  return *this;
+}
+
+inline
+INodeLinksPtr::INodeLinksPtr (const INodeLinksPtr& other)
+{
+  INodeLinks *new_ptr = other.ptr;
+
+  if (new_ptr)
+    new_ptr->ref();
+
+  ptr = new_ptr;
+}
+
+inline INodeLinksPtr&
+INodeLinksPtr::operator= (const INodeLinksPtr& other)
+{
+  INodeLinks *new_ptr = other.ptr;
+  INodeLinks *old_ptr = ptr;
 
   if (new_ptr)
     new_ptr->ref();

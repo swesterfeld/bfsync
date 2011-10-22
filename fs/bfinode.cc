@@ -1,5 +1,6 @@
 #include <glib.h>
 #include <sys/time.h>
+#include <assert.h>
 
 #include "bfinode.hh"
 #include "bfsyncfs.hh"
@@ -166,6 +167,13 @@ INodeRepo::cached_inode_count()
   return cache.size();
 }
 
+int
+INodeRepo::cached_dir_count()
+{
+  Lock lock (mutex);
+  return links_cache.size();
+}
+
 const int INODES_VMIN     = 0;
 const int INODES_VMAX     = 1;
 const int INODES_ID       = 2;
@@ -229,6 +237,13 @@ INodePtr::INodePtr (const Context& ctx)
   Lock lock (inode_repo.mutex);
   INodeVersionList& ivlist = inode_repo.cache [ptr->id];
   ivlist.add (*this);
+
+  // setup links (and cache entry)
+  INodeLinksPtr& repo_links = inode_repo.links_cache[ptr->id];
+
+  assert (!repo_links);  // ID is new, so there should not be a cache entry yet
+  repo_links = INodeLinksPtr (new INodeLinks());
+  ptr->links = repo_links;
 }
 
 INodePtr::INodePtr (INode *inode) :
@@ -409,9 +424,9 @@ INode::save (SQLStatement& stmt, SQLStatement& link_stmt)
   stmt.bind_int   (1 + INODES_MTIME_NS, mtime_ns);
   stmt.step();
 
-  for (map<string, LinkPtr>::iterator li = links.begin(); li != links.end(); li++)
+  for (map<string, LinkPtr>::const_iterator li = links->link_map.begin(); li != links->link_map.end(); li++)
     {
-      LinkPtr& lp = li->second;
+      const LinkPtr& lp = li->second;
 
       if (!lp->deleted)
         {
@@ -489,6 +504,15 @@ INode::load (const Context& ctx, const ID& id)
     return false;
 
   // load links
+  if (!links)
+    {
+      INodeLinksPtr& repo_links = inode_repo.links_cache[id];
+
+      if (!repo_links)
+        repo_links = INodeLinksPtr (new INodeLinks());
+
+      links = repo_links;
+    }
   SQLStatement& load_links = inode_repo.sql_statements().get
     ("SELECT * FROM links WHERE dir_id = ? AND ? >= vmin AND ? <= vmax");
 
@@ -510,7 +534,7 @@ INode::load (const Context& ctx, const ID& id)
       link->inode_id = load_links.column_id (3);
       link->name = load_links.column_text (4);
 
-      links[link->name] = LinkPtr (link);
+      links.update()->link_map[link->name] = LinkPtr (link);
     }
 
   load_or_alloc_ino();
@@ -637,13 +661,13 @@ INode::add_link (const Context& ctx, INodePtr to, const string& name)
 
   to.update()->nlink++;
 
-  links[name] = LinkPtr (link);
+  links.update()->link_map[name] = LinkPtr (link);
 }
 
 bool
 INode::unlink (const Context& ctx, const string& name)
 {
-  LinkPtr& lp = links[name];
+  LinkPtr& lp = links.update()->link_map[name];
   if (lp->name == name && !lp->deleted)
     {
       INodePtr inode (ctx, lp->inode_id);
@@ -705,7 +729,7 @@ INode::search_perm_ok (const Context& ctx) const
 void
 INode::get_child_names (vector<string>& names) const
 {
-  for (map<string, LinkPtr>::const_iterator li = links.begin(); li != links.end(); li++)
+  for (map<string, LinkPtr>::const_iterator li = links->link_map.begin(); li != links->link_map.end(); li++)
     {
       const LinkPtr& lp = li->second;
       if (!lp->deleted)
@@ -716,9 +740,9 @@ INode::get_child_names (vector<string>& names) const
 INodePtr
 INode::get_child (const Context& ctx, const string& name) const
 {
-  map<string, LinkPtr>::const_iterator li = links.find (name);
+  map<string, LinkPtr>::const_iterator li = links->link_map.find (name);
 
-  if (li == links.end())
+  if (li == links->link_map.end())
     return INodePtr::null();
 
   if (li->second->deleted)
@@ -743,6 +767,42 @@ void
 INodeVersionList::add (INodePtr& p)
 {
   inodes.push_back (p);
+}
+/*------------------------------*/
+
+INodeLinks*
+INodeLinksPtr::update() const
+{
+  ptr->updated = true;
+  return ptr;
+}
+
+INodeLinksPtr::INodeLinksPtr (INodeLinks *inode_links) :
+  ptr (inode_links)
+{
+}
+
+INodeLinksPtr::~INodeLinksPtr()
+{
+  if (ptr)
+    {
+      ptr->unref();
+      /* eager deletion */
+      if (ptr->has_zero_refs())
+        delete ptr;
+      ptr = NULL;
+    }
+}
+
+INodeLinks::INodeLinks() :
+  ref_count (1)
+{
+  leak_debugger.add (this);
+}
+
+INodeLinks::~INodeLinks()
+{
+  leak_debugger.del (this);
 }
 
 }
