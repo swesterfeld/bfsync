@@ -225,9 +225,7 @@ Server::encode (const vector<string>& reply, vector<char>& buffer)
     reply_size += reply[i].size() + 1;
 
   // build buffer
-  char *lstr = g_strdup_printf ("%zd", reply_size);
-  string l = lstr;
-  g_free (lstr);
+  string l = string_printf ("%zd", reply_size);
 
   buffer.resize (l.size() + 1 + reply_size);
 
@@ -320,10 +318,9 @@ Server::handle_client (int client_fd)
                       if (!add_file (filename, hash, error_msg))
                         {
                           ok = false;
-                          char *error = g_strdup_printf ("fail: error while adding file '%s', hash '%s'\n%s",
-                                                         filename.c_str(), hash.c_str(), error_msg.c_str());
+                          string error = string_printf ("fail: error while adding file '%s', hash '%s'\n%s",
+                                                        filename.c_str(), hash.c_str(), error_msg.c_str());
                           result.push_back (error);
-                          g_free (error);
                           break;
                         }
                     }
@@ -343,9 +340,8 @@ Server::handle_client (int client_fd)
                     }
                   double te = gettime();
 
-                  char *msg = g_strdup_printf ("loading took %.2f ms", (te - t) * 1000);
+                  string msg = string_printf ("loading took %.2f ms", (te - t) * 1000);
                   result.push_back (msg);
-                  g_free (msg);
                 }
               else if (request[0] == "save-changes")
                 {
@@ -390,10 +386,9 @@ Server::handle_client (int client_fd)
                   time = gettime() - time;
                   if (!result.size())
                     {
-                      char *msg = g_strdup_printf ("getattr took %.2f ms <=> %.f getattr/s",
-                                                   time * 1000, count / time);
+                      string msg = string_printf ("getattr took %.2f ms <=> %.f getattr/s",
+                                                  time * 1000, count / time);
                       result.push_back (msg);
-                      g_free (msg);
                     }
                 }
             }

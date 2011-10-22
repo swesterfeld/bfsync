@@ -69,8 +69,7 @@ struct SpecialFiles
 } special_files;
 
 string
-string_printf (const char *format,
-               ...)
+string_printf (const char *format, ...)
 {
   string str;
   va_list args;
@@ -93,9 +92,7 @@ string
 get_info()
 {
   string info = special_files.info;
-  char *inode_count = g_strdup_printf ("cached-inodes %d;\n", INodeRepo::the()->cached_inode_count());
-  info += inode_count;
-  g_free (inode_count);
+  info += string_printf ("cached-inodes %d;\n", INodeRepo::the()->cached_inode_count());
   info += string_printf ("cached-dirs %d;\n", INodeRepo::the()->cached_dir_count());
   return info;
 }
@@ -565,9 +562,8 @@ read_dir_contents (const Context& ctx, const string& path, vector<string>& entri
           int v = *vi;
           if (v != History::the()->current_version())
             {
-              char *v_str = g_strdup_printf ("%d", v);
+              string v_str = string_printf ("%d", v);
               entries.push_back (v_str);
-              g_free (v_str);
             }
         }
     }

@@ -187,6 +187,7 @@ public:
   int                 version;
 };
 
+std::string string_printf (const char *format, ...) __attribute__ ((__format__ (__printf__, 1, 2)));
 
 }
 
