@@ -49,7 +49,7 @@ class INodePtr
 public:
   INodePtr (const Context& ctx, const ID& id);
   INodePtr (const Context& ctx);
-  INodePtr();  // == null()
+  INodePtr (INode *inode = NULL);  // == null()
   ~INodePtr();
 
   inline INodePtr (const INodePtr& other);
@@ -64,7 +64,7 @@ public:
   {
     return ptr;
   }
-  inline INode* update() const;
+  INode* update() const;
   static INodePtr null();
 };
 
@@ -113,6 +113,7 @@ public:
   bool          updated;
 
   INode();
+  INode (const INode& other);
   ~INode();
 
   bool          save (SQLStatement& inode_stmt, SQLStatement& link_stmt);
@@ -162,13 +163,6 @@ public:
     return ref_count == 0;
   }
 };
-
-inline INode*
-INodePtr::update() const
-{
-  ptr->updated = true;
-  return ptr;
-}
 
 class INodeVersionList
 {

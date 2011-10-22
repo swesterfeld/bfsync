@@ -53,6 +53,7 @@ INodeRepo::save_changes (SaveChangesMode sc)
   for (map<ID, INodeVersionList>::iterator ci = cache.begin(); ci != cache.end(); ci++)
     {
       INodeVersionList& ivlist = ci->second;
+      bool need_save = false;
 
       for (size_t i = 0; i < ivlist.size(); i++)
         {
@@ -64,6 +65,16 @@ INodeRepo::save_changes (SaveChangesMode sc)
               del_inode_stmt.bind_text (1, inode_ptr->id.str());
               del_inode_stmt.step();
 
+              need_save = true;
+            }
+        }
+
+      for (size_t i = 0; i < ivlist.size(); i++)
+        {
+          INodePtr inode_ptr = ivlist[i];
+
+          if (inode_ptr && need_save)
+            {
               del_links_stmt.reset();
               del_links_stmt.bind_text (1, inode_ptr->id.str());
               del_links_stmt.step();
@@ -222,8 +233,8 @@ INodePtr::INodePtr (const Context& ctx)
   ivlist.add (*this);
 }
 
-INodePtr::INodePtr() :
-  ptr (NULL)
+INodePtr::INodePtr (INode *inode) :
+  ptr (inode)
 {
 }
 
@@ -245,6 +256,35 @@ INodePtr::~INodePtr()
     }
 }
 
+INode*
+INodePtr::update() const
+{
+  if (!ptr->updated && ptr->vmin != ptr->vmax)
+    {
+      // INode copy-on-write
+
+      INode *old_ptr = new INode (*ptr);
+      old_ptr->vmax--;
+      old_ptr->updated = true;
+
+      ptr->vmin = ptr->vmax;
+      ptr->updated = true;
+
+      // add old version to cache
+      Lock lock (inode_repo.mutex);
+      INodeVersionList& ivlist = inode_repo.cache [ptr->id];
+      INodePtr old_inode (old_ptr);
+      ivlist.add (old_inode);
+      return ptr;
+    }
+  else
+    {
+      ptr->updated = true;
+      return ptr;
+    }
+}
+
+
 /*-------------------------------------------------------------------------------------------*/
 
 static LeakDebugger leak_debugger ("BFSync::INode");
@@ -253,6 +293,33 @@ INode::INode() :
   ref_count (1)
 {
   leak_debugger.add (this);
+}
+
+INode::INode (const INode& other) :
+  ref_count (1)
+{
+  leak_debugger.add (this);
+
+  vmin      = other.vmin;
+  vmax      = other.vmax;
+  id        = other.id;
+  uid       = other.uid;
+  gid       = other.gid;
+  size      = other.size;
+  hash      = other.hash;
+  mtime     = other.mtime;
+  mtime_ns  = other.mtime_ns;
+  ctime     = other.ctime;
+  ctime_ns  = other.ctime_ns;
+  mode      = other.mode;
+  link      = other.link;
+  type      = other.type;
+  major     = other.major;
+  minor     = other.minor;
+  nlink     = other.nlink;
+  ino       = other.ino;
+  links     = other.links;      /* FIXME: deep copy */
+  updated   = other.updated;
 }
 
 INode::~INode()
