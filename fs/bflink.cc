@@ -26,6 +26,14 @@ LinkPtr::~LinkPtr()
     }
 }
 
+static LinkPtr link_ptr_null;
+
+LinkPtr&
+LinkPtr::null()
+{
+  return link_ptr_null;
+}
+
 /*-------------------------------------------------------------------------------------------*/
 
 static LeakDebugger leak_debugger ("BFSync::Link");

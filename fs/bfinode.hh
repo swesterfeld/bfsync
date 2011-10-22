@@ -165,7 +165,7 @@ public:
   bool          search_perm_ok (const Context& ctx) const;
 
   void          load_or_alloc_ino();
-  void          get_child_names (std::vector<std::string>& names) const;
+  void          get_child_names (const Context& ctx, std::vector<std::string>& names) const;
   INodePtr      get_child (const Context& ctx, const std::string& name) const;
 
   void
@@ -205,12 +205,24 @@ public:
   void add (INodePtr& inode);
 };
 
+class LinkVersionList
+{
+  std::vector<LinkPtr> links;
+public:
+  size_t size() const;
+  LinkPtr& operator[] (size_t pos);
+  const LinkPtr& operator[] (size_t pos) const;
+  void add (const LinkPtr& link);
+  LinkPtr& find_version (int version);
+  const LinkPtr& find_version (int version) const;
+};
+
 class INodeLinks
 {
   unsigned int ref_count;
 public:
-  std::map<std::string, LinkPtr> link_map;
-  bool                           updated;
+  std::map<std::string, LinkVersionList> link_map;
+  bool                                   updated;
 
   INodeLinks();
   ~INodeLinks();

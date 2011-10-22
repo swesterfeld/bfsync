@@ -103,6 +103,10 @@ public:
     return *this;
   }
 
+  operator bool() const
+  {
+    return (ptr != 0);
+  }
   const Link*
   operator->() const
   {
@@ -114,7 +118,7 @@ public:
     ptr->updated = true;
     return ptr;
   }
-
+  static LinkPtr& null();
 };
 
 }

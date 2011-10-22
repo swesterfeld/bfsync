@@ -424,19 +424,23 @@ INode::save (SQLStatement& stmt, SQLStatement& link_stmt)
   stmt.bind_int   (1 + INODES_MTIME_NS, mtime_ns);
   stmt.step();
 
-  for (map<string, LinkPtr>::const_iterator li = links->link_map.begin(); li != links->link_map.end(); li++)
+  for (map<string, LinkVersionList>::const_iterator li = links->link_map.begin(); li != links->link_map.end(); li++)
     {
-      const LinkPtr& lp = li->second;
-
-      if (!lp->deleted)
+      const LinkVersionList& lvlist = li->second;
+      for (size_t i = 0; i < lvlist.size(); i++)
         {
-          link_stmt.reset();
-          link_stmt.bind_int  (1, lp->vmin);
-          link_stmt.bind_int  (2, lp->vmax);
-          link_stmt.bind_text (3, lp->dir_id.str());
-          link_stmt.bind_text (4, lp->inode_id.str());
-          link_stmt.bind_text (5, lp->name);
-          link_stmt.step();
+          const LinkPtr& lp = lvlist[i];
+
+          if (!lp->deleted)
+            {
+              link_stmt.reset();
+              link_stmt.bind_int  (1, lp->vmin);
+              link_stmt.bind_int  (2, lp->vmax);
+              link_stmt.bind_text (3, lp->dir_id.str());
+              link_stmt.bind_text (4, lp->inode_id.str());
+              link_stmt.bind_text (5, lp->name);
+              link_stmt.step();
+            }
         }
     }
   return true;
@@ -534,7 +538,7 @@ INode::load (const Context& ctx, const ID& id)
       link->inode_id = load_links.column_id (3);
       link->name = load_links.column_text (4);
 
-      links.update()->link_map[link->name] = LinkPtr (link);
+      links.update()->link_map[link->name].add (LinkPtr (link));
     }
 
   load_or_alloc_ino();
@@ -661,14 +665,14 @@ INode::add_link (const Context& ctx, INodePtr to, const string& name)
 
   to.update()->nlink++;
 
-  links.update()->link_map[name] = LinkPtr (link);
+  links.update()->link_map[name].add (LinkPtr (link));
 }
 
 bool
 INode::unlink (const Context& ctx, const string& name)
 {
-  LinkPtr& lp = links.update()->link_map[name];
-  if (lp->name == name && !lp->deleted)
+  LinkPtr& lp = links.update()->link_map[name].find_version (ctx.version);
+  if (lp && lp->name == name && !lp->deleted)
     {
       INodePtr inode (ctx, lp->inode_id);
 
@@ -727,12 +731,13 @@ INode::search_perm_ok (const Context& ctx) const
 }
 
 void
-INode::get_child_names (vector<string>& names) const
+INode::get_child_names (const Context& ctx, vector<string>& names) const
 {
-  for (map<string, LinkPtr>::const_iterator li = links->link_map.begin(); li != links->link_map.end(); li++)
+  for (map<string, LinkVersionList>::const_iterator li = links->link_map.begin(); li != links->link_map.end(); li++)
     {
-      const LinkPtr& lp = li->second;
-      if (!lp->deleted)
+      const LinkVersionList& lvlist = li->second;
+      const LinkPtr& lp = lvlist.find_version (ctx.version);
+      if (lp && !lp->deleted)
         names.push_back (lp->name);
     }
 }
@@ -740,15 +745,19 @@ INode::get_child_names (vector<string>& names) const
 INodePtr
 INode::get_child (const Context& ctx, const string& name) const
 {
-  map<string, LinkPtr>::const_iterator li = links->link_map.find (name);
+  map<string, LinkVersionList>::const_iterator li = links->link_map.find (name);
 
   if (li == links->link_map.end())
     return INodePtr::null();
 
-  if (li->second->deleted)
+  const LinkPtr& lp = li->second.find_version (ctx.version);
+  if (!lp)
     return INodePtr::null();
 
-  return INodePtr (ctx, li->second->inode_id);
+  if (lp->deleted)
+    return INodePtr::null();
+
+  return INodePtr (ctx, lp->inode_id);
 }
 
 size_t
@@ -803,6 +812,53 @@ INodeLinks::INodeLinks() :
 INodeLinks::~INodeLinks()
 {
   leak_debugger.del (this);
+}
+/*------------------------------*/
+
+size_t
+LinkVersionList::size() const
+{
+  return links.size();
+}
+
+void
+LinkVersionList::add (const LinkPtr& ptr)
+{
+  links.push_back (ptr);
+}
+
+LinkPtr&
+LinkVersionList::operator[] (size_t pos)
+{
+  return links[pos];
+}
+
+const LinkPtr&
+LinkVersionList::operator[] (size_t pos) const
+{
+  return links[pos];
+}
+
+LinkPtr&
+LinkVersionList::find_version (int version)
+{
+  for (size_t i = 0; i < links.size(); i++)
+    {
+      if (!links[i]->deleted && version >= links[i]->vmin && version <= links[i]->vmax)
+        return links[i];
+    }
+  return LinkPtr::null();
+}
+
+const LinkPtr&
+LinkVersionList::find_version (int version) const
+{
+  for (size_t i = 0; i < links.size(); i++)
+    {
+      if (!links[i]->deleted && version >= links[i]->vmin && version <= links[i]->vmax)
+        return links[i];
+    }
+  return LinkPtr::null();
 }
 
 }

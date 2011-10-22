@@ -537,7 +537,7 @@ read_dir_contents (const Context& ctx, const string& path, vector<string>& entri
   INodePtr inode = inode_from_path (ctx, path, ifp);
   if (inode)
     {
-      inode->get_child_names (entries);
+      inode->get_child_names (ctx, entries);
     }
 
   // bfsync directory (not in .bfsync/commits/N)
