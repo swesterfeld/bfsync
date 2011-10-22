@@ -150,6 +150,7 @@ def parse_config (filename):
     "repo-path",
     "mount-point",
     "cached-inodes",
+    "cached-dirs",
   ])
   return bfsync_info
 

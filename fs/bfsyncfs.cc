@@ -69,12 +69,34 @@ struct SpecialFiles
 } special_files;
 
 string
+string_printf (const char *format,
+               ...)
+{
+  string str;
+  va_list args;
+  va_start (args, format);
+  char *c_str = NULL;
+  if (vasprintf (&c_str, format, args) >= 0 && c_str)
+    {
+      str = c_str;
+      free (c_str);
+    }
+  else
+    {
+      str = format;
+    }
+  va_end (args);
+  return str;
+}
+
+string
 get_info()
 {
   string info = special_files.info;
   char *inode_count = g_strdup_printf ("cached-inodes %d;\n", INodeRepo::the()->cached_inode_count());
   info += inode_count;
   g_free (inode_count);
+  info += string_printf ("cached-dirs %d;\n", INodeRepo::the()->cached_dir_count());
   return info;
 }
 
