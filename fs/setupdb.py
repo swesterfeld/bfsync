@@ -3,11 +3,39 @@
 import sqlite3
 import os
 import time
+import CfgParser
+
+def parse_config (filename):
+  bfsync_info = CfgParser.CfgParser (filename,
+  [
+  ],
+  [
+    "repo-type",
+    "repo-path",
+    "mount-point",
+    "cached-inodes",
+    "cached-dirs",
+    "sqlite-sync",
+  ])
+  return bfsync_info
+
+cfg = parse_config ("test/.bfsync/config")
+
+sqlite_sync = cfg.get ("sqlite-sync")
+if len (sqlite_sync) != 1:
+  raise Exception ("bad sqlite-sync setting")
+
+if sqlite_sync[0] == "0":
+  sqlite_sync = False
+else:
+  sqlite_sync = True
 
 reinit_tables = not os.path.exists ('test/db')
 
 conn = sqlite3.connect ('test/db')
 c = conn.cursor()
+if not sqlite_sync:
+  c.execute ('''PRAGMA synchronous=off''')
 if reinit_tables:
   c.execute ('''CREATE TABLE inodes
                  (
@@ -54,7 +82,6 @@ if reinit_tables:
   c.execute ('''CREATE INDEX local_inodes_idx_id ON local_inodes (id)''')
   c.execute ('''CREATE INDEX local_inodes_idx_ino ON local_inodes (ino)''')
 else:
-  # c.execute ('''PRAGMA synchronous=off''')
   c.execute ('''DELETE FROM local_inodes''')
   c.execute ('''DELETE FROM inodes''')
   c.execute ('''DELETE FROM links''')
