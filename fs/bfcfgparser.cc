@@ -155,7 +155,7 @@ CfgParser::parse (const string& filename)
   while (1)
     {
       Token t = get_token();
-      print_token (t);
+      // print_token (t);
       if (t == TOKEN_IDENTIFIER)
         {
           if (!parse_group_or_key_value (token_value))
