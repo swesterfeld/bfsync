@@ -78,6 +78,12 @@ def setup():
   write_file ("mnt/subdir/x", "File X\n")
   commit()
 
+def remount():
+  fs.umount()
+  if os.path.exists ("mnt/.bfsync/info"):
+    raise Exception ("incomplete umount")
+  start_bfsyncfs()
+
 def clear_cache():
   cwd = os.getcwd()
   os.chdir ("mnt")
@@ -849,6 +855,40 @@ def test_commits_change_file():
     raise Exception ("new README not written")
 
 bf_tests += [ ("commits-change-file", test_commits_change_file) ]
+
+#####
+
+def test_remount_rm():
+  remount()
+  start_size = os.path.getsize ("mnt/README")
+  os.remove ("mnt/README")
+  commit()
+  remount()
+  st = os.stat ("mnt/.bfsync/commits/1/README")
+  print "stat from commit 1"
+  print st
+  if st.st_size != start_size:
+    raise Exception ("README in commits dir wrong")
+  if os.path.exists ("mnt/.bfsync/commits/2/README"):
+    raise Exception ("README not removed in commits dir")
+
+bf_tests += [ ("remount-rm", test_remount_rm) ]
+
+#####
+
+def test_remount_change_file():
+  remount()
+  old_readme = read_file ("mnt/README")
+  new_readme = "new contents for README\n"
+  write_file ("mnt/README", new_readme)
+  commit()
+  remount()
+  if read_file ("mnt/.bfsync/commits/1/README") != old_readme:
+    raise Exception ("old README changed")
+  if read_file ("mnt/.bfsync/commits/2/README") != new_readme:
+    raise Exception ("new README not written")
+
+bf_tests += [ ("remount-change-file", test_remount_change_file) ]
 
 #####
 
