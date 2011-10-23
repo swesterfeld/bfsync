@@ -22,6 +22,7 @@
 #include "bfsyncserver.hh"
 #include "bfsyncfs.hh"
 #include "bfhistory.hh"
+#include "bfcfgparser.hh"
 #include <sqlite3.h>
 
 #include <sys/time.h>
@@ -1432,9 +1433,30 @@ bfsyncfs_main (int argc, char **argv)
   options.repo_path = repo_path;
   options.mount_point = mount_point;
 
+  CfgParser repo_cfg_parser;
+  if (!repo_cfg_parser.parse (repo_path + "/.bfsync/config"))
+    {
+      printf ("bfsyncfs: parse error in repo config:\n%s\n", repo_cfg_parser.error().c_str());
+      exit (1);
+    }
+  map<string, vector<string> > cfg_values = repo_cfg_parser.values();
+  const vector<string>& sqlite_sync = cfg_values["sqlite-sync"];
+  if (sqlite_sync.size() == 1)
+    {
+      if (sqlite_sync[0] == "1")
+        options.sqlite_sync = true;
+      else
+        options.sqlite_sync = false;
+    }
+  else
+    {
+      options.sqlite_sync = true;
+    }
+
   special_files.info  = "repo-type mount;\n";
   special_files.info += "repo-path \"" + repo_path + "\";\n";
   special_files.info += "mount-point \"" + mount_point + "\";\n";
+  special_files.info += "sqlite-sync " + string (options.sqlite_sync ? "1" : "0") + ";\n";
 
   debug ("starting bfsyncfs; info = \n{\n%s}\n", special_files.info.c_str());
 
@@ -1495,17 +1517,16 @@ bfsyncfs_main (int argc, char **argv)
     }
   History::the()->read();
 
-/*
-  {
-    SQLStatement st ("PRAGMA synchronous=off");
-    st.step();
-    if (!st.success())
-      {
-        printf ("bfsyncfs: can't set db in synchronous=off mode\n");
-        return 1;
-      }
-  }
-*/
+  if (!Options::the()->sqlite_sync)
+    {
+      SQLStatement st ("PRAGMA synchronous=off");
+      st.step();
+      if (!st.success())
+        {
+          printf ("bfsyncfs: can't set db in synchronous=off mode\n");
+          return 1;
+        }
+    }
 
   INodeRepo inode_repo;
 

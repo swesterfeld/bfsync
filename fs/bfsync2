@@ -151,6 +151,7 @@ def parse_config (filename):
     "mount-point",
     "cached-inodes",
     "cached-dirs",
+    "sqlite-sync",
   ])
   return bfsync_info
 
@@ -184,6 +185,7 @@ def cmd_commit():
 
   conn = sqlite3.connect (os.path.join (repo_path, 'db'))
   c = conn.cursor()
+  #c.execute ('''PRAGMA synchronous=off''')
   c.execute ('''SELECT id FROM inodes WHERE hash = "new"''')
   for row in c:
     id = row[0]
@@ -217,7 +219,6 @@ def cmd_commit():
   c.execute ('''SELECT version FROM history''')
   for row in c:
     VERSION = max (row[0], VERSION)
-
   c.execute ('''UPDATE inodes SET vmax=? WHERE vmax = ?''', (VERSION + 1, VERSION))
   c.execute ('''UPDATE links SET vmax=? WHERE vmax = ?''', (VERSION + 1, VERSION))
   c.execute ('''UPDATE history SET message="commit message", author="author" WHERE version=?''', (VERSION, ))

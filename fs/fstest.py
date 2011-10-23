@@ -36,7 +36,9 @@ class FuseFS:
       if subprocess.call (["fusermount", "-u", "mnt"]):
         print "can't stop bfsyncfs"
         sys.exit (1)
-    if subprocess.call (["rm", "-rf", cwd + "/test/new", cwd + "/test/objects", cwd + "/test/.bfsync"]) != 0:
+    if subprocess.call (["rm", "-rf", cwd + "/test/new", cwd + "/test/objects",
+                         cwd + "/test/.bfsync/pid",
+                         cwd + "/test/.bfsync/socket"]) != 0:
       print "error during teardown"
       sys.exit (1)
 

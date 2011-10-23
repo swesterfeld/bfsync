@@ -54,6 +54,7 @@ if reinit_tables:
   c.execute ('''CREATE INDEX local_inodes_idx_id ON local_inodes (id)''')
   c.execute ('''CREATE INDEX local_inodes_idx_ino ON local_inodes (ino)''')
 else:
+  # c.execute ('''PRAGMA synchronous=off''')
   c.execute ('''DELETE FROM local_inodes''')
   c.execute ('''DELETE FROM inodes''')
   c.execute ('''DELETE FROM links''')

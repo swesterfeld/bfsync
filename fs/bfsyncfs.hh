@@ -169,6 +169,7 @@ struct Options {
   bool         mount_debug;
   bool         mount_all;
   bool         mount_fg;
+  bool         sqlite_sync;
 
   static Options *the();
 };
