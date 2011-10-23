@@ -17,12 +17,28 @@ using std::set;
 
 namespace BFSync {
 
-INodeRepo inode_repo;
+static INodeRepo *inode_repo = 0;
+
+INodeRepo::INodeRepo() :
+  m_sql_statements (0)
+{
+  assert (!inode_repo);
+
+  inode_repo = this;
+}
+
+INodeRepo::~INodeRepo()
+{
+  assert (inode_repo);
+
+  inode_repo = 0;
+}
 
 INodeRepo*
 INodeRepo::the()
 {
-  return &inode_repo;
+  assert (inode_repo);
+  return inode_repo;
 }
 
 void
@@ -36,15 +52,15 @@ INodeRepo::save_changes (SaveChangesMode sc)
 {
   Lock lock (mutex);
 
-  SQLStatement& inode_stmt = inode_repo.sql_statements().get
+  SQLStatement& inode_stmt = sql_statements().get
     ("INSERT INTO inodes VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
-  SQLStatement& link_stmt = inode_repo.sql_statements().get
+  SQLStatement& link_stmt = sql_statements().get
     ("INSERT INTO links VALUES (?,?,?,?,?)");
-  SQLStatement& del_inode_stmt = inode_repo.sql_statements().get
+  SQLStatement& del_inode_stmt = sql_statements().get
     ("DELETE FROM inodes WHERE id=?");
-  SQLStatement& del_links_stmt = inode_repo.sql_statements().get
+  SQLStatement& del_links_stmt = sql_statements().get
     ("DELETE FROM links WHERE dir_id=?");
-  SQLStatement& addi_stmt = inode_repo.sql_statements().get
+  SQLStatement& addi_stmt = sql_statements().get
    ("INSERT INTO local_inodes VALUES (?,?)");
 
   double start_t = gettime();
@@ -198,10 +214,10 @@ const int INODES_MTIME_NS = 16;
 INodePtr::INodePtr (const Context& ctx, const ID& id) :
   ptr (NULL)
 {
-  Lock lock (inode_repo.mutex);
+  Lock lock (INodeRepo::the()->mutex);
 
   // do we have the inode ptr for requested version in cache?
-  INodeVersionList& ivlist = inode_repo.cache[id];
+  INodeVersionList& ivlist = INodeRepo::the()->cache[id];
   for (size_t i = 0; i < ivlist.size(); i++)
     {
       INodePtr& ip = ivlist[i];
@@ -237,12 +253,12 @@ INodePtr::INodePtr (const Context& ctx)
   ptr->load_or_alloc_ino();
   ptr->updated = true;
 
-  Lock lock (inode_repo.mutex);
-  INodeVersionList& ivlist = inode_repo.cache [ptr->id];
+  Lock lock (INodeRepo::the()->mutex);
+  INodeVersionList& ivlist = INodeRepo::the()->cache [ptr->id];
   ivlist.add (*this);
 
   // setup links (and cache entry)
-  INodeLinksPtr& repo_links = inode_repo.links_cache[ptr->id];
+  INodeLinksPtr& repo_links = INodeRepo::the()->links_cache[ptr->id];
 
   assert (!repo_links);  // ID is new, so there should not be a cache entry yet
   repo_links = INodeLinksPtr (new INodeLinks());
@@ -287,8 +303,8 @@ INodePtr::update() const
       ptr->updated = true;
 
       // add old version to cache
-      Lock lock (inode_repo.mutex);
-      INodeVersionList& ivlist = inode_repo.cache [ptr->id];
+      Lock lock (INodeRepo::the()->mutex);
+      INodeVersionList& ivlist = INodeRepo::the()->cache [ptr->id];
       INodePtr old_inode (old_ptr);
       ivlist.add (old_inode);
       return ptr;
@@ -453,7 +469,7 @@ INode::load (const Context& ctx, const ID& id)
 {
   bool found = false;
 
-  SQLStatement& load_inode = inode_repo.sql_statements().get
+  SQLStatement& load_inode = INodeRepo::the()->sql_statements().get
     ("SELECT * FROM inodes WHERE id = ? AND ? >= vmin AND ? <= vmax");
 
   load_inode.reset();
@@ -512,14 +528,14 @@ INode::load (const Context& ctx, const ID& id)
   // load links
   if (!links)
     {
-      INodeLinksPtr& repo_links = inode_repo.links_cache[id];
+      INodeLinksPtr& repo_links = INodeRepo::the()->links_cache[id];
 
       if (!repo_links)
         repo_links = INodeLinksPtr (new INodeLinks());
 
       links = repo_links;
     }
-  SQLStatement& load_links = inode_repo.sql_statements().get
+  SQLStatement& load_links = INodeRepo::the()->sql_statements().get
     ("SELECT * FROM links WHERE dir_id = ? AND ? >= vmin AND ? <= vmax");
 
   load_links.reset();
@@ -555,7 +571,7 @@ INode::load_or_alloc_ino()
 {
   // load inode number
   ino = 0;
-  SQLStatement& loadi_stmt = inode_repo.sql_statements().get (
+  SQLStatement& loadi_stmt = INodeRepo::the()->sql_statements().get (
     "SELECT ino FROM local_inodes WHERE id = ?"
   );
   loadi_stmt.reset();
@@ -573,7 +589,7 @@ INode::load_or_alloc_ino()
     {
       while (ino_pool.empty())
         {
-          SQLStatement& searchi_stmt = inode_repo.sql_statements().get (
+          SQLStatement& searchi_stmt = INodeRepo::the()->sql_statements().get (
             "SELECT * FROM local_inodes WHERE ino in (?, ?, ?, ?, ?, "
                                                     " ?, ?, ?, ?, ?, "
                                                     " ?, ?, ?, ?, ?, "
@@ -585,8 +601,8 @@ INode::load_or_alloc_ino()
             {
               /* low inode numbers are reserved for .bfsync inodes */
               ino = g_random_int_range (100 * 1000, 2 * 1000 * 1000 * 1000);  // 100000 .. ~ 2^31
-              map<ino_t, ID>::const_iterator ni = inode_repo.new_inodes.find (ino);
-              if (ni == inode_repo.new_inodes.end())  // not recently allocated & in use
+              map<ino_t, ID>::const_iterator ni = INodeRepo::the()->new_inodes.find (ino);
+              if (ni == INodeRepo::the()->new_inodes.end())  // not recently allocated & in use
                 {
                   searchi_stmt.bind_int (1 + ino_pool.size(), ino);
                   ino_pool.push_back (ino);
@@ -598,7 +614,7 @@ INode::load_or_alloc_ino()
         }
       ino = ino_pool.back();
       ino_pool.pop_back();
-      inode_repo.new_inodes[ino] = id;
+      INodeRepo::the()->new_inodes[ino] = id;
     }
 }
 

@@ -279,6 +279,9 @@ public:
   int  cached_dir_count();
 
   static INodeRepo *the();
+
+  INodeRepo();
+  ~INodeRepo();
 };
 
 inline

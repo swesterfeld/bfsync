@@ -1495,11 +1495,25 @@ bfsyncfs_main (int argc, char **argv)
     }
   History::the()->read();
 
+/*
+  {
+    SQLStatement st ("PRAGMA synchronous=off");
+    st.step();
+    if (!st.success())
+      {
+        printf ("bfsyncfs: can't set db in synchronous=off mode\n");
+        return 1;
+      }
+  }
+*/
+
+  INodeRepo inode_repo;
+
   int fuse_rc = fuse_main (my_argc, my_argv, &bfsync_oper, NULL);
 
-  INodeRepo::the()->save_changes();
-  INodeRepo::the()->free_sql_statements();
-  INodeRepo::the()->delete_unused_inodes (INodeRepo::DM_ALL);
+  inode_repo.save_changes();
+  inode_repo.free_sql_statements();
+  inode_repo.delete_unused_inodes (INodeRepo::DM_ALL);
 
   if (sqlite3_close (sqlite_db()) != SQLITE_OK)
     {
