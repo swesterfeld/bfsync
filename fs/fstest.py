@@ -30,6 +30,14 @@ class FuseFS:
       raise Exception ("commit failed")
     os.chdir (cwd)
 
+  def check_integrity (self):
+    cwd = os.getcwd()
+    os.chdir ("mnt")
+    success = run_quiet ([cwd + "/bfsync2", "debug-integrity"]) == 0
+    os.chdir (cwd)
+    if not success:
+      raise Exception ("db integrity check failed")
+
   def teardown (self):
     cwd = os.getcwd()
     if os.path.exists ("mnt/.bfsync"):
@@ -62,6 +70,9 @@ class NativeFS:
     if subprocess.call (["mkdir", "-p", cwd + "/mnt"]) != 0:
       print "error during teardown"
       sys.exit (1)
+
+  def check_integrity (self):
+    pass
 
   def umount (self):
     self.teardown()
@@ -903,7 +914,7 @@ def commit():
   fs.commit()
 
 def run_quiet (cmd):
-  return subprocess.Popen (cmd, stdout=subprocess.PIPE).wait()
+  return subprocess.Popen (cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE).wait()
 
 if os.getuid() == 0:
   tests += root_tests
@@ -942,6 +953,7 @@ def main (fstest_args):
     setup()
     try:
       f()
+      fs.check_integrity()
     except Exception, e:
       print "FAIL: ", e
       fail_count += 1

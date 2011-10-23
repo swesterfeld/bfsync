@@ -552,6 +552,66 @@ def cmd_debug_clear_cache():
   server_conn.get_lock()
   print server_conn.process_call (["clear-cache"])[0]
 
+def cmd_debug_integrity():
+  bfsync_dir = find_bfsync_dir()
+  bfsync_info = parse_config (bfsync_dir + "/info")
+
+  repo_path = bfsync_info.get ("repo-path")
+  if len (repo_path) != 1:
+    raise Exception ("bad repo path")
+  repo_path = repo_path[0]
+
+  sqlite_sync = bfsync_info.get ("sqlite-sync")
+  if len (sqlite_sync) != 1:
+    raise Exception ("bad sqlite-sync setting")
+
+  if sqlite_sync[0] == "0":
+    sqlite_sync = False
+  else:
+    sqlite_sync = True
+
+  os.chdir (repo_path)
+
+  conn = sqlite3.connect (os.path.join (repo_path, 'db'))
+  c = conn.cursor()
+  if not sqlite_sync:
+    c.execute ('''PRAGMA synchronous=off''')
+
+  c.execute ('''SELECT vmin, vmax,id FROM inodes''')
+  fail = False
+  inode_d = dict()
+  for row in c:
+    vmin = int (row[0])
+    vmax = int (row[1])
+    version = vmin
+    while version <= vmax:
+      s = "%d|%s" % (version, row[2])
+      if inode_d.has_key (s):
+        print "error: version %d available more than once for inode %s" % (version, row[2])
+        fail = True
+      inode_d[s] = 1
+      version += 1
+
+  c.execute ('''SELECT vmin, vmax, dir_id, inode_id FROM links''')
+  link_d = dict()
+  for row in c:
+    vmin = int (row[0])
+    vmax = int (row[1])
+    version = vmin
+    while version <= vmax:
+      s = "%d|%s|%s" % (version, row[2], row[3])
+      if inode_d.has_key (s):
+        print "error: version %d available more than once for link %s->%s" % (version, row[2], row[3])
+        fail = True
+      inode_d[s] = 1
+      version += 1
+
+  c.close()
+  if fail:
+    raise Exception ("db integrity check failed")
+  print "ok"
+  return
+
 command = None
 command_func = None
 arg_iter = sys.argv[1:].__iter__()
@@ -569,7 +629,8 @@ for arg in arg_iter:
     ( "remote-send",    cmd_remote_send, 0),
     ( "debug-load-all-inodes",  cmd_debug_load_all_inodes, 0),
     ( "debug-perf-getattr",     cmd_debug_perf_getattr, 1),
-    ( "debug-clear-cache",     cmd_debug_clear_cache, 1),
+    ( "debug-clear-cache",      cmd_debug_clear_cache, 1),
+    ( "debug-integrity",        cmd_debug_integrity, 0),
   ]
   parse_ok = False
   if command == None:
