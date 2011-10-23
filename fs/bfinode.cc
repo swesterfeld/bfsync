@@ -78,30 +78,44 @@ INodeRepo::save_changes (SaveChangesMode sc)
 
           if (inode_ptr && inode_ptr->updated)
             {
-              del_inode_stmt.reset();
-              del_inode_stmt.bind_text (1, inode_ptr->id.str());
-              del_inode_stmt.step();
 
               need_save = true;
             }
         }
+      if (need_save)
+        {
+          const ID& id  = ci->first;
+          string id_str = id.str();
 
+          del_inode_stmt.reset();
+          del_inode_stmt.bind_text (1, id_str);
+          del_inode_stmt.step();
+
+          del_links_stmt.reset();
+          del_links_stmt.bind_text (1, id_str);
+          del_links_stmt.step();
+        }
+
+      INodeLinksPtr links = INodeLinksPtr::null();
       for (size_t i = 0; i < ivlist.size(); i++)
         {
           INodePtr inode_ptr = ivlist[i];
 
           if (inode_ptr && need_save)
             {
-              del_links_stmt.reset();
-              del_links_stmt.bind_text (1, inode_ptr->id.str());
-              del_links_stmt.step();
-
               inodes_saved++;
 
               INode *inode = inode_ptr.get_ptr_without_update();
-              inode->save (inode_stmt, link_stmt);
+              inode->save (inode_stmt);
               inode->updated = false;
+              if (!links)
+                links = inode->links;
             }
+        }
+      if (need_save && links)
+        {
+          INodeLinks *inode_links = links.get_ptr_without_update();
+          inode_links->save (link_stmt);
         }
     }
 
@@ -386,7 +400,7 @@ INode::set_ctime_now()
 }
 
 bool
-INode::save (SQLStatement& stmt, SQLStatement& link_stmt)
+INode::save (SQLStatement& stmt)
 {
   string type_str;
   if (type == FILE_REGULAR)
@@ -442,25 +456,6 @@ INode::save (SQLStatement& stmt, SQLStatement& link_stmt)
   stmt.bind_int   (1 + INODES_MTIME_NS, mtime_ns);
   stmt.step();
 
-  for (map<string, LinkVersionList>::const_iterator li = links->link_map.begin(); li != links->link_map.end(); li++)
-    {
-      const LinkVersionList& lvlist = li->second;
-      for (size_t i = 0; i < lvlist.size(); i++)
-        {
-          const LinkPtr& lp = lvlist[i];
-
-          if (!lp->deleted)
-            {
-              link_stmt.reset();
-              link_stmt.bind_int  (1, lp->vmin);
-              link_stmt.bind_int  (2, lp->vmax);
-              link_stmt.bind_text (3, lp->dir_id.str());
-              link_stmt.bind_text (4, lp->inode_id.str());
-              link_stmt.bind_text (5, lp->name);
-              link_stmt.step();
-            }
-        }
-    }
   return true;
 }
 
@@ -821,6 +816,15 @@ INodeLinksPtr::~INodeLinksPtr()
     }
 }
 
+static INodeLinksPtr inode_links_ptr_null;
+
+INodeLinksPtr&
+INodeLinksPtr::null()
+{
+  return inode_links_ptr_null;
+}
+
+
 BFSync::LeakDebugger inode_links_leak_debugger ("BFSync::INodeLinks");
 
 INodeLinks::INodeLinks() :
@@ -832,6 +836,31 @@ INodeLinks::INodeLinks() :
 INodeLinks::~INodeLinks()
 {
   inode_links_leak_debugger.del (this);
+}
+
+bool
+INodeLinks::save (SQLStatement& stmt)
+{
+  for (map<string, LinkVersionList>::const_iterator li = link_map.begin(); li != link_map.end(); li++)
+    {
+      const LinkVersionList& lvlist = li->second;
+      for (size_t i = 0; i < lvlist.size(); i++)
+        {
+          const LinkPtr& lp = lvlist[i];
+
+          if (!lp->deleted)
+            {
+              stmt.reset();
+              stmt.bind_int  (1, lp->vmin);
+              stmt.bind_int  (2, lp->vmax);
+              stmt.bind_text (3, lp->dir_id.str());
+              stmt.bind_text (4, lp->inode_id.str());
+              stmt.bind_text (5, lp->name);
+              stmt.step();
+            }
+        }
+    }
+  return true;
 }
 /*------------------------------*/
 

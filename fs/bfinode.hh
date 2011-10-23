@@ -96,7 +96,14 @@ public:
   {
     return ptr;
   }
+  /* never use this if you can use update() instead */
+  INodeLinks*
+  get_ptr_without_update() const
+  {
+    return ptr;
+  }
   INodeLinks* update() const;
+  static INodeLinksPtr& null();
 };
 
 }
@@ -147,7 +154,7 @@ public:
   INode (const INode& other);
   ~INode();
 
-  bool          save (SQLStatement& inode_stmt, SQLStatement& link_stmt);
+  bool          save (SQLStatement& inode_stmt);
   bool          load (const Context& ctx, const ID& id);
 
   void          set_mtime_ctime_now();
@@ -226,6 +233,8 @@ public:
 
   INodeLinks();
   ~INodeLinks();
+
+  bool save (SQLStatement& stmt);
 
   void
   ref()
