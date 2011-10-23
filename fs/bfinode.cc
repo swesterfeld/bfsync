@@ -303,18 +303,18 @@ INodePtr::update() const
 
 /*-------------------------------------------------------------------------------------------*/
 
-static LeakDebugger leak_debugger ("BFSync::INode");
+static LeakDebugger inode_leak_debugger ("BFSync::INode");
 
 INode::INode() :
   ref_count (1)
 {
-  leak_debugger.add (this);
+  inode_leak_debugger.add (this);
 }
 
 INode::INode (const INode& other) :
   ref_count (1)
 {
-  leak_debugger.add (this);
+  inode_leak_debugger.add (this);
 
   vmin      = other.vmin;
   vmax      = other.vmax;
@@ -340,9 +340,8 @@ INode::INode (const INode& other) :
 
 INode::~INode()
 {
-  leak_debugger.del (this);
+  inode_leak_debugger.del (this);
 }
-
 
 void
 INode::set_mtime_ctime_now()
@@ -806,15 +805,17 @@ INodeLinksPtr::~INodeLinksPtr()
     }
 }
 
+BFSync::LeakDebugger inode_links_leak_debugger ("BFSync::INodeLinks");
+
 INodeLinks::INodeLinks() :
   ref_count (1)
 {
-  leak_debugger.add (this);
+  inode_links_leak_debugger.add (this);
 }
 
 INodeLinks::~INodeLinks()
 {
-  leak_debugger.del (this);
+  inode_links_leak_debugger.del (this);
 }
 /*------------------------------*/
 
