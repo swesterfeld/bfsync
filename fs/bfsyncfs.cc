@@ -350,6 +350,8 @@ inode_from_path (const Context& ctx, const string& path, IFPStatus& status)
   if (!inode)
     {
       printf ("root not found\n");
+      fflush (stdout);
+      status = IFP_ERR_NOENT;
       return INodePtr::null();
     }
 
