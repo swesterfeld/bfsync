@@ -111,7 +111,10 @@ INodeRepo::save_changes (SaveChangesMode sc)
   debug ("time for sql: %.2fms\n", (end_t - start_t) * 1000);
 
   if (sc == SC_CLEAR_CACHE)
-    cache.clear();
+    {
+      cache.clear();
+      links_cache.clear();
+    }
 }
 
 void
