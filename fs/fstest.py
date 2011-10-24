@@ -876,8 +876,6 @@ def test_remount_rm():
   commit()
   remount()
   st = os.stat ("mnt/.bfsync/commits/1/README")
-  print "stat from commit 1"
-  print st
   if st.st_size != start_size:
     raise Exception ("README in commits dir wrong")
   if os.path.exists ("mnt/.bfsync/commits/2/README"):

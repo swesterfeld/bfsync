@@ -322,8 +322,10 @@ INodePtr::update() const
       Lock lock (INodeRepo::the()->mutex);
       INodeVersionList& ivlist = INodeRepo::the()->cache [ptr->id];
       INodePtr old_inode (old_ptr);
-      ivlist.add (old_inode);
-      return ptr;
+      INode *result = ptr;        // store ptr, cannot access it below
+      ivlist.add (old_inode);     // this might "delete this;" since the inodes are stored in the vector
+      g_assert (result);
+      return result;
     }
   else
     {
