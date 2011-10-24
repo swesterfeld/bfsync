@@ -34,6 +34,10 @@ class FuseFS:
     cwd = os.getcwd()
     os.chdir ("mnt")
     success = run_quiet ([cwd + "/bfsync2", "debug-integrity"]) == 0
+    if not success:
+      print
+      os.system ("%s/bfsync2 debug-integrity" % cwd)
+      print
     os.chdir (cwd)
     if not success:
       raise Exception ("db integrity check failed")

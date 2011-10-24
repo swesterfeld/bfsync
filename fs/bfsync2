@@ -612,7 +612,7 @@ def cmd_debug_integrity():
 
   c.close()
   if fail:
-    raise Exception ("db integrity check failed")
+    sys.exit (1)
   print "ok"
   return
 
