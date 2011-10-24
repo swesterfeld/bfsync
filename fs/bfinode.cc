@@ -268,7 +268,7 @@ INodePtr::INodePtr (const Context& ctx)
   ptr->gid = ctx.fc->gid;
   ptr->nlink = 0;
   ptr->set_mtime_ctime_now();
-  ptr->load_or_alloc_ino();
+  ptr->alloc_ino();
   ptr->updated = true;
 
   Lock lock (INodeRepo::the()->mutex);
@@ -589,36 +589,40 @@ INode::load_or_alloc_ino()
 
   // need to create new entry
   if (!ino)
-    {
-      while (ino_pool.empty())
-        {
-          SQLStatement& searchi_stmt = INodeRepo::the()->sql_statements().get (
-            "SELECT * FROM local_inodes WHERE ino in (?, ?, ?, ?, ?, "
-                                                    " ?, ?, ?, ?, ?, "
-                                                    " ?, ?, ?, ?, ?, "
-                                                    " ?, ?, ?, ?, ?)"
-          );
+    alloc_ino();
+}
 
-          searchi_stmt.reset();
-          while (ino_pool.size() != 20)
+void
+INode::alloc_ino()
+{
+  while (ino_pool.empty())
+    {
+      SQLStatement& searchi_stmt = INodeRepo::the()->sql_statements().get (
+        "SELECT * FROM local_inodes WHERE ino in (?, ?, ?, ?, ?, "
+                                                " ?, ?, ?, ?, ?, "
+                                                " ?, ?, ?, ?, ?, "
+                                                " ?, ?, ?, ?, ?)"
+      );
+
+      searchi_stmt.reset();
+      while (ino_pool.size() != 20)
+        {
+          /* low inode numbers are reserved for .bfsync inodes */
+          ino = g_random_int_range (100 * 1000, 2 * 1000 * 1000 * 1000);  // 100000 .. ~ 2^31
+          map<ino_t, ID>::const_iterator ni = INodeRepo::the()->new_inodes.find (ino);
+          if (ni == INodeRepo::the()->new_inodes.end())  // not recently allocated & in use
             {
-              /* low inode numbers are reserved for .bfsync inodes */
-              ino = g_random_int_range (100 * 1000, 2 * 1000 * 1000 * 1000);  // 100000 .. ~ 2^31
-              map<ino_t, ID>::const_iterator ni = INodeRepo::the()->new_inodes.find (ino);
-              if (ni == INodeRepo::the()->new_inodes.end())  // not recently allocated & in use
-                {
-                  searchi_stmt.bind_int (1 + ino_pool.size(), ino);
-                  ino_pool.push_back (ino);
-                }
+              searchi_stmt.bind_int (1 + ino_pool.size(), ino);
+              ino_pool.push_back (ino);
             }
-          int rc = searchi_stmt.step();
-          if (rc == SQLITE_ROW)  // (at least one) inode numbers already in use
-            ino_pool.clear();
         }
-      ino = ino_pool.back();
-      ino_pool.pop_back();
-      INodeRepo::the()->new_inodes[ino] = id;
+      int rc = searchi_stmt.step();
+      if (rc == SQLITE_ROW)  // (at least one) inode numbers already in use
+        ino_pool.clear();
     }
+  ino = ino_pool.back();
+  ino_pool.pop_back();
+  INodeRepo::the()->new_inodes[ino] = id;
 }
 
 string

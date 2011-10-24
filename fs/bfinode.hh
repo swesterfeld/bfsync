@@ -174,6 +174,7 @@ public:
   bool          search_perm_ok (const Context& ctx) const;
 
   void          load_or_alloc_ino();
+  void          alloc_ino();
   void          get_child_names (const Context& ctx, std::vector<std::string>& names) const;
   INodePtr      get_child (const Context& ctx, const std::string& name) const;
 
