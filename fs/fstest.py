@@ -901,6 +901,28 @@ bf_tests += [ ("remount-change-file", test_remount_change_file) ]
 
 #####
 
+def test_quad_commit():
+  write_file ("mnt/1", "1")
+  commit()                  # commit 2
+  write_file ("mnt/2", "2")
+  commit()                  # commit 3
+  write_file ("mnt/3", "3")
+  commit()                  # commit 4
+  write_file ("mnt/4", "4")
+  commit()                  # commit 5
+  if read_file ("mnt/.bfsync/commits/2/1") != "1":
+    raise Exception ("commit '2' not readable")
+  if read_file ("mnt/.bfsync/commits/3/2") != "2":
+    raise Exception ("commit '3' not readable")
+  if read_file ("mnt/.bfsync/commits/4/3") != "3":
+    raise Exception ("commit '4' not readable")
+  if read_file ("mnt/.bfsync/commits/5/4") != "4":
+    raise Exception ("commit '5' not readable")
+
+bf_tests += [ ("test-quad-commit", test_quad_commit) ]
+
+#####
+
 def start_bfsyncfs():
   if os.system ("""( echo "*** fs start (`date`)"; ./bfsyncfs -f test mnt; echo "*** fs stop (`date`), exit $?"
                    ) >> fs.log 2>&1 &""") != 0:
