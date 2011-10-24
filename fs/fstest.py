@@ -927,6 +927,28 @@ bf_tests += [ ("test-quad-commit", test_quad_commit) ]
 
 #####
 
+def test_quad_commit_links():
+  write_file ("mnt/link", "link")
+  commit()                  # commit 2
+  os.remove ("mnt/link")
+  commit()                  # commit 3
+  write_file ("mnt/link", "link")
+  commit()                  # commit 4
+  os.remove ("mnt/link")
+  commit()                  # commit 5
+  if read_file ("mnt/.bfsync/commits/2/link") != "link":
+    raise Exception ("commit '2' not readable")
+  if os.path.exists ("mnt/.bfsync/commits/3/link"):
+    raise Exception ("commit '3' should not contain link")
+  if read_file ("mnt/.bfsync/commits/4/link") != "link":
+    raise Exception ("commit '4' not readable")
+  if os.path.exists ("mnt/.bfsync/commits/5/link"):
+    raise Exception ("commit '5' should not contain link")
+
+bf_tests += [ ("test-quad-commit-links", test_quad_commit_links) ]
+
+#####
+
 def start_bfsyncfs():
   if os.system ("""( echo "*** fs start (`date`)"; ./bfsyncfs -f test mnt; echo "*** fs stop (`date`), exit $?"
                    ) >> fs.log 2>&1 &""") != 0:

@@ -42,6 +42,10 @@ LinkPtr::update() const
   if (!ptr->updated && ptr->vmin != ptr->vmax)
     {
       // Link copy-on-write
+      printf ("link copy-on-write dir=%s inode=%s vmin=%d vmax=%d\n", ptr->dir_id.str().c_str(),
+              ptr->inode_id.str().c_str(), ptr->vmin, ptr->vmax);
+      fflush (stdout);
+
       Link *old_ptr = new Link (*ptr);
       old_ptr->vmax--;
       old_ptr->updated = true;

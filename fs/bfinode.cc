@@ -58,8 +58,6 @@ INodeRepo::save_changes (SaveChangesMode sc)
     ("INSERT INTO links VALUES (?,?,?,?,?)");
   SQLStatement& del_inode_stmt = sql_statements().get
     ("DELETE FROM inodes WHERE id=? and (vmin=? or vmax=?)");
-  SQLStatement& del_links_stmt = sql_statements().get
-    ("DELETE FROM links WHERE dir_id=?");
   SQLStatement& addi_stmt = sql_statements().get
    ("INSERT INTO local_inodes VALUES (?,?)");
 
@@ -100,10 +98,6 @@ INodeRepo::save_changes (SaveChangesMode sc)
               del_inode_stmt.bind_int (3, inode_ptr->vmax);
               del_inode_stmt.step();
             }
-
-          del_links_stmt.reset();
-          del_links_stmt.bind_text (1, id_str);
-          del_links_stmt.step();
         }
 
       INodeLinksPtr links = INodeLinksPtr::null();
@@ -142,7 +136,7 @@ INodeRepo::save_changes (SaveChangesMode sc)
          inodes_saved);
   inode_stmt.commit();
 
-  if (inode_stmt.success() && link_stmt.success() && del_inode_stmt.success() && del_links_stmt.success())
+  if (inode_stmt.success() && link_stmt.success() && del_inode_stmt.success())
     debug ("sql exec OK\n");
   else
     debug ("sql exec FAIL\n");
@@ -855,6 +849,26 @@ INodeLinks::~INodeLinks()
 bool
 INodeLinks::save (SQLStatement& stmt)
 {
+  SQLStatement& del_links_stmt = INodeRepo::the()->sql_statements().get
+    ("DELETE FROM links WHERE dir_id=? and inode_id=? and (vmin=? or vmax=?)");
+
+  // delete links that were (possibly) modified
+  for (map<string, LinkVersionList>::const_iterator li = link_map.begin(); li != link_map.end(); li++)
+    {
+      const LinkVersionList& lvlist = li->second;
+      for (size_t i = 0; i < lvlist.size(); i++)
+        {
+          const LinkPtr& lp = lvlist[i];
+
+          del_links_stmt.reset();
+          del_links_stmt.bind_text (1, lp->dir_id.str());
+          del_links_stmt.bind_text (2, lp->inode_id.str());
+          del_links_stmt.bind_int  (3, lp->vmin);
+          del_links_stmt.bind_int  (4, lp->vmax);
+          del_links_stmt.step();
+        }
+    }
+  // re-write links
   for (map<string, LinkVersionList>::const_iterator li = link_map.begin(); li != link_map.end(); li++)
     {
       const LinkVersionList& lvlist = li->second;
