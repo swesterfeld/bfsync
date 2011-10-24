@@ -32,12 +32,8 @@ ENCRYPTED MODE:
 bfsync2 TODO:
 
 * three-way merge
-* use '' escaping for sql values
-* work on in-memory objects, group updates for good transaction performance
-* get rid of explicit save()
 * fix redundant inserts (should be updates)
 * possibly add id to links for easier deletion
-* use 2-letter prefix for new files (new/6a/b755d1e8b23b0bebdbe0088cc95efa2c6408d7)
 
 * write test: find -cnewer (ctime)
 * config-file should allow ignoring repo uid/gid
