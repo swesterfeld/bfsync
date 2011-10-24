@@ -43,3 +43,5 @@ bfsync2 TODO:
 * speedup commit
 * make get/put use temp dir (and remove stale temp dirs)
 * check for open files before allowing readonly mode
+* better cache expiring for INodeLinks
+* background hashing for fs
