@@ -45,3 +45,4 @@ bfsync2 TODO:
 * check for open files before allowing readonly mode
 * better cache expiring for INodeLinks
 * background hashing for fs
+* merge INodeLinks and INode cache
