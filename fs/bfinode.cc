@@ -305,6 +305,8 @@ INodePtr::~INodePtr()
 INode*
 INodePtr::update() const
 {
+  g_return_val_if_fail (ptr, NULL);
+
   if (!ptr->updated && ptr->vmin != ptr->vmax)
     {
       // INode copy-on-write

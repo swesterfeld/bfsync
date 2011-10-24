@@ -66,6 +66,7 @@ public:
   }
 
   Link();
+  Link (const Link& other);
   ~Link();
 };
 
@@ -85,7 +86,6 @@ public:
 
     ptr = new_ptr;
   }
-
   LinkPtr&
   operator= (const LinkPtr& other)
   {
@@ -110,14 +110,11 @@ public:
   const Link*
   operator->() const
   {
+    g_return_val_if_fail (ptr, NULL);
+
     return ptr;
   }
-  Link*
-  update() const
-  {
-    ptr->updated = true;
-    return ptr;
-  }
+  Link* update() const;
   static LinkPtr& null();
 };
 

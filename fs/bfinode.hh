@@ -62,6 +62,8 @@ public:
   const INode*
   operator->() const
   {
+    g_return_val_if_fail (ptr, NULL);
+
     return ptr;
   }
   INode* update() const;
