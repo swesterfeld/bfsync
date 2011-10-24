@@ -521,15 +521,15 @@ INode::load (const Context& ctx, const ID& id)
     return false;
 
   // load links
-  if (!links)
-    {
-      INodeLinksPtr& repo_links = INodeRepo::the()->links_cache[id];
+  assert (!links);
 
-      if (!repo_links)
-        repo_links = INodeLinksPtr (new INodeLinks());
+  // setup shared (via cache) links
+  INodeLinksPtr& cache_links = INodeRepo::the()->links_cache[id];
+  if (!cache_links)
+    cache_links = INodeLinksPtr (new INodeLinks());
 
-      links = repo_links;
-    }
+  links = cache_links;
+
   SQLStatement& load_links = INodeRepo::the()->sql_statements().get
     ("SELECT * FROM links WHERE dir_id = ? AND ? >= vmin AND ? <= vmax");
 
