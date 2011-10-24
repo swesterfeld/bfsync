@@ -57,7 +57,7 @@ INodeRepo::save_changes (SaveChangesMode sc)
   SQLStatement& link_stmt = sql_statements().get
     ("INSERT INTO links VALUES (?,?,?,?,?)");
   SQLStatement& del_inode_stmt = sql_statements().get
-    ("DELETE FROM inodes WHERE id=?");
+    ("DELETE FROM inodes WHERE id=? and (vmin=? or vmax=?)");
   SQLStatement& del_links_stmt = sql_statements().get
     ("DELETE FROM links WHERE dir_id=?");
   SQLStatement& addi_stmt = sql_statements().get
@@ -71,6 +71,8 @@ INodeRepo::save_changes (SaveChangesMode sc)
     {
       INodeVersionList& ivlist = ci->second;
       bool need_save = false;
+      const ID& id  = ci->first;
+      string id_str = id.str();
 
       for (size_t i = 0; i < ivlist.size(); i++)
         {
@@ -78,18 +80,26 @@ INodeRepo::save_changes (SaveChangesMode sc)
 
           if (inode_ptr && inode_ptr->updated)
             {
-
               need_save = true;
             }
         }
       if (need_save)
         {
-          const ID& id  = ci->first;
-          string id_str = id.str();
+          for (size_t i = 0; i < ivlist.size(); i++)
+            {
+              INodePtr inode_ptr = ivlist[i];
+              assert (inode_ptr);
 
-          del_inode_stmt.reset();
-          del_inode_stmt.bind_text (1, id_str);
-          del_inode_stmt.step();
+              // this will reliably delete the old inode entry for both modifications that
+              // can be made for an inode entry:
+              //  - just change some fields
+              //  - split into two inodes (copy-on-write)
+              del_inode_stmt.reset();
+              del_inode_stmt.bind_text (1, id_str);
+              del_inode_stmt.bind_int (2, inode_ptr->vmin);
+              del_inode_stmt.bind_int (3, inode_ptr->vmax);
+              del_inode_stmt.step();
+            }
 
           del_links_stmt.reset();
           del_links_stmt.bind_text (1, id_str);
