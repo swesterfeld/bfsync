@@ -23,7 +23,10 @@
 #include <sqlite3.h>
 #include <string>
 #include <map>
+#include <stdio.h>
 #include "bfidhash.hh"
+
+#define DEBUG_SQL (0)
 
 namespace BFSync
 {
@@ -35,6 +38,9 @@ class SQLStatement
 {
   sqlite3_stmt *stmt_ptr;
   bool          m_success;
+#if DEBUG_SQL
+  std::string   m_sql;
+#endif
 public:
   SQLStatement (const std::string& sql);
   ~SQLStatement();
@@ -54,6 +60,10 @@ public:
   int
   step()
   {
+#if DEBUG_SQL
+    printf ("%s\n", m_sql.c_str());
+    fflush (stdout);
+#endif
     int rc = sqlite3_step (stmt_ptr);
 
     if (rc != SQLITE_DONE)

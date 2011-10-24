@@ -43,6 +43,9 @@ SQLStatement::SQLStatement (const string& sql) :
   stmt_ptr (NULL),
   m_success (true)
 {
+#if DEBUG_SQL
+  m_sql = sql;
+#endif
   int rc = sqlite3_prepare_v2 (db_ptr, sql.c_str(), sql.size(), &stmt_ptr, NULL);
   if (rc != SQLITE_OK)
     m_success = false;
