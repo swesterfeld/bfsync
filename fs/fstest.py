@@ -91,6 +91,7 @@ def setup():
   if subprocess.call (["cp", "-a", "../README", "mnt/README"]) != 0:
     raise Exception ("error during setup")
   write_file ("mnt/subdir/x", "File X\n")
+  os.symlink ("README", "mnt/symlink")
   commit()
 
 def remount():
