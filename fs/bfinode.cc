@@ -266,6 +266,9 @@ INodePtr::INodePtr (const Context& ctx)
   ptr->id = ID::gen_new();
   ptr->uid = ctx.fc->uid;
   ptr->gid = ctx.fc->gid;
+  ptr->size = 0;
+  ptr->major = 0;
+  ptr->minor = 0;
   ptr->nlink = 0;
   ptr->set_mtime_ctime_now();
   ptr->alloc_ino();
