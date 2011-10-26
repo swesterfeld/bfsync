@@ -19,6 +19,7 @@ class FuseFS:
       raise Exception ("error during setup (can't create dirs)")
     for i in range (0, 256):
       os.mkdir ("test/new/%02x" % i, 0700)
+      os.mkdir ("test/objects/%02x" % i, 0700)
     if subprocess.call (["./setupdb.py"]) != 0:
       raise Exception ("error during setup")
     start_bfsyncfs()

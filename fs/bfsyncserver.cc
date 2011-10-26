@@ -441,17 +441,6 @@ Server::add_file (const string& id, const string& hash, string& error)
       return true;
     }
 
-  string dirname = get_dirname (object_filename);
-  if (lstat (dirname.c_str(), &d_stat) != 0)
-    {
-      // need to create hash directory, mode drwx------
-      if (mkdir (dirname.c_str(), 0700) != 0)
-        {
-          error = "can't create directory '" + dirname + "'";
-          return false;
-        }
-    }
-
   // move file to hash repo
   if (rename (new_filename.c_str(), object_filename.c_str()) != 0)
     {
