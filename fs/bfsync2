@@ -84,63 +84,6 @@ def validate_object (object_file, hash):
     pass
   return False
 
-###################
-FILE_REGULAR    = 1
-FILE_SYMLINK    = 2
-FILE_DIR        = 3
-FILE_FIFO       = 4
-FILE_SOCKET     = 5
-FILE_BLOCK_DEV  = 6
-FILE_CHAR_DEV   = 7
-###################
-
-def name2git_name (name):
-  name = os.path.normpath (name)
-  result = ""
-  path = name.split ("/")
-  for i in path[:-1]:
-    result += "d_" + i + "/"
-  result += "i_" + path[-1]
-  return result
-
-class GitFile:
-  def __init__ (self):
-    self.attrs = dict()
-  def parse (self, filename):
-    gfr = open (filename, "r")
-    for line in gfr.readlines():
-      l = line.strip().split (" ")
-      self.attrs[l[0]] = l[2]
-    gfr.close()
-  def save (self, filename):
-    gf = open (filename, "w")
-    keys = sorted (self.attrs.keys())
-    for k in keys:
-      gf.write ("%s = %s\n" % (k, self.attrs[k]))
-    gf.close()
-  def get (self, key):
-    return self.attrs[key]
-  def set (self, key, value):
-    self.attrs[key] = value
-
-# python stat resolution is not nanosecond accurate, so we use a helper program
-def get_times (file_list):
-  (fd, stat_filename) = tempfile.mkstemp (prefix = "bfsync_git_stat_")
-  stat_file = os.fdopen (fd, "w")
-  for (filename, filetype) in file_list:
-    stat_file.write (filename + "\0")
-  stat_file.close();
-  stat_p =  subprocess.Popen(["xargs", "-0", "-a", stat_filename, "bfsyncstat"], stdout = subprocess.PIPE)
-  result = stat_p.communicate()[0]
-  os.remove (stat_filename)
-  stat_list = result.split ("\0")
-  stat_dict = dict()
-  i = 0
-  while (i + 3) < len (stat_list):
-    stat_dict[stat_list[i]] = (int (stat_list[i + 1]), int (stat_list[i + 2]))
-    i += 3
-  return stat_dict
-
 def parse_config (filename):
   bfsync_info = CfgParser.CfgParser (filename,
   [
@@ -261,179 +204,6 @@ def cmd_commit():
   server_conn.clear_cache()
   return
 
-def strip_git_suffix (s):
-  if s[-4:] == ".git":
-    return s[:-4]
-  else:
-    return s
-
-def guess_dir_name (url):
-  dir_name = ""
-  for ch in reversed (url):
-    if (ch == ":") or (ch == "/"):
-      return strip_git_suffix (dir_name)
-    dir_name = ch + dir_name
-  return strip_git_suffix (dir_name)
-
-def cmd_clone():
-  parser = argparse.ArgumentParser (prog='bfsync2 clone')
-  parser.add_argument ('repo', help='path/url of the repository')
-  clone_args = parser.parse_args (args)
-  destdir = guess_dir_name (clone_args.repo)
-  if os.path.exists (destdir):
-    raise Exception ("fatal: destination path '" + destdir + "' already exists")
-  if subprocess.call (["mkdir", "-p", destdir + "/new",
-                                      destdir + "/objects",
-                                      destdir + "/git",
-                                      destdir + "/.bfsync"]) != 0:
-    raise Exception ("creating directories failed")
-  if os.system ("git clone %s %s/git" % (clone_args.repo, destdir)) != 0:
-    try:
-      os.rmdir (destdir)
-    except:
-      pass
-    raise Exception ("git clone failed")
-  infoname = destdir + "/.bfsync/info"
-  try:
-    f = open (infoname, "w")
-    f.write ("repo-type store;\n")
-    f.close()
-  except:
-    raise Exception ("unable to write initial repo info file %s" % infoname)
-  if subprocess.call (["mkdir", "-p", destdir + "/git/files"]) != 0:
-    raise Exception ("creating files directory failed")
-  return
-
-def remote_get (url):
-  repo_dir = find_repo_dir()
-  status_line.update ("checking local files...")
-  object_list = check (repo_dir, False)
-  #failed = process_excludes (failed) # TODO
-  if len (object_list) == 0:
-    status_line.cleanup()
-    print "All files up to date; nothing to do."
-    return
-  status_line.update ("transferring file list...")
-  (host, path) = url.split (":")
-  remote_list_p = subprocess.Popen(["ssh", host, "bfsync2", "remote-ls", path], stdout=subprocess.PIPE).communicate()[0]
-  remote_list = pickle.loads (remote_list_p)
-  hash_needed = dict()
-  for hash in object_list:
-    hash_needed[hash] = True
-  tl = TransferList()
-  for remote_file in remote_list:
-    if hash_needed.has_key (remote_file.hash):
-      src = os.path.join (path, "objects", make_object_filename (remote_file.hash))
-      dest = os.path.join (repo_dir, "objects", make_object_filename (remote_file.hash))
-      tl.add (TransferFile (src, dest, remote_file.size, 0400))
-  remote_send_p = subprocess.Popen (["ssh", host, "bfsync2", "remote-send"],
-                                    stdin=subprocess.PIPE,
-                                    stdout=subprocess.PIPE)
-  tl.send_list (remote_send_p.stdin)
-  tl.receive_files (remote_send_p.stdout, True)
-  return
-
-def local_get (src):
-  repo_dir = find_repo_dir()
-  object_list = check (repo_dir, False)
-  tl = TransferList()
-  for hash in object_list:
-    obj_name = os.path.join ("objects", make_object_filename (hash))
-    src_name = os.path.join (src, obj_name)
-    dest_name = os.path.join (repo_dir, obj_name)
-    if os.path.exists (src_name) and hash_cache.compute_hash (src_name) == hash:
-      tl.add (TransferFile (src_name, dest_name, os.path.getsize (src_name), 0400))
-  tl.copy_files()
-  return
-
-def cmd_get():
-  status_line.set_op ("GET")
-  #if len (args) == 0:
-    #my_args = bfsync_config.get ("default/get")
-  #else:
-    #my_args = args
-  for src in args:
-    if len (src.split (":")) > 1:
-      remote_get (src)
-    else:
-      local_get (src)
-  return
-
-def git_name2file_name (repo_dir, v):
-  prefix = os.path.join (repo_dir, "git", "files")
-  if v[0:len(prefix)] == prefix:
-    v = v[len(prefix):]
-  result = ""
-  for p in v.split ("/"):
-    if p[0:2] == "i_" or p[0:2] == "d_":
-      p = p[2:]
-    if result != "":
-      result += "/"
-    result += p
-  return result
-
-def dedup_hash_list (hash_list):
-  result_list = []
-  seen_hash = dict()
-  for hash in hash_list:
-    if not seen_hash.has_key (hash):
-      seen_hash[hash] = True
-      result_list += [ hash ]
-  return result_list
-
-def check (repo_dir, show_progress):
-  check_list = []
-  missing_list = []
-  for dir, dirs, files in os.walk (os.path.join (repo_dir, "git")):
-    if '.git' in dirs:
-      dirs.remove ('.git')
-    for file in files:
-      check_list += [ os.path.join (dir, file) ]
-  for v in check_list:
-    if (show_progress):
-      sys.stdout.write ("checking %s... " % git_name2file_name (repo_dir, v))
-      sys.stdout.flush()
-    gf_attrs = GitFile()
-    gf_attrs.parse (v)
-    try:
-      hash = gf_attrs.get ("hash")
-    except:
-      hash = "none"
-    if hash == "new":
-      state = "CHANGED"
-    elif hash == "none":
-      state = "OK"
-    else:
-      object_name = os.path.join (repo_dir, "objects", make_object_filename (hash))
-      if not os.path.exists (object_name):
-        missing_list += [ hash ]
-        state = "MISSING"
-      else:
-        if hash_cache.compute_hash (object_name) == hash:
-          if show_progress:
-            state = "OK"
-        else:
-          missing_list += [ hash ]
-          state = "MISSING"
-    if show_progress:
-      print "%s." % state
-  return dedup_hash_list (missing_list)
-
-def cmd_check():
-  repo_dir = find_repo_dir()
-  check (repo_dir, True)
-  return
-
-def cmd_push():
-  repo_dir = os.path.join (find_repo_dir(), "git")
-  try:
-    os.chdir (repo_dir)
-    if os.system ("git push origin master") != 0:
-      raise Exception ("git push failed")
-  except:
-    raise Exception ("cannot chdir to directory %s" % repo_dir)
-  return
-
 def find_repo_dir():
   dir = os.getcwd()
   while True:
@@ -467,16 +237,6 @@ def find_repo_dir():
       # no more parent
       raise Exception ("error: can not find .bfsync directory")
     dir = newdir
-
-def cmd_pull():
-  repo_dir = find_repo_dir() + "/git"
-  try:
-    os.chdir (repo_dir)
-    if os.system ("git pull") != 0:
-      raise Exception ("git pull failed")
-  except:
-    raise Exception ("cannot chdir to directory %s" % repo_dir)
-  return
 
 class RemoteFile:
   pass
@@ -649,12 +409,7 @@ args = []
 
 for arg in arg_iter:
   commands = [
-    ( "check",          cmd_check, 0),
-    ( "clone",          cmd_clone, 1),
     ( "commit",         cmd_commit, 1),
-    ( "get",            cmd_get, 1),
-    ( "pull",           cmd_pull, 0),
-    ( "push",           cmd_push, 0),
     ( "log",            cmd_log, 0),
     ( "remote-ls",      cmd_remote_ls, 1),
     ( "remote-send",    cmd_remote_send, 0),
