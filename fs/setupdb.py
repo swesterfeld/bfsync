@@ -70,6 +70,7 @@ if reinit_tables:
   c.execute ('''CREATE TABLE history
                  (
                    version integer,
+                   hash    text,
                    author  text,
                    message text,
                    time    integer
@@ -88,10 +89,10 @@ else:
   c.execute ('''DELETE FROM history''')
 
 c.execute ('''PRAGMA default_cache_size=131072''')     # use 128M cache size
-c.execute ('''INSERT INTO history VALUES (1, "", "", 0)''')
+c.execute ('''INSERT INTO history VALUES (1, "", "", "", 0)''')
 
 time_now = int (time.time())
-c.execute ("""insert into inodes values (1, 1, "0000000000000000000000000000000000000000", %d, %d, %d, "dir", "", "", 0, 0, 0, 1, %d, 0, %d, 0)""" % (
+c.execute ("""INSERT INTO inodes VALUES (1, 1, "0000000000000000000000000000000000000000", %d, %d, %d, "dir", "", "", 0, 0, 0, 1, %d, 0, %d, 0)""" % (
   os.getuid(), os.getgid(), 0755, time_now, time_now
 ))
 conn.commit()

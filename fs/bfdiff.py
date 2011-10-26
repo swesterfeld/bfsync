@@ -18,7 +18,7 @@ def parse_config (filename):
   ])
   return bfsync_info
 
-cfg = parse_config ("test/.bfsync/config")
+cfg = parse_config (".bfsync/config")
 
 sqlite_sync = cfg.get ("sqlite-sync")
 if len (sqlite_sync) != 1:
@@ -29,7 +29,7 @@ if sqlite_sync[0] == "0":
 else:
   sqlite_sync = True
 
-conn = sqlite3.connect ('test/db')
+conn = sqlite3.connect ('db')
 c = conn.cursor()
 if not sqlite_sync:
   c.execute ('''PRAGMA synchronous=off''')

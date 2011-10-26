@@ -230,44 +230,35 @@ def cmd_commit():
   c.execute ('''SELECT version FROM history''')
   for row in c:
     VERSION = max (row[0], VERSION)
+
+  # compute commit diff
+  status_line.set_op ("COMMIT-DIFF")
+  status_line.update ("computing changes between version %d and %d... " % (VERSION - 1, VERSION))
+  diff_filename = os.path.join (repo_path, "tmp-commit-diff")
+  if os.system ("bfdiff.py %d %d | xz -9 > %s" % (VERSION - 1, VERSION, diff_filename)) != 0:
+    raise Exception ("error building commit diff")
+  hash = hash_cache.compute_hash (diff_filename)
+  diff_object_name = os.path.join (repo_path, "objects", make_object_filename (hash))
+  if os.path.exists (diff_object_name):
+    # already known
+    os.unlink (diff_filename)
+  else:
+    # add new object
+    os.rename (diff_filename, diff_object_name)
+    os.chmod (diff_object_name, 0400)
+  status_line.update ("done.")
+  status_line.cleanup()
+
   c.execute ('''UPDATE inodes SET vmax=? WHERE vmax = ?''', (VERSION + 1, VERSION))
   c.execute ('''UPDATE links SET vmax=? WHERE vmax = ?''', (VERSION + 1, VERSION))
-  c.execute ('''UPDATE history SET message="commit message", author="author" WHERE version=?''', (VERSION, ))
-  c.execute ('''INSERT INTO history VALUES (?,?,?,?)''', (VERSION + 1, "", "", 0))
+  c.execute ('''UPDATE history SET message="commit message", author="author", hash=? WHERE version=?''', (hash, VERSION, ))
+  c.execute ('''INSERT INTO history VALUES (?,?,?,?,?)''', (VERSION + 1, "", "", "", 0))
   conn.commit()
   c.close()
 
   # we modified the db, so the fs needs to reload everything
   # in-memory cached items will not be correct
   server_conn.clear_cache()
-  return
-
-  # add/remove files to/from git tree
-  os.chdir (os.path.join (repo_path, "git"))
-
-  status_line.set_op ("GIT")
-  status_line.update ("add/remove files to/from git tree...")
-  if os.system ("git add -A") != 0:
-    raise Exception ("git add -A failed")
-
-  # commit changes to repo
-  status_line.update ("committing git tree...")
-  if os.system ("git commit -q -a -F %s" % commit_msg_filename) != 0:
-    raise Exception ("git commit failed")
-  os.remove (commit_msg_filename)
-  status_line.update ("done.")
-  status_line.cleanup()
-
-  # remove dirs form new/ directory (sort by length, so delete subdirs first)
-  status_line.set_op ("CLEANUP")
-  status_line.update ("remove empty dirs from new...")
-  sorted_list = sorted (file_list, key = lambda (name, t): -len (name))
-  for (filename, filetype) in sorted_list:
-    if filetype == FILE_DIR:
-      new_dir = os.path.join (repo_path, "new", filename)
-      os.rmdir (new_dir)
-  status_line.update ("done.")
-  status_line.cleanup()
   return
 
 def strip_git_suffix (s):
