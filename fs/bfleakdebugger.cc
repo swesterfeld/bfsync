@@ -33,11 +33,13 @@ LeakDebugger::ptr_add (void *p)
     {
       Lock lock (mutex);
 
-      if (ptr_map[p] != 0)
-        g_critical ("LeakDebugger: invalid registration of object type %s detected; ptr_map[p] is %d\n",
-                    type.c_str(), ptr_map[p]);
+      int& p_map_entry = ptr_map[p];
 
-      ptr_map[p]++;
+      if (p_map_entry != 0)
+        g_critical ("LeakDebugger: invalid registration of object type %s detected; ptr_map[p] is %d\n",
+                    type.c_str(), p_map_entry);
+
+      p_map_entry++;
     }
 }
 
@@ -48,11 +50,20 @@ LeakDebugger::ptr_del (void *p)
     {
       Lock lock (mutex);
 
-      if (ptr_map[p] != 1)
-        g_critical ("LeakDebugger: invalid deletion of object type %s detected; ptr_map[p] is %d\n",
-                    type.c_str(), ptr_map[p]);
+      map<void *, int>::iterator pi = ptr_map.find (p);
+      if (pi == ptr_map.end())
+        {
+          g_critical ("LeakDebugger: invalid deletion of object type %s detected; ptr_map entry not found\n",
+                      type.c_str());
+          return;
+        }
 
-      ptr_map[p]--;
+      int& p_map_entry = pi->second;
+      if (p_map_entry != 1)
+        g_critical ("LeakDebugger: invalid deletion of object type %s detected; ptr_map[p] is %d\n",
+                    type.c_str(), p_map_entry);
+
+      ptr_map.erase (pi);
     }
 }
 
