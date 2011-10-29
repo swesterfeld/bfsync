@@ -37,9 +37,9 @@ if not sqlite_sync:
 version_a = int (sys.argv[1])
 version_b = int (sys.argv[2])
 
-def dict_from_table (table, n_keys, version):
+def dict_from_table (table, n_keys, version, id_start_str):
   d = dict()
-  c.execute ('''SELECT * FROM %s WHERE %d >= vmin and %d <= vmax''' % (table, version, version))
+  c.execute ('''SELECT * FROM %s WHERE %s and %d >= vmin and %d <= vmax''' % (table, id_start_str, version, version))
   for row in c:
     key = row[2:2 + n_keys]
     d[key] = row[2 + n_keys:]
@@ -64,8 +64,10 @@ def write1change (change_list):
   for s in change_list:
     sys.stdout.write (s + "\0")
 
-def print_changes (change_type, dict_a, dict_b):
+
+def compute_changes (change_type, dict_a, dict_b):
   change_list = []
+
   for k in dict_a:
     if k in dict_b:
       if dict_a[k] == dict_b[k]:
@@ -91,16 +93,27 @@ def print_changes (change_type, dict_a, dict_b):
     else:
       # entry added
       change_list += [ [ change_type + "+" ] + mklist (k) + mklist (dict_b[k]) ]
-  # sort changes (for better compression)
-  change_list.sort()
-  # write changes to stdout
-  for change in change_list:
-    write1change (change)
 
-dict_a = dict_from_table ("links", 2, version_a)
-dict_b = dict_from_table ("links", 2, version_b)
-print_changes ("l", dict_a, dict_b)
+  return change_list
 
-dict_a = dict_from_table ("inodes", 1, version_a)
-dict_b = dict_from_table ("inodes", 1, version_b)
-print_changes ("i", dict_a, dict_b)
+change_list = []
+
+for id_start in range (256):
+  zeros = "0" * 38
+  ffffs = "f" * 38
+  id_start_str = "dir_id >= '%02x%s' and dir_id <= '%02x%s'" % (id_start, zeros, id_start, ffffs)
+  dict_a = dict_from_table ("links", 2, version_a, id_start_str)
+  dict_b = dict_from_table ("links", 2, version_b, id_start_str)
+  change_list += compute_changes ("l", dict_a, dict_b)
+
+  id_start_str = "id >= '%02x%s' and id <= '%02x%s'" % (id_start, zeros, id_start, ffffs)
+  dict_a = dict_from_table ("inodes", 1, version_a, id_start_str)
+  dict_b = dict_from_table ("inodes", 1, version_b, id_start_str)
+  change_list += compute_changes ("i", dict_a, dict_b)
+
+# sort changes (for better compression)
+change_list.sort()
+
+# write changes to stdout
+for change in change_list:
+  write1change (change)
