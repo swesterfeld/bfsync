@@ -3,7 +3,7 @@
 from utils import *
 import sys
 
-conn = cd_repo_connect_db()
+conn, repo_path = cd_repo_connect_db()
 c = conn.cursor()
 
 diff = sys.stdin.read()
@@ -48,3 +48,4 @@ while len (sdiff) - start > 1:
   start += fcount
 
 conn.commit()
+os.system ("bfsync2 commit")

@@ -86,7 +86,7 @@ def cd_repo_connect_db():
     sqlite_sync = True
 
   os.chdir (repo_path)
-  return sqlite3.connect (os.path.join (repo_path, 'db'))
+  return sqlite3.connect (os.path.join (repo_path, 'db')), repo_path
 
 def parse_config (filename):
   bfsync_info = CfgParser.CfgParser (filename,

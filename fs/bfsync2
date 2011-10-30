@@ -89,30 +89,7 @@ def cmd_commit():
   parser.add_argument ('-m', help='set commit message')
   commit_args = parser.parse_args (args)
 
-  bfsync_dir = find_bfsync_dir()
-
-  bfsync_info = parse_config (bfsync_dir + "/info")
-
-  repo_path = bfsync_info.get ("repo-path")
-  if len (repo_path) != 1:
-    raise Exception ("bad repo path")
-  repo_path = repo_path[0]
-
-  mount_point = bfsync_info.get ("mount-point")
-  if len (mount_point) != 1:
-    raise Exception ("bad mount point")
-  mount_point = mount_point[0]
-
-  sqlite_sync = bfsync_info.get ("sqlite-sync")
-  if len (sqlite_sync) != 1:
-    raise Exception ("bad sqlite-sync setting")
-
-  if sqlite_sync[0] == "0":
-    sqlite_sync = False
-  else:
-    sqlite_sync = True
-
-  os.chdir (repo_path)
+  conn, repo_path = cd_repo_connect_db()
 
   # lock repo to allow modifications
   server_conn = ServerConn (repo_path)
@@ -121,10 +98,7 @@ def cmd_commit():
   hash_list = []
   file_list = []
 
-  conn = sqlite3.connect (os.path.join (repo_path, 'db'))
   c = conn.cursor()
-  if not sqlite_sync:
-    c.execute ('''PRAGMA synchronous=off''')
 
   c.execute ('''SELECT id FROM inodes WHERE hash = "new"''')
   for row in c:
@@ -260,30 +234,9 @@ def cmd_debug_clear_cache():
   server_conn.clear_cache()
 
 def cmd_debug_integrity():
-  bfsync_dir = find_bfsync_dir()
-  bfsync_info = parse_config (bfsync_dir + "/info")
+  conn, repo_path = bfsync_info.get ("repo-path")
 
-  repo_path = bfsync_info.get ("repo-path")
-  if len (repo_path) != 1:
-    raise Exception ("bad repo path")
-  repo_path = repo_path[0]
-
-  sqlite_sync = bfsync_info.get ("sqlite-sync")
-  if len (sqlite_sync) != 1:
-    raise Exception ("bad sqlite-sync setting")
-
-  if sqlite_sync[0] == "0":
-    sqlite_sync = False
-  else:
-    sqlite_sync = True
-
-  os.chdir (repo_path)
-
-  conn = sqlite3.connect (os.path.join (repo_path, 'db'))
   c = conn.cursor()
-  if not sqlite_sync:
-    c.execute ('''PRAGMA synchronous=off''')
-
   c.execute ('''SELECT vmin, vmax,id FROM inodes''')
   fail = False
   inode_d = dict()
@@ -320,7 +273,7 @@ def cmd_debug_integrity():
   return
 
 def cmd_log():
-  conn = cd_repo_connect_db()
+  conn, repo_path = cd_repo_connect_db()
 
   c = conn.cursor()
   c.execute ('''SELECT * FROM history''')
@@ -336,7 +289,7 @@ def cmd_log():
 
 def cmd_remote_history():
   os.chdir (args[0])
-  conn = cd_repo_connect_db()
+  conn, repo_path = cd_repo_connect_db()
   c = conn.cursor()
   c.execute ('''SELECT * FROM history''')
   hlist = []
@@ -346,7 +299,7 @@ def cmd_remote_history():
   return
 
 def cmd_pull():
-  conn = cd_repo_connect_db()
+  conn, repo_path = cd_repo_connect_db()
 
   url = args[0]
   (host, path) = url.split (":")
@@ -393,6 +346,10 @@ def cmd_pull():
                                     stdout=subprocess.PIPE)
   tlist.send_list (remote_send_p.stdin)
   tlist.receive_files (remote_send_p.stdout, True)
+  for diff in ff_transfer:
+    diff_file = os.path.join ("objects", make_object_filename (diff))
+    print "applying patch %s" % diff_file
+    os.system ("xzcat %s | bfapply.py" % diff_file)
   return
 
 command = None
