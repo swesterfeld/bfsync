@@ -403,6 +403,69 @@ def cmd_log():
       print "%4d   hash '%s', author '%s', msg '%s'" % (version, hash, author, commit)
   return
 
+def cd_repo_connect_db():
+  bfsync_dir = find_bfsync_dir()
+  bfsync_info = parse_config (bfsync_dir + "/info")
+
+  repo_path = bfsync_info.get ("repo-path")
+  if len (repo_path) != 1:
+    raise Exception ("bad repo path")
+  repo_path = repo_path[0]
+
+  sqlite_sync = bfsync_info.get ("sqlite-sync")
+  if len (sqlite_sync) != 1:
+    raise Exception ("bad sqlite-sync setting")
+
+  if sqlite_sync[0] == "0":
+    sqlite_sync = False
+  else:
+    sqlite_sync = True
+
+  os.chdir (repo_path)
+
+  return sqlite3.connect (os.path.join (repo_path, 'db'))
+
+def cmd_pull():
+  conn = cd_repo_connect_db()
+
+  url = args[0]
+  (host, path) = url.split (":")
+  remote_p = subprocess.Popen(["ssh", host, "bfsync2", "remote-history", path], stdout=subprocess.PIPE).communicate()[0]
+  remote_history = pickle.loads (remote_p)
+
+  c = conn.cursor()
+  c.execute ('''SELECT * FROM history''')
+
+  local_history = []
+  for row in c:
+    local_history += [ row ]
+
+  l_dict = dict()     # dict: version number -> diff hash
+  for lh in local_history:
+    version = lh[0]
+    hash = lh[1]
+    if hash:
+      l_dict[version] = hash
+
+  ff_versions = 0
+
+  for rh in remote_history:
+    version = rh[0]
+    hash = rh[1]
+    if hash:
+      if l_dict.has_key (version) and hash != l_dict[version]:
+        raise Exception ("incompatible version %d, would need merge algorithm to do this" % version)
+      else:
+        ff_versions += 1
+
+  print "will fast-forward %d versions..." % ff_versions
+  remote_p = subprocess.Popen(["ssh", host, "bfsync", "remote-ls", path], stdout=subprocess.PIPE).communicate()[0]
+  remote_list = pickle.loads (remote_p)
+  for rfile in remote_list:
+    print "name = %s, hash = %s, size = %d" % (rfile.name, rfile.hash, rfile.size)
+
+  return
+
 command = None
 command_func = None
 arg_iter = sys.argv[1:].__iter__()
@@ -412,6 +475,7 @@ for arg in arg_iter:
   commands = [
     ( "commit",         cmd_commit, 1),
     ( "log",            cmd_log, 0),
+    ( "pull",           cmd_pull, 1),
     ( "remote-ls",      cmd_remote_ls, 1),
     ( "remote-send",    cmd_remote_send, 0),
     ( "debug-load-all-inodes",  cmd_debug_load_all_inodes, 0),
