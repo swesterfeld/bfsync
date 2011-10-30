@@ -3,36 +3,10 @@
 import sqlite3
 import CfgParser
 import sys
+from utils import *
 
-def parse_config (filename):
-  bfsync_info = CfgParser.CfgParser (filename,
-  [
-  ],
-  [
-    "repo-type",
-    "repo-path",
-    "mount-point",
-    "cached-inodes",
-    "cached-dirs",
-    "sqlite-sync",
-  ])
-  return bfsync_info
-
-cfg = parse_config (".bfsync/config")
-
-sqlite_sync = cfg.get ("sqlite-sync")
-if len (sqlite_sync) != 1:
-  raise Exception ("bad sqlite-sync setting")
-
-if sqlite_sync[0] == "0":
-  sqlite_sync = False
-else:
-  sqlite_sync = True
-
-conn = sqlite3.connect ('db')
+conn = cd_repo_connect_db()
 c = conn.cursor()
-if not sqlite_sync:
-  c.execute ('''PRAGMA synchronous=off''')
 
 version_a = int (sys.argv[1])
 version_b = int (sys.argv[2])
