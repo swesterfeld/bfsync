@@ -452,7 +452,7 @@ def cmd_pull():
     if hash:
       l_dict[version] = hash
 
-  ff_versions = 0
+  ff_transfer = []
 
   for rh in remote_history:
     version = rh[0]
@@ -461,14 +461,23 @@ def cmd_pull():
       if l_dict.has_key (version) and hash != l_dict[version]:
         raise Exception ("incompatible version %d, would need merge algorithm to do this" % version)
       else:
-        ff_versions += 1
+        ff_transfer += [ hash ]
 
-  print "will fast-forward %d versions..." % ff_versions
-  remote_p = subprocess.Popen(["ssh", host, "bfsync", "remote-ls", path], stdout=subprocess.PIPE).communicate()[0]
+  print "will fast-forward %d versions..." % len (ff_transfer)
+  remote_p = subprocess.Popen(["ssh", host, "bfsync2", "remote-ls", path], stdout=subprocess.PIPE).communicate()[0]
   remote_list = pickle.loads (remote_p)
+  tlist = TransferList()
   for rfile in remote_list:
-    print "name = %s, hash = %s, size = %d" % (rfile.name, rfile.hash, rfile.size)
-
+    if rfile.hash in ff_transfer:
+      tlist.add (TransferFile (
+                    os.path.join (path, "objects", make_object_filename (rfile.hash)),
+                    os.path.join ("objects", make_object_filename (rfile.hash)),
+                    rfile.size, 0400))
+  remote_send_p = subprocess.Popen (["ssh", host, "bfsync2", "remote-send"],
+                                    stdin=subprocess.PIPE,
+                                    stdout=subprocess.PIPE)
+  tlist.send_list (remote_send_p.stdin)
+  tlist.receive_files (remote_send_p.stdout, True)
   return
 
 command = None
