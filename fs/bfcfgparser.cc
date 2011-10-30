@@ -109,6 +109,20 @@ CfgParser::get_token()
             }
         }
     }
+  if (c == '#')    // strip comments
+    {
+      while (1)
+        {
+          c = fgetc (cfg_file);
+          if (c == '\n')
+            {
+              line++;
+              return get_token();
+            }
+          if (c == EOF)
+            return TOKEN_EOF;
+        }
+    }
 
   return TOKEN_ERROR;
 }
