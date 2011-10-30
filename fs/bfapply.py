@@ -26,6 +26,31 @@ def apply_inode_plus (row):
                                            ?, ?, ?, ?, ?,
                                            ?, ?)""", tuple ([VERSION, VERSION] + row))
 
+def apply_inode_change (row):
+  id = row[0]
+  c.execute ("""SELECT * FROM inodes WHERE id = ? AND ? >= vmin AND ? <= vmax""", (id, VERSION, VERSION))
+  count = 0
+  for r in c:
+    if (count == 0):
+      old_row = r
+    else:
+      raise Exception ("got more than one entry for inode id = %s" % id)
+    count += 1
+  if count == 0:
+    raise Exception ("missing inode entry for inode id = %s" % id)
+  c.execute ("""UPDATE inodes SET vmax = ? WHERE id = ? AND ? >= vmin AND ? <= vmax""", (VERSION - 1, id, VERSION, VERSION))
+  row = [ VERSION, VERSION ] + row
+  if len (old_row) != len (row):
+    raise Exception ("record length mismatch during inode change")
+  # modify only the fields contained in the change entry
+  for i in range (2, len (row)):
+    if row[i] == "":
+      row[i] = old_row[i]
+  c.execute ("""INSERT INTO inodes VALUES (?, ?, ?, ?, ?,
+                                           ?, ?, ?, ?, ?,
+                                           ?, ?, ?, ?, ?,
+                                           ?, ?)""", tuple (row))
+
 while len (sdiff) - start > 1:
   fcount = 0
   if sdiff[start] == "l+" or sdiff[start] == "l!":
@@ -45,6 +70,10 @@ while len (sdiff) - start > 1:
     apply_link_plus (sdiff[start + 1:start + fcount])
   if sdiff[start] == "i+":
     apply_inode_plus (sdiff[start + 1:start + fcount])
+  if sdiff[start] == "l!":
+    apply_link_change (sdiff[start + 1:start + fcount])
+  if sdiff[start] == "i!":
+    apply_inode_change (sdiff[start + 1:start + fcount])
   start += fcount
 
 conn.commit()
