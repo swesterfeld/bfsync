@@ -395,11 +395,12 @@ def cmd_log():
   c.execute ('''SELECT * FROM history''')
   for row in c:
     version = row[0]
-    author  = row[1]
-    commit  = row[2]
+    hash    = row[1]
+    author  = row[2]
+    commit  = row[3]
 
     if commit != "":
-      print "version %4d, author '%s', msg '%s'" % (version, author, commit)
+      print "%4d   hash '%s', author '%s', msg '%s'" % (version, hash, author, commit)
   return
 
 command = None
