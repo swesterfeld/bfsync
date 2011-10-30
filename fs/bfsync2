@@ -404,13 +404,8 @@ def cmd_log():
   return
 
 def cd_repo_connect_db():
-  bfsync_dir = find_bfsync_dir()
-  bfsync_info = parse_config (bfsync_dir + "/info")
-
-  repo_path = bfsync_info.get ("repo-path")
-  if len (repo_path) != 1:
-    raise Exception ("bad repo path")
-  repo_path = repo_path[0]
+  repo_path = find_repo_dir()
+  bfsync_info = parse_config (repo_path + "/.bfsync/config")
 
   sqlite_sync = bfsync_info.get ("sqlite-sync")
   if len (sqlite_sync) != 1:
