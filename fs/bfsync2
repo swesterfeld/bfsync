@@ -326,8 +326,11 @@ def cmd_pull():
     version = rh[0]
     hash = rh[1]
     if hash:
-      if l_dict.has_key (version) and hash != l_dict[version]:
-        raise Exception ("incompatible version %d, would need merge algorithm to do this" % version)
+      if l_dict.has_key (version):
+        if hash != l_dict[version]:
+          raise Exception ("incompatible version %d, would need merge algorithm to do this" % version)
+        else:
+          pass    # same version, local and remote
       else:
         ff_transfer += [ hash ]
 
