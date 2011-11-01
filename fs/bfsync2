@@ -234,7 +234,7 @@ def cmd_debug_clear_cache():
   server_conn.clear_cache()
 
 def cmd_debug_integrity():
-  conn, repo_path = bfsync_info.get ("repo-path")
+  conn, repo_path = cd_repo_connect_db()
 
   c = conn.cursor()
   c.execute ('''SELECT vmin, vmax,id FROM inodes''')
@@ -340,10 +340,10 @@ def cmd_pull():
   tlist = TransferList()
   for rfile in remote_list:
     if rfile.hash in ff_transfer:
-      tlist.add (TransferFile (
-                    os.path.join (path, "objects", make_object_filename (rfile.hash)),
-                    os.path.join ("objects", make_object_filename (rfile.hash)),
-                    rfile.size, 0400))
+      src_file = os.path.join (path, "objects", make_object_filename (rfile.hash))
+      dest_file = os.path.join ("objects", make_object_filename (rfile.hash))
+      if not validate_object (dest_file, rfile.hash):
+        tlist.add (TransferFile (src_file, dest_file, rfile.size, 0400))
   remote_send_p = subprocess.Popen (["ssh", host, "bfsync2", "remote-send"],
                                     stdin=subprocess.PIPE,
                                     stdout=subprocess.PIPE)
