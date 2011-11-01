@@ -172,6 +172,7 @@ INodeRepo::delete_unused_inodes (DeleteMode dmode)
   while (ci != cache.end())
     {
       INodeVersionList& ivlist = ci->second;
+      const ID& id = ci->first;
 
       map<ID, INodeVersionList>::iterator nexti = ci;
       nexti++;
@@ -191,7 +192,13 @@ INodeRepo::delete_unused_inodes (DeleteMode dmode)
                 }
             }
           if (del)
-            cache.erase (ci);
+            {
+              cache.erase (ci);
+
+              map<ID, INodeLinksPtr>::iterator lci = links_cache.find (id);
+              if (lci != links_cache.end())
+                links_cache.erase (lci);
+            }
         }
       ci = nexti;
     }
