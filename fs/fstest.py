@@ -860,6 +860,30 @@ bf_tests += [ ("commits-rm", test_commits_rm) ]
 
 #####
 
+def test_commits_rename():
+  start_size = os.path.getsize ("mnt/README")
+  os.rename ("mnt/README", "mnt/MEREAD")
+  commit()
+  clear_cache()
+  # README old
+  st = os.stat ("mnt/.bfsync/commits/1/README")
+  if st.st_size != start_size:
+    raise Exception ("README in commits/1 dir wrong")
+  # README new
+  if os.path.exists ("mnt/.bfsync/commits/2/README"):
+    raise Exception ("README not removed in commits/2 dir")
+  # MEREAD old
+  if os.path.exists ("mnt/.bfsync/commits/1/MEREAD"):
+    raise Exception ("MEREAD shows up in commits/1 dir")
+  # MEREAD new
+  st = os.stat ("mnt/.bfsync/commits/2/MEREAD")
+  if st.st_size != start_size:
+    raise Exception ("MEREAD in commits/2 dir wrong")
+
+bf_tests += [ ("commits-rename", test_commits_rename) ]
+
+#####
+
 def test_commits_change_file():
   old_readme = read_file ("mnt/README")
   new_readme = "new contents for README\n"
