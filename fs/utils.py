@@ -101,3 +101,18 @@ def parse_config (filename):
     "sqlite-sync",
   ])
   return bfsync_info
+
+def make_object_filename (hash):
+  if len (hash) != 40:
+    raise Exception ("bad hash %s (not len 40)" % hash)
+  return hash[0:2] + "/" + hash[2:]
+
+def validate_object (object_file, hash):
+  try:
+    import HashCache
+    os.stat (object_file)
+    if HashCache.hash_cache.compute_hash (object_file) == hash:
+      return True
+  except:
+    pass
+  return False

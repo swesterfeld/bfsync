@@ -70,20 +70,6 @@ def commit_msg_ok (filename):
   file.close()
   return result
 
-def make_object_filename (hash):
-  if len (hash) != 40:
-    raise Exception ("bad hash %s (not len 40)" % hash)
-  return hash[0:2] + "/" + hash[2:]
-
-def validate_object (object_file, hash):
-  try:
-    os.stat (object_file)
-    if hash_cache.compute_hash (object_file) == hash:
-      return True
-  except:
-    pass
-  return False
-
 def cmd_commit():
   parser = argparse.ArgumentParser (prog='bfsync2 commit')
   parser.add_argument ('-m', help='set commit message')
