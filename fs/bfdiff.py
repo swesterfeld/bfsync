@@ -11,6 +11,18 @@ c = conn.cursor()
 version_a = int (sys.argv[1])
 version_b = int (sys.argv[2])
 
+def links_from_table (version, id_start):
+  d = dict()
+  zeros = "0" * 38
+  ffffs = "f" * 38
+  c.execute ('''SELECT dir_id, name, inode_id FROM links
+                  WHERE dir_id >= '%02x%s' and dir_id <= '%02x%s'
+                  AND %d >= vmin AND %d <= vmax''' % (id_start, zeros, id_start, ffffs, version, version))
+  for row in c:
+    key = row[0:2]
+    d[key] = row[2:]
+  return d
+
 def dict_from_table (table, n_keys, version, id_start_str):
   d = dict()
   c.execute ('''SELECT * FROM %s WHERE %s and %d >= vmin and %d <= vmax''' % (table, id_start_str, version, version))
@@ -73,13 +85,12 @@ def compute_changes (change_type, dict_a, dict_b):
 change_list = []
 
 for id_start in range (256):
-  zeros = "0" * 38
-  ffffs = "f" * 38
-  id_start_str = "dir_id >= '%02x%s' and dir_id <= '%02x%s'" % (id_start, zeros, id_start, ffffs)
-  dict_a = dict_from_table ("links", 2, version_a, id_start_str)
-  dict_b = dict_from_table ("links", 2, version_b, id_start_str)
+  dict_a = links_from_table (version_a, id_start)
+  dict_b = links_from_table (version_b, id_start)
   change_list += compute_changes ("l", dict_a, dict_b)
 
+  zeros = "0" * 38
+  ffffs = "f" * 38
   id_start_str = "id >= '%02x%s' and id <= '%02x%s'" % (id_start, zeros, id_start, ffffs)
   dict_a = dict_from_table ("inodes", 1, version_a, id_start_str)
   dict_b = dict_from_table ("inodes", 1, version_b, id_start_str)
