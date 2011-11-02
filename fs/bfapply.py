@@ -18,7 +18,7 @@ for row in c:
   VERSION = max (row[0], VERSION)
 
 def apply_link_plus (row):
-  c.execute ("INSERT INTO links VALUES (?,?,?,?,?)", (VERSION, VERSION, row[0], row[2], row[1])
+  c.execute ("INSERT INTO links VALUES (?,?,?,?,?)", (VERSION, VERSION, row[0], row[2], row[1]))
 
 def apply_inode_plus (row):
   c.execute ("""INSERT INTO inodes VALUES (?, ?, ?, ?, ?,
