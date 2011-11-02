@@ -337,7 +337,7 @@ def cmd_pull():
   tlist.receive_files (remote_send_p.stdout, True)
   for diff in ff_transfer:
     diff_file = os.path.join ("objects", make_object_filename (diff))
-    print "applying patch %s" % diff_file
+    print "applying patch %s" % diff
     os.system ("xzcat %s | bfapply.py" % diff_file)
   return
 

@@ -20,6 +20,32 @@ for row in c:
 def apply_link_plus (row):
   c.execute ("INSERT INTO links VALUES (?,?,?,?,?)", (VERSION, VERSION, row[0], row[2], row[1]))
 
+def apply_link_minus (row):
+  dir_id = row[0]
+  name = row[1]
+  error_str = "delete link (dir_id = %s and name = %s): " % (dir_id, name)
+
+  c.execute ("""SELECT * FROM links WHERE dir_id = ? AND name = ? AND ? >= vmin AND ? <= vmax""",
+             (dir_id, name, VERSION, VERSION))
+  count = 0
+  for r in c:
+    if (count == 0):
+      old_row = r
+    else:
+      raise Exception (error_str + "found more than one old entry")
+    count += 1
+  if count == 0:
+    raise Exception (error_str + "not found in db")
+  old_vmin = old_row[0]
+  old_vmax = old_row[1]
+  if old_vmax != VERSION:
+    raise Exception (error_str + "max version is not current version")
+  if old_vmin > VERSION - 1:
+    raise Exception (error_str + "min version is newer than (current version - 1)")
+
+  c.execute ("""UPDATE links SET vmax = ? WHERE dir_id = ? AND name = ? AND ? >= vmin AND ? <= vmax""",
+             (VERSION - 1, dir_id, name, VERSION, VERSION))
+
 def apply_inode_plus (row):
   c.execute ("""INSERT INTO inodes VALUES (?, ?, ?, ?, ?,
                                            ?, ?, ?, ?, ?,
@@ -74,6 +100,10 @@ while len (sdiff) - start > 1:
     apply_link_change (sdiff[start + 1:start + fcount])
   if sdiff[start] == "i!":
     apply_inode_change (sdiff[start + 1:start + fcount])
+  if sdiff[start] == "l-":
+    apply_link_minus (sdiff[start + 1:start + fcount])
+  if sdiff[start] == "i-":
+    apply_inode_minus (sdiff[start + 1:start + fcount])
   start += fcount
 
 conn.commit()
