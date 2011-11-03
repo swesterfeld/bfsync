@@ -568,6 +568,7 @@ INode::load (const Context& ctx, const ID& id)
       link->dir_id = load_links.column_id (2);
       link->inode_id = load_links.column_id (3);
       link->name = load_links.column_text (4);
+      link->updated = false;
 
       links.update()->link_map[link->name].add (LinkPtr (link));
     }
@@ -900,6 +901,8 @@ INodeLinks::save (SQLStatement& stmt)
               stmt.bind_text (5, lp->name);
               stmt.step();
             }
+          Link *link = lp.get_ptr_without_update();
+          link->updated = false;
         }
     }
   return true;

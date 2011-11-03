@@ -114,6 +114,12 @@ public:
 
     return ptr;
   }
+  /* never use this if you can use update() instead */
+  Link*
+  get_ptr_without_update() const
+  {
+    return ptr;
+  }
   Link* update() const;
   static LinkPtr& null();
 };
