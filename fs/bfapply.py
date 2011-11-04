@@ -17,7 +17,7 @@ c.execute ('''SELECT version FROM history''')
 for row in c:
   VERSION = max (row[0], VERSION)
 
-def link_detach (description, dir_id, name):
+def detach_link (description, dir_id, name):
   error_str = description + " (dir_id = %s and name = %s): " % (dir_id, name)
 
   c.execute ("""SELECT * FROM links WHERE dir_id = ? AND name = ? AND ? >= vmin AND ? <= vmax""",
@@ -41,18 +41,33 @@ def link_detach (description, dir_id, name):
   c.execute ("""UPDATE links SET vmax = ? WHERE dir_id = ? AND name = ? AND ? >= vmin AND ? <= vmax""",
              (VERSION - 1, dir_id, name, VERSION, VERSION))
 
+def detach_inode (description, id):
+  error_str = description + " (inode_id = %s): " % id
+  c.execute ("""SELECT * FROM inodes WHERE id = ? AND ? >= vmin AND ? <= vmax""", (id, VERSION, VERSION))
+  count = 0
+  for r in c:
+    if (count == 0):
+      old_row = r
+    else:
+      raise Exception (error_str + "got more than one entry")
+    count += 1
+  if count == 0:
+    raise Exception (error_str + "missing inode entry")
+  c.execute ("""UPDATE inodes SET vmax = ? WHERE id = ? AND ? >= vmin AND ? <= vmax""", (VERSION - 1, id, VERSION, VERSION))
+  return old_row
+
 def apply_link_plus (row):
   c.execute ("INSERT INTO links VALUES (?,?,?,?,?)", (VERSION, VERSION, row[0], row[2], row[1]))
 
 def apply_link_minus (row):
   dir_id = row[0]
   name = row[1]
-  link_detach ("delete link", dir_id, name)
+  detach_link ("delete link", dir_id, name)
 
 def apply_link_change (row):
   dir_id = row[0]
   name = row[1]
-  link_detach ("change link", dir_id, name)
+  detach_link ("change link", dir_id, name)
   apply_link_plus (row)
 
 def apply_inode_plus (row):
@@ -61,23 +76,20 @@ def apply_inode_plus (row):
                                            ?, ?, ?, ?, ?,
                                            ?, ?)""", tuple ([VERSION, VERSION] + row))
 
-def apply_inode_change (row):
+def apply_inode_minus (row):
   id = row[0]
-  c.execute ("""SELECT * FROM inodes WHERE id = ? AND ? >= vmin AND ? <= vmax""", (id, VERSION, VERSION))
-  count = 0
-  for r in c:
-    if (count == 0):
-      old_row = r
-    else:
-      raise Exception ("got more than one entry for inode id = %s" % id)
-    count += 1
-  if count == 0:
-    raise Exception ("missing inode entry for inode id = %s" % id)
-  c.execute ("""UPDATE inodes SET vmax = ? WHERE id = ? AND ? >= vmin AND ? <= vmax""", (VERSION - 1, id, VERSION, VERSION))
+  detach_inode ("delete inode", id)
+
+def apply_inode_change (row):
+  # read old values
+  id = row[0]
+  old_row = detach_inode ("change inode", id)
+
+  # modify only the fields contained in the change entry
   row = [ VERSION, VERSION ] + row
   if len (old_row) != len (row):
-    raise Exception ("record length mismatch during inode change")
-  # modify only the fields contained in the change entry
+    raise Exception ("apply inode: id=%s record length mismatch" % id)
+
   for i in range (2, len (row)):
     if row[i] == "":
       row[i] = old_row[i]
@@ -85,6 +97,7 @@ def apply_inode_change (row):
                                            ?, ?, ?, ?, ?,
                                            ?, ?, ?, ?, ?,
                                            ?, ?)""", tuple (row))
+
 
 while len (sdiff) - start > 1:
   fcount = 0
