@@ -454,25 +454,28 @@ INode::save (SQLStatement& stmt)
       return false; // unsupported type
     }
 
-  stmt.reset();
-  stmt.bind_int   (1 + INODES_VMIN, vmin);
-  stmt.bind_int   (1 + INODES_VMAX, vmax);
-  stmt.bind_text  (1 + INODES_ID, id.str());
-  stmt.bind_int   (1 + INODES_UID, uid);
-  stmt.bind_int   (1 + INODES_GID, gid);
-  stmt.bind_int   (1 + INODES_MODE, mode);
-  stmt.bind_text  (1 + INODES_TYPE, type_str);
-  stmt.bind_text  (1 + INODES_HASH, hash);
-  stmt.bind_text  (1 + INODES_LINK, link);
-  stmt.bind_int   (1 + INODES_SIZE, size);
-  stmt.bind_int   (1 + INODES_MAJOR, major);
-  stmt.bind_int   (1 + INODES_MINOR, minor);
-  stmt.bind_int   (1 + INODES_NLINK, nlink);
-  stmt.bind_int   (1 + INODES_CTIME, ctime);
-  stmt.bind_int   (1 + INODES_CTIME_NS, ctime_ns);
-  stmt.bind_int   (1 + INODES_MTIME, mtime);
-  stmt.bind_int   (1 + INODES_MTIME_NS, mtime_ns);
-  stmt.step();
+  if (nlink != 0) // nlink == 0 means that the inode is not referenced anymore and can be deleted
+    {
+      stmt.reset();
+      stmt.bind_int   (1 + INODES_VMIN, vmin);
+      stmt.bind_int   (1 + INODES_VMAX, vmax);
+      stmt.bind_text  (1 + INODES_ID, id.str());
+      stmt.bind_int   (1 + INODES_UID, uid);
+      stmt.bind_int   (1 + INODES_GID, gid);
+      stmt.bind_int   (1 + INODES_MODE, mode);
+      stmt.bind_text  (1 + INODES_TYPE, type_str);
+      stmt.bind_text  (1 + INODES_HASH, hash);
+      stmt.bind_text  (1 + INODES_LINK, link);
+      stmt.bind_int   (1 + INODES_SIZE, size);
+      stmt.bind_int   (1 + INODES_MAJOR, major);
+      stmt.bind_int   (1 + INODES_MINOR, minor);
+      stmt.bind_int   (1 + INODES_NLINK, nlink);
+      stmt.bind_int   (1 + INODES_CTIME, ctime);
+      stmt.bind_int   (1 + INODES_CTIME_NS, ctime_ns);
+      stmt.bind_int   (1 + INODES_MTIME, mtime);
+      stmt.bind_int   (1 + INODES_MTIME_NS, mtime_ns);
+      stmt.step();
+    }
 
   return true;
 }
