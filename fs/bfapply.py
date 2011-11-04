@@ -17,13 +17,8 @@ c.execute ('''SELECT version FROM history''')
 for row in c:
   VERSION = max (row[0], VERSION)
 
-def apply_link_plus (row):
-  c.execute ("INSERT INTO links VALUES (?,?,?,?,?)", (VERSION, VERSION, row[0], row[2], row[1]))
-
-def apply_link_minus (row):
-  dir_id = row[0]
-  name = row[1]
-  error_str = "delete link (dir_id = %s and name = %s): " % (dir_id, name)
+def link_detach (description, dir_id, name):
+  error_str = description + " (dir_id = %s and name = %s): " % (dir_id, name)
 
   c.execute ("""SELECT * FROM links WHERE dir_id = ? AND name = ? AND ? >= vmin AND ? <= vmax""",
              (dir_id, name, VERSION, VERSION))
@@ -45,6 +40,20 @@ def apply_link_minus (row):
 
   c.execute ("""UPDATE links SET vmax = ? WHERE dir_id = ? AND name = ? AND ? >= vmin AND ? <= vmax""",
              (VERSION - 1, dir_id, name, VERSION, VERSION))
+
+def apply_link_plus (row):
+  c.execute ("INSERT INTO links VALUES (?,?,?,?,?)", (VERSION, VERSION, row[0], row[2], row[1]))
+
+def apply_link_minus (row):
+  dir_id = row[0]
+  name = row[1]
+  link_detach ("delete link", dir_id, name)
+
+def apply_link_change (row):
+  dir_id = row[0]
+  name = row[1]
+  link_detach ("change link", dir_id, name)
+  apply_link_plus (row)
 
 def apply_inode_plus (row):
   c.execute ("""INSERT INTO inodes VALUES (?, ?, ?, ?, ?,
