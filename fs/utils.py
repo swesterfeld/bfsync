@@ -116,3 +116,25 @@ def validate_object (object_file, hash):
   except:
     pass
   return False
+
+def parse_diff (diff):
+  changes = []
+  sdiff = diff.split ("\0")
+  start = 0
+  while len (sdiff) - start > 1:
+    fcount = 0
+    if sdiff[start] == "l+" or sdiff[start] == "l!":
+      fcount = 4
+    elif sdiff[start] == "l-":
+      fcount = 3
+    elif sdiff[start] == "i+" or sdiff[start] == "i!":
+      fcount = 16
+    elif sdiff[start] == "i-":
+      fcount = 2
+
+    if fcount == 0:
+      raise Exception ("error during diff parse %s" % sdiff[start:])
+    assert (fcount != 0)
+    changes += [ sdiff[start:start + fcount] ]
+    start += fcount
+  return changes

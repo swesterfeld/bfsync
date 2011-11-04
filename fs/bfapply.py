@@ -8,9 +8,7 @@ c = conn.cursor()
 
 diff = sys.stdin.read()
 
-sdiff = diff.split ("\0")
-
-start = 0
+changes = parse_diff (diff)
 
 VERSION = 1
 c.execute ('''SELECT version FROM history''')
@@ -99,34 +97,19 @@ def apply_inode_change (row):
                                            ?, ?)""", tuple (row))
 
 
-while len (sdiff) - start > 1:
-  fcount = 0
-  if sdiff[start] == "l+" or sdiff[start] == "l!":
-    fcount = 4
-  elif sdiff[start] == "l-":
-    fcount = 3
-  elif sdiff[start] == "i+" or sdiff[start] == "i!":
-    fcount = 16
-  elif sdiff[start] == "i-":
-    fcount = 2
-
-  if fcount == 0:
-    print sdiff[start:]
-  assert (fcount != 0)
-
-  if sdiff[start] == "l+":
-    apply_link_plus (sdiff[start + 1:start + fcount])
-  if sdiff[start] == "i+":
-    apply_inode_plus (sdiff[start + 1:start + fcount])
-  if sdiff[start] == "l!":
-    apply_link_change (sdiff[start + 1:start + fcount])
-  if sdiff[start] == "i!":
-    apply_inode_change (sdiff[start + 1:start + fcount])
-  if sdiff[start] == "l-":
-    apply_link_minus (sdiff[start + 1:start + fcount])
-  if sdiff[start] == "i-":
-    apply_inode_minus (sdiff[start + 1:start + fcount])
-  start += fcount
+for change in changes:
+  if change[0] == "l+":
+    apply_link_plus (change[1:])
+  if change[0] == "i+":
+    apply_inode_plus (change[1:])
+  if change[0] == "l!":
+    apply_link_change (change[1:])
+  if change[0] == "i!":
+    apply_inode_change (change[1:])
+  if change[0] == "l-":
+    apply_link_minus (change[1:])
+  if change[0] == "i-":
+    apply_inode_minus (change[1:])
 
 conn.commit()
 os.system ("bfsync2 commit")
