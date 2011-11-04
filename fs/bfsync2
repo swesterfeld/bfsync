@@ -273,6 +273,128 @@ def cmd_log():
       print "%4d   hash '%s', author '%s', msg '%s'" % (version, hash, author, commit)
   return
 
+def printable_name (c, id, VERSION):
+  if id == "0" * 40:
+    return "/"
+  c.execute ("SELECT dir_id, name FROM links WHERE inode_id=? AND ? >= vmin AND ? <= VMAX", (id, VERSION, VERSION))
+  for row in c:
+    return os.path.join (printable_name (c, row[0], VERSION), row[1])
+  return "*unknown*"
+
+def cmd_status():
+  conn, repo_path = cd_repo_connect_db()
+
+  c = conn.cursor()
+
+  VERSION = 1
+  c.execute ('''SELECT version FROM history''')
+  for row in c:
+    VERSION = max (row[0], VERSION)
+  c.execute ('''SELECT id FROM inodes WHERE vmin=%d AND vmax=%d''' % (VERSION, VERSION))
+  inode_ids = []
+  for row in c:
+    inode_ids += [ row[0] ]
+  c.execute ('''SELECT dir_id, name, inode_id FROM links WHERE vmin=%d AND vmax=%d''' % (VERSION, VERSION))
+  link_ids = []
+  for row in c:
+    link_ids += [ row[0:3] ]
+  print "%d inodes modified:" % len (inode_ids)
+  print
+  for id in inode_ids:
+    print " - %s, name %s" % (id, printable_name (c, id, VERSION))
+  print
+  print "%d links modified:" % len (link_ids)
+  print
+  for lid in link_ids:
+    print " - %s->%s, name %s" % (lid[0], lid[2], os.path.join (printable_name (c, lid[0], VERSION), lid[1]))
+
+def cmd_revert():
+  conn, repo_path = cd_repo_connect_db()
+  c = conn.cursor()
+
+  # lock repo to allow modifications
+  server_conn = ServerConn (repo_path)
+  server_conn.get_lock()
+
+  if len (args) == 0:
+    VERSION = 1
+    c.execute ('''SELECT version FROM history''')
+    for row in c:
+      VERSION = max (row[0], VERSION)
+    VERSION -= 1
+  else:
+    VERSION = int (args[0])
+  print "reverting to version %d..." % VERSION
+  c.execute ('''SELECT vmin, vmax, id FROM inodes WHERE vmax >= ?''', (VERSION, ))
+  del_inode_list = []
+  for row in c:
+    vmin = row[0]
+    vmax = row[1]
+    id = row[2]
+    if (vmin > VERSION):
+      del_inode_list += [ (vmin, id) ]
+  for vmin, id in del_inode_list:
+    print "deleting %s/%d..." % (id, vmin)
+    c.execute ('''DELETE FROM inodes WHERE vmin=? AND id=?''', (vmin, id))
+  c.execute ('''SELECT vmin, vmax, dir_id, inode_id FROM links WHERE vmax >= ?''', (VERSION, ))
+  del_link_list = []
+  for row in c:
+    vmin = row[0]
+    vmax = row[1]
+    dir_id = row[2]
+    inode_id = row[3]
+    if (vmin > VERSION):
+      del_link_list += [ (vmin, dir_id, inode_id) ]
+  for vmin, dir_id, inode_id in del_link_list:
+    print "deleting %s->%s/%d..." % (dir_id, inode_id, vmin)
+    c.execute ('''DELETE FROM links WHERE vmin=? AND dir_id=? AND inode_id=?''', (vmin, dir_id, inode_id))
+
+  c.execute ('''UPDATE inodes SET vmax=? WHERE vmax = ?''', (VERSION + 1, VERSION))
+  c.execute ('''UPDATE links SET vmax=? WHERE vmax = ?''', (VERSION + 1, VERSION))
+
+  conn.commit()
+  c.close()
+  # we modified the db, so the fs needs to reload everything
+  # in-memory cached items will not be correct
+  server_conn.clear_cache()
+
+def cmd_db_finger_print():
+  conn, repo_path = cd_repo_connect_db()
+  c = conn.cursor()
+
+  # lock repo to ensure changes are written before we do something
+  server_conn = ServerConn (repo_path)
+  server_conn.get_lock()
+
+  c.execute ("SELECT * FROM inodes")
+  inode_l = []
+  for row in c:
+    s = "i\0"
+    for f in row:
+      s += "%s\0" % f
+    inode_l += [ s ]
+  inode_l.sort()
+  c.execute ("SELECT * FROM links")
+  link_l = []
+  for row in c:
+    s = "l\0"
+    for f in row:
+      s += "%s\0" % f
+    link_l += [ s ]
+  link_l.sort()
+  c.execute ("SELECT * FROM history")
+  history_l = []
+  for row in c:
+    s = "h\0"
+    for f in row:
+      s += "%s\0" % f
+    history_l += [ s ]
+  history_l.sort()
+  all_str = ""
+  for r in link_l + inode_l + history_l:
+    all_str += r + "\0"
+  print hashlib.sha1 (all_str).hexdigest()
+
 def cmd_remote_history():
   os.chdir (args[0])
   conn, repo_path = cd_repo_connect_db()
@@ -283,6 +405,25 @@ def cmd_remote_history():
     hlist += [ row ]
   print pickle.dumps (hlist)
   return
+
+def load_diff (hash):
+  obj_name = os.path.join ("objects", make_object_filename (hash))
+  diff = subprocess.Popen(["xzcat", obj_name], stdout=subprocess.PIPE).communicate()[0]
+  return diff
+
+def history_merge (local_history, remote_history):
+  print "MERGE"
+  print "local history:"
+  for lh in local_history:
+    print " * v%d : %s" % lh[0:2]
+  print "remote history:"
+  for rh in remote_history:
+    print " * v%d : %s" % rh[0:2]
+    if rh[1]:
+      d = load_diff (rh[1])
+      for change in parse_diff (d):
+        print "|".join (change)
+      print
 
 def cmd_pull():
   conn, repo_path = cd_repo_connect_db()
@@ -306,26 +447,28 @@ def cmd_pull():
     if hash:
       l_dict[version] = hash
 
-  ff_transfer = []
-
+  ff_apply = []
+  transfer_objs = []
+  can_fast_forward = True
   for rh in remote_history:
     version = rh[0]
     hash = rh[1]
     if hash:
+      transfer_objs += [ hash ]
       if l_dict.has_key (version):
         if hash != l_dict[version]:
-          raise Exception ("incompatible version %d, would need merge algorithm to do this" % version)
+          can_fast_forward = False
         else:
           pass    # same version, local and remote
       else:
-        ff_transfer += [ hash ]
+        ff_apply += [ hash ]
 
-  print "will fast-forward %d versions..." % len (ff_transfer)
+  # transfer required history objects
   remote_p = subprocess.Popen(["ssh", host, "bfsync2", "remote-ls", path], stdout=subprocess.PIPE).communicate()[0]
   remote_list = pickle.loads (remote_p)
   tlist = TransferList()
   for rfile in remote_list:
-    if rfile.hash in ff_transfer:
+    if rfile.hash in transfer_objs:
       src_file = os.path.join (path, "objects", make_object_filename (rfile.hash))
       dest_file = os.path.join ("objects", make_object_filename (rfile.hash))
       if not validate_object (dest_file, rfile.hash):
@@ -335,10 +478,15 @@ def cmd_pull():
                                     stdout=subprocess.PIPE)
   tlist.send_list (remote_send_p.stdin)
   tlist.receive_files (remote_send_p.stdout, True)
-  for diff in ff_transfer:
-    diff_file = os.path.join ("objects", make_object_filename (diff))
-    print "applying patch %s" % diff
-    os.system ("xzcat %s | bfapply.py" % diff_file)
+
+  if can_fast_forward:
+    print "will fast-forward %d versions..." % len (ff_apply)
+    for diff in ff_apply:
+      diff_file = os.path.join ("objects", make_object_filename (diff))
+      print "applying patch %s" % diff
+      os.system ("xzcat %s | bfapply.py" % diff_file)
+  else:
+    history_merge (local_history, remote_history)
   return
 
 command = None
@@ -351,6 +499,9 @@ for arg in arg_iter:
     ( "commit",         cmd_commit, 1),
     ( "log",            cmd_log, 0),
     ( "pull",           cmd_pull, 1),
+    ( "status",         cmd_status, 0),
+    ( "revert",         cmd_revert, 1),
+    ( "db-finger-print",  cmd_db_finger_print, 0),
     ( "remote-history", cmd_remote_history, 1),
     ( "remote-ls",      cmd_remote_ls, 1),
     ( "remote-send",    cmd_remote_send, 0),
