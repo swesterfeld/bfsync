@@ -80,7 +80,7 @@ for row in c:
   if not id_dict.has_key (dir_id):
     id_dict[dir_id] = random.randint (100000, 2 * 1000 * 1000 * 1000)
 
-  inode_id = row[2]
+  inode_id = row[3]
   if not id_dict.has_key (inode_id):
     id_dict[inode_id] = random.randint (100000, 2 * 1000 * 1000 * 1000)
 
