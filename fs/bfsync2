@@ -262,7 +262,7 @@ def cmd_log():
   conn, repo_path = cd_repo_connect_db()
 
   c = conn.cursor()
-  c.execute ('''SELECT * FROM history''')
+  c.execute ('''SELECT * FROM history WHERE hash != '' ORDER BY version''')
   for row in c:
     version = row[0]
     hash    = row[1]
@@ -416,12 +416,23 @@ def load_diff (hash):
 def history_merge (local_history, remote_history):
   print "MERGE"
   print "local history:"
+
+  lh_dict = dict()
   for lh in local_history:
-    print " * v%d : %s" % lh[0:2]
+    version = lh[0]
+    hash = lh[1]
+    print " * v%d : %s" % (version, hash)
+    lh_dict[version] = hash
+
   print "remote history:"
+
   for rh in remote_history:
-    print " * v%d : %s" % rh[0:2]
-    if rh[1]:
+    version = rh[0]
+    hash = rh[1]
+    print " * v%d : %s" % (version, hash)
+    if lh_dict.has_key (version) and lh_dict[version] == hash:
+      print "   common"
+    elif hash != "":
       d = load_diff (rh[1])
       for change in parse_diff (d):
         print "|".join (change)
@@ -436,7 +447,7 @@ def cmd_pull():
   remote_history = pickle.loads (remote_p)
 
   c = conn.cursor()
-  c.execute ('''SELECT * FROM history''')
+  c.execute ('''SELECT * FROM history WHERE hash != '' ORDER BY version''')
 
   local_history = []
   for row in c:
