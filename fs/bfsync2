@@ -401,7 +401,7 @@ def cmd_remote_history():
   os.chdir (args[0])
   conn, repo_path = cd_repo_connect_db()
   c = conn.cursor()
-  c.execute ('''SELECT * FROM history''')
+  c.execute ('''SELECT * FROM history WHERE hash != '' ORDER BY version''')
   hlist = []
   for row in c:
     hlist += [ row ]
