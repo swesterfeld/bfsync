@@ -415,28 +415,39 @@ def load_diff (hash):
 
 def history_merge (local_history, remote_history):
   print "MERGE"
-  print "local history:"
 
-  lh_dict = dict()
-  for lh in local_history:
-    version = lh[0]
-    hash = lh[1]
-    print " * v%d : %s" % (version, hash)
-    lh_dict[version] = hash
+  common_version = 0
+  for v in range (min (len (local_history), len (remote_history))):
+    lh = local_history[v]
+    rh = remote_history[v]
+    # check version
+    assert (lh[0] == v + 1)
+    assert (rh[0] == v + 1)
+    print "  ", lh[0], lh[1], rh[1]
+    if lh[1] == rh[1]:
+      common_version = v + 1
+    else:
+      break
 
-  print "remote history:"
-
+  print "last common version:", common_version
+  os.system ("bfsync2 revert %d" % common_version)
+  print "apply patches:"
   for rh in remote_history:
-    version = rh[0]
-    hash = rh[1]
-    print " * v%d : %s" % (version, hash)
-    if lh_dict.has_key (version) and lh_dict[version] == hash:
-      print "   common"
-    elif hash != "":
-      d = load_diff (rh[1])
-      for change in parse_diff (d):
-        print "|".join (change)
-      print
+    if rh[0] > common_version:
+      diff = rh[1]
+      diff_file = os.path.join ("objects", make_object_filename (diff))
+      print "applying patch %s" % diff
+      os.system ("xzcat %s | bfapply.py" % diff_file)
+  for lh in local_history:
+    if lh[0] > common_version:
+      diff = lh[1]
+      diff_file = os.path.join ("objects", make_object_filename (diff))
+      print "applying patch %s" % diff
+      os.system ("xzcat %s | bfapply.py" % diff_file)
+      #d = load_diff (rh[1])
+      #for change in parse_diff (d):
+      #  print "|".join (change)
+      #print
 
 def cmd_pull():
   conn, repo_path = cd_repo_connect_db()
