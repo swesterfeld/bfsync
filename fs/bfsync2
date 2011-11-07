@@ -518,16 +518,27 @@ def cmd_pull():
 def get_remote_objects (url, transfer_objs):
   (host, path) = url.split (":")
 
-  # transfer required objects
+  # make a list of hashes that we need
+  print "checking which objects are needed..."
+  need_hash = dict()
+  for thash in transfer_objs:
+    dest_file = os.path.join ("objects", make_object_filename (thash))
+    if not validate_object (dest_file, thash):
+      need_hash[thash] = True
+
+  # check for objects in remote repo
   remote_p = subprocess.Popen(["ssh", host, "bfsync2", "remote-ls", path], stdout=subprocess.PIPE).communicate()[0]
   remote_list = pickle.loads (remote_p)
   tlist = TransferList()
+  print "generating transfer list..."
   for rfile in remote_list:
-    if rfile.hash in transfer_objs:
+    if need_hash.has_key (rfile.hash):
       src_file = os.path.join (path, "objects", make_object_filename (rfile.hash))
       dest_file = os.path.join ("objects", make_object_filename (rfile.hash))
-      if not validate_object (dest_file, rfile.hash):
-        tlist.add (TransferFile (src_file, dest_file, rfile.size, 0400))
+      tlist.add (TransferFile (src_file, dest_file, rfile.size, 0400))
+
+  # do the actual copying
+  print "transferring objects..."
   remote_send_p = subprocess.Popen (["ssh", host, "bfsync2", "remote-send"],
                                     stdin=subprocess.PIPE,
                                     stdout=subprocess.PIPE)
@@ -541,6 +552,7 @@ def cmd_get():
 
   c = conn.cursor()
 
+  print "create object list..."
   # create list of required objects
   objs = []
   c.execute ('''SELECT DISTINCT hash FROM inodes''')
