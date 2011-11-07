@@ -563,6 +563,34 @@ def cmd_get():
 
   get_remote_objects (url, objs)
 
+def cmd_init():
+  dir = args[0]
+  try:
+    os.mkdir (dir, 0700)
+  except:
+    raise Exception ("can't create directory %s for repository" % dir)
+  bfsync_dir = os.path.join (dir, ".bfsync")
+  os.mkdir (bfsync_dir)
+  f = open (os.path.join (bfsync_dir, "info"), "w")
+  f.write ("repo-type master;")
+  f.close()
+  f = open (os.path.join (bfsync_dir, "config"), "w")
+  f.write ("sqlite-sync 1;")
+  f.close()
+  db_file = os.path.join (dir, "db")
+  conn = sqlite3.connect (db_file)
+  c = conn.cursor()
+  c.execute ('''CREATE TABLE history
+                 (
+                   version integer,
+                   hash    text,
+                   author  text,
+                   message text,
+                   time    integer
+                 )''')
+  conn.commit()
+
+
 command = None
 command_func = None
 arg_iter = sys.argv[1:].__iter__()
@@ -576,6 +604,7 @@ for arg in arg_iter:
     ( "get",            cmd_get, 1),
     ( "status",         cmd_status, 0),
     ( "revert",         cmd_revert, 1),
+    ( "init",           cmd_init, 1),
     ( "db-fingerprint",  cmd_db_fingerprint, 0),
     ( "remote-history", cmd_remote_history, 1),
     ( "remote-ls",      cmd_remote_ls, 1),

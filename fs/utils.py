@@ -54,7 +54,7 @@ def find_repo_dir():
       repo_type_list = cfg.get ("repo-type")
       if len (repo_type_list) != 1:
         raise Exception ("bad repo-type list (should have exactly 1 entry)")
-      if repo_type_list[0] == "store":
+      if repo_type_list[0] == "store" or repo_type_list[0] == "master":
         pass # dir ok
       elif repo_type_list[0] == "mount":
         dir = cfg.get ("repo-path")
