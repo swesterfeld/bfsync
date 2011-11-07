@@ -423,6 +423,27 @@ def cmd_remote_history():
   print pickle.dumps (hlist)
   return
 
+def cmd_remote_history_update():
+  os.chdir (args[0])
+  conn, repo_path = cd_repo_connect_db()
+  c = conn.cursor()
+  delta_history = pickle.loads (sys.stdin.read())
+  fail = False
+  print delta_history
+  for dh in delta_history:
+    version = dh[0]
+    for row in c.execute ("""SELECT * FROM history WHERE version=?""", (version,)):
+      fail = True
+    c.execute ("""INSERT INTO history VALUES (?,?,?,?,?)""", dh)
+  if fail:
+    print "fail"
+    conn.rollback()
+  else:
+    print "ok"
+    conn.commit()
+  return
+
+
 def load_diff (hash):
   obj_name = os.path.join ("objects", make_object_filename (hash))
   diff = subprocess.Popen(["xzcat", obj_name], stdout=subprocess.PIPE).communicate()[0]
@@ -515,6 +536,48 @@ def cmd_pull():
     history_merge (local_history, remote_history)
   return
 
+def cmd_push():
+  conn, repo_path = cd_repo_connect_db()
+
+  url = args[0]
+  (host, path) = url.split (":")
+  remote_p = subprocess.Popen(["ssh", host, "bfsync2", "remote-history", path], stdout=subprocess.PIPE).communicate()[0]
+  remote_history = pickle.loads (remote_p)
+
+  c = conn.cursor()
+  c.execute ('''SELECT * FROM history WHERE hash != '' ORDER BY version''')
+
+  local_history = []
+  for row in c:
+    local_history += [ row ]
+
+  common_version = 0
+  for v in range (min (len (local_history), len (remote_history))):
+    lh = local_history[v]
+    rh = remote_history[v]
+    # check version
+    assert (lh[0] == v + 1)
+    assert (rh[0] == v + 1)
+    print "  ", lh[0], lh[1], rh[1]
+    if lh[1] == rh[1]:
+      common_version = v + 1
+    else:
+      break
+  if common_version != len (remote_history):
+    raise Exception ("push failed, remote history contains commits not in local history (pull to fix this)")
+
+  print "PUSH:"
+  delta_history = []
+  for v in range (len (local_history)):
+    if v + 1 > common_version:
+      delta_history += [ local_history[v] ]
+  print pickle.dumps (delta_history)
+  remote_send_p = subprocess.Popen (["ssh", host, "bfsync2", "remote-history-update", path],
+                                    stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+  remote_send_p.stdin.write (pickle.dumps (delta_history))
+  print remote_send_p.communicate()[0]
+  return
+
 def get_remote_objects (url, transfer_objs):
   (host, path) = url.split (":")
 
@@ -601,12 +664,14 @@ for arg in arg_iter:
     ( "commit",         cmd_commit, 1),
     ( "log",            cmd_log, 0),
     ( "pull",           cmd_pull, 1),
+    ( "push",           cmd_push, 1),
     ( "get",            cmd_get, 1),
     ( "status",         cmd_status, 0),
     ( "revert",         cmd_revert, 1),
     ( "init",           cmd_init, 1),
     ( "db-fingerprint",  cmd_db_fingerprint, 0),
     ( "remote-history", cmd_remote_history, 1),
+    ( "remote-history-update", cmd_remote_history_update, 1),
     ( "remote-ls",      cmd_remote_ls, 1),
     ( "remote-send",    cmd_remote_send, 0),
     ( "debug-load-all-inodes",  cmd_debug_load_all_inodes, 0),
