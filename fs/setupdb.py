@@ -87,6 +87,7 @@ else:
   c.execute ('''DELETE FROM inodes''')
   c.execute ('''DELETE FROM links''')
   c.execute ('''DELETE FROM history''')
+  c.execute ('''VACUUM''')
 
 c.execute ('''PRAGMA default_cache_size=%d''' % (1024 * 1024))     # use 128M cache size
 c.execute ('''INSERT INTO history VALUES (1, "", "", "", 0)''')
