@@ -421,7 +421,7 @@ Server::add_file (const string& id, const string& hash, string& error)
   string new_filename = inode->new_file_path();
   string object_filename = make_object_filename (hash);
 
-  struct stat stat, obj_stat, d_stat;
+  struct stat stat, obj_stat;
   if (lstat (new_filename.c_str(), &stat) != 0)
     {
       error = "can't lstat filename '" + new_filename + "'";

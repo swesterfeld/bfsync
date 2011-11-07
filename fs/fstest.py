@@ -975,6 +975,60 @@ bf_tests += [ ("test-quad-commit-links", test_quad_commit_links) ]
 
 #####
 
+def fprint():
+  cwd = os.getcwd()
+  os.chdir ("mnt")
+  fp = subprocess.Popen ([os.path.join (cwd, "bfsync2"), "db-fingerprint"], stdout=subprocess.PIPE).communicate()[0]
+  os.chdir (cwd)
+  return fp
+
+def revert (n):
+  cwd = os.getcwd()
+  os.chdir ("mnt")
+  out = subprocess.Popen ([os.path.join (cwd, "bfsync2"), "revert", "%d" % n], stdout=subprocess.PIPE).communicate()[0]
+  os.chdir (cwd)
+
+def test_revert():
+  fp_v1 = fprint()
+  write_file ("mnt/1", "file 1")
+  write_file ("mnt/2", "file 3")
+  write_file ("mnt/3", "file 3")
+  commit()
+
+  fp_v2 = fprint()
+  write_file ("mnt/subdir/x", "changed x\n")
+  commit()
+
+  fp_v3 = fprint()
+  os.remove ("mnt/README")
+  commit()
+
+  fp_v4 = fprint()
+  write_file ("mnt/blub", "blub")
+  os.rename ("mnt/subdir", "mnt/dirsub")
+  commit()
+
+  # 4
+  revert (4)
+  if fp_v4 != fprint():
+    raise Exception ("revert to version 4 broken (fingerprint mismatch)")
+  # 3
+  revert (3)
+  if fp_v3 != fprint():
+    raise Exception ("revert to version 3 broken (fingerprint mismatch)")
+  # 2
+  revert (2)
+  if fp_v2 != fprint():
+    raise Exception ("revert to version 2 broken (fingerprint mismatch)")
+  # 1
+  revert (1)
+  if fp_v1 != fprint():
+    raise Exception ("revert to version 1 broken (fingerprint mismatch)")
+
+bf_tests += [ ("test-revert", test_revert) ]
+
+#####
+
 def start_bfsyncfs():
   if os.system ("""( echo "*** fs start (`date`)"; ./bfsyncfs -f test mnt; echo "*** fs stop (`date`), exit $?"
                    ) >> fs.log 2>&1 &""") != 0:
