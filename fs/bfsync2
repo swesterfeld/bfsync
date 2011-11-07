@@ -503,6 +503,22 @@ def cmd_pull():
         ff_apply += [ hash ]
 
   # transfer required history objects
+  get_remote_objects (url, transfer_objs)
+
+  if can_fast_forward:
+    print "will fast-forward %d versions..." % len (ff_apply)
+    for diff in ff_apply:
+      diff_file = os.path.join ("objects", make_object_filename (diff))
+      print "applying patch %s" % diff
+      os.system ("xzcat %s | bfapply.py" % diff_file)
+  else:
+    history_merge (local_history, remote_history)
+  return
+
+def get_remote_objects (url, transfer_objs):
+  (host, path) = url.split (":")
+
+  # transfer required objects
   remote_p = subprocess.Popen(["ssh", host, "bfsync2", "remote-ls", path], stdout=subprocess.PIPE).communicate()[0]
   remote_list = pickle.loads (remote_p)
   tlist = TransferList()
@@ -518,15 +534,22 @@ def cmd_pull():
   tlist.send_list (remote_send_p.stdin)
   tlist.receive_files (remote_send_p.stdout, True)
 
-  if can_fast_forward:
-    print "will fast-forward %d versions..." % len (ff_apply)
-    for diff in ff_apply:
-      diff_file = os.path.join ("objects", make_object_filename (diff))
-      print "applying patch %s" % diff
-      os.system ("xzcat %s | bfapply.py" % diff_file)
-  else:
-    history_merge (local_history, remote_history)
-  return
+def cmd_get():
+  conn, repo_path = cd_repo_connect_db()
+
+  url = args[0]
+
+  c = conn.cursor()
+
+  # create list of required objects
+  objs = []
+  c.execute ('''SELECT DISTINCT hash FROM inodes''')
+  for row in c:
+    s = "%s" % row[0]
+    if len (s) == 40:
+      objs += [ s ]
+
+  get_remote_objects (url, objs)
 
 command = None
 command_func = None
@@ -538,6 +561,7 @@ for arg in arg_iter:
     ( "commit",         cmd_commit, 1),
     ( "log",            cmd_log, 0),
     ( "pull",           cmd_pull, 1),
+    ( "get",            cmd_get, 1),
     ( "status",         cmd_status, 0),
     ( "revert",         cmd_revert, 1),
     ( "db-fingerprint",  cmd_db_fingerprint, 0),
