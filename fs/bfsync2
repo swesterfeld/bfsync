@@ -226,6 +226,7 @@ def cmd_debug_integrity():
   c.execute ('''SELECT vmin, vmax,id FROM inodes''')
   fail = False
   inode_d = dict()
+  conflicts = []
   for row in c:
     vmin = int (row[0])
     vmax = int (row[1])
@@ -233,24 +234,38 @@ def cmd_debug_integrity():
     while version <= vmax:
       s = "%d|%s" % (version, row[2])
       if inode_d.has_key (s):
-        print "error: version %d available more than once for inode %s" % (version, row[2])
-        fail = True
+        conflicts += [ (version, row[2]) ]
       inode_d[s] = 1
       version += 1
 
-  c.execute ('''SELECT vmin, vmax, dir_id, inode_id FROM links''')
+  for conflict in conflicts:
+    version = conflict[0]
+    id = conflict[1]
+    print "error: version %d available more than once for inode %s, name %s" % (
+           version, id, printable_name (c, id, version))
+    fail = True
+
+  c.execute ('''SELECT vmin, vmax, dir_id, name FROM links''')
   link_d = dict()
+  conflicts = []
   for row in c:
     vmin = int (row[0])
     vmax = int (row[1])
     version = vmin
     while version <= vmax:
       s = "%d|%s|%s" % (version, row[2], row[3])
-      if inode_d.has_key (s):
-        print "error: version %d available more than once for link %s->%s" % (version, row[2], row[3])
-        fail = True
-      inode_d[s] = 1
+      if link_d.has_key (s):
+        conflicts += [ (version, row[2], row[3]) ]
+      link_d[s] = 1
       version += 1
+
+  for conflict in conflicts:
+    version = conflict[0]
+    id = conflict[1]
+    name = conflict[2]
+    print "error: version %d available more than once for link %s->%s, name %s" % (
+          version, id, name, os.path.join (printable_name (c, id, version), name))
+    fail = True
 
   c.close()
   if fail:
