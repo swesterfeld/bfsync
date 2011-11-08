@@ -453,7 +453,14 @@ def load_diff (hash):
   diff = subprocess.Popen(["xzcat", obj_name], stdout=subprocess.PIPE).communicate()[0]
   return diff
 
-def history_merge (local_history, remote_history):
+def db_contains_link (c, VERSION, dir_id, name):
+  c.execute ("SELECT * FROM links WHERE dir_id = ? AND name = ? AND ? >= vmin AND ? <= VMAX",
+             (dir_id, name, VERSION, VERSION))
+  for row in c:
+    return True
+  return False
+
+def history_merge (c, repo_path, local_history, remote_history):
   print "MERGE"
 
   common_version = 0
@@ -472,22 +479,54 @@ def history_merge (local_history, remote_history):
   print "last common version:", common_version
   os.system ("bfsync2 revert %d" % common_version)
   print "apply patches:"
+
   for rh in remote_history:
     if rh[0] > common_version:
       diff = rh[1]
       diff_file = os.path.join ("objects", make_object_filename (diff))
+
+      changes = parse_diff (load_diff (diff))
+      for change in changes:
+        print " => ", "|".join (change)
+
       print "applying patch %s" % diff
       os.system ("xzcat %s | bfapply.py" % diff_file)
   for lh in local_history:
     if lh[0] > common_version:
+
+      # determine current db version
+      VERSION = 1
+      c.execute ('''SELECT version FROM history''')
+      for row in c:
+        VERSION = max (row[0], VERSION)
+
+      # adapt diff to get rid of conflicts
       diff = lh[1]
       diff_file = os.path.join ("objects", make_object_filename (diff))
+
+      new_diff_filename = os.path.join (repo_path, "tmp-merge-diff")
+      new_diff_file = open (new_diff_filename, "w")
+
+      changes = parse_diff (load_diff (diff))
+      for change in changes:
+        if change[0] == "l+":
+          if db_contains_link (c, VERSION, change[1], change[2]):
+            print "LINK CONFLICT"
+            suffix = 1
+            while db_contains_link (c, VERSION, change[1], change[2] + "~%d" % suffix):
+              suffix += 1
+            change[2] = change[2] + "~%d" % suffix
+        print " => ", "|".join (change)
+        s = ""
+        for change_field in change:
+          s += change_field + "\0"
+        new_diff_file.write (s)
+
+      new_diff_file.close()
+
+      # apply modified diff
       print "applying patch %s" % diff
-      os.system ("xzcat %s | bfapply.py" % diff_file)
-      #d = load_diff (rh[1])
-      #for change in parse_diff (d):
-      #  print "|".join (change)
-      #print
+      os.system ("bfapply.py < %s" % new_diff_filename)
 
 def cmd_pull():
   conn, repo_path = cd_repo_connect_db()
@@ -537,7 +576,7 @@ def cmd_pull():
       print "applying patch %s" % diff
       os.system ("xzcat %s | bfapply.py" % diff_file)
   else:
-    history_merge (local_history, remote_history)
+    history_merge (c, repo_path, local_history, remote_history)
   return
 
 def cmd_push():
