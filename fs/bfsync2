@@ -176,6 +176,11 @@ def cmd_remote_send():
   tl.receive_list (sys.stdin)
   tl.send_files (sys.stdout, False)
 
+def cmd_remote_receive():
+  tl = TransferList()
+  tl.receive_list (sys.stdin)
+  tl.receive_files (sys.stdin, False)
+
 def cmd_debug_load_all_inodes():
   bfsync_dir = find_bfsync_dir()
 
@@ -429,7 +434,6 @@ def cmd_remote_history_update():
   c = conn.cursor()
   delta_history = pickle.loads (sys.stdin.read())
   fail = False
-  print delta_history
   for dh in delta_history:
     version = dh[0]
     for row in c.execute ("""SELECT * FROM history WHERE version=?""", (version,)):
@@ -571,11 +575,24 @@ def cmd_push():
   for v in range (len (local_history)):
     if v + 1 > common_version:
       delta_history += [ local_history[v] ]
-  print pickle.dumps (delta_history)
   remote_send_p = subprocess.Popen (["ssh", host, "bfsync2", "remote-history-update", path],
                                     stdin=subprocess.PIPE, stdout=subprocess.PIPE)
   remote_send_p.stdin.write (pickle.dumps (delta_history))
   print remote_send_p.communicate()[0]
+
+  need_objs_p = subprocess.Popen (["ssh", host, "bfsync2", "remote-need-objects", path],
+                                  stdout = subprocess.PIPE).communicate()[0]
+  need_objs = pickle.loads (need_objs_p)
+
+  tl = TransferList()
+  for hash in need_objs:
+    src_file = os.path.join ("objects", make_object_filename (hash))
+    if validate_object (src_file, hash):
+      tl.add (TransferFile (src_file, os.path.join (path, src_file), os.path.getsize (src_file), 0400))
+
+  pipe = subprocess.Popen (["ssh", host, "bfsync2", "remote-receive"], bufsize=-1, stdin=subprocess.PIPE).stdin
+  tl.send_list (pipe)
+  tl.send_files (pipe, True)
   return
 
 def get_remote_objects (url, transfer_objs):
@@ -626,6 +643,25 @@ def cmd_get():
 
   get_remote_objects (url, objs)
 
+def cmd_remote_need_objects():
+  os.chdir (args[0])
+
+  conn, repo_path = cd_repo_connect_db()
+  c = conn.cursor()
+
+  # MERGE ME WITH get
+  c.execute ('''SELECT DISTINCT hash FROM history''')
+  objs = []
+  for row in c:
+    hash = "%s" % row[0]
+    if len (hash) == 40:
+      dest_file = os.path.join ("objects", make_object_filename (hash))
+      if not validate_object (dest_file, hash):
+        objs += [ hash ]
+  # end MERGE ME
+  print pickle.dumps (objs)
+
+
 def cmd_init():
   dir = args[0]
   try:
@@ -661,19 +697,21 @@ args = []
 
 for arg in arg_iter:
   commands = [
-    ( "commit",         cmd_commit, 1),
-    ( "log",            cmd_log, 0),
-    ( "pull",           cmd_pull, 1),
-    ( "push",           cmd_push, 1),
-    ( "get",            cmd_get, 1),
-    ( "status",         cmd_status, 0),
-    ( "revert",         cmd_revert, 1),
-    ( "init",           cmd_init, 1),
-    ( "db-fingerprint",  cmd_db_fingerprint, 0),
-    ( "remote-history", cmd_remote_history, 1),
-    ( "remote-history-update", cmd_remote_history_update, 1),
-    ( "remote-ls",      cmd_remote_ls, 1),
-    ( "remote-send",    cmd_remote_send, 0),
+    ( "commit",                 cmd_commit, 1),
+    ( "log",                    cmd_log, 0),
+    ( "pull",                   cmd_pull, 1),
+    ( "push",                   cmd_push, 1),
+    ( "get",                    cmd_get, 1),
+    ( "status",                 cmd_status, 0),
+    ( "revert",                 cmd_revert, 1),
+    ( "init",                   cmd_init, 1),
+    ( "db-fingerprint",         cmd_db_fingerprint, 0),
+    ( "remote-history",         cmd_remote_history, 1),
+    ( "remote-history-update",  cmd_remote_history_update, 1),
+    ( "remote-ls",              cmd_remote_ls, 1),
+    ( "remote-need-objects",    cmd_remote_need_objects, 1),
+    ( "remote-receive",         cmd_remote_receive, 0),
+    ( "remote-send",            cmd_remote_send, 0),
     ( "debug-load-all-inodes",  cmd_debug_load_all_inodes, 0),
     ( "debug-perf-getattr",     cmd_debug_perf_getattr, 1),
     ( "debug-clear-cache",      cmd_debug_clear_cache, 1),
