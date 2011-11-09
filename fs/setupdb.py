@@ -48,7 +48,7 @@ if reinit_tables:
                    type     text,
                    hash     text,
                    link     text,
-                   size     text,
+                   size     integer,
                    major    integer,
                    minor    integer,
                    nlink    integer,    /* number of hard links */
