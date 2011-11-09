@@ -4,7 +4,7 @@ import sqlite3
 import os
 import time
 import CfgParser
-from dbutils import create_tables
+from dbutils import create_tables, init_tables
 
 def parse_config (filename):
   bfsync_info = CfgParser.CfgParser (filename,
