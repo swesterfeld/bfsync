@@ -51,8 +51,8 @@ class CfgParser
   Token get_token();
   void  print_token (Token t);
 
-  bool parse_group_or_key_value (const std::string& name);
-  bool parse_group (const std::string& name);
+  bool parse_group_or_key_value (std::string name);
+  bool parse_group (std::string name);
   bool parse_error (const std::string& error);
 public:
   bool parse (const std::string& filename);

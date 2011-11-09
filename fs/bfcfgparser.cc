@@ -89,6 +89,10 @@ CfgParser::get_token()
     }
   if (c == ';')
     return TOKEN_SEMICOLON;
+  if (c == '{')
+    return TOKEN_OPEN;
+  if (c == '}')
+    return TOKEN_CLOSE;
   if (c == '"')
     {
       while (1)
@@ -139,6 +143,10 @@ CfgParser::print_token (Token t)
       case TOKEN_STRING:  printf ("TOKEN_STRING(%s)\n", token_value.c_str());
                           break;
       case TOKEN_SEMICOLON:  printf ("TOKEN_SEMICOLON(;)\n");
+                          break;
+      case TOKEN_OPEN:    printf ("TOKEN_OPEN({)\n");
+                          break;
+      case TOKEN_CLOSE:   printf ("TOKEN_CLOSE(})\n");
                           break;
       case TOKEN_EOF:     printf ("TOKEN_EOF\n");
                           break;
@@ -194,15 +202,29 @@ CfgParser::parse (const string& filename)
 }
 
 bool
-CfgParser::parse_group (const string& name)
+CfgParser::parse_group (string name)
 {
-  return false; // FIXME
+  Token t = get_token();
+  if (t == TOKEN_IDENTIFIER)
+    {
+      if (!parse_group_or_key_value (name + "/" + token_value))
+        return false;
+
+      return parse_group (name);
+    }
+  else if (t == TOKEN_CLOSE)
+    {
+      return true;
+    }
+  else
+    {
+      return parse_error (string_printf ("group '%s', expected identifier or '}'", name.c_str()));
+    }
 }
 
 bool
-CfgParser::parse_group_or_key_value (const string& name)
+CfgParser::parse_group_or_key_value (string name)
 {
-  vector<string>& values = m_values[name];
   Token t = get_token();
   if (t == TOKEN_OPEN)
     {
@@ -210,6 +232,7 @@ CfgParser::parse_group_or_key_value (const string& name)
     }
   if (t == TOKEN_IDENTIFIER || t == TOKEN_STRING)
     {
+      vector<string>& values = m_values[name];
       values.push_back (token_value);
       while (1)
         {
@@ -222,6 +245,8 @@ CfgParser::parse_group_or_key_value (const string& name)
             return parse_error (string_printf ("key '%s', expected string/identifier or ';'", name.c_str()));
         }
     }
+  else
+    return parse_error (string_printf ("key/group '%s', expected string/identifier or ';'", name.c_str()));
 }
 
 }
