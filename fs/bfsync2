@@ -598,7 +598,7 @@ def cmd_pull():
         ff_apply += [ hash ]
 
   # transfer required history objects
-  get_remote_objects (url, transfer_objs)
+  get_remote_objects (remote_repo, transfer_objs)
 
   if can_fast_forward:
     print "will fast-forward %d versions..." % len (ff_apply)
@@ -674,9 +674,7 @@ def cmd_push():
   tl.send_files (pipe, True)
   return
 
-def get_remote_objects (url, transfer_objs):
-  (host, path) = url.split (":")
-
+def get_remote_objects (remote_repo, transfer_objs):
   # make a list of hashes that we need
   print "checking which objects are needed..."
   need_hash = dict()
@@ -686,23 +684,18 @@ def get_remote_objects (url, transfer_objs):
       need_hash[thash] = True
 
   # check for objects in remote repo
-  remote_p = subprocess.Popen(["ssh", host, "bfsync2", "remote-ls", path], stdout=subprocess.PIPE).communicate()[0]
-  remote_list = pickle.loads (remote_p)
+  remote_list = remote_repo.ls()
   tlist = TransferList()
   print "generating transfer list..."
   for rfile in remote_list:
     if need_hash.has_key (rfile.hash):
-      src_file = os.path.join (path, "objects", make_object_filename (rfile.hash))
+      src_file = os.path.join (remote_repo.path, "objects", make_object_filename (rfile.hash))
       dest_file = os.path.join ("objects", make_object_filename (rfile.hash))
       tlist.add (TransferFile (src_file, dest_file, rfile.size, 0400))
 
   # do the actual copying
   print "transferring objects..."
-  remote_send_p = subprocess.Popen (["ssh", host, "bfsync2", "remote-send"],
-                                    stdin=subprocess.PIPE,
-                                    stdout=subprocess.PIPE)
-  tlist.send_list (remote_send_p.stdin)
-  tlist.receive_files (remote_send_p.stdout, True)
+  remote_repo.get_objects (tlist)
 
 def cmd_get():
   repo = cd_repo_connect_db()
@@ -710,6 +703,7 @@ def cmd_get():
   repo_path = repo.path
 
   url = args[0]
+  remote_repo = RemoteRepo (url)
 
   c = conn.cursor()
 
