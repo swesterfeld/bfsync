@@ -71,6 +71,18 @@ def commit_msg_ok (filename):
   file.close()
   return result
 
+def move_file_to_objects (repo, filename):
+  hash = hash_cache.compute_hash (filename)
+  object_name = os.path.join (repo.path, "objects", make_object_filename (hash))
+  if os.path.exists (object_name):
+    # already known
+    os.unlink (filename)
+  else:
+    # add new object
+    os.rename (filename, object_name)
+    os.chmod (object_name, 0400)
+  return hash
+
 def cmd_commit():
   parser = argparse.ArgumentParser (prog='bfsync2 commit')
   parser.add_argument ('-m', help='set commit message')
@@ -129,15 +141,7 @@ def cmd_commit():
   diff_filename = os.path.join (repo_path, "tmp-commit-diff")
   if os.system ("bfdiff.py %d %d | xz -9 > %s" % (VERSION - 1, VERSION, diff_filename)) != 0:
     raise Exception ("error building commit diff")
-  hash = hash_cache.compute_hash (diff_filename)
-  diff_object_name = os.path.join (repo_path, "objects", make_object_filename (hash))
-  if os.path.exists (diff_object_name):
-    # already known
-    os.unlink (diff_filename)
-  else:
-    # add new object
-    os.rename (diff_filename, diff_object_name)
-    os.chmod (diff_object_name, 0400)
+  hash = move_file_to_objects (repo, diff_filename)
   status_line.update ("done.")
   status_line.cleanup()
 
@@ -755,8 +759,17 @@ def cmd_init():
   f = open (os.path.join (bfsync_dir, "config"), "w")
   f.write ("sqlite-sync 1;")
   f.close()
-  db_file = os.path.join (dir, "db")
-  conn = sqlite3.connect (db_file)
+
+  os.chdir (dir)
+
+  # create objects directory
+  os.mkdir ("objects", 0700)
+  for i in range (0, 256):
+    os.mkdir ("objects/%02x" % i, 0700)
+
+  # create history table
+  repo = cd_repo_connect_db()
+  conn = repo.conn
   c = conn.cursor()
   c.execute ('''CREATE TABLE history
                  (
@@ -766,6 +779,31 @@ def cmd_init():
                    message text,
                    time    integer
                  )''')
+  conn.commit()
+
+  # create initial commit diff
+  time_now = int (time.time())
+  change_list = [
+    "i+",
+    "0" * 40,           # id (root inode)
+    "%d" % os.getuid(), # uid
+    "%d" % os.getgid(), # gid
+    "%d" % 0755,        # mode
+    "dir",              # type
+    "", "", "0", "0", "0", "1",
+    "%d" % time_now, "0", # ctime
+    "%d" % time_now, "0"  # mtime
+  ]
+
+  f = open ("init-diff", "w")
+  for s in change_list:
+    f.write (s + "\0")
+  f.close()
+  os.system ("xz -9 init-diff")
+  hash = move_file_to_objects (repo, "init-diff.xz")
+
+  # create initial history entry
+  c.execute ("""INSERT INTO history VALUES (1, ?, "no author", "initial commit", ?)""", (hash, time_now))
   conn.commit()
 
 def guess_dir_name (url):
@@ -778,7 +816,10 @@ def guess_dir_name (url):
 
 def cmd_clone():
   url = args[0]
-  dir = guess_dir_name (args[0])
+  if len (args) > 1:
+    dir = args[1]
+  else:
+    dir = guess_dir_name (args[0])
   if os.path.exists (dir):
     print "fatal: destination path '" + dir + "' already exists"
     sys.exit (1)
