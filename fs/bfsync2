@@ -771,6 +771,12 @@ def cmd_clone():
   init_tables (c)
   conn.commit()
 
+  os.mkdir ("new", 0700)
+  os.mkdir ("objects", 0700)
+  for i in range (0, 256):
+    os.mkdir ("new/%02x" % i, 0700)
+    os.mkdir ("objects/%02x" % i, 0700)
+
   # mount for pull
   os.mkdir ("clone-mnt", 0700)
   if subprocess.call (["bfsyncfs", ".", "clone-mnt"]) != 0:
