@@ -623,9 +623,8 @@ def cmd_push():
   else:
     url = args[0]
 
-  (host, path) = url.split (":")
-  remote_p = subprocess.Popen(["ssh", host, "bfsync2", "remote-history", path], stdout=subprocess.PIPE).communicate()[0]
-  remote_history = pickle.loads (remote_p)
+  remote_repo = RemoteRepo (url)
+  remote_history = remote_repo.get_history()
 
   c = conn.cursor()
   c.execute ('''SELECT * FROM history WHERE hash != '' ORDER BY version''')
@@ -654,24 +653,18 @@ def cmd_push():
   for v in range (len (local_history)):
     if v + 1 > common_version:
       delta_history += [ local_history[v] ]
-  remote_send_p = subprocess.Popen (["ssh", host, "bfsync2", "remote-history-update", path],
-                                    stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-  remote_send_p.stdin.write (pickle.dumps (delta_history))
-  print remote_send_p.communicate()[0]
 
-  need_objs_p = subprocess.Popen (["ssh", host, "bfsync2", "remote-need-objects", path],
-                                  stdout = subprocess.PIPE).communicate()[0]
-  need_objs = pickle.loads (need_objs_p)
+  print remote_repo.update_history (delta_history)
+
+  need_objs = remote_repo.need_objects()
 
   tl = TransferList()
   for hash in need_objs:
     src_file = os.path.join ("objects", make_object_filename (hash))
     if validate_object (src_file, hash):
-      tl.add (TransferFile (src_file, os.path.join (path, src_file), os.path.getsize (src_file), 0400))
+      tl.add (TransferFile (src_file, os.path.join (remote_repo.path, src_file), os.path.getsize (src_file), 0400))
 
-  pipe = subprocess.Popen (["ssh", host, "bfsync2", "remote-receive"], bufsize=-1, stdin=subprocess.PIPE).stdin
-  tl.send_list (pipe)
-  tl.send_files (pipe, True)
+  remote_repo.put_objects (tl)
   return
 
 def get_remote_objects (remote_repo, transfer_objs):
@@ -716,7 +709,7 @@ def cmd_get():
     if len (s) == 40:
       objs += [ s ]
 
-  get_remote_objects (url, objs)
+  get_remote_objects (remote_repo, objs)
 
 def cmd_remote_need_objects():
   os.chdir (args[0])
@@ -817,6 +810,11 @@ def cmd_clone():
   if os.path.exists (dir):
     print "fatal: destination path '" + dir + "' already exists"
     sys.exit (1)
+
+  url_list = url.split (":")
+  if len (url_list) == 1:
+    # local repository => use absolute path
+    url = os.path.abspath (url)
 
   print url, "=>", dir
 
