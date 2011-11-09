@@ -33,6 +33,7 @@ import argparse
 import sqlite3
 
 from utils import *
+from dbutils import *
 from TransferList import TransferList, TransferFile
 from StatusLine import status_line
 from HashCache import hash_cache
@@ -728,6 +729,60 @@ def cmd_init():
                  )''')
   conn.commit()
 
+def guess_dir_name (url):
+  dir_name = ""
+  for ch in reversed (url):
+    if (ch == ":") or (ch == "/"):
+      return dir_name
+    dir_name = ch + dir_name
+  return url
+
+def cmd_clone():
+  url = args[0]
+  dir = guess_dir_name (args[0])
+  if os.path.exists (dir):
+    print "fatal: destination path '" + dir + "' already exists"
+    sys.exit (1)
+
+  print url, "=>", dir
+
+  try:
+    os.mkdir (dir, 0700)
+  except:
+    raise Exception ("can't create directory %s for repository" % dir)
+
+  bfsync_dir = os.path.join (dir, ".bfsync")
+  os.mkdir (bfsync_dir)
+
+  # init .bfsync/info
+  f = open (os.path.join (bfsync_dir, "info"), "w")
+  f.write ("repo-type store;")
+  f.close()
+
+  # default config
+  f = open (os.path.join (bfsync_dir, "config"), "w")
+  f.write ("sqlite-sync 1;")
+  f.close()
+
+  os.chdir (dir)
+  conn, repo_path = cd_repo_connect_db()
+  c = conn.cursor()
+  create_tables (c)
+  init_tables (c)
+  conn.commit()
+
+  # mount for pull
+  os.mkdir ("clone-mnt", 0700)
+  if subprocess.call (["bfsyncfs", ".", "clone-mnt"]) != 0:
+    raise Exception ("cannot mount repo")
+  os.chdir ("clone-mnt")
+  if subprocess.call (["bfsync2", "pull", url]) != 0:
+    raise Exception ("cannot pull from repo")
+  os.chdir ("..")
+  if subprocess.call (["fusermount", "-u", "clone-mnt"]) != 0:
+    raise Exception ("cannot umount repo")
+  os.rmdir ("clone-mnt")
+  # FIXME: ensure repo deletion on exception
 
 command = None
 command_func = None
@@ -744,6 +799,7 @@ for arg in arg_iter:
     ( "status",                 cmd_status, 0),
     ( "revert",                 cmd_revert, 1),
     ( "init",                   cmd_init, 1),
+    ( "clone",                  cmd_clone, 1),
     ( "db-fingerprint",         cmd_db_fingerprint, 0),
     ( "remote-history",         cmd_remote_history, 1),
     ( "remote-history-update",  cmd_remote_history_update, 1),
