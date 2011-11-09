@@ -38,6 +38,7 @@ from TransferList import TransferList, TransferFile
 from StatusLine import status_line
 from HashCache import hash_cache
 from ServerConn import ServerConn
+from RemoteRepo import RemoteRepo
 from stat import *
 
 def find_bfsync_dir():
@@ -563,9 +564,8 @@ def cmd_pull():
   else:
     url = args[0]
 
-  (host, path) = url.split (":")
-  remote_p = subprocess.Popen(["ssh", host, "bfsync2", "remote-history", path], stdout=subprocess.PIPE).communicate()[0]
-  remote_history = pickle.loads (remote_p)
+  remote_repo = RemoteRepo (url)
+  remote_history = remote_repo.get_history()
 
   c = conn.cursor()
   c.execute ('''SELECT * FROM history WHERE hash != '' ORDER BY version''')
