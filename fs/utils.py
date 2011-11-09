@@ -91,6 +91,7 @@ def cd_repo_connect_db():
 def parse_config (filename):
   bfsync_info = CfgParser.CfgParser (filename,
   [
+    "default",
   ],
   [
     "repo-type",
@@ -99,6 +100,8 @@ def parse_config (filename):
     "cached-inodes",
     "cached-dirs",
     "sqlite-sync",
+    "default/pull",
+    "default/push",
   ])
   return bfsync_info
 

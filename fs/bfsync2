@@ -761,7 +761,11 @@ def cmd_clone():
 
   # default config
   f = open (os.path.join (bfsync_dir, "config"), "w")
-  f.write ("sqlite-sync 1;")
+  f.write ("sqlite-sync 1;\n")
+  f.write ("default {\n")
+  f.write ("""  pull "%s";\n""" % url)
+  f.write ("""  push "%s";\n""" % url)
+  f.write ("}\n")
   f.close()
 
   os.chdir (dir)
