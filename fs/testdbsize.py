@@ -6,7 +6,9 @@ import sys
 import random
 from utils import *
 
-conn, repo_path = cd_repo_connect_db()
+repo = cd_repo_connect_db()
+conn = repo.conn
+repo_path = repo.path
 c = conn.cursor()
 
 os.remove (os.path.join (repo_path, 'dbnew'))

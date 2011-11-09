@@ -5,7 +5,9 @@ import CfgParser
 import sys
 from utils import *
 
-conn, repo_path = cd_repo_connect_db()
+repo = cd_repo_connect_db()
+conn = repo.conn
+repo_path = repo.path
 c = conn.cursor()
 
 version_a = int (sys.argv[1])

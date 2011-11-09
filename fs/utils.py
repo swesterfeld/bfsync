@@ -72,6 +72,9 @@ def find_repo_dir():
       raise Exception ("error: can not find .bfsync directory")
     dir = newdir
 
+class Repo:
+  pass
+
 def cd_repo_connect_db():
   repo_path = find_repo_dir()
   bfsync_info = parse_config (repo_path + "/.bfsync/config")
@@ -86,7 +89,11 @@ def cd_repo_connect_db():
     sqlite_sync = True
 
   os.chdir (repo_path)
-  return sqlite3.connect (os.path.join (repo_path, 'db')), repo_path
+  repo = Repo()
+  repo.conn = sqlite3.connect (os.path.join (repo_path, 'db'))
+  repo.path = repo_path
+  repo.config = bfsync_info
+  return repo
 
 def parse_config (filename):
   bfsync_info = CfgParser.CfgParser (filename,

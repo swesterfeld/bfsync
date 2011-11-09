@@ -76,7 +76,9 @@ def cmd_commit():
   parser.add_argument ('-m', help='set commit message')
   commit_args = parser.parse_args (args)
 
-  conn, repo_path = cd_repo_connect_db()
+  repo = cd_repo_connect_db()
+  conn = repo.conn
+  repo_path = repo.path
 
   # lock repo to allow modifications
   server_conn = ServerConn (repo_path)
@@ -226,7 +228,9 @@ def cmd_debug_clear_cache():
   server_conn.clear_cache()
 
 def cmd_debug_integrity():
-  conn, repo_path = cd_repo_connect_db()
+  repo = cd_repo_connect_db()
+  conn = repo.conn
+  repo_path = repo.path
 
   c = conn.cursor()
   c.execute ('''SELECT vmin, vmax,id FROM inodes''')
@@ -280,7 +284,9 @@ def cmd_debug_integrity():
   return
 
 def cmd_log():
-  conn, repo_path = cd_repo_connect_db()
+  repo = cd_repo_connect_db()
+  conn = repo.conn
+  repo_path = repo.path
 
   c = conn.cursor()
   c.execute ('''SELECT * FROM history WHERE hash != '' ORDER BY version''')
@@ -303,7 +309,9 @@ def printable_name (c, id, VERSION):
   return "*unknown*"
 
 def cmd_status():
-  conn, repo_path = cd_repo_connect_db()
+  repo = cd_repo_connect_db()
+  conn = repo.conn
+  repo_path = repo.path
 
   c = conn.cursor()
 
@@ -330,7 +338,10 @@ def cmd_status():
     print " - %s->%s, name %s" % (lid[0], lid[2], os.path.join (printable_name (c, lid[0], VERSION), lid[1]))
 
 def cmd_revert():
-  conn, repo_path = cd_repo_connect_db()
+  repo = cd_repo_connect_db()
+  conn = repo.conn
+  repo_path = repo.path
+
   c = conn.cursor()
 
   # lock repo to allow modifications
@@ -382,7 +393,9 @@ def cmd_revert():
   server_conn.clear_cache()
 
 def cmd_db_fingerprint():
-  conn, repo_path = cd_repo_connect_db()
+  repo = cd_repo_connect_db()
+  conn = repo.conn
+  repo_path = repo.path
   c = conn.cursor()
 
   # lock repo to ensure changes are written before we do something
@@ -420,7 +433,9 @@ def cmd_db_fingerprint():
 
 def cmd_remote_history():
   os.chdir (args[0])
-  conn, repo_path = cd_repo_connect_db()
+  repo = cd_repo_connect_db()
+  conn = repo.conn
+  repo_path = repo.path
   c = conn.cursor()
   c.execute ('''SELECT * FROM history WHERE hash != '' ORDER BY version''')
   hlist = []
@@ -431,7 +446,9 @@ def cmd_remote_history():
 
 def cmd_remote_history_update():
   os.chdir (args[0])
-  conn, repo_path = cd_repo_connect_db()
+  repo = cd_repo_connect_db()
+  conn = repo.conn
+  repo_path = repo.path
   c = conn.cursor()
   delta_history = pickle.loads (sys.stdin.read())
   fail = False
@@ -530,9 +547,18 @@ def history_merge (c, repo_path, local_history, remote_history):
       os.system ("bfapply.py < %s" % new_diff_filename)
 
 def cmd_pull():
-  conn, repo_path = cd_repo_connect_db()
+  repo = cd_repo_connect_db()
+  conn = repo.conn
+  repo_path = repo.path
 
-  url = args[0]
+  if len (args) == 0:
+    default_pull = repo.config.get ("default/pull")
+    if len (default_pull) == 0:
+      raise Exception ("pull: no repository specified and default/push config value empty")
+    url = default_pull[0]
+  else:
+    url = args[0]
+
   (host, path) = url.split (":")
   remote_p = subprocess.Popen(["ssh", host, "bfsync2", "remote-history", path], stdout=subprocess.PIPE).communicate()[0]
   remote_history = pickle.loads (remote_p)
@@ -581,9 +607,18 @@ def cmd_pull():
   return
 
 def cmd_push():
-  conn, repo_path = cd_repo_connect_db()
+  repo = cd_repo_connect_db()
+  conn = repo.conn
+  repo_path = repo.path
 
-  url = args[0]
+  if len (args) == 0:
+    default_push = repo.config.get ("default/push")
+    if len (default_push) == 0:
+      raise Exception ("push: no repository specified and default/push config value empty")
+    url = default_push[0]
+  else:
+    url = args[0]
+
   (host, path) = url.split (":")
   remote_p = subprocess.Popen(["ssh", host, "bfsync2", "remote-history", path], stdout=subprocess.PIPE).communicate()[0]
   remote_history = pickle.loads (remote_p)
@@ -666,7 +701,9 @@ def get_remote_objects (url, transfer_objs):
   tlist.receive_files (remote_send_p.stdout, True)
 
 def cmd_get():
-  conn, repo_path = cd_repo_connect_db()
+  repo = cd_repo_connect_db()
+  conn = repo.conn
+  repo_path = repo.path
 
   url = args[0]
 
@@ -686,7 +723,9 @@ def cmd_get():
 def cmd_remote_need_objects():
   os.chdir (args[0])
 
-  conn, repo_path = cd_repo_connect_db()
+  repo = cd_repo_connect_db()
+  conn = repo.conn
+  repo_path = repo.path
   c = conn.cursor()
 
   # MERGE ME WITH get
@@ -769,7 +808,9 @@ def cmd_clone():
   f.close()
 
   os.chdir (dir)
-  conn, repo_path = cd_repo_connect_db()
+  repo = cd_repo_connect_db()
+  conn = repo.conn
+  repo_path = repo.path
   c = conn.cursor()
   create_tables (c)
   init_tables (c)
