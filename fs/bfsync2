@@ -508,9 +508,7 @@ def ask_user (repo, master, local):
     print "  a  abort pull completely (history will be restored to the original"
     print "     state, before the merge)"
     print "======================================================================"
-    print "How should this conflict be resolved? ",
-    line = sys.stdin.readline()
-    line = line.strip()
+    line = raw_input ("How should this conflict be resolved? ")
     if line == "l" or line == "m" or line == "b" or line == "a":
       return line
     if line == "s":
@@ -595,6 +593,7 @@ def history_merge (c, repo, local_history, remote_history):
 
       changes = parse_diff (load_diff (diff))
       for change in changes:
+        ignore_change = False
         if change[0] == "l+":
           if db_contains_link (c, VERSION, change[1], change[2]):
             print "LINK CONFLICT"
@@ -606,12 +605,18 @@ def history_merge (c, repo, local_history, remote_history):
           print "INODE CONFLICT: %s" % printable_name (c, change[1], common_version)
           master = db_inode (c, VERSION, change[1])[5]
           local  = change[6]
-          ask_user (repo, master, local)
-        print " => ", "|".join (change)
-        s = ""
-        for change_field in change:
-          s += change_field + "\0"
-        new_diff_file.write (s)
+          choice = ask_user (repo, master, local)
+          if choice == "l":
+            print "... local version will be used"
+          elif choice == "m":
+            print "... master version will be used"
+            ignore_change = True
+        if not ignore_change:
+          print " => ", "|".join (change)
+          s = ""
+          for change_field in change:
+            s += change_field + "\0"
+          new_diff_file.write (s)
 
       new_diff_file.close()
 

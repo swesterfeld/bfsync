@@ -40,8 +40,6 @@ sync_repos()
   )
 }
 
-set -x
-
 if [ "x$1" = "xcreate-same" ]; then
   (
     echo "### CREATE x ON REPO a"
@@ -79,4 +77,11 @@ if [ "x$1" = "xchange-same" ]; then
   )
   # merge
   sync_repos
+  echo "#########################################################################"
+  echo "after merge:"
+  echo "#########################################################################"
+  echo "# REPO A:"
+  cat a/f
+  echo "# REPO B:"
+  cat b/f
 fi
