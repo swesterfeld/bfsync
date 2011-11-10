@@ -31,6 +31,7 @@ import StatusLine
 import shutil
 import argparse
 import sqlite3
+import shutil
 
 from utils import *
 from dbutils import *
@@ -477,13 +478,74 @@ def load_diff (hash):
   return diff
 
 def db_contains_link (c, VERSION, dir_id, name):
-  c.execute ("SELECT * FROM links WHERE dir_id = ? AND name = ? AND ? >= vmin AND ? <= VMAX",
+  c.execute ("SELECT * FROM links WHERE dir_id = ? AND name = ? AND ? >= vmin AND ? <= vmax",
              (dir_id, name, VERSION, VERSION))
   for row in c:
     return True
   return False
 
-def history_merge (c, repo_path, local_history, remote_history):
+def db_inode (c, VERSION, id):
+  c.execute ("SELECT * FROM inodes WHERE id = ? AND ? >= vmin AND ? <= vmax",
+             (id, VERSION, VERSION))
+  for row in c:
+    return row[2:]
+  return False
+
+def ask_user (repo, master, local):
+  while True:
+    print "======================================================================"
+    print "INODE CONFLICT detected:"
+    print
+    print "The file /foo was modified locally. The master repo history also"
+    print "contains changes to the same file."
+    print "======================================================================"
+    print "  l  use local version as /foo"
+    print "  m  use master version as /foo"
+    print "  b  keep both versions"
+    print "     => master version will be stored as /foo"
+    print "     => local version will be stored as /foo~1"
+    print "  s  start a shell to investigate"
+    print "  a  abort pull completely (history will be restored to the original"
+    print "     state, before the merge)"
+    print "======================================================================"
+    print "How should this conflict be resolved? ",
+    line = sys.stdin.readline()
+    line = line.strip()
+    if line == "l" or line == "m" or line == "b" or line == "a":
+      return line
+    if line == "s":
+      old_cwd = os.getcwd()
+
+      master_file = os.path.join (old_cwd, "objects", make_object_filename (master))
+      local_file = os.path.join (old_cwd, "objects", make_object_filename (local))
+
+      default_get = repo.config.get ("default/get")
+
+      if len (default_get) == 0:
+        raise Exception ("get: no repository specified and default/get config value empty")
+      url = default_get[0]
+
+      remote_repo = RemoteRepo (url)
+      get_remote_objects (remote_repo, [ master ])
+
+      os.mkdir ("merge")
+      os.chdir ("merge")
+      shutil.copyfile (master_file, "master")
+      shutil.copyfile (local_file, "local")
+      os.system (os.environ['SHELL'])
+      try:
+        os.remove ("master")
+        os.remove ("local")
+      except:
+        pass
+      os.chdir (old_cwd)
+      os.rmdir ("merge")
+    else:
+      print
+      print "<<< invalid choice '%s' >>>" % line
+      print
+
+def history_merge (c, repo, local_history, remote_history):
   common_version = 0
   for v in range (min (len (local_history), len (remote_history))):
     lh = local_history[v]
@@ -528,7 +590,7 @@ def history_merge (c, repo_path, local_history, remote_history):
       diff = lh[1]
       diff_file = os.path.join ("objects", make_object_filename (diff))
 
-      new_diff_filename = os.path.join (repo_path, "tmp-merge-diff")
+      new_diff_filename = os.path.join (repo.path, "tmp-merge-diff")
       new_diff_file = open (new_diff_filename, "w")
 
       changes = parse_diff (load_diff (diff))
@@ -541,7 +603,10 @@ def history_merge (c, repo_path, local_history, remote_history):
               suffix += 1
             change[2] = change[2] + "~%d" % suffix
         if change[0] == "i!" and inode_changed.has_key (change[1]):
-          print "INODE CONFLICT"
+          print "INODE CONFLICT: %s" % printable_name (c, change[1], common_version)
+          master = db_inode (c, VERSION, change[1])[5]
+          local  = change[6]
+          ask_user (repo, master, local)
         print " => ", "|".join (change)
         s = ""
         for change_field in change:
@@ -610,7 +675,7 @@ def cmd_pull():
       print "applying patch %s" % diff
       os.system ("xzcat %s | bfapply.py" % diff_file)
   else:
-    history_merge (c, repo_path, local_history, remote_history)
+    history_merge (c, repo, local_history, remote_history)
   return
 
 def cmd_push():
