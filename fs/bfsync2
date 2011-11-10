@@ -484,8 +484,6 @@ def db_contains_link (c, VERSION, dir_id, name):
   return False
 
 def history_merge (c, repo_path, local_history, remote_history):
-  print "MERGE"
-
   common_version = 0
   for v in range (min (len (local_history), len (remote_history))):
     lh = local_history[v]
@@ -493,13 +491,12 @@ def history_merge (c, repo_path, local_history, remote_history):
     # check version
     assert (lh[0] == v + 1)
     assert (rh[0] == v + 1)
-    print "  ", lh[0], lh[1], rh[1]
     if lh[1] == rh[1]:
       common_version = v + 1
     else:
       break
 
-  print "last common version:", common_version
+  print "merge: last common version:", common_version
   os.system ("bfsync2 revert %d" % common_version)
   print "apply patches:"
 
@@ -508,8 +505,12 @@ def history_merge (c, repo_path, local_history, remote_history):
       diff = rh[1]
       diff_file = os.path.join ("objects", make_object_filename (diff))
 
+      inode_changed = dict()
+
       changes = parse_diff (load_diff (diff))
       for change in changes:
+        if change[0] == "i+" or change[0] == "i!" or change[0] == "i-":
+          inode_changed[change[1]] = True
         print " => ", "|".join (change)
 
       print "applying patch %s" % diff
@@ -539,6 +540,8 @@ def history_merge (c, repo_path, local_history, remote_history):
             while db_contains_link (c, VERSION, change[1], change[2] + "~%d" % suffix):
               suffix += 1
             change[2] = change[2] + "~%d" % suffix
+        if change[0] == "i!" and inode_changed.has_key (change[1]):
+          print "INODE CONFLICT"
         print " => ", "|".join (change)
         s = ""
         for change_field in change:
@@ -640,7 +643,6 @@ def cmd_push():
     # check version
     assert (lh[0] == v + 1)
     assert (rh[0] == v + 1)
-    print "  ", lh[0], lh[1], rh[1]
     if lh[1] == rh[1]:
       common_version = v + 1
     else:
@@ -648,7 +650,6 @@ def cmd_push():
   if common_version != len (remote_history):
     raise Exception ("push failed, remote history contains commits not in local history (pull to fix this)")
 
-  print "PUSH:"
   delta_history = []
   for v in range (len (local_history)):
     if v + 1 > common_version:
@@ -669,7 +670,6 @@ def cmd_push():
 
 def get_remote_objects (remote_repo, transfer_objs):
   # make a list of hashes that we need
-  print "checking which objects are needed..."
   need_hash = dict()
   for thash in transfer_objs:
     dest_file = os.path.join ("objects", make_object_filename (thash))
@@ -679,7 +679,6 @@ def get_remote_objects (remote_repo, transfer_objs):
   # check for objects in remote repo
   remote_list = remote_repo.ls()
   tlist = TransferList()
-  print "generating transfer list..."
   for rfile in remote_list:
     if need_hash.has_key (rfile.hash):
       src_file = os.path.join (remote_repo.path, "objects", make_object_filename (rfile.hash))
@@ -687,7 +686,6 @@ def get_remote_objects (remote_repo, transfer_objs):
       tlist.add (TransferFile (src_file, dest_file, rfile.size, 0400))
 
   # do the actual copying
-  print "transferring objects..."
   remote_repo.get_objects (tlist)
 
 def cmd_get():
@@ -695,12 +693,18 @@ def cmd_get():
   conn = repo.conn
   repo_path = repo.path
 
-  url = args[0]
+  if len (args) == 0:
+    default_get = repo.config.get ("default/get")
+    if len (default_get) == 0:
+      raise Exception ("get: no repository specified and default/get config value empty")
+    url = default_get[0]
+  else:
+    url = args[0]
+
   remote_repo = RemoteRepo (url)
 
   c = conn.cursor()
 
-  print "create object list..."
   # create list of required objects
   objs = []
   c.execute ('''SELECT DISTINCT hash FROM inodes''')

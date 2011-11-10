@@ -109,6 +109,8 @@ def parse_config (filename):
     "sqlite-sync",
     "default/pull",
     "default/push",
+    "default/get",
+    "default/put",
   ])
   return bfsync_info
 
