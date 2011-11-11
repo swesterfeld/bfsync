@@ -85,3 +85,37 @@ if [ "x$1" = "xchange-same" ]; then
   echo "# REPO B:"
   cat b/f
 fi
+
+if [ "x$1" = "xchange2-same" ]; then
+  # create f on both repos
+  (
+    cd a
+    echo "common file" > f
+    bfsync2 commit
+  )
+  sync_repos
+  # edit f on both repos
+  (
+    cd a
+    echo "edit repo A1" >> f
+    bfsync2 commit
+    echo "edit repo A2" >> f
+    bfsync2 commit
+  )
+  (
+    cd b
+    echo "edit repo B1" >> f
+    bfsync2 commit
+    echo "edit repo B2" >> f
+    bfsync2 commit
+  )
+  # merge
+  sync_repos
+  echo "#########################################################################"
+  echo "after merge:"
+  echo "#########################################################################"
+  echo "# REPO A:"
+  cat a/f
+  echo "# REPO B:"
+  cat b/f
+fi
