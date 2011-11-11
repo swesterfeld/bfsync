@@ -543,6 +543,63 @@ def ask_user (repo, master, local):
       print "<<< invalid choice '%s' >>>" % line
       print
 
+class MergeHistory:
+  def __init__ (self):
+    self.master_changes = dict()
+    self.local_changes = dict()
+
+  def add_change_master (self, version, object, change):
+    if not self.master_changes.has_key (object):
+      self.master_changes[object]  = []
+    self.master_changes[object] += [ (version, change) ]
+
+  def add_change_local (self, version, object, change):
+    if not self.local_changes.has_key (object):
+      self.local_changes[object]  = []
+    self.local_changes[object] += [ (version, change) ]
+
+  def show_one (self, k):
+    print "*** Changes for key %s ***" % k
+    print "--- Master ---"
+    if self.master_changes.has_key (k):
+      for entry in self.master_changes[k]:
+        print "%4d   : %s" % (entry[0], "|".join (entry[1]))
+    print "--- Local ---"
+    if self.local_changes.has_key (k):
+      for entry in self.local_changes[k]:
+        print "%4d   : %s" % (entry[0], "|".join (entry[1]))
+
+  def show (self):
+    keys = dict()
+    for k in self.master_changes:
+      keys[k] = True
+    for k in self.local_changes:
+      keys[k] = True
+    for k in keys:
+      self.show_one (k)
+
+  def conflict_keys (self):
+    result = []
+    keys = dict()
+    for k in self.master_changes:
+      keys[k] = True
+    for k in self.local_changes:
+      if keys.has_key (k):
+        result += [ k ]
+    return result
+
+def apply_inode_changes (inode, changes):
+  for entry in changes:
+    version = entry[0]
+    change = entry[1]
+    if change[0] == "i!":
+      assert (change[1] == inode[0])
+      for i in range (len (inode)):
+        new_field = change[i + 1]
+        if new_field != '':
+          inode[i] = new_field
+  return inode
+
 def history_merge (c, repo, local_history, remote_history):
   common_version = 0
   for v in range (min (len (local_history), len (remote_history))):
@@ -560,21 +617,49 @@ def history_merge (c, repo, local_history, remote_history):
   os.system ("bfsync2 revert %d" % common_version)
   print "apply patches:"
 
-  for rh in remote_history:
+  # EXAMINE master/local history for merge conflicts
+  merge_h = MergeHistory()
+
+  for rh in remote_history:   # remote history
     if rh[0] > common_version:
       diff = rh[1]
       diff_file = os.path.join ("objects", make_object_filename (diff))
 
-      inode_changed = dict()
+      changes = parse_diff (load_diff (diff))
+      for change in changes:
+        if change[0] == "i+" or change[0] == "i!" or change[0] == "i-":
+          merge_h.add_change_master (rh[0], change[1], change)
+          print " => ", "|".join (change)
+
+      print "applying patch %s" % diff
+      os.system ("xzcat %s | bfapply.py" % diff_file)
+
+  for lh in local_history:    # local history
+    if lh[0] > common_version:
+      diff = lh[1]
+      diff_file = os.path.join ("objects", make_object_filename (diff))
 
       changes = parse_diff (load_diff (diff))
       for change in changes:
         if change[0] == "i+" or change[0] == "i!" or change[0] == "i-":
-          inode_changed[change[1]] = True
-        print " => ", "|".join (change)
+          merge_h.add_change_local (lh[0], change[1], change)
+          print " => ", "|".join (change)
+  inode_ignore_change = dict()
+  for ck in merge_h.conflict_keys():
+    print "INODE CONFLICT: %s" % printable_name (c, ck, common_version)
+    #merge_h.show_one (ck)
+    common_inode = list (db_inode (c, common_version, ck))
+    master_inode = common_inode + []   # FIXME: deep copy
+    local_inode = common_inode + []
+    apply_inode_changes (master_inode, merge_h.master_changes[ck])
+    apply_inode_changes (local_inode, merge_h.local_changes[ck])
+    choice = ask_user (repo, master_inode[5], local_inode[5])
+    if choice == "l":
+      print "... local version will be used"
+    elif choice == "m":
+      print "... master version will be used"
+      inode_ignore_change[ck] = True
 
-      print "applying patch %s" % diff
-      os.system ("xzcat %s | bfapply.py" % diff_file)
   for lh in local_history:
     if lh[0] > common_version:
 
@@ -601,16 +686,8 @@ def history_merge (c, repo, local_history, remote_history):
             while db_contains_link (c, VERSION, change[1], change[2] + "~%d" % suffix):
               suffix += 1
             change[2] = change[2] + "~%d" % suffix
-        if change[0] == "i!" and inode_changed.has_key (change[1]):
-          print "INODE CONFLICT: %s" % printable_name (c, change[1], common_version)
-          master = db_inode (c, VERSION, change[1])[5]
-          local  = change[6]
-          choice = ask_user (repo, master, local)
-          if choice == "l":
-            print "... local version will be used"
-          elif choice == "m":
-            print "... master version will be used"
-            ignore_change = True
+        if change[0] == "i!" and inode_ignore_change.has_key (change[1]):
+          ignore_change = True
         if not ignore_change:
           print " => ", "|".join (change)
           s = ""
