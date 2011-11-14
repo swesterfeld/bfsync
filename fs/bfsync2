@@ -32,6 +32,7 @@ import shutil
 import argparse
 import sqlite3
 import shutil
+import datetime
 
 from utils import *
 from dbutils import *
@@ -597,8 +598,31 @@ def apply_inode_changes (inode, changes):
       for i in range (len (inode)):
         new_field = change[i + 1]
         if new_field != '':
-          inode[i] = new_field
+          if isinstance (inode[i], int):
+            inode[i] = int (new_field)
+          else:
+            inode[i] = new_field
   return inode
+
+def pretty_date (sec, nsec):
+  return datetime.datetime.fromtimestamp (sec).strftime ("%a, %d %b %Y %H:%M:%S.") + "%09d" % nsec
+
+def pretty_format (inode):
+  pp = []
+  pp += [ ("id", inode[0]) ]
+  pp += [ ("uid", inode[1]) ]
+  pp += [ ("gid", inode[2]) ]
+  pp += [ ("mode", "%o" % inode[3]) ]
+  pp += [ ("type", inode[4]) ]
+  pp += [ ("content", inode[5]) ]
+  pp += [ ("symlink", inode[6]) ]
+  pp += [ ("size", inode[7]) ]
+  pp += [ ("major", inode[8]) ]
+  pp += [ ("minor", inode[9]) ]
+  pp += [ ("nlink", inode[10]) ]
+  pp += [ ("ctime", pretty_date (inode[11], inode[12])) ]
+  pp += [ ("mtime", pretty_date (inode[13], inode[14])) ]
+  return pp
 
 def history_merge (c, repo, local_history, remote_history):
   common_version = 0
@@ -653,6 +677,16 @@ def history_merge (c, repo, local_history, remote_history):
     local_inode = common_inode + []
     apply_inode_changes (master_inode, merge_h.master_changes[ck])
     apply_inode_changes (local_inode, merge_h.local_changes[ck])
+    print "======================================================="
+    c_fmt = pretty_format (common_inode)
+    m_fmt = pretty_format (master_inode)
+    l_fmt = pretty_format (local_inode)
+    for i in range (len (c_fmt)):
+      print "Common   ", c_fmt[i][0], ":", c_fmt[i][1]
+      if c_fmt[i] != m_fmt[i]:
+        print " * Master", m_fmt[i][0], ":", m_fmt[i][1]
+      if c_fmt[i] != l_fmt[i]:
+        print " * Local ", l_fmt[i][0], ":", l_fmt[i][1]
     choice = ask_user (repo, master_inode[5], local_inode[5])
     if choice == "l":
       print "... local version will be used"

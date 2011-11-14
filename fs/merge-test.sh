@@ -119,3 +119,44 @@ if [ "x$1" = "xchange2-same" ]; then
   echo "# REPO B:"
   cat b/f
 fi
+
+if [ "x$1" = "xcreate-indep" ]; then
+  # create file-a in repo a
+  (
+    cd a
+    echo "new file a" > file-a
+    bfsync2 commit
+  )
+  # create file-b in repo b
+  (
+    cd b
+    echo "new file b" > file-b
+    bfsync2 commit
+  )
+  # merge
+  sync_repos
+  echo "#########################################################################"
+  echo "after merge:"
+  echo "#########################################################################"
+  echo "# REPO A:"
+  ls -l a
+  cat a/file-a
+  cat a/file-b
+  echo "# root"
+  stat a
+  echo "# REPO B:"
+  ls -l b
+  cat b/file-a
+  cat b/file-b
+  echo "# root"
+  stat b
+fi
+
+if [ "x$1" = "x" ]; then
+  echo
+  echo "Supported merge tests:"
+  echo " - change-same   -> edit contents of same file on repo a & b"
+  echo " - change2-same  -> edit contents of same file on repo a & b, two edits for each repo"
+  echo " - create-same   -> independently create file with same name in repo a & b"
+  echo " - create-indep  -> create independent file-a in repo a and file-b in repo-b"
+fi
