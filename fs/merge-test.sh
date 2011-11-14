@@ -257,6 +257,37 @@ if [ "x$1" = "xrm-change-b" ]; then
   rm_change b a
 fi
 
+if [ "x$1" = "xattr-change" ]; then
+  # create f on both repos
+  (
+    cd a
+    echo "common file" > f
+    bfsync2 commit
+  )
+  sync_repos
+  # change attributes
+  (
+    cd a
+    chmod 600 f
+    bfsync2 commit
+  )
+  (
+    cd b
+    touch f
+    bfsync2 commit
+  )
+  # merge
+  sync_repos
+  echo "#########################################################################"
+  echo "after merge:"
+  echo "#########################################################################"
+  echo "# REPO A:"
+  stat a/f
+  echo "# REPO B:"
+  stat b/f
+fi
+
+
 if [ "x$1" = "x" ]; then
   echo
   echo "Supported merge tests:"
@@ -268,4 +299,5 @@ if [ "x$1" = "x" ]; then
   echo " - hardlink-rm   -> delete indepentent hardlinks on the same inode"
   echo " - rm-change-a   -> change content of file in repo a while deleting it in repo b"
   echo " - rm-change-b   -> change content of file in repo b while deleting it in repo a"
+  echo " - attr-change   -> change attributes of file in repo a & b"
 fi
