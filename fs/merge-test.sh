@@ -184,6 +184,78 @@ if [ "x$1" = "xhardlink" ]; then
   stat b/bf
 fi
 
+if [ "x$1" = "xhardlink-rm" ]; then
+  # create f on both repos
+  (
+    cd a
+    echo "common file" > f
+    ln f fxa
+    ln f fxb
+    bfsync2 commit
+  )
+  sync_repos
+  # create hardlink in both repos
+  (
+    cd a
+    rm fxa
+    bfsync2 commit
+  )
+  (
+    cd b
+    rm fxb
+    bfsync2 commit
+  )
+  # merge
+  sync_repos
+  echo "#########################################################################"
+  echo "after merge:"
+  echo "#########################################################################"
+  echo "# REPO A:"
+  stat a/f
+  echo "# REPO B:"
+  stat b/f
+fi
+
+
+rm_change()
+{
+  # create f on both repos
+  (
+    cd $1
+    echo "common file" > f
+    bfsync2 commit
+  )
+  sync_repos
+  # update f in $1
+  (
+    cd $1
+    echo "update A" > f
+    bfsync2 commit
+  )
+  # rm f in $2
+  (
+    cd $2
+    rm f
+    bfsync2 commit
+  )
+  # merge
+  sync_repos
+  echo "#########################################################################"
+  echo "after merge:"
+  echo "#########################################################################"
+  echo "# REPO A:"
+  cat a/f
+  echo "# REPO B:"
+  cat b/f
+}
+
+if [ "x$1" = "xrm-change-a" ]; then
+  rm_change a b
+fi
+
+if [ "x$1" = "xrm-change-b" ]; then
+  rm_change b a
+fi
 
 if [ "x$1" = "x" ]; then
   echo
@@ -193,4 +265,7 @@ if [ "x$1" = "x" ]; then
   echo " - create-same   -> independently create file with same name in repo a & b"
   echo " - create-indep  -> create independent file-a in repo a and file-b in repo-b"
   echo " - hardlink      -> create indepentent hardlinks on the same inode"
+  echo " - hardlink-rm   -> delete indepentent hardlinks on the same inode"
+  echo " - rm-change-a   -> change content of file in repo a while deleting it in repo b"
+  echo " - rm-change-b   -> change content of file in repo b while deleting it in repo a"
 fi
