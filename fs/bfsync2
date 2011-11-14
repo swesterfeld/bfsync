@@ -783,7 +783,8 @@ def history_merge (c, repo, local_history, remote_history):
           if change[0] == "l+":
             update_nlink_delta (nlink_delta, change[3], 1)
           if change[0] == "l-":
-            update_nlink_delta (nlink_delta, change[3], -1)
+            old = db_link_inode (c, VERSION, change[1], change[2])
+            update_nlink_delta (nlink_delta, old, -1)
           if change[0] == "l!":
             old = db_link_inode (c, VERSION, change[1], change[2])
             update_nlink_delta (nlink_delta, old, -1)
