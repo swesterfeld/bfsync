@@ -492,8 +492,15 @@ def db_inode (c, VERSION, id):
     return row[2:]
   return False
 
-def ask_user (repo, master, local):
+def ask_user (repo, master, local, c_fmt, m_fmt, l_fmt):
   while True:
+    print "======================================================================"
+    for i in range (len (c_fmt)):
+      print "Common   ", c_fmt[i][0], ":", c_fmt[i][1]
+      if c_fmt[i] != m_fmt[i]:
+        print " * Master", m_fmt[i][0], ":", m_fmt[i][1]
+      if c_fmt[i] != l_fmt[i]:
+        print " * Local ", l_fmt[i][0], ":", l_fmt[i][1]
     print "======================================================================"
     print "INODE CONFLICT detected:"
     print
@@ -626,8 +633,6 @@ def pretty_format (inode):
 
 def auto_merge_by_ctime (master_inode, local_inode):
   print "AUTOMERGE"
-  print "master ctime", master_inode[11], master_inode[12]
-  print "local  ctime", local_inode[11],  local_inode[12]
 
   m_sec = master_inode[11]
   l_sec = local_inode[11]
@@ -706,23 +711,19 @@ def history_merge (c, repo, local_history, remote_history):
     local_inode = common_inode[:]
     apply_inode_changes (master_inode, merge_h.master_changes[ck])
     apply_inode_changes (local_inode, merge_h.local_changes[ck])
-    print "======================================================="
     c_fmt = pretty_format (common_inode)
     m_fmt = pretty_format (master_inode)
     l_fmt = pretty_format (local_inode)
     conf_field_set = set()
     for i in range (len (c_fmt)):
-      print "Common   ", c_fmt[i][0], ":", c_fmt[i][1]
       if c_fmt[i] != m_fmt[i]:
-        print " * Master", m_fmt[i][0], ":", m_fmt[i][1]
         conf_field_set.add (c_fmt[i][0])
       if c_fmt[i] != l_fmt[i]:
-        print " * Local ", l_fmt[i][0], ":", l_fmt[i][1]
         conf_field_set.add (c_fmt[i][0])
     if conf_field_set.issubset (["mtime", "ctime"]):
       choice = auto_merge_by_ctime (master_inode, local_inode)
     else:
-      choice = ask_user (repo, master_inode[5], local_inode[5])
+      choice = ask_user (repo, master_inode[5], local_inode[5], c_fmt, m_fmt, l_fmt)
     if choice == "l":
       print "... local version will be used"
     elif choice == "m":
