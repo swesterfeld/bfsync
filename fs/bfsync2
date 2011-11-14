@@ -624,6 +624,35 @@ def pretty_format (inode):
   pp += [ ("mtime", pretty_date (inode[13], inode[14])) ]
   return pp
 
+def auto_merge_by_ctime (master_inode, local_inode):
+  print "AUTOMERGE"
+  print "master ctime", master_inode[11], master_inode[12]
+  print "local  ctime", local_inode[11],  local_inode[12]
+
+  m_sec = master_inode[11]
+  l_sec = local_inode[11]
+
+  if m_sec > l_sec:
+    return "m"
+  if l_sec > m_sec:
+    return "l"
+
+  # same "sec" setting
+  if m_sec > l_sec:
+    return "m"
+  if l_sec > m_sec:
+    return "l"
+
+  m_nsec = master_inode[12]
+  l_nsec = local_inode[12]
+  if m_nsec > l_nsec:
+    return "m"
+  if l_nsec > m_nsec:
+    return "l"
+
+  # same ctime
+  return "m"
+
 def history_merge (c, repo, local_history, remote_history):
   common_version = 0
   for v in range (min (len (local_history), len (remote_history))):
@@ -673,21 +702,27 @@ def history_merge (c, repo, local_history, remote_history):
     print "INODE CONFLICT: %s" % printable_name (c, ck, common_version)
     #merge_h.show_one (ck)
     common_inode = list (db_inode (c, common_version, ck))
-    master_inode = common_inode + []   # FIXME: deep copy
-    local_inode = common_inode + []
+    master_inode = common_inode[:]   # copy list
+    local_inode = common_inode[:]
     apply_inode_changes (master_inode, merge_h.master_changes[ck])
     apply_inode_changes (local_inode, merge_h.local_changes[ck])
     print "======================================================="
     c_fmt = pretty_format (common_inode)
     m_fmt = pretty_format (master_inode)
     l_fmt = pretty_format (local_inode)
+    conf_field_set = set()
     for i in range (len (c_fmt)):
       print "Common   ", c_fmt[i][0], ":", c_fmt[i][1]
       if c_fmt[i] != m_fmt[i]:
         print " * Master", m_fmt[i][0], ":", m_fmt[i][1]
+        conf_field_set.add (c_fmt[i][0])
       if c_fmt[i] != l_fmt[i]:
         print " * Local ", l_fmt[i][0], ":", l_fmt[i][1]
-    choice = ask_user (repo, master_inode[5], local_inode[5])
+        conf_field_set.add (c_fmt[i][0])
+    if conf_field_set.issubset (["mtime", "ctime"]):
+      choice = auto_merge_by_ctime (master_inode, local_inode)
+    else:
+      choice = ask_user (repo, master_inode[5], local_inode[5])
     if choice == "l":
       print "... local version will be used"
     elif choice == "m":
