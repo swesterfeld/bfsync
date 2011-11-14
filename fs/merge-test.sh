@@ -152,6 +152,39 @@ if [ "x$1" = "xcreate-indep" ]; then
   stat b
 fi
 
+if [ "x$1" = "xhardlink" ]; then
+  # create f on both repos
+  (
+    cd a
+    echo "common file" > f
+    bfsync2 commit
+  )
+  sync_repos
+  # create hardlink in both repos
+  (
+    cd a
+    ln f af
+    bfsync2 commit
+  )
+  (
+    cd b
+    ln f bf
+    bfsync2 commit
+  )
+  # merge
+  sync_repos
+  echo "#########################################################################"
+  echo "after merge:"
+  echo "#########################################################################"
+  echo "# REPO A:"
+  stat a/f
+  stat a/af
+  echo "# REPO B:"
+  stat b/f
+  stat b/bf
+fi
+
+
 if [ "x$1" = "x" ]; then
   echo
   echo "Supported merge tests:"
@@ -159,4 +192,5 @@ if [ "x$1" = "x" ]; then
   echo " - change2-same  -> edit contents of same file on repo a & b, two edits for each repo"
   echo " - create-same   -> independently create file with same name in repo a & b"
   echo " - create-indep  -> create independent file-a in repo a and file-b in repo-b"
+  echo " - hardlink      -> create indepentent hardlinks on the same inode"
 fi
