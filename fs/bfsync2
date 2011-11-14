@@ -704,9 +704,9 @@ def history_merge (c, repo, local_history, remote_history):
 
       changes = parse_diff (load_diff (diff))
       for change in changes:
+        print "M => ", "|".join (change)
         if change[0] == "i+" or change[0] == "i!" or change[0] == "i-":
           merge_h.add_change_master (rh[0], change[1], change)
-          print " => ", "|".join (change)
 
       print "applying patch %s" % diff
       os.system ("xzcat %s | bfapply.py" % diff_file)
@@ -718,9 +718,9 @@ def history_merge (c, repo, local_history, remote_history):
 
       changes = parse_diff (load_diff (diff))
       for change in changes:
+        print "local => ", "|".join (change)
         if change[0] == "i+" or change[0] == "i!" or change[0] == "i-":
           merge_h.add_change_local (lh[0], change[1], change)
-          print " => ", "|".join (change)
   inode_ignore_change = dict()
   for ck in merge_h.conflict_keys():
     print "INODE CONFLICT: %s" % printable_name (c, ck, common_version)
@@ -776,7 +776,7 @@ def history_merge (c, repo, local_history, remote_history):
             while db_contains_link (c, VERSION, change[1], change[2] + "~%d" % suffix):
               suffix += 1
             change[2] = change[2] + "~%d" % suffix
-        if change[0] == "i!" and inode_ignore_change.has_key (change[1]):
+        if (change[0] == "i!" or change[0] == "i-" or change[0] == "i+") and inode_ignore_change.has_key (change[1]):
           ignore_change = True
         if not ignore_change:
           # gather information to fix nlink fields
@@ -798,20 +798,29 @@ def history_merge (c, repo, local_history, remote_history):
 
       # fix nlink fields (which may be inaccurate due to master history / local history merge)
       for inode in nlink_delta:
-        change = [ "i!", inode ] + [ "" ] * 14
-        change[11] = "%d" % (nlink_delta[inode] + db_inode_nlink (c, VERSION, inode))
+        nlink = (nlink_delta[inode] + db_inode_nlink (c, VERSION, inode))
+        if nlink != 0:  # deleted inodes can no longer be modified, so we assume the inode is gone now
+          change = [ "i!", inode ] + [ "" ] * 14
+          change[11] = "%d"
 
-        # the resulting diff is no longer normalized (i.e. contains more than one inode change
-        # per inode), but bfapply.py will re-normalize it anyway
-        s = ""
-        for change_field in change:
-          s += change_field + "\0"
-        new_diff_file.write (s)
+          # the resulting diff is no longer normalized (i.e. contains more than one inode change
+          # per inode), but bfapply.py will re-normalize it anyway
+          s = ""
+          for change_field in change:
+            s += change_field + "\0"
+          new_diff_file.write (s)
 
       new_diff_file.close()
 
       # apply modified diff
       print "applying patch %s" % diff
+
+      new_diff_file = open ("tmp-merge-diff")
+      changes = parse_diff (new_diff_file.read())
+      new_diff_file.close()
+      for change in changes:
+        print "L => ", "|".join (change)
+
       os.system ("bfapply.py < %s" % new_diff_filename)
 
 def cmd_pull():
