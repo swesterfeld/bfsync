@@ -506,7 +506,7 @@ def db_inode_nlink (c, VERSION, id):
     return row[0]
   return 0
 
-def ask_user (repo, master, local, c_fmt, m_fmt, l_fmt):
+def ask_user (repo, master, local, c_fmt, m_fmt, l_fmt, filename):
   while True:
     print "======================================================================"
     for i in range (len (c_fmt)):
@@ -516,16 +516,14 @@ def ask_user (repo, master, local, c_fmt, m_fmt, l_fmt):
       if c_fmt[i] != l_fmt[i]:
         print " * Local ", l_fmt[i][0], ":", l_fmt[i][1]
     print "======================================================================"
-    print "INODE CONFLICT detected:"
-    print
-    print "The file /foo was modified locally. The master repo history also"
-    print "contains changes to the same file."
+    print "The following file was modified locally and in the master history:"
+    print " => '%s'" % filename
     print "======================================================================"
-    print "  l  use local version as /foo"
-    print "  m  use master version as /foo"
+    print "  l  use local version"
+    print "  m  use master version"
     print "  b  keep both versions"
-    print "     => master version will be stored as /foo"
-    print "     => local version will be stored as /foo~1"
+    print "     => master version will be stored as '%s'" % filename
+    print "     => local version will be stored as '%s~1'" % filename
     print "  s  start a shell to investigate"
     print "  a  abort pull completely (history will be restored to the original"
     print "     state, before the merge)"
@@ -723,7 +721,8 @@ def history_merge (c, repo, local_history, remote_history):
           merge_h.add_change_local (lh[0], change[1], change)
   inode_ignore_change = dict()
   for ck in merge_h.conflict_keys():
-    print "INODE CONFLICT: %s" % printable_name (c, ck, common_version)
+    filename = printable_name (c, ck, common_version)
+    print "INODE CONFLICT: %s" % filename
     #merge_h.show_one (ck)
     common_inode = list (db_inode (c, common_version, ck))
     master_inode = common_inode[:]   # copy list
@@ -742,7 +741,7 @@ def history_merge (c, repo, local_history, remote_history):
     if conf_field_set.issubset (["nlink", "mtime", "ctime"]):
       choice = auto_merge_by_ctime (master_inode, local_inode)
     else:
-      choice = ask_user (repo, master_inode[5], local_inode[5], c_fmt, m_fmt, l_fmt)
+      choice = ask_user (repo, master_inode[5], local_inode[5], c_fmt, m_fmt, l_fmt, filename)
     if choice == "l":
       print "... local version will be used"
     elif choice == "m":
@@ -801,7 +800,7 @@ def history_merge (c, repo, local_history, remote_history):
         nlink = (nlink_delta[inode] + db_inode_nlink (c, VERSION, inode))
         if nlink != 0:  # deleted inodes can no longer be modified, so we assume the inode is gone now
           change = [ "i!", inode ] + [ "" ] * 14
-          change[11] = "%d"
+          change[11] = "%d" % nlink
 
           # the resulting diff is no longer normalized (i.e. contains more than one inode change
           # per inode), but bfapply.py will re-normalize it anyway
