@@ -287,6 +287,40 @@ if [ "x$1" = "xattr-change" ]; then
   stat b/f
 fi
 
+if [ "x$1" = "xrm-combine" ]; then
+  # create f and g on both repos
+  (
+    cd a
+    echo "common file" > f
+    ln f g
+    bfsync2 commit
+  )
+  sync_repos
+  # remove one hardlink in repo a...
+  (
+    cd a
+    rm f
+    bfsync2 commit
+  )
+  # ... and the other in repo b
+  (
+    cd b
+    rm g
+    bfsync2 commit
+  )
+  # merge
+  sync_repos
+  echo "#########################################################################"
+  echo "after merge:"
+  echo "#########################################################################"
+  echo "# REPO A:"
+  cat a/f
+  cat a/g
+  echo "# REPO B:"
+  cat b/f
+  cat b/g
+fi
+
 
 if [ "x$1" = "x" ]; then
   echo
@@ -300,4 +334,5 @@ if [ "x$1" = "x" ]; then
   echo " - rm-change-a   -> change content of file in repo a while deleting it in repo b"
   echo " - rm-change-b   -> change content of file in repo b while deleting it in repo a"
   echo " - attr-change   -> change attributes of file in repo a & b"
+  echo " - rm-combine    -> rm links in repo a & b so that the combination removes the inode"
 fi
