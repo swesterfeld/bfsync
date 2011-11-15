@@ -321,6 +321,37 @@ if [ "x$1" = "xrm-combine" ]; then
   cat b/g
 fi
 
+if [ "x$1" = "xrm-same" ]; then
+  # create f and g on both repos
+  (
+    cd a
+    echo "common file" > f
+    bfsync2 commit
+  )
+  sync_repos
+  # remove one hardlink in repo a...
+  (
+    cd a
+    rm f
+    bfsync2 commit
+  )
+  # ... and the other in repo b
+  (
+    cd b
+    rm f
+    bfsync2 commit
+  )
+  # merge
+  sync_repos
+  echo "#########################################################################"
+  echo "after merge:"
+  echo "#########################################################################"
+  echo "# REPO A:"
+  cat a/f
+  echo "# REPO B:"
+  cat b/f
+fi
+
 
 if [ "x$1" = "x" ]; then
   echo
@@ -335,4 +366,5 @@ if [ "x$1" = "x" ]; then
   echo " - rm-change-b   -> change content of file in repo b while deleting it in repo a"
   echo " - attr-change   -> change attributes of file in repo a & b"
   echo " - rm-combine    -> rm links in repo a & b so that the combination removes the inode"
+  echo " - rm-same       -> rm same file independently in repo a & b"
 fi
