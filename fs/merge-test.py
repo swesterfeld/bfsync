@@ -322,4 +322,4 @@ if len (sys.argv) == 2:
 print
 print "Supported merge tests:"
 for t in tests:
-  print "%20s -> %s" % (t[1], t[2])
+  print " - %-13s -> %s" % (t[1], t[2])
