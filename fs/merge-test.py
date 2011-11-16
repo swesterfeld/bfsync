@@ -112,6 +112,35 @@ tests += [
   ( change2_same, "change2-same", "edit contents of same file on repo a & b, two edits for each repo" )
 ]
 
+def create_indep (a, b):
+  # create file-a in repo a
+  a.run ("echo 'new file a' > file-a")
+  a.run ("bfsync2 commit")
+  # create file-b in repo b
+  b.run ("echo 'new file b' > file-b")
+  b.run ("bfsync2 commit")
+  # merge
+  sync_repos (a, b)
+  print "#########################################################################"
+  print "after merge:"
+  print "#########################################################################"
+  print "# REPO A:"
+  a.run ("ls -l")
+  a.run ("cat file-a")
+  a.run ("cat file-b")
+  print "# root"
+  a.run ("stat .")
+  print "# REPO B:"
+  b.run ("ls -l")
+  b.run ("cat file-a")
+  b.run ("cat file-b")
+  print "# root"
+  b.run ("stat .")
+
+tests += [
+  ( create_indep, "create-indep", "create independent file-a in repo a and file-b in repo-b" )
+]
+
 if len (sys.argv) == 2:
   a = Repo ("a")
   b = Repo ("b")
