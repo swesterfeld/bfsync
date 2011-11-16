@@ -322,20 +322,20 @@ if [ "x$1" = "xrm-combine" ]; then
 fi
 
 if [ "x$1" = "xrm-same" ]; then
-  # create f and g on both repos
+  # create f in both repos
   (
     cd a
     echo "common file" > f
     bfsync2 commit
   )
   sync_repos
-  # remove one hardlink in repo a...
+  # remove f in repo a...
   (
     cd a
     rm f
     bfsync2 commit
   )
-  # ... and the other in repo b
+  # ... and in repo b
   (
     cd b
     rm f
@@ -360,8 +360,8 @@ if [ "x$1" = "x" ]; then
   echo " - change2-same  -> edit contents of same file on repo a & b, two edits for each repo"
   echo " - create-same   -> independently create file with same name in repo a & b"
   echo " - create-indep  -> create independent file-a in repo a and file-b in repo-b"
-  echo " - hardlink      -> create indepentent hardlinks on the same inode"
-  echo " - hardlink-rm   -> delete indepentent hardlinks on the same inode"
+  echo " - hardlink      -> create independent hardlinks on the same inode"
+  echo " - hardlink-rm   -> delete independent hardlinks on the same inode"
   echo " - rm-change-a   -> change content of file in repo a while deleting it in repo b"
   echo " - rm-change-b   -> change content of file in repo b while deleting it in repo a"
   echo " - attr-change   -> change attributes of file in repo a & b"
