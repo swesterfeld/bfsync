@@ -255,6 +255,34 @@ tests += [
   ( attr_change, "attr-change", "change attributes of file in repo a & b" )
 ]
 
+def rm_combine (a, b):
+  # create f and g on both repos
+  a.run ("echo 'common file' > f")
+  a.run ("ln f g")
+  a.run ("bfsync2 commit")
+  sync_repos (a, b)
+  # remove one hardlink in repo a...
+  a.run ("rm f")
+  a.run ("bfsync2 commit")
+  # ... and the other in repo b
+  b.run ("rm g")
+  b.run ("bfsync2 commit")
+  # merge
+  sync_repos (a, b)
+  print "#########################################################################"
+  print "after merge:"
+  print "#########################################################################"
+  print "# REPO A:"
+  a.run ("cat f")
+  a.run ("cat g")
+  print "# REPO B:"
+  b.run ("cat f")
+  b.run ("cat g")
+
+tests += [
+  ( rm_combine, "rm-combine", "rm links in repo a & b so that the combination removes the inode")
+]
+
 if len (sys.argv) == 2:
   a = Repo ("a")
   b = Repo ("b")
