@@ -277,8 +277,11 @@ tests += [ ("commit-read", test_commit_read) ]
 
 def test_commit_mtime():
   write_file ("mnt/foo", "foo")
+  start_stat = os.stat ("mnt/foo")
   os.system ("touch -t 01010101 mnt/foo")
   old_stat = os.stat ("mnt/foo")
+  if start_stat.st_ctime == old_stat.st_ctime:
+    raise Exception ("touch should affect ctime")
   commit()
   new_stat = os.stat ("mnt/foo")
   if old_stat.st_mtime != new_stat.st_mtime:

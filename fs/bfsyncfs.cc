@@ -989,6 +989,7 @@ bfsync_utimens (const char *name_arg, const struct timespec times[2])
 
   inode.update()->mtime    = times[1].tv_sec;
   inode.update()->mtime_ns = times[1].tv_nsec;
+  inode.update()->set_ctime_now();
 
   return 0;
 }
