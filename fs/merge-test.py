@@ -84,6 +84,34 @@ tests += [
   ( change_same, "change-same", "edit contents of same file on repo a & b" )
 ]
 
+def change2_same (a, b):
+  # create f on both repos
+  a.run ("echo 'common file' > f")
+  a.run ("bfsync2 commit")
+  sync_repos (a, b)
+  # edit f on both repos
+  a.run ("echo 'edit repo A1' >> f")
+  a.run ("bfsync2 commit")
+  a.run ("echo 'edit repo A2' >> f")
+  a.run ("bfsync2 commit")
+  b.run ("echo 'edit repo B1' >> f")
+  b.run ("bfsync2 commit")
+  b.run ("echo 'edit repo B2' >> f")
+  b.run ("bfsync2 commit")
+  # merge
+  sync_repos (a, b)
+  print "#########################################################################"
+  print "after merge:"
+  print "#########################################################################"
+  print "# REPO A:"
+  a.run ("cat f")
+  print "# REPO B:"
+  b.run ("cat f")
+
+tests += [
+  ( change2_same, "change2-same", "edit contents of same file on repo a & b, two edits for each repo" )
+]
+
 if len (sys.argv) == 2:
   a = Repo ("a")
   b = Repo ("b")
