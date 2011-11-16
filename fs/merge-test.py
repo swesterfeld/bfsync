@@ -141,6 +141,34 @@ tests += [
   ( create_indep, "create-indep", "create independent file-a in repo a and file-b in repo-b" )
 ]
 
+def hardlink (a, b):
+  # create f on both repos
+  a.run ("echo 'common file' > f")
+  a.run ("bfsync2 commit")
+  sync_repos(a, b)
+
+  # create hardlink in both repos
+  a.run ("ln f af")
+  a.run ("bfsync2 commit")
+  b.run ("ln f bf")
+  b.run ("bfsync2 commit")
+
+  # merge
+  sync_repos (a, b)
+  print "#########################################################################"
+  print "after merge:"
+  print "#########################################################################"
+  print "# REPO A:"
+  a.run ("stat f")
+  a.run ("stat af")
+  print "# REPO B:"
+  b.run ("stat f")
+  b.run ("stat bf")
+
+tests += [
+  ( hardlink, "hardlink", "create independent hardlinks on the same inode" )
+]
+
 if len (sys.argv) == 2:
   a = Repo ("a")
   b = Repo ("b")
