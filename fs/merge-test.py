@@ -283,6 +283,31 @@ tests += [
   ( rm_combine, "rm-combine", "rm links in repo a & b so that the combination removes the inode")
 ]
 
+def rm_same (a, b):
+  # create f in both repos
+  a.run ("echo 'common file' > f")
+  a.run ("bfsync2 commit")
+  sync_repos (a, b)
+  # remove f in repo a...
+  a.run ("rm f")
+  a.run ("bfsync2 commit")
+  # ... and in repo b
+  b.run ("rm f")
+  b.run ("bfsync2 commit")
+  # merge
+  sync_repos (a, b)
+  print "#########################################################################"
+  print "after merge:"
+  print "#########################################################################"
+  print "# REPO A:"
+  a.run ("cat f")
+  print "# REPO B:"
+  b.run ("cat f")
+
+tests += [
+  ( rm_same, "rm-same", "rm same file independently in repo a & b")
+]
+
 if len (sys.argv) == 2:
   a = Repo ("a")
   b = Repo ("b")
