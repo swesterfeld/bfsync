@@ -197,6 +197,40 @@ tests += [
   ( hardlink_rm, "hardlink-rm", "delete independent hardlinks on the same inode" )
 ]
 
+def rm_change (x, y, a, b):
+  # create f on both repos
+  x.run ("echo 'common file' > f")
+  x.run ("bfsync2 commit")
+  sync_repos (x, y)
+  # update f in x
+  x.run ("echo 'updated file'  > f")
+  x.run ("bfsync2 commit")
+  # rm f in y
+  y.run ("rm f")
+  y.run ("bfsync2 commit")
+  # merge
+  sync_repos (a, b)
+  print "#########################################################################"
+  print "after merge:"
+  print "#########################################################################"
+  print "# REPO A:"
+  a.run ("cat f")
+  print "# REPO B:"
+  b.run ("cat f")
+
+def rm_change_a (a, b):
+  rm_change (a, b, a, b)
+
+tests += [
+  ( rm_change_a, "rm-change-a", "change content of file in repo a while deleting it in repo b" )
+]
+
+def rm_change_b (a, b):
+  rm_change (b, a, a, b)
+
+tests += [
+  ( rm_change_b, "rm-change-b", "change content of file in repo b while deleting it in repo a" )
+]
 
 if len (sys.argv) == 2:
   a = Repo ("a")
