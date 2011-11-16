@@ -232,6 +232,29 @@ tests += [
   ( rm_change_b, "rm-change-b", "change content of file in repo b while deleting it in repo a" )
 ]
 
+def attr_change (a, b):
+  a.run ("echo 'common file' > f")
+  a.run ("bfsync2 commit")
+  sync_repos (a, b)
+  # change attributes
+  a.run ("chmod 600 f")
+  a.run ("bfsync2 commit")
+  b.run ("touch f")
+  b.run ("bfsync2 commit")
+  # merge
+  sync_repos (a, b)
+  print "#########################################################################"
+  print "after merge:"
+  print "#########################################################################"
+  print "# REPO A:"
+  a.run ("stat f")
+  print "# REPO B:"
+  b.run ("stat f")
+
+tests += [
+  ( attr_change, "attr-change", "change attributes of file in repo a & b" )
+]
+
 if len (sys.argv) == 2:
   a = Repo ("a")
   b = Repo ("b")
