@@ -169,6 +169,35 @@ tests += [
   ( hardlink, "hardlink", "create independent hardlinks on the same inode" )
 ]
 
+def hardlink_rm (a, b):
+  # create f on both repos
+  a.run ("echo 'common file' > f")
+  a.run ("ln f fxa")
+  a.run ("ln f fxb")
+  a.run ("bfsync2 commit")
+
+  sync_repos (a, b)
+  # remove one hardlink in both repos
+  a.run ("rm fxa")
+  a.run ("bfsync2 commit")
+  b.run ("rm fxb")
+  b.run ("bfsync2 commit")
+
+  # merge
+  sync_repos (a, b)
+  print "#########################################################################"
+  print "after merge:"
+  print "#########################################################################"
+  print "# REPO A:"
+  a.run ("stat f")
+  print "# REPO B:"
+  b.run ("stat f")
+
+tests += [
+  ( hardlink_rm, "hardlink-rm", "delete independent hardlinks on the same inode" )
+]
+
+
 if len (sys.argv) == 2:
   a = Repo ("a")
   b = Repo ("b")
