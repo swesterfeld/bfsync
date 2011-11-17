@@ -308,6 +308,34 @@ tests += [
   ( rm_same, "rm-same", "rm same file independently in repo a & b")
 ]
 
+def link_coll (a, b):
+  # create f in both repos
+  a.run ("echo 'file f' > f")
+  a.run ("echo 'file g' > g")
+  a.run ("bfsync2 commit")
+  sync_repos (a, b)
+  # link f to x in repo a...
+  a.run ("ln f x")
+  a.run ("bfsync2 commit")
+  # ... and g to x repo b
+  b.run ("ln g x")
+  b.run ("bfsync2 commit")
+  # merge
+  sync_repos (a, b)
+  print "#########################################################################"
+  print "after merge:"
+  print "#########################################################################"
+  print "# REPO A:"
+  a.run ("ls -l")
+  a.run ("cat x")
+  print "# REPO B:"
+  b.run ("ls -l")
+  b.run ("cat x")
+
+tests += [
+  ( link_coll, "link-coll", "create hardlink to x with different target in both repos")
+]
+
 if len (sys.argv) == 2:
   a = Repo ("a")
   b = Repo ("b")
