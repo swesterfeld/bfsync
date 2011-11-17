@@ -3,28 +3,12 @@
 import os
 import sys
 
-if os.path.exists ("merge-test"):
-  os.system ("fusermount -u merge-test/a")
-  os.system ("fusermount -u merge-test/b")
-  os.system ("rm -rf merge-test")
-
-os.mkdir ("merge-test")
-os.chdir ("merge-test")
-os.system ("bfsync2 init master")
-os.system ("bfsync2 clone master repo-a")
-os.system ("bfsync2 clone master repo-b")
-os.system ("""echo 'default { get "'$PWD/repo-b'"; }' >> repo-a/.bfsync/config""")
-os.system ("""echo 'default { get "'$PWD/repo-a'"; }' >> repo-b/.bfsync/config""")
-os.mkdir ("a")
-os.mkdir ("b")
-os.system ("bfsyncfs repo-a a")
-os.system ("bfsyncfs repo-b b")
-
 tests = []
 
 class Repo:
-  def __init__ (self, path):
+  def __init__ (self, path, merge_mode):
     self.path = path
+    self.merge_mode = merge_mode
 
   def run (self, cmd):
     old_cwd = os.getcwd()
@@ -42,7 +26,12 @@ def sync_repos (a, b):
   # send changes from a to master
   a.run ("bfsync2 push")
   # merge changes from master into b; send merged result to master
-  b.run ("bfsync2 pull")
+  if b.merge_mode == "m":
+    b.run ("bfsync2 pull --always-master")
+  elif b.merge_mode == "l":
+    b.run ("bfsync2 pull --always-local")
+  else:
+    b.run ("bfsync2 pull")      # interactive
   b.run ("bfsync2 push")
   b.run ("bfsync2 get")   # get missing file contents
   # pull merged changes into repo a
@@ -336,18 +325,55 @@ tests += [
   ( link_coll, "link-coll", "create hardlink to x with different target in both repos")
 ]
 
+def setup():
+  if os.path.exists ("merge-test"):
+    os.system ("fusermount -u merge-test/a")
+    os.system ("fusermount -u merge-test/b")
+    os.system ("rm -rf merge-test")
+
+  os.mkdir ("merge-test")
+  os.chdir ("merge-test")
+  os.system ("bfsync2 init master")
+  os.system ("bfsync2 clone master repo-a")
+  os.system ("bfsync2 clone master repo-b")
+  os.system ("""echo 'default { get "'$PWD/repo-b'"; }' >> repo-a/.bfsync/config""")
+  os.system ("""echo 'default { get "'$PWD/repo-a'"; }' >> repo-b/.bfsync/config""")
+  os.mkdir ("a")
+  os.mkdir ("b")
+  os.system ("bfsyncfs repo-a a")
+  os.system ("bfsyncfs repo-b b")
+
 if len (sys.argv) == 2:
-  a = Repo ("a")
-  b = Repo ("b")
-  for t in tests:
-    if sys.argv[1] == t[1]:
-      print "==================================================================="
-      print "Running test: %s\n -> %s" % (t[1], t[2])
-      print "==================================================================="
-      t[0] (a, b)
-      sys.exit (0)
+  if sys.argv[1] == "setup":
+    setup()
+  elif sys.argv[1] == "all":
+    old_cwd = os.getcwd()
+    for merge_mode in [ "m", "l" ]:
+      a = Repo ("a", merge_mode)
+      b = Repo ("b", merge_mode)
+      for t in tests:
+        setup()
+        print "==================================================================="
+        print "Running test: %s\n -> %s" % (t[1], t[2])
+        print "==================================================================="
+        t[0] (a, b)
+        os.chdir (old_cwd)
+  else:
+    a = Repo ("a", None)
+    b = Repo ("b", None)
+    for t in tests:
+      if sys.argv[1] == t[1]:
+        setup()
+        print "==================================================================="
+        print "Running test: %s\n -> %s" % (t[1], t[2])
+        print "==================================================================="
+        t[0] (a, b)
+  sys.exit (0)
 
 print
 print "Supported merge tests:"
 for t in tests:
   print " - %-13s -> %s" % (t[1], t[2])
+
+print " - %-13s -> %s" % ("all", "run all tests")
+print " - %-13s -> %s" % ("setup", "only setup repos a & b for merge tests")

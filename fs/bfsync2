@@ -712,7 +712,7 @@ def update_nlink_delta (nlink_delta, inode, count):
     nlink_delta[inode] = 0
   nlink_delta[inode] += count
 
-def history_merge (c, repo, local_history, remote_history):
+def history_merge (c, repo, local_history, remote_history, pull_args):
   common_version = 0
   for v in range (min (len (local_history), len (remote_history))):
     lh = local_history[v]
@@ -765,7 +765,12 @@ def history_merge (c, repo, local_history, remote_history):
     master_inode = apply_inode_changes (common_inode, merge_h.master_changes[ck])
     local_inode  = apply_inode_changes (common_inode, merge_h.local_changes[ck])
     if master_inode is None or local_inode is None:
-      choice = ask_user_del (repo, master_inode, local_inode, filename)
+      if pull_args.always_local:
+        choice = "l"
+      elif pull_args.always_master:
+        choice = "m"
+      else:
+        choice = ask_user_del (repo, master_inode, local_inode, filename)
     else:
       c_fmt = pretty_format (common_inode)
       m_fmt = pretty_format (master_inode)
@@ -779,7 +784,12 @@ def history_merge (c, repo, local_history, remote_history):
       if conf_field_set.issubset (["nlink", "mtime", "ctime"]):
         choice = auto_merge_by_ctime (master_inode, local_inode)
       else:
-        choice = ask_user (repo, master_inode[5], local_inode[5], c_fmt, m_fmt, l_fmt, filename)
+        if pull_args.always_local:
+          choice = "l"
+        elif pull_args.always_master:
+          choice = "m"
+        else:
+          choice = ask_user (repo, master_inode[5], local_inode[5], c_fmt, m_fmt, l_fmt, filename)
       if choice == "l":
         print "... local version will be used"
       elif choice == "m":
@@ -861,17 +871,25 @@ def history_merge (c, repo, local_history, remote_history):
       os.system ("bfapply.py < %s" % new_diff_filename)
 
 def cmd_pull():
+  parser = argparse.ArgumentParser (prog='bfsync2 pull')
+  parser.add_argument ('--always-local', action='store_const', const=True,
+                       help='always use local version for merge conflicts')
+  parser.add_argument ('--always-master', action='store_const', const=True,
+                       help='always use master version for merge conflicts')
+  parser.add_argument ('repo', nargs = '?')
+  pull_args = parser.parse_args (args)
+
   repo = cd_repo_connect_db()
   conn = repo.conn
   repo_path = repo.path
 
-  if len (args) == 0:
+  if pull_args.repo is None:
     default_pull = repo.config.get ("default/pull")
     if len (default_pull) == 0:
       raise Exception ("pull: no repository specified and default/push config value empty")
     url = default_pull[0]
   else:
-    url = args[0]
+    url = pull_args.repo
 
   remote_repo = RemoteRepo (url)
   remote_history = remote_repo.get_history()
@@ -916,7 +934,7 @@ def cmd_pull():
       print "applying patch %s" % diff
       os.system ("xzcat %s | bfapply.py" % diff_file)
   else:
-    history_merge (c, repo, local_history, remote_history)
+    history_merge (c, repo, local_history, remote_history, pull_args)
   return
 
 def cmd_push():
