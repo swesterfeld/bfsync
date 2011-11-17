@@ -36,6 +36,7 @@ import datetime
 
 from utils import *
 from dbutils import *
+from diffutils import diff
 from TransferList import TransferList, TransferFile
 from StatusLine import status_line
 from HashCache import hash_cache
@@ -142,9 +143,12 @@ def cmd_commit():
   status_line.set_op ("COMMIT-DIFF")
   status_line.update ("computing changes between version %d and %d... " % (VERSION - 1, VERSION))
   diff_filename = os.path.join (repo_path, "tmp-commit-diff")
-  if os.system ("bfdiff.py %d %d | xz -9 > %s" % (VERSION - 1, VERSION, diff_filename)) != 0:
-    raise Exception ("error building commit diff")
-  hash = move_file_to_objects (repo, diff_filename)
+  diff_file = open (diff_filename, "w")
+  diff (c, VERSION - 1, VERSION, diff_file)
+  diff_file.close()
+  os.system ("xz -9 %s" % diff_filename)
+  hash = move_file_to_objects (repo, diff_filename + ".xz")
+
   status_line.update ("done.")
   status_line.cleanup()
 
