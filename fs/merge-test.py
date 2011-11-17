@@ -327,6 +327,8 @@ tests += [
 
 def setup():
   if os.path.exists ("merge-test"):
+    os.system ("fusermount -u merge-test/repo-a/clone-mnt")
+    os.system ("fusermount -u merge-test/repo-b/clone-mnt")
     os.system ("fusermount -u merge-test/a")
     os.system ("fusermount -u merge-test/b")
     os.system ("rm -rf merge-test")
