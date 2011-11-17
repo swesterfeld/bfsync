@@ -6,7 +6,7 @@ from HashCache import hash_cache
 
 import os
 
-def commit (repo):
+def commit (repo, expected_diff = None, expected_diff_hash = None):
   conn = repo.conn
   repo_path = repo.path
 
@@ -60,8 +60,19 @@ def commit (repo):
   diff_file = open (diff_filename, "w")
   diff (c, VERSION - 1, VERSION, diff_file)
   diff_file.close()
-  os.system ("xz -9 %s" % diff_filename)
-  hash = move_file_to_objects (repo, diff_filename + ".xz")
+  if expected_diff:
+    diff_file = open (diff_filename, "r")
+    new_diff = diff_file.read()
+    diff_file.close()
+    if new_diff != expected_diff:
+      raise Exception ("commit called with expected diff argument, but diffs didn't match")
+    hash = expected_diff_hash
+    object_name = os.path.join (repo_path, "objects", make_object_filename (hash))
+    if not validate_object (object_name, hash):
+      raise Exception ("commit called with expected_diff argument, but object with hash %s doesn't validate" % hash)
+  else:
+    os.system ("xz -9 %s" % diff_filename)
+    hash = move_file_to_objects (repo, diff_filename + ".xz")
 
   status_line.update ("done.")
   status_line.cleanup()

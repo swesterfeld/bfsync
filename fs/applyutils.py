@@ -90,7 +90,7 @@ class ApplyTool:
                                                   ?, ?)""", tuple (row))
 
 
-def apply (repo, diff_file):
+def apply (repo, diff_file, expected_hash = None):
   diff = diff_file.read()
   changes = parse_diff (diff)
   conn = repo.conn
@@ -119,4 +119,7 @@ def apply (repo, diff_file):
       apply_tool.apply_inode_minus (change[1:])
 
   conn.commit()
-  commit (repo)
+  if expected_hash:
+    commit (repo, diff, expected_hash)
+  else:
+    commit (repo)

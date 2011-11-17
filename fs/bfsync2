@@ -298,7 +298,6 @@ def cmd_revert():
     if (vmin > VERSION):
       del_inode_list += [ (vmin, id) ]
   for vmin, id in del_inode_list:
-    print "deleting %s/%d..." % (id, vmin)
     c.execute ('''DELETE FROM inodes WHERE vmin=? AND id=?''', (vmin, id))
   c.execute ('''SELECT vmin, vmax, dir_id, inode_id FROM links WHERE vmax >= ?''', (VERSION, ))
   del_link_list = []
@@ -310,7 +309,6 @@ def cmd_revert():
     if (vmin > VERSION):
       del_link_list += [ (vmin, dir_id, inode_id) ]
   for vmin, dir_id, inode_id in del_link_list:
-    print "deleting %s->%s/%d..." % (dir_id, inode_id, vmin)
     c.execute ('''DELETE FROM links WHERE vmin=? AND dir_id=? AND inode_id=?''', (vmin, dir_id, inode_id))
 
   c.execute ('''UPDATE inodes SET vmax=? WHERE vmax >= ?''', (VERSION + 1, VERSION))
@@ -866,7 +864,7 @@ def cmd_pull():
       print "applying patch %s" % diff
       os.system ("xzcat %s > tmp-diff" % diff_file)
       f = open ("tmp-diff", "r")
-      apply (repo, f)
+      apply (repo, f, diff)
       f.close()
       os.remove ("tmp-diff")
   else:
