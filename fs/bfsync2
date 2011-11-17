@@ -37,6 +37,7 @@ import datetime
 from utils import *
 from dbutils import *
 from diffutils import diff
+from applyutils import apply
 from TransferList import TransferList, TransferFile
 from StatusLine import status_line
 from HashCache import hash_cache
@@ -748,7 +749,11 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
           merge_h.add_change_master (rh[0], change[1], change)
 
       print "applying patch %s" % diff
-      os.system ("xzcat %s | bfapply.py" % diff_file)
+      os.system ("xzcat %s > tmp-diff" % diff_file)
+      f = open ("tmp-diff", "r")
+      apply (repo.conn, f)
+      f.close()
+      os.remove ("tmp-diff")
 
   for lh in local_history:    # local history
     if lh[0] > common_version:
@@ -872,7 +877,10 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
       for change in changes:
         print "L => ", "|".join (change)
 
-      os.system ("bfapply.py < %s" % new_diff_filename)
+      new_diff_file = open ("tmp-merge-diff")
+      apply (repo.conn, new_diff_file)
+      new_diff_file.close()
+      #os.system ("bfapply.py < %s" % new_diff_filename)
 
 def cmd_pull():
   parser = argparse.ArgumentParser (prog='bfsync2 pull')
@@ -936,7 +944,11 @@ def cmd_pull():
     for diff in ff_apply:
       diff_file = os.path.join ("objects", make_object_filename (diff))
       print "applying patch %s" % diff
-      os.system ("xzcat %s | bfapply.py" % diff_file)
+      os.system ("xzcat %s > tmp-diff" % diff_file)
+      f = open ("tmp-diff", "r")
+      apply (conn, f)
+      f.close()
+      os.remove ("tmp-diff")
   else:
     history_merge (c, repo, local_history, remote_history, pull_args)
   return
