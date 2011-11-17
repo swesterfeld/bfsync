@@ -89,10 +89,16 @@ def cd_repo_connect_db():
     sqlite_sync = True
 
   os.chdir (repo_path)
+
   repo = Repo()
   repo.conn = sqlite3.connect (os.path.join (repo_path, 'db'))
   repo.path = repo_path
   repo.config = bfsync_info
+
+  if not sqlite_sync:
+    c = repo.conn.cursor()
+    c.execute ('''PRAGMA synchronous=off''')
+
   return repo
 
 def parse_config (filename):
@@ -128,6 +134,19 @@ def validate_object (object_file, hash):
   except:
     pass
   return False
+
+def move_file_to_objects (repo, filename):
+  import HashCache
+  hash = HashCache.hash_cache.compute_hash (filename)
+  object_name = os.path.join (repo.path, "objects", make_object_filename (hash))
+  if os.path.exists (object_name):
+    # already known
+    os.unlink (filename)
+  else:
+    # add new object
+    os.rename (filename, object_name)
+    os.chmod (object_name, 0400)
+  return hash
 
 def parse_diff (diff):
   changes = []
