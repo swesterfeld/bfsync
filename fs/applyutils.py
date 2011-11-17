@@ -1,4 +1,5 @@
 from utils import parse_diff
+from commitutils import commit
 import os
 
 class ApplyTool:
@@ -58,7 +59,7 @@ class ApplyTool:
     dir_id = row[0]
     name = row[1]
     self.detach_link ("change link", dir_id, name)
-    apply_link_plus (self, row)
+    self.apply_link_plus (row)
 
   def apply_inode_plus (self, row):
     self.c.execute ("""INSERT INTO inodes VALUES (?, ?, ?, ?, ?,
@@ -89,9 +90,10 @@ class ApplyTool:
                                                   ?, ?)""", tuple (row))
 
 
-def apply (conn, diff_file):
+def apply (repo, diff_file):
   diff = diff_file.read()
   changes = parse_diff (diff)
+  conn = repo.conn
 
   c = conn.cursor()
 
@@ -117,4 +119,4 @@ def apply (conn, diff_file):
       apply_tool.apply_inode_minus (change[1:])
 
   conn.commit()
-  os.system ("bfsync2 commit")
+  commit (repo)
