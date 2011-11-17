@@ -21,7 +21,7 @@ import sys
 import os
 import subprocess
 import hashlib
-import pickle
+import cPickle
 import traceback
 import time
 import tempfile
@@ -104,7 +104,7 @@ def cmd_remote_ls():
             remote_file.hash = real_hash
             remote_file.size = os.path.getsize (full_name)
             file_list += [ remote_file ]
-  print pickle.dumps (file_list)
+  print cPickle.dumps (file_list)
 
 def cmd_remote_send():
   tl = TransferList()
@@ -371,7 +371,7 @@ def cmd_remote_history():
   hlist = []
   for row in c:
     hlist += [ row ]
-  print pickle.dumps (hlist)
+  print cPickle.dumps (hlist)
   return
 
 def cmd_remote_history_update():
@@ -380,7 +380,7 @@ def cmd_remote_history_update():
   conn = repo.conn
   repo_path = repo.path
   c = conn.cursor()
-  delta_history = pickle.loads (sys.stdin.read())
+  delta_history = cPickle.loads (sys.stdin.read())
   fail = False
   for dh in delta_history:
     version = dh[0]
@@ -991,7 +991,7 @@ def cmd_remote_need_objects():
       if not validate_object (dest_file, hash):
         objs += [ hash ]
   # end MERGE ME
-  print pickle.dumps (objs)
+  print cPickle.dumps (objs)
 
 
 def cmd_init():

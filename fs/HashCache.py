@@ -2,7 +2,7 @@ import time
 import random
 import os
 import hashlib
-import pickle
+import cPickle
 from utils import format_size, format_rate, format_time
 from StatusLine import status_line
 
@@ -84,7 +84,7 @@ class HashCache:
       stat.st_mtime, stat.st_ctime,
       # stat.st_atime, - we keep out atime to allow reading file without changing the hash value
     ]
-    stat_hash = hashlib.sha1 (pickle.dumps (l)).hexdigest()
+    stat_hash = hashlib.sha1 (cPickle.dumps (l)).hexdigest()
     return stat_hash
 
   def hash_all (self, filenames):

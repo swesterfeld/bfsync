@@ -1,5 +1,5 @@
 import subprocess
-import pickle
+import cPickle
 import os
 
 LOCAL = 1
@@ -26,7 +26,7 @@ class RemoteRepo:
     else:
       command = ["ssh", self.host, "bfsync2", "remote-history", self.path]
     remote_p = subprocess.Popen (command, stdout=subprocess.PIPE).communicate()[0]
-    remote_history = pickle.loads (remote_p)
+    remote_history = cPickle.loads (remote_p)
     return remote_history
 
   def update_history (self, delta_history):
@@ -36,7 +36,7 @@ class RemoteRepo:
       command = [ "ssh", self.host, "bfsync2", "remote-history-update", self.path]
 
     remote_send_p = subprocess.Popen (command, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-    remote_send_p.stdin.write (pickle.dumps (delta_history))
+    remote_send_p.stdin.write (cPickle.dumps (delta_history))
     return remote_send_p.communicate()[0]
 
   def need_objects (self):
@@ -46,7 +46,7 @@ class RemoteRepo:
       command = [ "ssh", self.host, "bfsync2", "remote-need-objects", self.path ]
 
     need_objs_p = subprocess.Popen (command, stdout = subprocess.PIPE).communicate()[0]
-    need_objs = pickle.loads (need_objs_p)
+    need_objs = cPickle.loads (need_objs_p)
     return need_objs
 
   def ls (self):
@@ -56,7 +56,7 @@ class RemoteRepo:
       command = ["ssh", self.host, "bfsync2", "remote-ls", self.path]
 
     remote_p = subprocess.Popen (command, stdout=subprocess.PIPE).communicate()[0]
-    remote_list = pickle.loads (remote_p)
+    remote_list = cPickle.loads (remote_p)
     return remote_list
 
   def get_objects (self, tlist):

@@ -2,7 +2,7 @@ import time
 import sys
 import os
 import shutil
-import pickle
+import cPickle
 from utils import mkdir_recursive, format_size, format_rate, format_time
 from StatusLine import status_line
 
@@ -24,7 +24,7 @@ class TransferList:
     self.tlist += [ tfile ]
     self.bytes_total += tfile.size
   def send_list (self, pipe):
-    tlist_str = pickle.dumps (self.tlist)
+    tlist_str = cPickle.dumps (self.tlist)
     # prepend pickled string len
     tlist_str = str (len (tlist_str)) + "\n" + tlist_str
     pipe.write (tlist_str)
@@ -56,7 +56,7 @@ class TransferList:
         size_str += s
     size = int (size_str)
     tlist_str = pipe.read (size)
-    self.tlist = pickle.loads (tlist_str)
+    self.tlist = cPickle.loads (tlist_str)
   def update_status_line (self):
     elapsed_time = max (time.time() - self.start_time, 1)
     bytes_per_sec = max (self.bytes_done / elapsed_time, 1)
