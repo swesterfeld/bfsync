@@ -669,7 +669,7 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
       print "applying patch %s" % diff
       os.system ("xzcat %s > tmp-diff" % diff_file)
       f = open ("tmp-diff", "r")
-      apply (repo, f)
+      apply (repo, f, diff)
       f.close()
       os.remove ("tmp-diff")
 
