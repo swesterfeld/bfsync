@@ -6,6 +6,6 @@ import sys
 
 repo = cd_repo_connect_db()
 
-apply (repo.conn, sys.stdin)
+apply (repo, sys.stdin)
 
 
