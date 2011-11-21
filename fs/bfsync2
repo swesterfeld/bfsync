@@ -88,34 +88,6 @@ def cmd_commit():
 class RemoteFile:
   pass
 
-def cmd_remote_ls():
-  file_list = []
-  for rdir in args:
-    os.chdir (rdir)
-    object_dir = find_repo_dir() + "/objects"
-    for dir, dirs, files in os.walk (object_dir):
-      for f in files:
-        full_name = os.path.join (dir, f)
-        if os.path.isfile (full_name):
-          name_hash = os.path.basename (dir) + f
-          real_hash = hash_cache.compute_hash (full_name)
-          if (name_hash == real_hash):
-            remote_file = RemoteFile()
-            remote_file.hash = real_hash
-            remote_file.size = os.path.getsize (full_name)
-            file_list += [ remote_file ]
-  print cPickle.dumps (file_list)
-
-def cmd_remote_send():
-  tl = TransferList()
-  tl.receive_list (sys.stdin)
-  tl.send_files (sys.stdout, False)
-
-def cmd_remote_receive():
-  tl = TransferList()
-  tl.receive_list (sys.stdin)
-  tl.receive_files (sys.stdin, False)
-
 def cmd_debug_load_all_inodes():
   bfsync_dir = find_bfsync_dir()
 
@@ -361,26 +333,39 @@ def cmd_db_fingerprint():
     all_str += r + "\0"
   print hashlib.sha1 (all_str).hexdigest()
 
-def cmd_remote_history():
-  os.chdir (args[0])
-  repo = cd_repo_connect_db()
-  conn = repo.conn
-  repo_path = repo.path
-  c = conn.cursor()
-  c.execute ('''SELECT * FROM history WHERE hash != '' ORDER BY version''')
-  hlist = []
-  for row in c:
-    hlist += [ row ]
-  print cPickle.dumps (hlist)
-  return
+def remote_ls (repo):
+  file_list = []
+  object_dir = os.path.join (repo.path, "objects")
+  for dir, dirs, files in os.walk (object_dir):
+    for f in files:
+      full_name = os.path.join (dir, f)
+      if os.path.isfile (full_name):
+        name_hash = os.path.basename (dir) + f
+        real_hash = hash_cache.compute_hash (full_name)
+        if (name_hash == real_hash):
+          remote_file = RemoteFile()
+          remote_file.hash = real_hash
+          remote_file.size = os.path.getsize (full_name)
+          file_list += [ remote_file ]
+  return file_list
 
-def cmd_remote_history_update():
-  os.chdir (args[0])
-  repo = cd_repo_connect_db()
+def remote_send():
+  tl = TransferList()
+  tl.receive_list (sys.stdin)
+  tl.send_files (sys.stdout, False)
+  sys.stdout.flush()
+
+def remote_receive():
+  tl = TransferList()
+  tl.receive_list (sys.stdin)
+  tl.receive_files (sys.stdin, False)
+
+def remote_update_history (repo):
   conn = repo.conn
   repo_path = repo.path
   c = conn.cursor()
-  delta_history = cPickle.loads (sys.stdin.read())
+  dhlen = int (sys.stdin.readline())
+  delta_history = cPickle.loads (sys.stdin.read (dhlen))
   fail = False
   for dh in delta_history:
     version = dh[0]
@@ -388,13 +373,67 @@ def cmd_remote_history_update():
       fail = True
     c.execute ("""INSERT INTO history VALUES (?,?,?,?,?)""", dh)
   if fail:
-    print "fail"
     conn.rollback()
+    return "fail"
   else:
-    print "ok"
     conn.commit()
-  return
+    return "ok"
 
+def remote_history (repo):
+  conn = repo.conn
+  c = conn.cursor()
+  c.execute ('''SELECT * FROM history WHERE hash != '' ORDER BY version''')
+  hlist = []
+  for row in c:
+    hlist += [ row ]
+  return cPickle.dumps (hlist)
+
+def remote_need_objects (repo):
+  conn = repo.conn
+  repo_path = repo.path
+  c = conn.cursor()
+
+  # MERGE ME WITH get
+  c.execute ('''SELECT DISTINCT hash FROM history''')
+  objs = []
+  for row in c:
+    hash = "%s" % row[0]
+    if len (hash) == 40:
+      dest_file = os.path.join (repo_path, "objects", make_object_filename (hash))
+      if not validate_object (dest_file, hash):
+        objs += [ hash ]
+  # end MERGE ME
+  return cPickle.dumps (objs)
+
+def cmd_remote():
+  os.chdir (args[0])
+  repo = cd_repo_connect_db()
+  conn = repo.conn
+  repo_path = repo.path
+  c = conn.cursor()
+
+  while True:
+    command = sys.stdin.readline().strip()
+    result = None
+    if command == "history":
+      result = remote_history (repo)
+    elif command == "ls":
+      result = cPickle.dumps (remote_ls (repo))
+    elif command == "send":
+      remote_send()
+    elif command == "receive":
+      remote_receive()
+    elif command == "update-history":
+      result = remote_update_history (repo)
+    elif command == "need-objects":
+      result = remote_need_objects (repo)
+    elif command == "":
+      return
+    else:
+      raise Exception ("unknown command in cmd_remote(): '%s'" % command)
+    if not result is None:
+      sys.stdout.write ("%s\n%s" % (len (result), result))
+      sys.stdout.flush()
 
 def load_diff (hash):
   obj_name = os.path.join ("objects", make_object_filename (hash))
@@ -973,27 +1012,6 @@ def cmd_get():
 
   get_remote_objects (remote_repo, objs)
 
-def cmd_remote_need_objects():
-  os.chdir (args[0])
-
-  repo = cd_repo_connect_db()
-  conn = repo.conn
-  repo_path = repo.path
-  c = conn.cursor()
-
-  # MERGE ME WITH get
-  c.execute ('''SELECT DISTINCT hash FROM history''')
-  objs = []
-  for row in c:
-    hash = "%s" % row[0]
-    if len (hash) == 40:
-      dest_file = os.path.join ("objects", make_object_filename (hash))
-      if not validate_object (dest_file, hash):
-        objs += [ hash ]
-  # end MERGE ME
-  print cPickle.dumps (objs)
-
-
 def cmd_init():
   dir = args[0]
   try:
@@ -1147,12 +1165,7 @@ for arg in arg_iter:
     ( "init",                   cmd_init, 1),
     ( "clone",                  cmd_clone, 1),
     ( "db-fingerprint",         cmd_db_fingerprint, 0),
-    ( "remote-history",         cmd_remote_history, 1),
-    ( "remote-history-update",  cmd_remote_history_update, 1),
-    ( "remote-ls",              cmd_remote_ls, 1),
-    ( "remote-need-objects",    cmd_remote_need_objects, 1),
-    ( "remote-receive",         cmd_remote_receive, 0),
-    ( "remote-send",            cmd_remote_send, 0),
+    ( "remote",                 cmd_remote, 1),
     ( "debug-load-all-inodes",  cmd_debug_load_all_inodes, 0),
     ( "debug-perf-getattr",     cmd_debug_perf_getattr, 1),
     ( "debug-clear-cache",      cmd_debug_clear_cache, 1),
