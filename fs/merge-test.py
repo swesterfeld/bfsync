@@ -40,12 +40,6 @@ class Repo:
       sys.exit (1)
     os.chdir (old_cwd)
 
-def run_b (cmd):
-  old_cwd = os.getcwd()
-  os.chdir ("b")
-  os.system (cmd)
-  os.chdir (old_cwd)
-
 def sync_repos (a, b):
   # send changes from a to master
   a.run ("bfsync2 push")
