@@ -2,6 +2,9 @@
 
 import os
 import sys
+import time
+from commitutils import commit
+from utils import cd_repo_connect_db
 
 tests = []
 
@@ -9,11 +12,25 @@ class Repo:
   def __init__ (self, path, merge_mode):
     self.path = path
     self.merge_mode = merge_mode
+    self.repo = None
 
   def run (self, cmd):
     old_cwd = os.getcwd()
     os.chdir (self.path)
     os.system (cmd)
+    os.chdir (old_cwd)
+
+  def commit (self):
+    old_cwd = os.getcwd()
+    os.chdir (self.path)
+    #if self.repo is None:
+    #  self.repo = cd_repo_connect_db()
+    self.repo = cd_repo_connect_db()
+    try:
+      commit (self.repo)
+    except Exception, e:
+      print "COMMIT FAILED: %s" % e
+      sys.exit (1)
     os.chdir (old_cwd)
 
 def run_b (cmd):
@@ -40,9 +57,9 @@ def sync_repos (a, b):
 
 def create_same (a, b):
   a.run ("echo 'Hello Repo A' > x")
-  a.run ("bfsync2 commit")
+  a.commit()
   b.run ("echo 'Hello Repo B' > x")
-  b.run ("bfsync2 commit")
+  b.commit()
   sync_repos (a, b)
 
 tests += [
@@ -52,13 +69,13 @@ tests += [
 def change_same (a, b):
   # create f on both repos
   a.run ("echo 'common file' > f")
-  a.run ("bfsync2 commit")
+  a.commit()
   sync_repos (a, b)
   # edit f on both repos
   a.run ("echo 'edit repo A' >> f")
-  a.run ("bfsync2 commit")
+  a.commit()
   b.run ("echo 'edit repo B' >> f")
-  b.run ("bfsync2 commit")
+  b.commit()
   # merge
   sync_repos (a, b)
   print "#########################################################################"
@@ -76,17 +93,17 @@ tests += [
 def change2_same (a, b):
   # create f on both repos
   a.run ("echo 'common file' > f")
-  a.run ("bfsync2 commit")
+  a.commit()
   sync_repos (a, b)
   # edit f on both repos
   a.run ("echo 'edit repo A1' >> f")
-  a.run ("bfsync2 commit")
+  a.commit()
   a.run ("echo 'edit repo A2' >> f")
-  a.run ("bfsync2 commit")
+  a.commit()
   b.run ("echo 'edit repo B1' >> f")
-  b.run ("bfsync2 commit")
+  b.commit()
   b.run ("echo 'edit repo B2' >> f")
-  b.run ("bfsync2 commit")
+  b.commit()
   # merge
   sync_repos (a, b)
   print "#########################################################################"
@@ -104,10 +121,10 @@ tests += [
 def create_indep (a, b):
   # create file-a in repo a
   a.run ("echo 'new file a' > file-a")
-  a.run ("bfsync2 commit")
+  a.commit()
   # create file-b in repo b
   b.run ("echo 'new file b' > file-b")
-  b.run ("bfsync2 commit")
+  b.commit()
   # merge
   sync_repos (a, b)
   print "#########################################################################"
@@ -133,14 +150,14 @@ tests += [
 def hardlink (a, b):
   # create f on both repos
   a.run ("echo 'common file' > f")
-  a.run ("bfsync2 commit")
+  a.commit()
   sync_repos(a, b)
 
   # create hardlink in both repos
   a.run ("ln f af")
-  a.run ("bfsync2 commit")
+  a.commit()
   b.run ("ln f bf")
-  b.run ("bfsync2 commit")
+  b.commit()
 
   # merge
   sync_repos (a, b)
@@ -163,14 +180,14 @@ def hardlink_rm (a, b):
   a.run ("echo 'common file' > f")
   a.run ("ln f fxa")
   a.run ("ln f fxb")
-  a.run ("bfsync2 commit")
+  a.commit()
 
   sync_repos (a, b)
   # remove one hardlink in both repos
   a.run ("rm fxa")
-  a.run ("bfsync2 commit")
+  a.commit()
   b.run ("rm fxb")
-  b.run ("bfsync2 commit")
+  b.commit()
 
   # merge
   sync_repos (a, b)
@@ -223,13 +240,13 @@ tests += [
 
 def attr_change (a, b):
   a.run ("echo 'common file' > f")
-  a.run ("bfsync2 commit")
+  a.commit()
   sync_repos (a, b)
   # change attributes
   a.run ("chmod 600 f")
-  a.run ("bfsync2 commit")
+  a.commit()
   b.run ("touch f")
-  b.run ("bfsync2 commit")
+  b.commit()
   # merge
   sync_repos (a, b)
   print "#########################################################################"
@@ -248,14 +265,14 @@ def rm_combine (a, b):
   # create f and g on both repos
   a.run ("echo 'common file' > f")
   a.run ("ln f g")
-  a.run ("bfsync2 commit")
+  a.commit()
   sync_repos (a, b)
   # remove one hardlink in repo a...
   a.run ("rm f")
-  a.run ("bfsync2 commit")
+  a.commit()
   # ... and the other in repo b
   b.run ("rm g")
-  b.run ("bfsync2 commit")
+  b.commit()
   # merge
   sync_repos (a, b)
   print "#########################################################################"
@@ -275,14 +292,14 @@ tests += [
 def rm_same (a, b):
   # create f in both repos
   a.run ("echo 'common file' > f")
-  a.run ("bfsync2 commit")
+  a.commit()
   sync_repos (a, b)
   # remove f in repo a...
   a.run ("rm f")
-  a.run ("bfsync2 commit")
+  a.commit()
   # ... and in repo b
   b.run ("rm f")
-  b.run ("bfsync2 commit")
+  b.commit()
   # merge
   sync_repos (a, b)
   print "#########################################################################"
@@ -301,14 +318,14 @@ def link_coll (a, b):
   # create f in both repos
   a.run ("echo 'file f' > f")
   a.run ("echo 'file g' > g")
-  a.run ("bfsync2 commit")
+  a.commit()
   sync_repos (a, b)
   # link f to x in repo a...
   a.run ("ln f x")
-  a.run ("bfsync2 commit")
+  a.commit()
   # ... and g to x repo b
   b.run ("ln g x")
-  b.run ("bfsync2 commit")
+  b.commit()
   # merge
   sync_repos (a, b)
   print "#########################################################################"
