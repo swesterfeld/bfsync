@@ -20,6 +20,13 @@ class Repo:
     os.system (cmd)
     os.chdir (old_cwd)
 
+  def runx (self, cmd):
+    old_cwd = os.getcwd()
+    os.chdir (self.path)
+    if os.system (cmd) != 0:
+      raise Exception ("Command %s failed" % cmd)
+    os.chdir (old_cwd)
+
   def commit (self):
     old_cwd = os.getcwd()
     os.chdir (self.path)
@@ -56,9 +63,9 @@ def sync_repos (a, b):
   a.run ("bfsync2 get")   # get missing file contents
 
 def create_same (a, b):
-  a.run ("echo 'Hello Repo A' > x")
+  a.runx ("echo 'Hello Repo A' > x")
   a.commit()
-  b.run ("echo 'Hello Repo B' > x")
+  b.runx ("echo 'Hello Repo B' > x")
   b.commit()
   sync_repos (a, b)
 
@@ -68,13 +75,13 @@ tests += [
 
 def change_same (a, b):
   # create f on both repos
-  a.run ("echo 'common file' > f")
+  a.runx ("echo 'common file' > f")
   a.commit()
   sync_repos (a, b)
   # edit f on both repos
-  a.run ("echo 'edit repo A' >> f")
+  a.runx ("echo 'edit repo A' >> f")
   a.commit()
-  b.run ("echo 'edit repo B' >> f")
+  b.runx ("echo 'edit repo B' >> f")
   b.commit()
   # merge
   sync_repos (a, b)
@@ -82,9 +89,9 @@ def change_same (a, b):
   print "after merge:"
   print "#########################################################################"
   print "# REPO A:"
-  a.run ("cat f")
+  a.runx ("cat f")
   print "# REPO B:"
-  b.run ("cat f")
+  b.runx ("cat f")
 
 tests += [
   ( change_same, "change-same", "edit contents of same file on repo a & b" )
@@ -92,17 +99,17 @@ tests += [
 
 def change2_same (a, b):
   # create f on both repos
-  a.run ("echo 'common file' > f")
+  a.runx ("echo 'common file' > f")
   a.commit()
   sync_repos (a, b)
   # edit f on both repos
-  a.run ("echo 'edit repo A1' >> f")
+  a.runx ("echo 'edit repo A1' >> f")
   a.commit()
-  a.run ("echo 'edit repo A2' >> f")
+  a.runx ("echo 'edit repo A2' >> f")
   a.commit()
-  b.run ("echo 'edit repo B1' >> f")
+  b.runx ("echo 'edit repo B1' >> f")
   b.commit()
-  b.run ("echo 'edit repo B2' >> f")
+  b.runx ("echo 'edit repo B2' >> f")
   b.commit()
   # merge
   sync_repos (a, b)
@@ -110,9 +117,9 @@ def change2_same (a, b):
   print "after merge:"
   print "#########################################################################"
   print "# REPO A:"
-  a.run ("cat f")
+  a.runx ("cat f")
   print "# REPO B:"
-  b.run ("cat f")
+  b.runx ("cat f")
 
 tests += [
   ( change2_same, "change2-same", "edit contents of same file on repo a & b, two edits for each repo" )
@@ -120,10 +127,10 @@ tests += [
 
 def create_indep (a, b):
   # create file-a in repo a
-  a.run ("echo 'new file a' > file-a")
+  a.runx ("echo 'new file a' > file-a")
   a.commit()
   # create file-b in repo b
-  b.run ("echo 'new file b' > file-b")
+  b.runx ("echo 'new file b' > file-b")
   b.commit()
   # merge
   sync_repos (a, b)
@@ -131,17 +138,17 @@ def create_indep (a, b):
   print "after merge:"
   print "#########################################################################"
   print "# REPO A:"
-  a.run ("ls -l")
-  a.run ("cat file-a")
-  a.run ("cat file-b")
+  a.runx ("ls -l")
+  a.runx ("cat file-a")
+  a.runx ("cat file-b")
   print "# root"
-  a.run ("stat .")
+  a.runx ("stat .")
   print "# REPO B:"
-  b.run ("ls -l")
-  b.run ("cat file-a")
-  b.run ("cat file-b")
+  b.runx ("ls -l")
+  b.runx ("cat file-a")
+  b.runx ("cat file-b")
   print "# root"
-  b.run ("stat .")
+  b.runx ("stat .")
 
 tests += [
   ( create_indep, "create-indep", "create independent file-a in repo a and file-b in repo-b" )
@@ -149,14 +156,14 @@ tests += [
 
 def hardlink (a, b):
   # create f on both repos
-  a.run ("echo 'common file' > f")
+  a.runx ("echo 'common file' > f")
   a.commit()
   sync_repos(a, b)
 
   # create hardlink in both repos
-  a.run ("ln f af")
+  a.runx ("ln f af")
   a.commit()
-  b.run ("ln f bf")
+  b.runx ("ln f bf")
   b.commit()
 
   # merge
@@ -165,11 +172,11 @@ def hardlink (a, b):
   print "after merge:"
   print "#########################################################################"
   print "# REPO A:"
-  a.run ("stat f")
-  a.run ("stat af")
+  a.runx ("stat f")
+  a.runx ("stat af")
   print "# REPO B:"
-  b.run ("stat f")
-  b.run ("stat bf")
+  b.runx ("stat f")
+  b.runx ("stat bf")
 
 tests += [
   ( hardlink, "hardlink", "create independent hardlinks on the same inode" )
@@ -177,16 +184,16 @@ tests += [
 
 def hardlink_rm (a, b):
   # create f on both repos
-  a.run ("echo 'common file' > f")
-  a.run ("ln f fxa")
-  a.run ("ln f fxb")
+  a.runx ("echo 'common file' > f")
+  a.runx ("ln f fxa")
+  a.runx ("ln f fxb")
   a.commit()
 
   sync_repos (a, b)
   # remove one hardlink in both repos
-  a.run ("rm fxa")
+  a.runx ("rm fxa")
   a.commit()
-  b.run ("rm fxb")
+  b.runx ("rm fxb")
   b.commit()
 
   # merge
@@ -195,9 +202,9 @@ def hardlink_rm (a, b):
   print "after merge:"
   print "#########################################################################"
   print "# REPO A:"
-  a.run ("stat f")
+  a.runx ("stat f")
   print "# REPO B:"
-  b.run ("stat f")
+  b.runx ("stat f")
 
 tests += [
   ( hardlink_rm, "hardlink-rm", "delete independent hardlinks on the same inode" )
@@ -205,15 +212,15 @@ tests += [
 
 def rm_change (x, y, a, b):
   # create f on both repos
-  x.run ("echo 'common file' > f")
-  x.run ("bfsync2 commit")
+  x.runx ("echo 'common file' > f")
+  x.commit()
   sync_repos (x, y)
   # update f in x
-  x.run ("echo 'updated file'  > f")
-  x.run ("bfsync2 commit")
+  x.runx ("echo 'updated file'  > f")
+  x.commit()
   # rm f in y
-  y.run ("rm f")
-  y.run ("bfsync2 commit")
+  y.runx ("rm f")
+  y.commit()
   # merge
   sync_repos (a, b)
   print "#########################################################################"
@@ -239,13 +246,13 @@ tests += [
 ]
 
 def attr_change (a, b):
-  a.run ("echo 'common file' > f")
+  a.runx ("echo 'common file' > f")
   a.commit()
   sync_repos (a, b)
   # change attributes
   a.run ("chmod 600 f")
   a.commit()
-  b.run ("touch f")
+  b.runx ("touch f")
   b.commit()
   # merge
   sync_repos (a, b)
@@ -253,9 +260,9 @@ def attr_change (a, b):
   print "after merge:"
   print "#########################################################################"
   print "# REPO A:"
-  a.run ("stat f")
+  a.runx ("stat f")
   print "# REPO B:"
-  b.run ("stat f")
+  b.runx ("stat f")
 
 tests += [
   ( attr_change, "attr-change", "change attributes of file in repo a & b" )
@@ -263,15 +270,15 @@ tests += [
 
 def rm_combine (a, b):
   # create f and g on both repos
-  a.run ("echo 'common file' > f")
-  a.run ("ln f g")
+  a.runx ("echo 'common file' > f")
+  a.runx ("ln f g")
   a.commit()
   sync_repos (a, b)
   # remove one hardlink in repo a...
-  a.run ("rm f")
+  a.runx ("rm f")
   a.commit()
   # ... and the other in repo b
-  b.run ("rm g")
+  b.runx ("rm g")
   b.commit()
   # merge
   sync_repos (a, b)
@@ -291,14 +298,14 @@ tests += [
 
 def rm_same (a, b):
   # create f in both repos
-  a.run ("echo 'common file' > f")
+  a.runx ("echo 'common file' > f")
   a.commit()
   sync_repos (a, b)
   # remove f in repo a...
-  a.run ("rm f")
+  a.runx ("rm f")
   a.commit()
   # ... and in repo b
-  b.run ("rm f")
+  b.runx ("rm f")
   b.commit()
   # merge
   sync_repos (a, b)
@@ -316,15 +323,15 @@ tests += [
 
 def link_coll (a, b):
   # create f in both repos
-  a.run ("echo 'file f' > f")
-  a.run ("echo 'file g' > g")
+  a.runx ("echo 'file f' > f")
+  a.runx ("echo 'file g' > g")
   a.commit()
   sync_repos (a, b)
   # link f to x in repo a...
-  a.run ("ln f x")
+  a.runx ("ln f x")
   a.commit()
   # ... and g to x repo b
-  b.run ("ln g x")
+  b.runx ("ln g x")
   b.commit()
   # merge
   sync_repos (a, b)
@@ -332,11 +339,11 @@ def link_coll (a, b):
   print "after merge:"
   print "#########################################################################"
   print "# REPO A:"
-  a.run ("ls -l")
-  a.run ("cat x")
+  a.runx ("ls -l")
+  a.runx ("cat x")
   print "# REPO B:"
-  b.run ("ls -l")
-  b.run ("cat x")
+  b.runx ("ls -l")
+  b.runx ("cat x")
 
 tests += [
   ( link_coll, "link-coll", "create hardlink to x with different target in both repos")
