@@ -87,3 +87,6 @@ def commit (repo, expected_diff = None, expected_diff_hash = None):
   # we modified the db, so the fs needs to reload everything
   # in-memory cached items will not be correct
   server_conn.clear_cache()
+
+  # this will release the lock
+  server_conn.close()
