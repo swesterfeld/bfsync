@@ -12,7 +12,12 @@ class Repo:
   def __init__ (self, path, merge_mode):
     self.path = path
     self.merge_mode = merge_mode
-    self.repo = None
+
+    # connect to db
+    old_cwd = os.getcwd()
+    os.chdir (self.path)
+    self.repo = cd_repo_connect_db()
+    os.chdir (old_cwd)
 
   def run (self, cmd):
     old_cwd = os.getcwd()
@@ -30,15 +35,17 @@ class Repo:
   def commit (self):
     old_cwd = os.getcwd()
     os.chdir (self.path)
-    #if self.repo is None:
-    #  self.repo = cd_repo_connect_db()
-    self.repo = cd_repo_connect_db()
     try:
       commit (self.repo)
     except Exception, e:
       print "COMMIT FAILED: %s" % e
       sys.exit (1)
     os.chdir (old_cwd)
+
+  def close (self):
+    if self.repo is not None:
+      self.repo.conn.close()
+      self.repo = None
 
 def sync_repos (a, b):
   # send changes from a to master
@@ -369,14 +376,16 @@ if len (sys.argv) == 2:
   elif sys.argv[1] == "all":
     old_cwd = os.getcwd()
     for merge_mode in [ "m", "l" ]:
-      a = Repo ("a", merge_mode)
-      b = Repo ("b", merge_mode)
       for t in tests:
         setup()
+        a = Repo ("a", merge_mode)
+        b = Repo ("b", merge_mode)
         print "==================================================================="
         print "Running test: %s\n -> %s" % (t[1], t[2])
         print "==================================================================="
         t[0] (a, b)
+        a.close()
+        b.close()
         os.chdir (old_cwd)
   else:
     a = Repo ("a", None)
