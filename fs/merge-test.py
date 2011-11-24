@@ -391,39 +391,47 @@ def setup():
   os.system ("bfsyncfs repo-a a")
   os.system ("bfsyncfs repo-b b")
 
-if len (sys.argv) == 2:
-  if sys.argv[1] == "setup":
-    setup()
-  elif sys.argv[1] == "all":
-    old_cwd = os.getcwd()
-    for merge_mode in [ "m", "l" ]:
+def main():
+  if len (sys.argv) == 2:
+    if sys.argv[1] == "setup":
+      setup()
+    elif sys.argv[1] == "all":
+      old_cwd = os.getcwd()
+      for merge_mode in [ "m", "l" ]:
+        for t in tests:
+          setup()
+          a = Repo ("a", merge_mode)
+          b = Repo ("b", merge_mode)
+          print "==================================================================="
+          print "Running test: %s\n -> %s" % (t[1], t[2])
+          print "==================================================================="
+          t[0] (a, b)
+          a.close()
+          b.close()
+          os.chdir (old_cwd)
+    else:
+      a = Repo ("a", None)
+      b = Repo ("b", None)
       for t in tests:
-        setup()
-        a = Repo ("a", merge_mode)
-        b = Repo ("b", merge_mode)
-        print "==================================================================="
-        print "Running test: %s\n -> %s" % (t[1], t[2])
-        print "==================================================================="
-        t[0] (a, b)
-        a.close()
-        b.close()
-        os.chdir (old_cwd)
-  else:
-    a = Repo ("a", None)
-    b = Repo ("b", None)
-    for t in tests:
-      if sys.argv[1] == t[1]:
-        setup()
-        print "==================================================================="
-        print "Running test: %s\n -> %s" % (t[1], t[2])
-        print "==================================================================="
-        t[0] (a, b)
-  sys.exit (0)
+        if sys.argv[1] == t[1]:
+          setup()
+          print "==================================================================="
+          print "Running test: %s\n -> %s" % (t[1], t[2])
+          print "==================================================================="
+          t[0] (a, b)
+    sys.exit (0)
 
-print
-print "Supported merge tests:"
-for t in tests:
-  print " - %-13s -> %s" % (t[1], t[2])
+  print
+  print "Supported merge tests:"
+  for t in tests:
+    print " - %-13s -> %s" % (t[1], t[2])
 
-print " - %-13s -> %s" % ("all", "run all tests")
-print " - %-13s -> %s" % ("setup", "only setup repos a & b for merge tests")
+  print " - %-13s -> %s" % ("all", "run all tests")
+  print " - %-13s -> %s" % ("setup", "only setup repos a & b for merge tests")
+
+if False: # profiling
+  import cProfile
+
+  cProfile.run ("main()", "/tmp/bfsync2-profile-merge-test")
+else:
+  main()
