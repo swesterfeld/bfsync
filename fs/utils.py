@@ -170,5 +170,13 @@ def parse_diff (diff):
     start += fcount
   return changes
 
+def printable_name (c, id, VERSION):
+  if id == "0" * 40:
+    return "/"
+  c.execute ("SELECT dir_id, name FROM links WHERE inode_id=? AND ? >= vmin AND ? <= VMAX", (id, VERSION, VERSION))
+  for row in c:
+    return os.path.join (printable_name (c, row[0], VERSION), row[1])
+  return "*unknown*"
+
 class RemoteFile:
   pass
