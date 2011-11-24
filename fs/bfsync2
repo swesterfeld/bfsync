@@ -565,10 +565,7 @@ def cmd_clone():
   os.mkdir ("clone-mnt", 0700)
   if subprocess.call (["bfsyncfs", ".", "clone-mnt"]) != 0:
     raise Exception ("cannot mount repo")
-  os.chdir ("clone-mnt")
-  if subprocess.call (["bfsync2", "pull", url]) != 0:
-    raise Exception ("cannot pull from repo")
-  os.chdir ("..")
+  pull (repo, [ url ])
   if subprocess.call (["fusermount", "-u", "clone-mnt"]) != 0:
     raise Exception ("cannot umount repo")
   os.rmdir ("clone-mnt")

@@ -74,9 +74,8 @@ class Repo:
     os.chdir (old_cwd)
 
   def close (self):
-    if self.repo is not None:
-      self.repo.conn.close()
-      self.repo = None
+    self.repo.conn.close()
+    self.repo = None
 
 def sync_repos (a, b):
   # send changes from a to master
