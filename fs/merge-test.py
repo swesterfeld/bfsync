@@ -4,7 +4,7 @@ import os
 import sys
 import time
 from commitutils import commit
-from transferutils import get
+from transferutils import get, push
 from utils import cd_repo_connect_db
 
 tests = []
@@ -53,6 +53,16 @@ class Repo:
       sys.exit (1)
     os.chdir (old_cwd)
 
+  def push (self):
+    old_cwd = os.getcwd()
+    os.chdir (self.repo.path)
+    try:
+      push (self.repo, [])
+    except Exception, e:
+      print "PUSH FAILED: %s" % e
+      sys.exit (1)
+    os.chdir (old_cwd)
+
   def close (self):
     if self.repo is not None:
       self.repo.conn.close()
@@ -60,7 +70,7 @@ class Repo:
 
 def sync_repos (a, b):
   # send changes from a to master
-  a.run ("bfsync2 push")
+  a.push()
   # merge changes from master into b; send merged result to master
   if b.merge_mode == "m":
     b.run ("bfsync2 pull --always-master")
@@ -68,7 +78,7 @@ def sync_repos (a, b):
     b.run ("bfsync2 pull --always-local")
   else:
     b.run ("bfsync2 pull")      # interactive
-  b.run ("bfsync2 push")
+  b.push()
   b.get()                 # get missing file contents
   # pull merged changes into repo a
   a.run ("bfsync2 pull")
