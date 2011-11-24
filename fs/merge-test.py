@@ -4,6 +4,7 @@ import os
 import sys
 import time
 from commitutils import commit
+from transferutils import get
 from utils import cd_repo_connect_db
 
 tests = []
@@ -42,6 +43,16 @@ class Repo:
       sys.exit (1)
     os.chdir (old_cwd)
 
+  def get (self):
+    old_cwd = os.getcwd()
+    os.chdir (self.repo.path)
+    try:
+      get (self.repo, [])
+    except Exception, e:
+      print "GET FAILED: %s" % e
+      sys.exit (1)
+    os.chdir (old_cwd)
+
   def close (self):
     if self.repo is not None:
       self.repo.conn.close()
@@ -58,10 +69,10 @@ def sync_repos (a, b):
   else:
     b.run ("bfsync2 pull")      # interactive
   b.run ("bfsync2 push")
-  b.run ("bfsync2 get")   # get missing file contents
+  b.get()                 # get missing file contents
   # pull merged changes into repo a
   a.run ("bfsync2 pull")
-  a.run ("bfsync2 get")   # get missing file contents
+  a.get()                 # get missing file contents
 
 def create_same (a, b):
   a.runx ("echo 'Hello Repo A' > x")

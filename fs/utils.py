@@ -169,3 +169,6 @@ def parse_diff (diff):
     changes += [ sdiff[start:start + fcount] ]
     start += fcount
   return changes
+
+class RemoteFile:
+  pass
