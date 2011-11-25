@@ -63,11 +63,7 @@ class Repo:
   def pull (self, args):
     old_cwd = os.getcwd()
     os.chdir (self.repo.path)
-    try:
-      pull (self.repo, args)
-    except Exception, e:
-      print "PULL FAILED: %s" % e
-      #sys.exit (1)
+    pull (self.repo, args)
     os.chdir (old_cwd)
 
   def close (self):
@@ -413,6 +409,7 @@ def main():
       setup()
     elif sys.argv[1] == "all":
       old_cwd = os.getcwd()
+      results = []
       for merge_mode in [ "m", "l" ]:
         for t in tests:
           setup()
@@ -421,11 +418,21 @@ def main():
           print "==================================================================="
           print "Running test: %s\n -> %s" % (t[1], t[2])
           print "==================================================================="
-          t[0] (a, b)
+          try:
+            t[0] (a, b)
+          except:
+            results += [ (t[1] + " / merge=%s" % merge_mode, "FAIL") ]
+          else:
+            results += [ (t[1] + " / merge=%s" % merge_mode, "OK") ]
           a.close()
           b.close()
           os.chdir (old_cwd)
+
+      print "==================================================================="
+      for result in results:
+        print "%30s   %s" % (result[0], result[1])
     else:
+      setup()
       a = Repo ("a", None)
       b = Repo ("b", None)
       for t in tests:
@@ -436,7 +443,6 @@ def main():
           print "==================================================================="
           t[0] (a, b)
     sys.exit (0)
-
   print
   print "Supported merge tests:"
   for t in tests:
