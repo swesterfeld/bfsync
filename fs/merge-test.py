@@ -377,12 +377,8 @@ tests += [
   ( link_coll, "link-coll", "create hardlink to x with different target in both repos")
 ]
 
-def setup():
+def setup_initial():
   if os.path.exists ("merge-test"):
-    os.system ("fusermount -u merge-test/repo-a/clone-mnt")
-    os.system ("fusermount -u merge-test/repo-b/clone-mnt")
-    os.system ("fusermount -u merge-test/a")
-    os.system ("fusermount -u merge-test/b")
     os.system ("rm -rf merge-test")
 
   os.mkdir ("merge-test")
@@ -394,6 +390,20 @@ def setup():
   os.system ("""echo 'default { get "'$PWD/repo-a'"; }' >> repo-b/.bfsync/config""")
   os.mkdir ("a")
   os.mkdir ("b")
+  os.system ("rsync -a master repo-a repo-b backup")
+
+def setup():
+  os.system ("fusermount -u merge-test/a")
+  os.system ("fusermount -u merge-test/b")
+
+  if not os.path.exists ("merge-test/backup"):
+    setup_initial()
+
+  os.chdir ("merge-test")
+
+  # rsync'ing the repo data is faster than creating it from scratch
+  os.system ("rsync -a --delete backup/* .")
+
   os.system ("bfsyncfs repo-a a")
   os.system ("bfsyncfs repo-b b")
 
