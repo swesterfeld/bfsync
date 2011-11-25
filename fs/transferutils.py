@@ -3,6 +3,7 @@ from TransferList import TransferList, TransferFile
 import os
 from utils import *
 from applyutils import apply
+from commitutils import revert
 import argparse
 import subprocess
 import datetime
@@ -359,7 +360,7 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
       break
 
   print "merge: last common version:", common_version
-  os.system ("bfsync2 revert %d" % common_version)
+  revert (repo, common_version)
   print "apply patches:"
 
   # EXAMINE master/local history for merge conflicts

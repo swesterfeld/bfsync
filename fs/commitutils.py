@@ -109,3 +109,55 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
 
   # this will release the lock
   server_conn.close()
+
+def revert (repo, VERSION):
+  conn = repo.conn
+  repo_path = repo.path
+
+  c = conn.cursor()
+
+  # lock repo to allow modifications
+  server_conn = ServerConn (repo_path)
+  server_conn.get_lock()
+
+  # VERSION == -1 <=> revert to current version (discard new entries from FuSE fs)
+  if VERSION == -1:
+    VERSION = 1
+    c.execute ('''SELECT version FROM history''')
+    for row in c:
+      VERSION = max (row[0], VERSION)
+    VERSION -= 1
+
+  print "reverting to version %d..." % VERSION
+  c.execute ('''SELECT vmin, vmax, id FROM inodes WHERE vmax >= ?''', (VERSION, ))
+  del_inode_list = []
+  for row in c:
+    vmin = row[0]
+    vmax = row[1]
+    id = row[2]
+    if (vmin > VERSION):
+      del_inode_list += [ (vmin, id) ]
+  for vmin, id in del_inode_list:
+    c.execute ('''DELETE FROM inodes WHERE vmin=? AND id=?''', (vmin, id))
+  c.execute ('''SELECT vmin, vmax, dir_id, inode_id FROM links WHERE vmax >= ?''', (VERSION, ))
+  del_link_list = []
+  for row in c:
+    vmin = row[0]
+    vmax = row[1]
+    dir_id = row[2]
+    inode_id = row[3]
+    if (vmin > VERSION):
+      del_link_list += [ (vmin, dir_id, inode_id) ]
+  for vmin, dir_id, inode_id in del_link_list:
+    c.execute ('''DELETE FROM links WHERE vmin=? AND dir_id=? AND inode_id=?''', (vmin, dir_id, inode_id))
+
+  c.execute ('''UPDATE inodes SET vmax=? WHERE vmax >= ?''', (VERSION + 1, VERSION))
+  c.execute ('''UPDATE links SET vmax=? WHERE vmax >= ?''', (VERSION + 1, VERSION))
+  c.execute ('''DELETE FROM history WHERE version > ?''', (VERSION, ))
+  c.execute ('''INSERT INTO history VALUES (?,?,?,?,?)''', (VERSION + 1, "", "", "", 0))
+
+  conn.commit()
+  c.close()
+  # we modified the db, so the fs needs to reload everything
+  # in-memory cached items will not be correct
+  server_conn.clear_cache()
