@@ -420,8 +420,8 @@ def main():
           print "==================================================================="
           try:
             t[0] (a, b)
-          except:
-            results += [ (t[1] + " / merge=%s" % merge_mode, "FAIL") ]
+          except Exception, e:
+            results += [ (t[1] + " / merge=%s" % merge_mode, "FAIL", "%s" % e) ]
           else:
             results += [ (t[1] + " / merge=%s" % merge_mode, "OK") ]
           a.close()
@@ -431,6 +431,8 @@ def main():
       print "==================================================================="
       for result in results:
         print "%30s   %s" % (result[0], result[1])
+        if len (result) > 2:
+          print "  <=>  %s" % result[2]
     else:
       setup()
       a = Repo ("a", None)
