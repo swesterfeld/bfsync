@@ -101,6 +101,16 @@ def cd_repo_connect_db():
 
   return repo
 
+def connect_db (path):
+  old_cwd = os.getcwd()
+  try:
+    # connect to db
+    os.chdir (path)
+    repo = cd_repo_connect_db()
+  finally:
+    os.chdir (old_cwd)
+  return repo
+
 def parse_config (filename):
   bfsync_info = CfgParser.CfgParser (filename,
   [

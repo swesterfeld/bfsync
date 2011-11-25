@@ -5,7 +5,7 @@ import sys
 import time
 from commitutils import commit
 from transferutils import get, push, pull
-from utils import cd_repo_connect_db
+from utils import connect_db
 
 tests = []
 
@@ -15,10 +15,7 @@ class Repo:
     self.merge_mode = merge_mode
 
     # connect to db
-    old_cwd = os.getcwd()
-    os.chdir (self.path)
-    self.repo = cd_repo_connect_db()
-    os.chdir (old_cwd)
+    self.repo = connect_db (self.path)
 
   def run (self, cmd):
     old_cwd = os.getcwd()

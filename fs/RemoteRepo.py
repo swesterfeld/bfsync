@@ -1,6 +1,8 @@
 import subprocess
 import cPickle
 import os
+from utils import connect_db
+from remoteutils import *
 
 LOCAL = 1
 SSH = 2
@@ -13,49 +15,64 @@ class RemoteRepo:
     if len (url_list) == 1:
       self.path = os.path.abspath (url)
       self.conn = LOCAL
-      command = ["bfsync2", "remote", self.path]
+      self.repo = connect_db (self.path)
     elif len (url_list) == 2:
       self.host = url_list[0]
       self.path = url_list[1]
       self.conn = SSH
       command = ["ssh", self.host, "bfsync2", "remote", self.path]
+      self.remote_p = subprocess.Popen (command, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     else:
       raise Exception ("unknown url type %s, neither local nor remote?" % url)
-    self.remote_p = subprocess.Popen (command, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 
   def get_history (self):
-    self.remote_p.stdin.write ("history\n")
-    result_len = int (self.remote_p.stdout.readline())
-    remote_history = cPickle.loads (self.remote_p.stdout.read (result_len))
-    return remote_history
+    if self.conn == LOCAL:
+      return remote_history (self.repo)
+    else:
+      self.remote_p.stdin.write ("history\n")
+      result_len = int (self.remote_p.stdout.readline())
+      return cPickle.loads (self.remote_p.stdout.read (result_len))
 
   def update_history (self, delta_history):
-    self.remote_p.stdin.write ("update-history\n")
-    delta_hist_str = cPickle.dumps (delta_history)
-    self.remote_p.stdin.write ("%s\n%s" % (len (delta_hist_str), delta_hist_str))
-    self.remote_p.stdin.flush()
-    result_len = int (self.remote_p.stdout.readline())
-    return self.remote_p.stdout.read (result_len)
+    if self.conn == LOCAL:
+      remote_update_history (self.repo, delta_history)
+    else:
+      self.remote_p.stdin.write ("update-history\n")
+      delta_hist_str = cPickle.dumps (delta_history)
+      self.remote_p.stdin.write ("%s\n%s" % (len (delta_hist_str), delta_hist_str))
+      self.remote_p.stdin.flush()
+      result_len = int (self.remote_p.stdout.readline())
+      return self.remote_p.stdout.read (result_len)
 
   def need_objects (self):
-    self.remote_p.stdin.write ("need-objects\n")
-    result_len = int (self.remote_p.stdout.readline())
-    need_objs = cPickle.loads (self.remote_p.stdout.read (result_len))
-    return need_objs
+    if self.conn == LOCAL:
+      return remote_need_objects (self.repo)
+    else:
+      self.remote_p.stdin.write ("need-objects\n")
+      result_len = int (self.remote_p.stdout.readline())
+      return cPickle.loads (self.remote_p.stdout.read (result_len))
 
   def ls (self):
-    self.remote_p.stdin.write ("ls\n")
-    result_len = int (self.remote_p.stdout.readline())
-    remote_list = cPickle.loads (self.remote_p.stdout.read (result_len))
-    return remote_list
+    if self.conn == LOCAL:
+      return remote_ls (self.repo)
+    else:
+      self.remote_p.stdin.write ("ls\n")
+      result_len = int (self.remote_p.stdout.readline())
+      return cPickle.loads (self.remote_p.stdout.read (result_len))
 
   def get_objects (self, tlist):
-    self.remote_p.stdin.write ("send\n")
-    tlist.send_list (self.remote_p.stdin)
-    tlist.receive_files (self.remote_p.stdout, True)
+    if self.conn == LOCAL:
+      tlist.copy_files()
+    else:
+      self.remote_p.stdin.write ("send\n")
+      tlist.send_list (self.remote_p.stdin)
+      tlist.receive_files (self.remote_p.stdout, True)
 
   def put_objects (self, tlist):
-    self.remote_p.stdin.write ("receive\n")
-    tlist.send_list (self.remote_p.stdin)
-    tlist.send_files (self.remote_p.stdin, True)
-    self.remote_p.stdin.flush()
+    if self.conn == LOCAL:
+      tlist.copy_files()
+    else:
+      self.remote_p.stdin.write ("receive\n")
+      tlist.send_list (self.remote_p.stdin)
+      tlist.send_files (self.remote_p.stdin, True)
+      self.remote_p.stdin.flush()
