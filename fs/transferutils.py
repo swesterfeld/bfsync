@@ -133,6 +133,14 @@ def db_inode (c, VERSION, id):
     return row[2:]
   return False
 
+def db_links (c, VERSION, id):
+  c.execute ("SELECT dir_id, name, inode_id FROM links WHERE inode_id = ? AND ? >= vmin AND ? <= vmax",
+             (id, VERSION, VERSION))
+  results = []
+  for row in c:
+    results += [ list (row) ]
+  return results
+
 def db_inode_nlink (c, VERSION, id):
   c.execute ("SELECT nlink FROM inodes WHERE id = ? AND ? >= vmin AND ? <= vmax",
              (id, VERSION, VERSION))
@@ -395,6 +403,8 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
         if change[0] == "i+" or change[0] == "i!" or change[0] == "i-":
           merge_h.add_change_local (lh[0], change[1], change)
   inode_ignore_change = dict()
+  inode_resurrect = []
+  link_resurrect = []
   for ck in merge_h.conflict_keys():
     filename = printable_name (c, ck, common_version)
     print "INODE CONFLICT: %s" % filename
@@ -402,6 +412,8 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
     common_inode = list (db_inode (c, common_version, ck))
     master_inode = apply_inode_changes (common_inode, merge_h.master_changes[ck])
     local_inode  = apply_inode_changes (common_inode, merge_h.local_changes[ck])
+    common_links = db_links (c, common_version, ck)
+    print "COMMON LINKS: %s" % common_links
     if master_inode is None or local_inode is None:
       if pull_args.always_local:
         choice = "l"
@@ -411,6 +423,9 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
         choice = ask_user_del (repo, master_inode, local_inode, filename)
       if choice == "l":
         print "... local version will be used"
+        if master_inode is None:
+          inode_resurrect += [ common_inode ]
+          link_resurrect += common_links
       elif choice == "m":
         print "... master version will be used"
         inode_ignore_change[ck] = True
@@ -439,6 +454,7 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
         print "... master version will be used"
         inode_ignore_change[ck] = True
 
+  first_local_diff = True
   for lh in local_history:
     if lh[0] > common_version:
 
@@ -457,6 +473,17 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
 
       nlink_delta = dict()
       changes = parse_diff (load_diff (diff))
+
+      if first_local_diff:
+        # resurrect deleted objects that should not have been deleted
+        for inode in inode_resurrect:
+          changes = [ map (str, [ "i+" ] + inode) ] + changes
+        for link in link_resurrect:
+          changes = [ map (str, [ "l+" ] + link) ] + changes
+        for change in changes:
+          print "::::", "|".join (change)
+        first_local_diff = False
+
       for change in changes:
         ignore_change = False
         if change[0] == "l+":
