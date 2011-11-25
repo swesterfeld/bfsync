@@ -409,6 +409,11 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
         choice = "m"
       else:
         choice = ask_user_del (repo, master_inode, local_inode, filename)
+      if choice == "l":
+        print "... local version will be used"
+      elif choice == "m":
+        print "... master version will be used"
+        inode_ignore_change[ck] = True
     else:
       c_fmt = pretty_format (common_inode)
       m_fmt = pretty_format (master_inode)
