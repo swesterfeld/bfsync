@@ -6,12 +6,31 @@ from HashCache import hash_cache
 
 import os
 
-def commit (repo, expected_diff = None, expected_diff_hash = None):
+# in case the repo is not mounted, we don't need a ServerConn
+#
+# this fake server conn is only to be used during "clone"
+class NoServerConn:
+  def get_lock (self):
+    pass
+
+  def save_changes (self):
+    pass
+
+  def clear_cache (self):
+    pass
+
+  def close (self):
+    pass
+
+def commit (repo, expected_diff = None, expected_diff_hash = None, server = True):
   conn = repo.conn
   repo_path = repo.path
 
   # lock repo to allow modifications
-  server_conn = ServerConn (repo_path)
+  if server:
+    server_conn = ServerConn (repo_path)
+  else:
+    server_conn = NoServerConn()
   server_conn.get_lock()
 
   hash_list = []

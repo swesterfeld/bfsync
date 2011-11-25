@@ -493,15 +493,8 @@ def cmd_clone():
     os.mkdir ("new/%02x" % i, 0700)
     os.mkdir ("objects/%02x" % i, 0700)
 
-  # mount for pull
-  os.mkdir ("clone-mnt", 0700)
-  if subprocess.call (["bfsyncfs", ".", "clone-mnt"]) != 0:
-    raise Exception ("cannot mount repo")
-  pull (repo, [ url ])
-  if subprocess.call (["fusermount", "-u", "clone-mnt"]) != 0:
-    raise Exception ("cannot umount repo")
-  os.rmdir ("clone-mnt")
-  # FIXME: ensure repo deletion on exception
+  # pull changes from master
+  pull (repo, [ url ], server = False)
 
 command = None
 command_func = None

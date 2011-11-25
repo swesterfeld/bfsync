@@ -510,7 +510,7 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
       new_diff_file.close()
       #os.system ("bfapply.py < %s" % new_diff_filename)
 
-def pull (repo, args):
+def pull (repo, args, server = True):
   parser = argparse.ArgumentParser (prog='bfsync2 pull')
   parser.add_argument ('--always-local', action='store_const', const=True,
                        help='always use local version for merge conflicts')
@@ -573,7 +573,7 @@ def pull (repo, args):
       print "applying patch %s" % diff
       os.system ("xzcat %s > tmp-diff" % diff_file)
       f = open ("tmp-diff", "r")
-      apply (repo, f, diff)
+      apply (repo, f, diff, server = server)
       f.close()
       os.remove ("tmp-diff")
   else:
