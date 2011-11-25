@@ -1,22 +1,23 @@
 
-def links_from_table (c, version, id_start):
+def links_from_table (c, version, id_start_str):
+  if id_start_str != "":
+    id_start_str += " AND";
   d = dict()
-  zeros = "0" * 38
-  ffffs = "f" * 38
   c.execute ('''SELECT dir_id, name, inode_id FROM links
-                  WHERE dir_id >= '%02x%s' and dir_id <= '%02x%s'
-                  AND %d >= vmin AND %d <= vmax''' % (id_start, zeros, id_start, ffffs, version, version))
+                  WHERE %s %d >= vmin AND %d <= vmax''' % (id_start_str, version, version))
   for row in c:
     key = row[0:2]
     d[key] = row[2:]
   return d
 
-def dict_from_table (c, table, n_keys, version, id_start_str):
+def inodes_from_table (c, version, id_start_str):
+  if id_start_str != "":
+    id_start_str += " AND";
   d = dict()
-  c.execute ('''SELECT * FROM %s WHERE %s and %d >= vmin and %d <= vmax''' % (table, id_start_str, version, version))
+  c.execute ('''SELECT * FROM inodes WHERE %s %d >= vmin AND %d <= vmax''' % (id_start_str, version, version))
   for row in c:
-    key = row[2:2 + n_keys]
-    d[key] = row[2 + n_keys:]
+    key = row[2:3]
+    d[key] = row[3:]
   return d
 
 def key_to_str (k):
@@ -69,20 +70,41 @@ def compute_changes (change_type, dict_a, dict_b):
 
   return change_list
 
+def get_n_entries (c, version_a, version_b):
+  c.execute ("""SELECT COUNT(*) FROM links WHERE (%d >= vmin AND %d <= vmax) OR (%d >= vmin AND %d <= vmax)""" %
+             (version_a, version_a, version_b, version_b))
+  for row in c:
+    return row[0]
+
+  return 0
+
 def diff (c, version_a, version_b, outfile):
   change_list = []
 
-  for id_start in range (256):
-    dict_a = links_from_table (c, version_a, id_start)
-    dict_b = links_from_table (c, version_b, id_start)
+  n_entries = get_n_entries (c, version_a, version_b)
+
+  if n_entries < 50000:
+    dict_a = links_from_table (c, version_a, "")
+    dict_b = links_from_table (c, version_b, "")
     change_list += compute_changes ("l", dict_a, dict_b)
 
-    zeros = "0" * 38
-    ffffs = "f" * 38
-    id_start_str = "id >= '%02x%s' and id <= '%02x%s'" % (id_start, zeros, id_start, ffffs)
-    dict_a = dict_from_table (c, "inodes", 1, version_a, id_start_str)
-    dict_b = dict_from_table (c, "inodes", 1, version_b, id_start_str)
+    dict_a = inodes_from_table (c, version_a, "")
+    dict_b = inodes_from_table (c, version_b, "")
     change_list += compute_changes ("i", dict_a, dict_b)
+  else:
+    for id_start in range (256):
+      zeros = "0" * 38
+      ffffs = "f" * 38
+
+      id_start_str = "dir_id >= '%02x%s' AND dir_id <= '%02x%s'" % (id_start, zeros, id_start, ffffs)
+      dict_a = links_from_table (c, version_a, id_start_str)
+      dict_b = links_from_table (c, version_b, id_start_str)
+      change_list += compute_changes ("l", dict_a, dict_b)
+
+      id_start_str = "id >= '%02x%s' AND id <= '%02x%s'" % (id_start, zeros, id_start, ffffs)
+      dict_a = inodes_from_table (c, version_a, id_start_str)
+      dict_b = inodes_from_table (c, version_b, id_start_str)
+      change_list += compute_changes ("i", dict_a, dict_b)
 
   # sort changes (for better compression)
   change_list.sort()
