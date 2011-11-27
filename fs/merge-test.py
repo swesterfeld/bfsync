@@ -394,8 +394,8 @@ def setup():
 
   if not os.path.exists ("merge-test/backup"):
     setup_initial()
-
-  os.chdir ("merge-test")
+  else:
+    os.chdir ("merge-test")
 
   # rsync'ing the repo data is faster than creating it from scratch
   os.system ("rsync -a --delete backup/* .")
