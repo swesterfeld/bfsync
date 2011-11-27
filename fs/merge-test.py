@@ -373,6 +373,35 @@ tests += [
   ( link_coll, "link-coll", "create hardlink to x with different target in both repos")
 ]
 
+def mv_mv (a, b):
+  # create f in both repos
+  a.runx ("echo 'file f' > f")
+  a.commit()
+  sync_repos (a, b)
+  # rename f to f-a in repo a...
+  a.runx ("mv f f-a")
+  a.commit()
+  # ... and rename f to f-b repo b
+  b.runx ("mv f f-b")
+  b.commit()
+  # merge
+  sync_repos (a, b)
+  print "#########################################################################"
+  print "after merge:"
+  print "#########################################################################"
+  print "# REPO A:"
+  a.runx ("ls -l")
+  a.runx ("cat f-a")
+  a.runx ("cat f-b")
+  print "# REPO B:"
+  a.runx ("ls -l")
+  a.runx ("cat f-a")
+  a.runx ("cat f-b")
+
+tests += [
+  ( mv_mv, "mv-mv", "rename common file to two different names")
+]
+
 def setup_initial():
   if os.path.exists ("merge-test"):
     os.system ("rm -rf merge-test")
