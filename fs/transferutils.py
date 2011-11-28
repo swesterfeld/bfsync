@@ -1,6 +1,7 @@
 from RemoteRepo import RemoteRepo
 from TransferList import TransferList, TransferFile
 import os
+import sys
 from utils import *
 from applyutils import apply
 from commitutils import revert
@@ -236,22 +237,70 @@ def ask_user_del (repo, master_inode, local_inode, filename):
       print "<<< invalid choice '%s' >>>" % line
       print
 
-
+def ask_user_rename (cnames, mnames, lnames):
+  while True:
+    print "======================================================================"
+    print "The following file was renamed:"
+    for name in cnames:
+      print " => '%s'" % name
+    print
+    print "It has the following name on master:"
+    for name in mnames:
+      print " => '%s'" % name
+    print
+    print "It has the following local name:"
+    for name in lnames:
+      print " => '%s'" % name
+    print
+    print "======================================================================"
+    print "  l  use local version"
+    print "  m  use master version"
+    print "  b  keep both versions"
+    print "  s  start a shell to investigate"
+    print "  a  abort pull completely (history will be restored to the original"
+    print "     state, before the merge)"
+    print "======================================================================"
+    line = raw_input ("How should this conflict be resolved? ")
+    if line == "l" or line == "m" or line == "b" or line == "a":
+      return line
+    else:
+      print
+      print "<<< invalid choice '%s' >>>" % line
+      print
 
 class MergeHistory:
   def __init__ (self):
     self.master_changes = dict()
     self.local_changes = dict()
+    self.common_links = dict()
 
   def add_change_master (self, version, object, change):
     if not self.master_changes.has_key (object):
       self.master_changes[object]  = []
     self.master_changes[object] += [ (version, change) ]
 
+  def add_link_change_master (self, version, change):
+    if change[0] == "l-":
+      change += [ self.common_links[(change[1], change[2])] ]
+    self.add_change_master (version, change[3], change)
+
   def add_change_local (self, version, object, change):
     if not self.local_changes.has_key (object):
       self.local_changes[object]  = []
     self.local_changes[object] += [ (version, change) ]
+
+  def add_link_change_local (self, version, change):
+    if change[0] == "l-":
+      change += [ self.common_links[(change[1], change[2])] ]
+    self.add_change_local (version, change[3], change)
+
+  def add_original_link (self, link):
+    dir_id = link[0]
+    inode_id = link[1]
+    name = link[2]
+    lkey = (dir_id, name)
+    if not self.common_links.has_key (lkey):
+      self.common_links[lkey] = str (inode_id)
 
   def show_one (self, k):
     print "*** Changes for key %s ***" % k
@@ -302,6 +351,23 @@ def apply_inode_changes (inode, changes):
       inode = None
   return inode
 
+def apply_link_changes (links, changes):
+  links = links[:]  # copy links
+  for entry in changes:
+    version = entry[0]
+    change  = entry[1]
+    if change[0] == "l+":
+      links += [ change[1:] ]
+    if change[0] == "l-":
+      new_links = []
+      for l in links:
+        if l[0] == change[1] and l[1] == change[2]:
+          pass
+        else:
+          new_links += [ l ]
+      links = new_links
+  return links
+
 def pretty_date (sec, nsec):
   return datetime.datetime.fromtimestamp (sec).strftime ("%a, %d %b %Y %H:%M:%S.") + "%09d" % nsec
 
@@ -349,6 +415,16 @@ def auto_merge_by_ctime (master_inode, local_inode):
   # same ctime
   return "m"
 
+def link_filename (c, common_version, dir_id, changes):
+  if dir_id == "0" * 40:
+    return "/"
+
+  links = db_links (c, common_version, dir_id)
+  links = apply_link_changes (links, changes[dir_id])
+  for link in links:
+    return os.path.join (link_filename (c, common_version, link[0], changes), link[1])
+  return links
+
 def update_nlink_delta (nlink_delta, inode, count):
   if not nlink_delta.has_key (inode):
     nlink_delta[inode] = 0
@@ -384,6 +460,15 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
         print "M => ", "|".join (change)
         if change[0] == "i+" or change[0] == "i!" or change[0] == "i-":
           merge_h.add_change_master (rh[0], change[1], change)
+        elif change[0] == "l+" or change[0] == "l-" or change[0] == "l!":
+          if change[0] == "l-":
+            c.execute ("SELECT * FROM links WHERE dir_id = ? AND name = ? AND ? >= vmin AND ? <= vmax",
+                       (change[1], change[2], common_version, common_version))
+            for row in c:
+              merge_h.add_original_link (row[2:])
+          merge_h.add_link_change_master (rh[0], change)
+        else:
+          raise Exception ("merge error, unknown change type %s" % change[0])
 
       print "applying patch %s" % diff
       os.system ("xzcat %s > tmp-diff" % diff_file)
@@ -402,18 +487,54 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
         print "local => ", "|".join (change)
         if change[0] == "i+" or change[0] == "i!" or change[0] == "i-":
           merge_h.add_change_local (lh[0], change[1], change)
+        elif change[0] == "l+" or change[0] == "l-" or change[0] == "l!":
+          if change[0] == "l-":
+            c.execute ("SELECT * FROM links WHERE dir_id = ? AND name = ? AND ? >= vmin AND ? <= vmax",
+                       (change[1], change[2], common_version, common_version))
+            for row in c:
+              merge_h.add_original_link (row[2:])
+          merge_h.add_link_change_local (lh[0], change)
+        else:
+          raise Exception ("merge error, unknown change type %s" % change[0])
   inode_ignore_change = dict()
   inode_resurrect = []
   link_resurrect = []
   for ck in merge_h.conflict_keys():
     filename = printable_name (c, ck, common_version)
     print "INODE CONFLICT: %s" % filename
-    #merge_h.show_one (ck)
+    merge_h.show_one (ck)
     common_inode = list (db_inode (c, common_version, ck))
     master_inode = apply_inode_changes (common_inode, merge_h.master_changes[ck])
     local_inode  = apply_inode_changes (common_inode, merge_h.local_changes[ck])
     common_links = db_links (c, common_version, ck)
-    print "COMMON LINKS: %s" % common_links
+    master_links = apply_link_changes (common_links, merge_h.master_changes[ck])
+    local_links  = apply_link_changes (common_links, merge_h.local_changes[ck])
+
+    #### check link names:
+    common_link_names = []
+    for link in common_links:
+      common_link_names.append (os.path.join (link_filename (c, common_version, link[0], []), link[1]))
+    common_link_names.sort()
+
+    local_link_names = []
+    for link in local_links:
+      local_link_names.append (os.path.join (link_filename (c, common_version, link[0], merge_h.local_changes), link[1]))
+    local_link_names.sort()
+
+    master_link_names = []
+    for link in master_links:
+      master_link_names.append (os.path.join (link_filename (c, common_version, link[0], merge_h.master_changes), link[1]))
+    master_link_names.sort()
+
+    if local_link_names != master_link_names:
+      if pull_args.always_local:
+        choice = "l"
+      elif pull_args.always_master:
+        choice = "m"
+      else:
+        choice = ask_user_rename (common_link_names, master_link_names, local_link_names)
+
+    ####
     if master_inode is None or local_inode is None:
       if pull_args.always_local:
         choice = "l"

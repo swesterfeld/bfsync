@@ -402,6 +402,34 @@ tests += [
   ( mv_mv, "mv-mv", "rename common file to two different names")
 ]
 
+def mv2dir (a, b):
+  # create f in both repos
+  a.runx ("echo 'file f' > f")
+  a.commit()
+  sync_repos (a, b)
+  # move to subdir in repo a
+  a.runx ("mkdir -p d/subdir")
+  a.runx ("mv f d/subdir")
+  a.commit()
+  # move to subdir in repo b
+  b.runx ("mkdir dir")
+  b.runx ("mv f dir")
+  b.commit()
+  sync_repos (a, b)
+  print "#########################################################################"
+  print "after merge:"
+  print "#########################################################################"
+  print "# REPO A:"
+  a.runx ("ls -l dir")
+  a.runx ("ls d/subdir")
+  print "# REPO B:"
+  b.runx ("ls -l dir")
+  b.runx ("ls d/subdir")
+
+tests += [
+  ( mv2dir, "mv2dir", "move common file into two different subdirs")
+]
+
 def setup_initial():
   if os.path.exists ("merge-test"):
     os.system ("rm -rf merge-test")
