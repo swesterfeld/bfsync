@@ -138,10 +138,11 @@ def db_link_inode (c, VERSION, dir_id, name):
   raise Exception ("link target for %s/%s not found" % (dir_id, name))
 
 class MergeHistory:
-  def __init__ (self, c, common_version):
+  def __init__ (self, c, common_version, name):
     self.c = c
     self.common_version = common_version
     self.inode_changes = dict()
+    self.name = name
 
   def inode4change (self, change):
     if change[0] == "i+" or change[0] == "i-" or change[0] == "i!":
@@ -156,7 +157,7 @@ class MergeHistory:
 
   def add_changes (self, version, changes):
     for change in changes:
-      print ".........", "|".join(change)
+      print self.name, ".........", "|".join(change)
       inode = self.inode4change (change)
 
       if not self.inode_changes.has_key (inode):
@@ -229,7 +230,7 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
   revert (repo, common_version)
 
   # ANALYZE master history
-  master_merge_history = MergeHistory (c, common_version)
+  master_merge_history = MergeHistory (c, common_version, "master")
 
   for rh in remote_history:   # remote history
     if rh[0] > common_version:
@@ -238,7 +239,7 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
       master_merge_history.add_changes (rh[0], changes)
 
   # ANALYZE local history
-  local_merge_history = MergeHistory (c, common_version)
+  local_merge_history = MergeHistory (c, common_version, "local")
 
   for lh in local_history:    # local history
     if lh[0] > common_version:
