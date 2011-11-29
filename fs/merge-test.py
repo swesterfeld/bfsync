@@ -287,6 +287,12 @@ def attr_change (a, b):
   a.runx ("stat f")
   print "# REPO B:"
   b.runx ("stat f")
+  if a.merge_mode == "m":
+    if (os.stat ("a/f").st_mode & 0777) != 0600:
+      raise Exception ("mode != 0600")
+  if a.merge_mode == "l":
+    if (os.stat ("a/f").st_mode & 0777) == 0600:
+      raise Exception ("mode == 0600")
 
 tests += [
   ( attr_change, "attr-change", "change attributes of file in repo a & b" )
@@ -397,6 +403,20 @@ def mv_mv (a, b):
   a.runx ("ls -l")
   a.run ("cat f-a")
   a.run ("cat f-b")
+  if a.merge_mode == "m":
+    if not os.path.exists ("a/f-a"):
+      raise Exception ("missing file f-a")
+    if os.path.exists ("a/f-b"):
+      raise Exception ("a/f-b shouldn't be there")
+    if os.path.exists ("a/f"):
+      raise Exception ("a/f shouldn't be there")
+  if a.merge_mode == "l":
+    if not os.path.exists ("a/f-b"):
+      raise Exception ("missing file f-b")
+    if os.path.exists ("a/f-a"):
+      raise Exception ("a/f-a shouldn't be there")
+    if os.path.exists ("a/f"):
+      raise Exception ("a/f shouldn't be there")
 
 tests += [
   ( mv_mv, "mv-mv", "rename common file to two different names")
