@@ -391,12 +391,12 @@ def mv_mv (a, b):
   print "#########################################################################"
   print "# REPO A:"
   a.runx ("ls -l")
-  a.runx ("cat f-a")
-  a.runx ("cat f-b")
+  a.run ("cat f-a")
+  a.run ("cat f-b")
   print "# REPO B:"
   a.runx ("ls -l")
-  a.runx ("cat f-a")
-  a.runx ("cat f-b")
+  a.run ("cat f-a")
+  a.run ("cat f-b")
 
 tests += [
   ( mv_mv, "mv-mv", "rename common file to two different names")

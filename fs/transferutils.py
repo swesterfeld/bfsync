@@ -113,324 +113,9 @@ def load_diff (hash):
   diff = subprocess.Popen(["xzcat", obj_name], stdout=subprocess.PIPE).communicate()[0]
   return diff
 
-def db_contains_link (c, VERSION, dir_id, name):
-  c.execute ("SELECT * FROM links WHERE dir_id = ? AND name = ? AND ? >= vmin AND ? <= vmax",
-             (dir_id, name, VERSION, VERSION))
-  for row in c:
-    return True
-  return False
+################################# MERGE ######################################
 
-def db_link_inode (c, VERSION, dir_id, name):
-  c.execute ("SELECT inode_id FROM links WHERE dir_id = ? AND name = ? AND ? >= vmin AND ? <= vmax",
-             (dir_id, name, VERSION, VERSION))
-  for row in c:
-    return row[0]
-  raise Exception ("link target for %s/%s not found" % (dir_id, name))
-
-def db_inode (c, VERSION, id):
-  c.execute ("SELECT * FROM inodes WHERE id = ? AND ? >= vmin AND ? <= vmax",
-             (id, VERSION, VERSION))
-  for row in c:
-    return row[2:]
-  return False
-
-def db_links (c, VERSION, id):
-  c.execute ("SELECT dir_id, name, inode_id FROM links WHERE inode_id = ? AND ? >= vmin AND ? <= vmax",
-             (id, VERSION, VERSION))
-  results = []
-  for row in c:
-    results += [ list (row) ]
-  return results
-
-def db_inode_nlink (c, VERSION, id):
-  c.execute ("SELECT nlink FROM inodes WHERE id = ? AND ? >= vmin AND ? <= vmax",
-             (id, VERSION, VERSION))
-  for row in c:
-    return row[0]
-  return 0
-
-def ask_user (repo, master, local, c_fmt, m_fmt, l_fmt, filename):
-  while True:
-    print "======================================================================"
-    for i in range (len (c_fmt)):
-      print "Common   ", c_fmt[i][0], ":", c_fmt[i][1]
-      if c_fmt[i] != m_fmt[i]:
-        print " * Master", m_fmt[i][0], ":", m_fmt[i][1]
-      if c_fmt[i] != l_fmt[i]:
-        print " * Local ", l_fmt[i][0], ":", l_fmt[i][1]
-    print "======================================================================"
-    print "The following file was modified locally and in the master history:"
-    print " => '%s'" % filename
-    print "======================================================================"
-    print "  l  use local version"
-    print "  m  use master version"
-    print "  b  keep both versions"
-    print "     => master version will be stored as '%s'" % filename
-    print "     => local version will be stored as '%s~1'" % filename
-    print "  s  start a shell to investigate"
-    print "  a  abort pull completely (history will be restored to the original"
-    print "     state, before the merge)"
-    print "======================================================================"
-    line = raw_input ("How should this conflict be resolved? ")
-    if line == "l" or line == "m" or line == "b" or line == "a":
-      return line
-    if line == "s":
-      old_cwd = os.getcwd()
-
-      master_file = os.path.join (old_cwd, "objects", make_object_filename (master))
-      local_file = os.path.join (old_cwd, "objects", make_object_filename (local))
-
-      default_get = repo.config.get ("default/get")
-
-      if len (default_get) == 0:
-        raise Exception ("get: no repository specified and default/get config value empty")
-      url = default_get[0]
-
-      remote_repo = RemoteRepo (url)
-      get_remote_objects (remote_repo, [ master ])
-
-      os.mkdir ("merge")
-      os.chdir ("merge")
-      shutil.copyfile (master_file, "master")
-      shutil.copyfile (local_file, "local")
-      os.system (os.environ['SHELL'])
-      try:
-        os.remove ("master")
-        os.remove ("local")
-      except:
-        pass
-      os.chdir (old_cwd)
-      os.rmdir ("merge")
-    else:
-      print
-      print "<<< invalid choice '%s' >>>" % line
-      print
-
-def ask_user_del (repo, master_inode, local_inode, filename):
-  while True:
-    print "======================================================================"
-    print "The following file was"
-    if master_inode is None:
-      print " - deleted in master history"
-    else:
-      print " - modified in master history"
-    if local_inode is None:
-      print " - deleted locally"
-    else:
-      print " - modified locally"
-    print " => '%s'" % filename
-    print "======================================================================"
-    print "  l  use local version"
-    print "  m  use master version"
-    print "  b  keep both versions"
-    print "     => master version will be stored as '%s'" % filename
-    print "     => local version will be stored as '%s~1'" % filename
-    print "  s  start a shell to investigate"
-    print "  a  abort pull completely (history will be restored to the original"
-    print "     state, before the merge)"
-    print "======================================================================"
-    line = raw_input ("How should this conflict be resolved? ")
-    if line == "l" or line == "m" or line == "b" or line == "a":
-      return line
-    else:
-      print
-      print "<<< invalid choice '%s' >>>" % line
-      print
-
-def ask_user_rename (cnames, mnames, lnames):
-  while True:
-    print "======================================================================"
-    print "The following file was renamed:"
-    for name in cnames:
-      print " => '%s'" % name
-    print
-    print "It has the following name on master:"
-    for name in mnames:
-      print " => '%s'" % name
-    print
-    print "It has the following local name:"
-    for name in lnames:
-      print " => '%s'" % name
-    print
-    print "======================================================================"
-    print "  l  use local version"
-    print "  m  use master version"
-    print "  b  keep both versions"
-    print "  s  start a shell to investigate"
-    print "  a  abort pull completely (history will be restored to the original"
-    print "     state, before the merge)"
-    print "======================================================================"
-    line = raw_input ("How should this conflict be resolved? ")
-    if line == "l" or line == "m" or line == "b" or line == "a":
-      return line
-    else:
-      print
-      print "<<< invalid choice '%s' >>>" % line
-      print
-
-class MergeHistory:
-  def __init__ (self):
-    self.master_changes = dict()
-    self.local_changes = dict()
-    self.common_links = dict()
-
-  def add_change_master (self, version, object, change):
-    if not self.master_changes.has_key (object):
-      self.master_changes[object]  = []
-    self.master_changes[object] += [ (version, change) ]
-
-  def add_link_change_master (self, version, change):
-    if change[0] == "l-":
-      change += [ self.common_links[(change[1], change[2])] ]
-    self.add_change_master (version, change[3], change)
-
-  def add_change_local (self, version, object, change):
-    if not self.local_changes.has_key (object):
-      self.local_changes[object]  = []
-    self.local_changes[object] += [ (version, change) ]
-
-  def add_link_change_local (self, version, change):
-    if change[0] == "l-":
-      change += [ self.common_links[(change[1], change[2])] ]
-    self.add_change_local (version, change[3], change)
-
-  def add_original_link (self, link):
-    dir_id = link[0]
-    inode_id = link[1]
-    name = link[2]
-    lkey = (dir_id, name)
-    if not self.common_links.has_key (lkey):
-      self.common_links[lkey] = str (inode_id)
-
-  def show_one (self, k):
-    print "*** Changes for key %s ***" % k
-    print "--- Master ---"
-    if self.master_changes.has_key (k):
-      for entry in self.master_changes[k]:
-        print "%4d   : %s" % (entry[0], "|".join (entry[1]))
-    print "--- Local ---"
-    if self.local_changes.has_key (k):
-      for entry in self.local_changes[k]:
-        print "%4d   : %s" % (entry[0], "|".join (entry[1]))
-
-  def show (self):
-    keys = dict()
-    for k in self.master_changes:
-      keys[k] = True
-    for k in self.local_changes:
-      keys[k] = True
-    for k in keys:
-      self.show_one (k)
-
-  def conflict_keys (self):
-    result = []
-    keys = dict()
-    for k in self.master_changes:
-      keys[k] = True
-    for k in self.local_changes:
-      if keys.has_key (k):
-        result += [ k ]
-    return result
-
-def apply_inode_changes (inode, changes):
-  inode = inode[:]  # copy inode
-  for entry in changes:
-    version = entry[0]
-    change = entry[1]
-    if change[0] == "i!":
-      assert (change[1] == inode[0])
-      for i in range (len (inode)):
-        new_field = change[i + 1]
-        if new_field != '':
-          if isinstance (inode[i], int):
-            inode[i] = int (new_field)
-          else:
-            inode[i] = new_field
-    if change[0] == "i-":
-      assert (change[1] == inode[0])
-      inode = None
-  return inode
-
-def apply_link_changes (links, changes):
-  links = links[:]  # copy links
-  for entry in changes:
-    version = entry[0]
-    change  = entry[1]
-    if change[0] == "l+":
-      links += [ change[1:] ]
-    if change[0] == "l-":
-      new_links = []
-      for l in links:
-        if l[0] == change[1] and l[1] == change[2]:
-          pass
-        else:
-          new_links += [ l ]
-      links = new_links
-  return links
-
-def pretty_date (sec, nsec):
-  return datetime.datetime.fromtimestamp (sec).strftime ("%a, %d %b %Y %H:%M:%S.") + "%09d" % nsec
-
-def pretty_format (inode):
-  pp = []
-  pp += [ ("id", inode[0]) ]
-  pp += [ ("uid", inode[1]) ]
-  pp += [ ("gid", inode[2]) ]
-  pp += [ ("mode", "%o" % inode[3]) ]
-  pp += [ ("type", inode[4]) ]
-  pp += [ ("content", inode[5]) ]
-  pp += [ ("symlink", inode[6]) ]
-  pp += [ ("size", inode[7]) ]
-  pp += [ ("major", inode[8]) ]
-  pp += [ ("minor", inode[9]) ]
-  pp += [ ("nlink", inode[10]) ]
-  pp += [ ("ctime", pretty_date (inode[11], inode[12])) ]
-  pp += [ ("mtime", pretty_date (inode[13], inode[14])) ]
-  return pp
-
-def auto_merge_by_ctime (master_inode, local_inode):
-  print "AUTOMERGE"
-
-  m_sec = master_inode[11]
-  l_sec = local_inode[11]
-
-  if m_sec > l_sec:
-    return "m"
-  if l_sec > m_sec:
-    return "l"
-
-  # same "sec" setting
-  if m_sec > l_sec:
-    return "m"
-  if l_sec > m_sec:
-    return "l"
-
-  m_nsec = master_inode[12]
-  l_nsec = local_inode[12]
-  if m_nsec > l_nsec:
-    return "m"
-  if l_nsec > m_nsec:
-    return "l"
-
-  # same ctime
-  return "m"
-
-def link_filename (c, common_version, dir_id, changes):
-  if dir_id == "0" * 40:
-    return "/"
-
-  links = db_links (c, common_version, dir_id)
-  links = apply_link_changes (links, changes[dir_id])
-  for link in links:
-    return os.path.join (link_filename (c, common_version, link[0], changes), link[1])
-  return links
-
-def update_nlink_delta (nlink_delta, inode, count):
-  if not nlink_delta.has_key (inode):
-    nlink_delta[inode] = 0
-  nlink_delta[inode] += count
-
-def history_merge (c, repo, local_history, remote_history, pull_args):
+def find_common_version (local_history, remote_history):
   common_version = 0
   for v in range (min (len (local_history), len (remote_history))):
     lh = local_history[v]
@@ -442,33 +127,153 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
       common_version = v + 1
     else:
       break
-
   print "merge: last common version:", common_version
-  revert (repo, common_version)
-  print "apply patches:"
+  return common_version
 
-  # EXAMINE master/local history for merge conflicts
-  merge_h = MergeHistory()
+def db_link_inode (c, VERSION, dir_id, name):
+  c.execute ("SELECT inode_id FROM links WHERE dir_id = ? AND name = ? AND ? >= vmin AND ? <= vmax",
+             (dir_id, name, VERSION, VERSION))
+  for row in c:
+    return row[0]
+  raise Exception ("link target for %s/%s not found" % (dir_id, name))
+
+class MergeHistory:
+  def __init__ (self, c, common_version):
+    self.c = c
+    self.common_version = common_version
+    self.inode_changes = dict()
+
+  def inode4change (self, change):
+    if change[0] == "i+" or change[0] == "i-" or change[0] == "i!":
+      return change[1]
+    if change[0] == "l+":
+      return change[3]
+    if change[0] == "l-":
+      # this one depends on the context, since the inode id it belongs to is not
+      # stored within the change itself
+      return db_link_inode (self.c, self.common_version, change[1], change[2])
+    return "???"
+
+  def add_changes (self, version, changes):
+    for change in changes:
+      print ".........", "|".join(change)
+      inode = self.inode4change (change)
+
+      if not self.inode_changes.has_key (inode):
+        self.inode_changes[inode]  = []
+      self.inode_changes[inode] += [ (version, change) ]
+
+  def get_changes_without (self, version, ignore_inode_change):
+    changes = []
+    for inode in self.inode_changes:
+      if not ignore_inode_change.has_key (inode):
+        for (v, change) in self.inode_changes[inode]:
+          if v == version:
+            changes += [ change ]
+    return changes
+
+  def inodes (self):
+    return self.inode_changes.keys()
+
+
+def find_conflicts (mhistory, lhistory):
+  mset = set (mhistory.inodes())
+  lset = set (lhistory.inodes())
+  return list (mset.intersection (lset))
+
+def db_links (c, VERSION, id):
+  c.execute ("SELECT dir_id, name, inode_id FROM links WHERE inode_id = ? AND ? >= vmin AND ? <= vmax",
+             (id, VERSION, VERSION))
+  results = []
+  for row in c:
+    results += [ list (row) ]
+  return results
+
+def restore_inode_links (want_links, have_links):
+  changes = []
+
+  # build dictionaries for links:
+
+  want_dict = dict()
+  for l in want_links:
+    want_dict[(l[0], l[1])] = l
+
+  have_dict = dict()
+  for l in have_links:
+    have_dict[(l[0], l[1])] = l
+
+  for k in have_dict:
+    if not want_dict.has_key (k):
+      del_link = have_dict[k]
+      changes += [ [ "l-", str (del_link[0]), str (del_link[1]) ] ]
+
+  for k in want_dict:
+    if not have_dict.has_key (k):
+      add_link = want_dict[k]
+      changes += [ [ "l+", str (add_link[0]), str (add_link[1]), str (add_link[2]) ] ]
+  return changes
+
+
+################################# MERGE ######################################
+
+def history_merge (c, repo, local_history, remote_history, pull_args):
+  # revert to last common version
+  common_version = find_common_version (local_history, remote_history)
+  revert (repo, common_version)
+
+  # ANALYZE master history
+  master_merge_history = MergeHistory (c, common_version)
 
   for rh in remote_history:   # remote history
     if rh[0] > common_version:
       diff = rh[1]
-      diff_file = os.path.join ("objects", make_object_filename (diff))
-
       changes = parse_diff (load_diff (diff))
-      for change in changes:
-        print "M => ", "|".join (change)
-        if change[0] == "i+" or change[0] == "i!" or change[0] == "i-":
-          merge_h.add_change_master (rh[0], change[1], change)
-        elif change[0] == "l+" or change[0] == "l-" or change[0] == "l!":
-          if change[0] == "l-":
-            c.execute ("SELECT * FROM links WHERE dir_id = ? AND name = ? AND ? >= vmin AND ? <= vmax",
-                       (change[1], change[2], common_version, common_version))
-            for row in c:
-              merge_h.add_original_link (row[2:])
-          merge_h.add_link_change_master (rh[0], change)
-        else:
-          raise Exception ("merge error, unknown change type %s" % change[0])
+      master_merge_history.add_changes (rh[0], changes)
+
+  # ANALYZE local history
+  local_merge_history = MergeHistory (c, common_version)
+
+  for lh in local_history:    # local history
+    if lh[0] > common_version:
+      diff = lh[1]
+      changes = parse_diff (load_diff (diff))
+      local_merge_history.add_changes (lh[0], changes)
+
+  # ASK USER
+  inode_ignore_change = dict()
+  restore_inode = dict()
+
+  print
+  conflicts = find_conflicts (master_merge_history, local_merge_history)
+  for conflict in conflicts:
+    if pull_args.always_local:
+      choice = "l"
+    elif pull_args.always_master:
+      choice = "m"
+    else:
+      while True:
+        print "CONFLICT (%s): %s" % (conflict, printable_name (c, conflict, common_version))
+        print "(m)aster / (l)ocal ? ",
+        line = raw_input ("How should this conflict be resolved? ")
+        if line == "m" or line == "l":
+          choice = line
+          break
+    if choice == "l":
+      print "... local version will be used"
+      restore_inode[conflict] = True
+    elif choice == "m":
+      print "... master version will be used"
+      inode_ignore_change[conflict] = True
+
+  print
+
+  master_version = common_version
+
+  # APPLY master history
+  for rh in remote_history:
+    if rh[0] > common_version:
+      diff = rh[1]
+      diff_file = os.path.join ("objects", make_object_filename (diff))
 
       print "applying patch %s" % diff
       os.system ("xzcat %s > tmp-diff" % diff_file)
@@ -476,193 +281,53 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
       apply (repo, f, diff)
       f.close()
       os.remove ("tmp-diff")
+      master_version = rh[0]
 
-  for lh in local_history:    # local history
-    if lh[0] > common_version:
-      diff = lh[1]
-      diff_file = os.path.join ("objects", make_object_filename (diff))
+  # APPLY extra commit to be able to apply local history without problems
+  new_diff_filename = os.path.join (repo.path, "tmp-merge-diff")
+  new_diff_file = open (new_diff_filename, "w")
 
-      changes = parse_diff (load_diff (diff))
-      for change in changes:
-        print "local => ", "|".join (change)
-        if change[0] == "i+" or change[0] == "i!" or change[0] == "i-":
-          merge_h.add_change_local (lh[0], change[1], change)
-        elif change[0] == "l+" or change[0] == "l-" or change[0] == "l!":
-          if change[0] == "l-":
-            c.execute ("SELECT * FROM links WHERE dir_id = ? AND name = ? AND ? >= vmin AND ? <= vmax",
-                       (change[1], change[2], common_version, common_version))
-            for row in c:
-              merge_h.add_original_link (row[2:])
-          merge_h.add_link_change_local (lh[0], change)
-        else:
-          raise Exception ("merge error, unknown change type %s" % change[0])
-  inode_ignore_change = dict()
-  inode_resurrect = []
-  link_resurrect = []
-  for ck in merge_h.conflict_keys():
-    filename = printable_name (c, ck, common_version)
-    print "INODE CONFLICT: %s" % filename
-    merge_h.show_one (ck)
-    common_inode = list (db_inode (c, common_version, ck))
-    master_inode = apply_inode_changes (common_inode, merge_h.master_changes[ck])
-    local_inode  = apply_inode_changes (common_inode, merge_h.local_changes[ck])
-    common_links = db_links (c, common_version, ck)
-    master_links = apply_link_changes (common_links, merge_h.master_changes[ck])
-    local_links  = apply_link_changes (common_links, merge_h.local_changes[ck])
+  changes = []
+  for inode in restore_inode:
+    changes += restore_inode_links (db_links (c, common_version, inode), db_links (c, master_version, inode))
 
-    #### check link names:
-    common_link_names = []
-    for link in common_links:
-      common_link_names.append (os.path.join (link_filename (c, common_version, link[0], []), link[1]))
-    common_link_names.sort()
+  for change in changes:
+    # write change to diff
+    s = ""
+    for change_field in change:
+      s += change_field + "\0"
+    new_diff_file.write (s)
+    print "MERGED> ", "|".join (change)
+  new_diff_file.close()
 
-    local_link_names = []
-    for link in local_links:
-      local_link_names.append (os.path.join (link_filename (c, common_version, link[0], merge_h.local_changes), link[1]))
-    local_link_names.sort()
+  print "applying patch tmp"
+  new_diff_file = open ("tmp-merge-diff")
+  apply (repo, new_diff_file)
+  new_diff_file.close()
 
-    master_link_names = []
-    for link in master_links:
-      master_link_names.append (os.path.join (link_filename (c, common_version, link[0], merge_h.master_changes), link[1]))
-    master_link_names.sort()
-
-    if local_link_names != master_link_names:
-      if pull_args.always_local:
-        choice = "l"
-      elif pull_args.always_master:
-        choice = "m"
-      else:
-        choice = ask_user_rename (common_link_names, master_link_names, local_link_names)
-
-    ####
-    if master_inode is None or local_inode is None:
-      if pull_args.always_local:
-        choice = "l"
-      elif pull_args.always_master:
-        choice = "m"
-      else:
-        choice = ask_user_del (repo, master_inode, local_inode, filename)
-      if choice == "l":
-        print "... local version will be used"
-        if master_inode is None:
-          inode_resurrect += [ common_inode ]
-          link_resurrect += common_links
-      elif choice == "m":
-        print "... master version will be used"
-        inode_ignore_change[ck] = True
-    else:
-      c_fmt = pretty_format (common_inode)
-      m_fmt = pretty_format (master_inode)
-      l_fmt = pretty_format (local_inode)
-      conf_field_set = set()
-      for i in range (len (c_fmt)):
-        if c_fmt[i] != m_fmt[i]:
-          conf_field_set.add (c_fmt[i][0])
-        if c_fmt[i] != l_fmt[i]:
-          conf_field_set.add (c_fmt[i][0])
-      if conf_field_set.issubset (["nlink", "mtime", "ctime"]):
-        choice = auto_merge_by_ctime (master_inode, local_inode)
-      else:
-        if pull_args.always_local:
-          choice = "l"
-        elif pull_args.always_master:
-          choice = "m"
-        else:
-          choice = ask_user (repo, master_inode[5], local_inode[5], c_fmt, m_fmt, l_fmt, filename)
-      if choice == "l":
-        print "... local version will be used"
-      elif choice == "m":
-        print "... master version will be used"
-        inode_ignore_change[ck] = True
-
-  first_local_diff = True
+  # APPLY modified local history
   for lh in local_history:
     if lh[0] > common_version:
-
-      # determine current db version
-      VERSION = 1
-      c.execute ('''SELECT version FROM history''')
-      for row in c:
-        VERSION = max (row[0], VERSION)
-
       # adapt diff to get rid of conflicts
-      diff = lh[1]
-      diff_file = os.path.join ("objects", make_object_filename (diff))
-
       new_diff_filename = os.path.join (repo.path, "tmp-merge-diff")
       new_diff_file = open (new_diff_filename, "w")
 
-      nlink_delta = dict()
-      changes = parse_diff (load_diff (diff))
-
-      if first_local_diff:
-        # resurrect deleted objects that should not have been deleted
-        for inode in inode_resurrect:
-          changes = [ map (str, [ "i+" ] + inode) ] + changes
-        for link in link_resurrect:
-          changes = [ map (str, [ "l+" ] + link) ] + changes
-        for change in changes:
-          print "::::", "|".join (change)
-        first_local_diff = False
+      changes = local_merge_history.get_changes_without (lh[0], inode_ignore_change)
 
       for change in changes:
-        ignore_change = False
-        if change[0] == "l+":
-          if db_contains_link (c, VERSION, change[1], change[2]):
-            print "LINK CONFLICT"
-            suffix = 1
-            while db_contains_link (c, VERSION, change[1], change[2] + "~%d" % suffix):
-              suffix += 1
-            change[2] = change[2] + "~%d" % suffix
-        if (change[0] == "i!" or change[0] == "i-" or change[0] == "i+") and inode_ignore_change.has_key (change[1]):
-          ignore_change = True
-        if not ignore_change:
-          # gather information to fix nlink fields
-          if change[0] == "l+":
-            update_nlink_delta (nlink_delta, change[3], 1)
-          if change[0] == "l-":
-            old = db_link_inode (c, VERSION, change[1], change[2])
-            update_nlink_delta (nlink_delta, old, -1)
-          if change[0] == "l!":
-            old = db_link_inode (c, VERSION, change[1], change[2])
-            update_nlink_delta (nlink_delta, old, -1)
-            update_nlink_delta (nlink_delta, change[3], 1)
-          # write change to diff
-          print " => ", "|".join (change)
-          s = ""
-          for change_field in change:
-            s += change_field + "\0"
-          new_diff_file.write (s)
-
-      # fix nlink fields (which may be inaccurate due to master history / local history merge)
-      for inode in nlink_delta:
-        nlink = (nlink_delta[inode] + db_inode_nlink (c, VERSION, inode))
-        if nlink != 0:  # deleted inodes can no longer be modified, so we assume the inode is gone now
-          change = [ "i!", inode ] + [ "" ] * 14
-          change[11] = "%d" % nlink
-
-          # the resulting diff is no longer normalized (i.e. contains more than one inode change
-          # per inode), but bfapply.py will re-normalize it anyway
-          s = ""
-          for change_field in change:
-            s += change_field + "\0"
-          new_diff_file.write (s)
-
+        # write change to diff
+        s = ""
+        for change_field in change:
+          s += change_field + "\0"
+        new_diff_file.write (s)
+        print "MERGED> ", "|".join (change)
       new_diff_file.close()
 
       # apply modified diff
-      print "applying patch %s" % diff
-
-      new_diff_file = open ("tmp-merge-diff")
-      changes = parse_diff (new_diff_file.read())
-      new_diff_file.close()
-      for change in changes:
-        print "L => ", "|".join (change)
-
+      print "applying patch tmp-merge-diff/%d" % lh[0]
       new_diff_file = open ("tmp-merge-diff")
       apply (repo, new_diff_file)
       new_diff_file.close()
-      #os.system ("bfapply.py < %s" % new_diff_filename)
 
 def pull (repo, args, server = True):
   parser = argparse.ArgumentParser (prog='bfsync2 pull')
