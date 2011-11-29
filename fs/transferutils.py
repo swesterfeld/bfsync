@@ -181,6 +181,13 @@ def find_conflicts (mhistory, lhistory):
   lset = set (lhistory.inodes())
   return list (mset.intersection (lset))
 
+def db_inode (c, VERSION, id):
+  c.execute ("SELECT * FROM inodes WHERE id = ? AND ? >= vmin AND ? <= vmax",
+             (id, VERSION, VERSION))
+  for row in c:
+    return list (row[2:])
+  return False
+
 def db_links (c, VERSION, id):
   c.execute ("SELECT dir_id, name, inode_id FROM links WHERE inode_id = ? AND ? >= vmin AND ? <= vmax",
              (id, VERSION, VERSION))
@@ -289,6 +296,13 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
 
   changes = []
   for inode in restore_inode:
+    common_inode = db_inode (c, common_version, inode)
+    if db_inode (c, master_version, inode):
+      # inode still exists: just undo changes
+      changes += [ map (str, [ "i!" ] + common_inode) ]
+    else:
+      # inode is gone: recreate it to allow applying local changes
+      changes += [ map (str, [ "i+" ] + common_inode) ]
     changes += restore_inode_links (db_links (c, common_version, inode), db_links (c, master_version, inode))
 
   for change in changes:
