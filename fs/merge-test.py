@@ -450,6 +450,32 @@ tests += [
   ( mv2dir, "mv2dir", "move common file into two different subdirs")
 ]
 
+def relink (a, b):
+  # create f, g, h in both repos
+  a.runx ("echo 'file f' > f")
+  a.runx ("echo 'file g' > g")
+  a.runx ("echo 'file h' > h")
+  a.commit()
+  sync_repos (a, b)
+  a.runx ("mv g f")
+  a.commit()
+  b.runx ("mv h f")
+  b.commit()
+  sync_repos (a, b)
+  print "#########################################################################"
+  print "after merge:"
+  print "#########################################################################"
+  print "# REPO A:"
+  a.runx ("ls -l")
+  a.runx ("cat f")
+  print "# REPO B:"
+  b.runx ("ls -l")
+  b.runx ("cat f")
+
+tests += [
+  ( relink, "relink", "relink f to either g or h")
+]
+
 def setup_initial():
   if os.path.exists ("merge-test"):
     os.system ("rm -rf merge-test")
