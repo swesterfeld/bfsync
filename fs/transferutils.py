@@ -155,14 +155,25 @@ class MergeHistory:
       return db_link_inode (self.c, self.common_version, change[1], change[2])
     return "???"
 
+  def add_1_change (self, version, change):
+    inode = self.inode4change (change)
+
+    if not self.inode_changes.has_key (inode):
+      self.inode_changes[inode]  = []
+    self.inode_changes[inode] += [ (version, change) ]
+
   def add_changes (self, version, changes):
     for change in changes:
       print self.name, ".........", "|".join(change)
-      inode = self.inode4change (change)
-
-      if not self.inode_changes.has_key (inode):
-        self.inode_changes[inode]  = []
-      self.inode_changes[inode] += [ (version, change) ]
+      if change[0] == "l!":
+        change1 = [ "l-", change[1], change[2] ]
+        change2 = [ "l+", change[1], change[2], change[3] ]
+        print self.name, " 1 .........", "|".join (change1)
+        print self.name, " 2 .........", "|".join (change2)
+        self.add_1_change (version, change1)
+        self.add_1_change (version, change2)
+      else:
+        self.add_1_change (version, change)
 
   def get_changes_without (self, version, ignore_inode_change):
     changes = []
@@ -171,6 +182,12 @@ class MergeHistory:
         for (v, change) in self.inode_changes[inode]:
           if v == version:
             changes += [ change ]
+    return changes
+
+  def show_changes (self, inode):
+    changes = []
+    for (v, change) in self.inode_changes[inode]:
+      print v, "|".join (change)
     return changes
 
   def inodes (self):
@@ -261,8 +278,14 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
     else:
       while True:
         print "CONFLICT (%s): %s" % (conflict, printable_name (c, conflict, common_version))
-        print "(m)aster / (l)ocal ? ",
+        print "(m)aster / (l)ocal / (s)how ? ",
         line = raw_input ("How should this conflict be resolved? ")
+        if line == "s":
+          print "=== MASTER ==="
+          master_merge_history.show_changes (conflict)
+          print "=== LOCAL ==="
+          local_merge_history.show_changes (conflict)
+          print "=============="
         if line == "m" or line == "l":
           choice = line
           break
