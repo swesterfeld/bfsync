@@ -2,6 +2,7 @@ from ServerConn import ServerConn
 from StatusLine import status_line
 from diffutils import diff
 from utils import *
+from xzutils import xz
 from HashCache import hash_cache
 
 import os
@@ -22,17 +23,6 @@ class NoServerConn:
   def close (self):
     pass
 
-# the manpage says that levels > "-6" only improve compression ratio if the file
-# is bigger than 8M, 16M, 32M.
-def xz_level_for_file (filename):
-  size = os.path.getsize (filename)
-  if (size <= 8 * 1024 * 1024):
-    return "-6"
-  if (size <= 16 * 1024 * 1024):
-    return "-7"
-  if (size <= 32 * 1024 * 1024):
-    return "-8"
-  return "-9"
 
 def commit (repo, expected_diff = None, expected_diff_hash = None, server = True):
   conn = repo.conn
@@ -102,7 +92,7 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
     if not validate_object (object_name, hash):
       raise Exception ("commit called with expected_diff argument, but object with hash %s doesn't validate" % hash)
   else:
-    os.system ("xz %s %s" % (xz_level_for_file (diff_filename), diff_filename))
+    xz (diff_filename)
     hash = move_file_to_objects (repo, diff_filename + ".xz")
 
   status_line.update ("done.")
