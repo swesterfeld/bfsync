@@ -56,3 +56,5 @@ Performance:
 * try different page sizes
 * change table sorting order to inode id
 * use infinity as vmax, so that committing doesn't require an update
+* change protocol: it should send a list of required objects, and
+  send back the objects that are available on the remote host
