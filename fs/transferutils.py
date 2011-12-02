@@ -207,6 +207,13 @@ def db_inode (c, VERSION, id):
     return list (row[2:])
   return False
 
+def db_contains_link (c, VERSION, dir_id, name):
+  c.execute ("SELECT * FROM links WHERE dir_id = ? AND name = ? AND ? >= vmin AND ? <= vmax",
+             (dir_id, name, VERSION, VERSION))
+  for row in c:
+    return True
+  return False
+
 def db_links (c, VERSION, id):
   c.execute ("SELECT dir_id, name, inode_id FROM links WHERE inode_id = ? AND ? >= vmin AND ? <= vmax",
              (id, VERSION, VERSION))
@@ -339,11 +346,24 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
   # APPLY modified local history
   for lh in local_history:
     if lh[0] > common_version:
+      # determine current db version
+      VERSION = 1
+      c.execute ('''SELECT version FROM history''')
+      for row in c:
+        VERSION = max (row[0], VERSION)
+
       # adapt diff to get rid of conflicts
       new_diff = ""
       changes = local_merge_history.get_changes_without (lh[0], inode_ignore_change)
 
       for change in changes:
+        if change[0] == "l+":
+          if db_contains_link (c, VERSION, change[1], change[2]):
+            print "LINK CONFLICT"
+            suffix = 1
+            while db_contains_link (c, VERSION, change[1], change[2] + "~%d" % suffix):
+              suffix += 1
+            change[2] = change[2] + "~%d" % suffix
         # write change to diff
         s = ""
         for change_field in change:
