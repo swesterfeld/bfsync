@@ -381,8 +381,9 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
 
   new_diff = diff_rewriter.rewrite (changes)
 
-  print "applying patch tmp"
-  apply (repo, new_diff)
+  if new_diff != "":
+    print "applying patch tmp"
+    apply (repo, new_diff)
 
   # APPLY modified local history
 
