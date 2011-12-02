@@ -5,21 +5,21 @@ import cPickle
 from TransferList import TransferList
 from HashCache import hash_cache
 from utils import *
+from stat import *
 
-def remote_ls (repo):
+def remote_ls (repo, hashes):
   file_list = []
   object_dir = os.path.join (repo.path, "objects")
-  for dir, dirs, files in os.walk (object_dir):
-    for f in files:
-      full_name = os.path.join (dir, f)
-      if os.path.isfile (full_name):
-        name_hash = os.path.basename (dir) + f
-        real_hash = hash_cache.compute_hash (full_name)
-        if (name_hash == real_hash):
-          remote_file = RemoteFile()
-          remote_file.hash = real_hash
-          remote_file.size = os.path.getsize (full_name)
-          file_list += [ remote_file ]
+  for hash in hashes:
+    full_name = os.path.join (object_dir, make_object_filename (hash))
+    st = os.stat (full_name)
+    if S_ISREG (st.st_mode):
+      real_hash = hash_cache.compute_hash (full_name)
+      if (hash == real_hash):
+        remote_file = RemoteFile()
+        remote_file.hash = real_hash
+        remote_file.size = st.st_size
+        file_list += [ remote_file ]
   return file_list
 
 def remote_send():

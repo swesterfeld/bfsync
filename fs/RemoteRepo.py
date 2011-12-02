@@ -52,11 +52,14 @@ class RemoteRepo:
       result_len = int (self.remote_p.stdout.readline())
       return cPickle.loads (self.remote_p.stdout.read (result_len))
 
-  def ls (self):
+  def ls (self, need_hashes):
     if self.conn == LOCAL:
-      return remote_ls (self.repo)
+      return remote_ls (self.repo, need_hashes)
     else:
       self.remote_p.stdin.write ("ls\n")
+      need_hashes_str = cPickle.dumps (need_hashes)
+      self.remote_p.stdin.write ("%s\n%s" % (len (need_hashes_str), need_hashes_str))
+      self.remote_p.stdin.flush()
       result_len = int (self.remote_p.stdout.readline())
       return cPickle.loads (self.remote_p.stdout.read (result_len))
 

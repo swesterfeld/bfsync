@@ -14,13 +14,16 @@ import random
 def get_remote_objects (remote_repo, transfer_objs):
   # make a list of hashes that we need
   need_hash = dict()
+  need_hash_list = []
   for thash in transfer_objs:
-    dest_file = os.path.join ("objects", make_object_filename (thash))
-    if not validate_object (dest_file, thash):
-      need_hash[thash] = True
+    if not need_hash.has_key (thash):
+      dest_file = os.path.join ("objects", make_object_filename (thash))
+      if not validate_object (dest_file, thash):
+        need_hash[thash] = True
+        need_hash_list.append (thash)
 
   # check for objects in remote repo
-  remote_list = remote_repo.ls()
+  remote_list = remote_repo.ls (need_hash_list)
   tlist = TransferList()
   for rfile in remote_list:
     if need_hash.has_key (rfile.hash):
