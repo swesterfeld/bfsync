@@ -6,15 +6,6 @@
 
 ==============================================================================================
 
-BFSYNC2.1:
-
-* don't use git
-* linear commit history; a commit always has a parent
-* commits are stored as regular sha-files
-* commits contain diffs against previous commits
-  - deleted files/dirs
-  - new files/dirs with stat info
-
 ENCRYPTED MODE:
 * files are stored as continuous stream of encrypted data
 * index is stored as pointers into file stream
@@ -22,10 +13,6 @@ ENCRYPTED MODE:
 * passphrase-derived key
 * sha-256 checksum for each block at the beginning
   -> partial writes become invisible
-* store git upstream repo as encrypted contents in a git repository (file-by-file encryption)
-* extract crypted repo before commit
-* push changes
-* reencrypt repo after commit
 
 ==============================================================================================
 
