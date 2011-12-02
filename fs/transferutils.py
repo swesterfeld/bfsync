@@ -198,7 +198,7 @@ class MergeHistory:
 
   def show_changes (self, inode):
     changes = []
-    for (v, change) in self.inode_changes[inode]:
+    for (position, v, change) in self.inode_changes[inode]:
       print v, "|".join (change)
     return changes
 
@@ -257,6 +257,42 @@ def restore_inode_links (want_links, have_links):
       changes += [ [ "l+", str (add_link[0]), str (add_link[1]), str (add_link[2]) ] ]
   return changes
 
+class DiffRewriter:
+  def __init__ (self, c):
+    self.c = c
+    self.link_rewrite = dict()
+
+  def rewrite (self, changes):
+    # determine current db version
+    VERSION = 1
+    self.c.execute ('''SELECT version FROM history''')
+    for row in self.c:
+      VERSION = max (row[0], VERSION)
+
+    new_diff = ""
+    for change in changes:
+      if change[0] == "l+":
+        if db_contains_link (self.c, VERSION, change[1], change[2]):
+          print "LINK CONFLICT"
+          suffix = 1
+          while db_contains_link (self.c, VERSION, change[1], change[2] + "~%d" % suffix):
+            suffix += 1
+          lrkey = (change[1], change[2])
+          self.link_rewrite[lrkey] = change[2] + "~%d" % suffix
+      if change[0] == "l+" or change[0] == "l-":
+        lrkey = (change[1], change[2])
+        if self.link_rewrite.has_key (lrkey):
+          change[2] = self.link_rewrite[lrkey]
+      if change[0] == "l!":
+        raise Exception ("unable to deal with l! changes during merge/local history apply")
+      # write change to diff
+      s = ""
+      for change_field in change:
+        s += change_field + "\0"
+      new_diff += s
+      print "MERGED%d> " % VERSION, "|".join (change)
+
+    return new_diff
 
 ################################# MERGE ######################################
 
@@ -330,7 +366,7 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
       master_version = rh[0]
 
   # APPLY extra commit to be able to apply local history without problems
-  new_diff = ""
+  diff_rewriter = DiffRewriter (c)
 
   changes = []
   for inode in restore_inode:
@@ -343,53 +379,19 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
       changes += [ map (str, [ "i+" ] + common_inode) ]
     changes += restore_inode_links (db_links (c, common_version, inode), db_links (c, master_version, inode))
 
-  for change in changes:
-    # write change to diff
-    s = ""
-    for change_field in change:
-      s += change_field + "\0"
-    new_diff += s
-    print "MERGED> ", "|".join (change)
+  new_diff = diff_rewriter.rewrite (changes)
 
   print "applying patch tmp"
   apply (repo, new_diff)
 
   # APPLY modified local history
-  link_rewrite = dict()
+
   for lh in local_history:
     if lh[0] > common_version:
-      # determine current db version
-      VERSION = 1
-      c.execute ('''SELECT version FROM history''')
-      for row in c:
-        VERSION = max (row[0], VERSION)
-
       # adapt diff to get rid of conflicts
-      new_diff = ""
       changes = local_merge_history.get_changes_without (lh[0], inode_ignore_change)
 
-      for change in changes:
-        if change[0] == "l+":
-          if db_contains_link (c, VERSION, change[1], change[2]):
-            print "LINK CONFLICT"
-            suffix = 1
-            while db_contains_link (c, VERSION, change[1], change[2] + "~%d" % suffix):
-              suffix += 1
-            lrkey = (change[1], change[2])
-            link_rewrite[lrkey] = change[2] + "~%d" % suffix
-        if change[0] == "l+" or change[0] == "l-":
-          lrkey = (change[1], change[2])
-          if link_rewrite.has_key (lrkey):
-            change[2] = link_rewrite[lrkey]
-        if change[0] == "l!":
-          raise Exception ("unable to deal with l! changes during merge/local history apply")
-        # write change to diff
-        s = ""
-        for change_field in change:
-          s += change_field + "\0"
-        new_diff += s
-        print "MERGED%d> " % VERSION, "|".join (change)
-
+      new_diff = diff_rewriter.rewrite (changes)
       # apply modified diff
       print "applying patch tmp-merge-diff/%d" % lh[0]
       apply (repo, new_diff)
