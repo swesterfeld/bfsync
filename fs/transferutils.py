@@ -349,6 +349,7 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
   apply (repo, new_diff)
 
   # APPLY modified local history
+  link_rewrite = dict()
   for lh in local_history:
     if lh[0] > common_version:
       # determine current db version
@@ -368,7 +369,14 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
             suffix = 1
             while db_contains_link (c, VERSION, change[1], change[2] + "~%d" % suffix):
               suffix += 1
-            change[2] = change[2] + "~%d" % suffix
+            lrkey = (change[1], change[2])
+            link_rewrite[lrkey] = change[2] + "~%d" % suffix
+        if change[0] == "l+" or change[0] == "l-":
+          lrkey = (change[1], change[2])
+          if link_rewrite.has_key (lrkey):
+            change[2] = link_rewrite[lrkey]
+        if change[0] == "l!":
+          raise Exception ("unable to deal with l! changes during merge/local history apply")
         # write change to diff
         s = ""
         for change_field in change:
