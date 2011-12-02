@@ -90,6 +90,8 @@ def sync_repos (a, b):
     b.pull (["--always-master"])
   elif b.merge_mode == "l":
     b.pull (["--always-local"])
+  elif b.merge_mode == "b":
+    b.pull (["--always-both"])
   else:
     b.pull ([])           # interactive
   b.push()
@@ -509,6 +511,38 @@ tests += [
   ( link_rewrite_rm, "link-rewrite-rm", "delete link that needed link rewriting")
 ]
 
+def mv3 (a, b):
+  a.runx ("echo 'file x created in a' > x")
+  a.commit()
+  sync_repos (a, b)
+
+  b.runx ("ln x lb")
+  b.commit()
+  b.runx ("mv x bx1")
+  b.commit()
+  b.runx ("mv bx1 bx2")
+  b.commit()
+
+  a.runx ("ln x la")
+  a.commit()
+  a.runx ("mv x ax1")
+  a.commit()
+  a.runx ("mv ax1 ax2")
+  a.commit()
+  a.push()    # ensure that a is the version in the master history
+  sync_repos (a, b)
+  print "#########################################################################"
+  print "after merge:"
+  print "#########################################################################"
+  print "# REPO A:"
+  a.run ("ls -l")
+  print "# REPO B:"
+  b.run ("ls -l")
+
+tests += [
+  ( mv3, "mv3", "multiple renames for the same file")
+]
+
 def setup_initial():
   if os.path.exists ("merge-test"):
     os.system ("rm -rf merge-test")
@@ -547,7 +581,7 @@ def main():
       old_cwd = os.getcwd()
       results = []
       for t in tests:
-        for merge_mode in [ "m", "l" ]:
+        for merge_mode in [ "m", "l", "b" ]:
           setup()
           a = Repo ("a", merge_mode)
           b = Repo ("b", merge_mode)
