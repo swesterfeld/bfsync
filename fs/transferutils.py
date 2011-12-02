@@ -145,6 +145,7 @@ class MergeHistory:
     self.inode_changes = dict()
     self.name = name
     self.new_links = dict()
+    self.position = 1               # for preserving change order
 
   def inode4change (self, change):
     if change[0] == "i+" or change[0] == "i-" or change[0] == "i!":
@@ -166,7 +167,8 @@ class MergeHistory:
 
     if not self.inode_changes.has_key (inode):
       self.inode_changes[inode]  = []
-    self.inode_changes[inode] += [ (version, change) ]
+    self.inode_changes[inode] += [ (self.position, version, change) ]
+    self.position += 1
 
   def add_changes (self, version, changes):
     for change in changes:
@@ -182,12 +184,16 @@ class MergeHistory:
         self.add_1_change (version, change)
 
   def get_changes_without (self, version, ignore_inode_change):
-    changes = []
+    pchanges = []
     for inode in self.inode_changes:
       if not ignore_inode_change.has_key (inode):
-        for (v, change) in self.inode_changes[inode]:
+        for (position, v, change) in self.inode_changes[inode]:
           if v == version:
-            changes += [ change ]
+            pchanges += [ (position, change) ]
+
+    # preserve change order
+    pchanges.sort (key = lambda x: x[0])
+    changes = map (lambda x: x[1], pchanges)
     return changes
 
   def show_changes (self, inode):
@@ -382,7 +388,7 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
         for change_field in change:
           s += change_field + "\0"
         new_diff += s
-        print "MERGED> ", "|".join (change)
+        print "MERGED%d> " % VERSION, "|".join (change)
 
       # apply modified diff
       print "applying patch tmp-merge-diff/%d" % lh[0]
