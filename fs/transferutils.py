@@ -285,6 +285,8 @@ class DiffRewriter:
       if change[0] == "l+":
         if self.subst.has_key (change[3]):
           change[3] = self.subst[change[3]]
+        if self.subst.has_key (change[1]):
+          change[1] = self.subst[change[1]]
         if db_contains_link (self.c, VERSION, change[1], change[2]):
           print "LINK CONFLICT"
           suffix = 1

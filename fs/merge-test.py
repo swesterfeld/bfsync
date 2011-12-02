@@ -544,6 +544,30 @@ tests += [
   ( mv3, "mv3", "multiple renames for the same file")
 ]
 
+def subdir_rm (a, b):
+  a.runx ("mkdir dir")
+  a.commit()
+  sync_repos (a, b)
+
+  b.runx ("echo data > dir/data")
+  b.commit()
+  a.runx ("rm -rf dir")
+  a.commit()
+
+  a.push()    # ensure that a is the version in the master history
+  sync_repos (a, b)
+  print "#########################################################################"
+  print "after merge:"
+  print "#########################################################################"
+  print "# REPO A:"
+  a.run ("ls -l")
+  print "# REPO B:"
+  b.run ("ls -l")
+
+tests += [
+  ( subdir_rm, "subdir-rm", "change a file that exists in a subdir; rm -rf subdir")
+]
+
 def setup_initial():
   if os.path.exists ("merge-test"):
     os.system ("rm -rf merge-test")
