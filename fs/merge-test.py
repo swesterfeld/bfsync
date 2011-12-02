@@ -66,6 +66,18 @@ class Repo:
     pull (self.repo, args)
     os.chdir (old_cwd)
 
+  def check_integrity (self):
+    old_cwd = os.getcwd()
+    os.chdir (self.repo.path)
+    success = os.system ("bfsync2 debug-integrity >/dev/null") == 0
+    if not success:
+      print
+      os.system ("bfsync2 debug-integrity") == 0
+      print
+    os.chdir (old_cwd)
+    if not success:
+      raise Exception ("db integrity check failed")
+
   def close (self):
     self.repo.conn.close()
     self.repo = None
@@ -513,8 +525,8 @@ def main():
     elif sys.argv[1] == "all":
       old_cwd = os.getcwd()
       results = []
-      for merge_mode in [ "m", "l" ]:
-        for t in tests:
+      for t in tests:
+        for merge_mode in [ "m", "l" ]:
           setup()
           a = Repo ("a", merge_mode)
           b = Repo ("b", merge_mode)
@@ -523,6 +535,8 @@ def main():
           print "==================================================================="
           try:
             t[0] (a, b)
+            a.check_integrity()
+            b.check_integrity()
           except Exception, e:
             results += [ (t[1] + " / merge=%s" % merge_mode, "FAIL", "%s" % e) ]
           else:
@@ -546,6 +560,8 @@ def main():
           print "Running test: %s\n -> %s" % (t[1], t[2])
           print "==================================================================="
           t[0] (a, b)
+          a.check_integrity()
+          b.check_integrity()
     sys.exit (0)
   print
   print "Supported merge tests:"
