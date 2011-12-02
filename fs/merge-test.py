@@ -488,6 +488,27 @@ tests += [
   ( relink, "relink", "relink f to either g or h")
 ]
 
+def link_rewrite_rm (a, b):
+  a.runx ("echo 'file x created in a' > x")
+  a.commit()
+  b.runx ("echo 'file x created in b' > x")
+  b.commit()
+  b.runx ("rm x")
+  b.commit()
+  a.push()    # ensure that a is the version in the master history
+  sync_repos (a, b)
+  print "#########################################################################"
+  print "after merge:"
+  print "#########################################################################"
+  print "# REPO A:"
+  a.run ("ls -l")
+  print "# REPO B:"
+  b.run ("ls -l")
+
+tests += [
+  ( link_rewrite_rm, "link-rewrite-rm", "delete link that needed link rewriting")
+]
+
 def setup_initial():
   if os.path.exists ("merge-test"):
     os.system ("rm -rf merge-test")

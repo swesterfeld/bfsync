@@ -144,16 +144,21 @@ class MergeHistory:
     self.common_version = common_version
     self.inode_changes = dict()
     self.name = name
+    self.new_links = dict()
 
   def inode4change (self, change):
     if change[0] == "i+" or change[0] == "i-" or change[0] == "i!":
       return change[1]
     if change[0] == "l+":
+      self.new_links[(change[1], change[2])] = change[3]
       return change[3]
     if change[0] == "l-":
       # this one depends on the context, since the inode id it belongs to is not
       # stored within the change itself
-      return db_link_inode (self.c, self.common_version, change[1], change[2])
+      if self.new_links.has_key ((change[1], change[2])):
+        return self.new_links [(change[1], change[2])]
+      else:
+        return db_link_inode (self.c, self.common_version, change[1], change[2])
     return "???"
 
   def add_1_change (self, version, change):
