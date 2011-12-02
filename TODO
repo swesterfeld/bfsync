@@ -56,3 +56,4 @@ MERGE:
 * better information for the user
   - change logs
   - inode values
+* support aborting the merge
