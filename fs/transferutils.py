@@ -308,16 +308,11 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
       diff_file = os.path.join ("objects", make_object_filename (diff))
 
       print "applying patch %s" % diff
-      os.system ("xzcat %s > tmp-diff" % diff_file)
-      f = open ("tmp-diff", "r")
-      apply (repo, f, diff)
-      f.close()
-      os.remove ("tmp-diff")
+      apply (repo, xzcat (diff_file), diff)
       master_version = rh[0]
 
   # APPLY extra commit to be able to apply local history without problems
-  new_diff_filename = os.path.join (repo.path, "tmp-merge-diff")
-  new_diff_file = open (new_diff_filename, "w")
+  new_diff = ""
 
   changes = []
   for inode in restore_inode:
@@ -335,22 +330,17 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
     s = ""
     for change_field in change:
       s += change_field + "\0"
-    new_diff_file.write (s)
+    new_diff += s
     print "MERGED> ", "|".join (change)
-  new_diff_file.close()
 
   print "applying patch tmp"
-  new_diff_file = open ("tmp-merge-diff")
-  apply (repo, new_diff_file)
-  new_diff_file.close()
+  apply (repo, new_diff)
 
   # APPLY modified local history
   for lh in local_history:
     if lh[0] > common_version:
       # adapt diff to get rid of conflicts
-      new_diff_filename = os.path.join (repo.path, "tmp-merge-diff")
-      new_diff_file = open (new_diff_filename, "w")
-
+      new_diff = ""
       changes = local_merge_history.get_changes_without (lh[0], inode_ignore_change)
 
       for change in changes:
@@ -358,15 +348,12 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
         s = ""
         for change_field in change:
           s += change_field + "\0"
-        new_diff_file.write (s)
+        new_diff += s
         print "MERGED> ", "|".join (change)
-      new_diff_file.close()
 
       # apply modified diff
       print "applying patch tmp-merge-diff/%d" % lh[0]
-      new_diff_file = open ("tmp-merge-diff")
-      apply (repo, new_diff_file)
-      new_diff_file.close()
+      apply (repo, new_diff)
 
 def pull (repo, args, server = True):
   parser = argparse.ArgumentParser (prog='bfsync2 pull')
@@ -429,10 +416,6 @@ def pull (repo, args, server = True):
     for diff in ff_apply:
       diff_file = os.path.join ("objects", make_object_filename (diff))
       print "applying patch %s" % diff
-      os.system ("xzcat %s > tmp-diff" % diff_file)
-      f = open ("tmp-diff", "r")
-      apply (repo, f, diff, server = server)
-      f.close()
-      os.remove ("tmp-diff")
+      apply (repo, xzcat (diff_file), diff, server = server)
   else:
     history_merge (c, repo, local_history, remote_history, pull_args)

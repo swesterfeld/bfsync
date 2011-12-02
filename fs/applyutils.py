@@ -90,8 +90,7 @@ class ApplyTool:
                                                   ?, ?)""", tuple (row))
 
 
-def apply (repo, diff_file, expected_hash = None, server = True):
-  diff = diff_file.read()
+def apply (repo, diff, expected_hash = None, server = True):
   changes = parse_diff (diff)
   conn = repo.conn
 

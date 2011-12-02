@@ -37,7 +37,6 @@ import datetime
 from utils import *
 from dbutils import *
 from diffutils import diff
-from applyutils import apply
 from commitutils import commit, revert
 from remoteutils import *
 from TransferList import TransferList, TransferFile
