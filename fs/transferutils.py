@@ -5,6 +5,7 @@ import sys
 from utils import *
 from applyutils import apply
 from commitutils import revert
+from xzutils import xzcat
 import argparse
 import subprocess
 import datetime
@@ -110,7 +111,7 @@ def push (repo, urls):
 
 def load_diff (hash):
   obj_name = os.path.join ("objects", make_object_filename (hash))
-  diff = subprocess.Popen(["xzcat", obj_name], stdout=subprocess.PIPE).communicate()[0]
+  diff = xzcat (obj_name)
   return diff
 
 ################################# MERGE ######################################

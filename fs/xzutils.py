@@ -21,8 +21,6 @@ def xz_compressor_for_file (filename):
     return compressor9
 
 def xz (filename):
-  #os.system ("xz -6 %s" % filename)
-  #return
   compressor = xz_compressor_for_file (filename)
 
   f = open (filename, "r")
@@ -36,3 +34,10 @@ def xz (filename):
   os.remove (filename)
 
   compressor.reset()
+
+def xzcat (filename):
+  f = open (filename, "r")
+  xz_data = f.read()
+  f.close()
+
+  return lzma.decompress (xz_data)

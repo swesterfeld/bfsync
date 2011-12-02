@@ -4,10 +4,11 @@ import sys
 import os
 import subprocess
 from utils import *
+from xzutils import xzcat
 
 if len (sys.argv) == 2:
   obj_name = os.path.join (find_repo_dir(), "objects", make_object_filename (sys.argv[1]))
-  diff = subprocess.Popen(["xzcat", obj_name], stdout=subprocess.PIPE).communicate()[0]
+  diff = xzcat (obj_name)
 else:
   diff = sys.stdin.read()
 
