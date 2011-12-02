@@ -179,6 +179,25 @@ def cmd_debug_integrity():
           version, id, name, os.path.join (printable_name (c, id, version), name))
     fail = True
 
+  c.execute ('''SELECT vmin, vmax, id, nlink FROM inodes''')
+  check_links = []
+  for row in c:
+    vmin = int (row[0])
+    vmax = int (row[1])
+    version = vmin
+    while version <= vmax:
+      check_links += [ (version, row[2], row[3]) ]
+      version += 1
+  for version, id, nlink in check_links:
+    for row in c.execute ('''SELECT COUNT (*) FROM links WHERE inode_id = ? AND ? >= vmin AND ? <= vmax''',
+                         (id, version, version)):
+      have_nlink = row[0]
+    if id == "0"*40:
+      have_nlink += 1
+    if nlink != have_nlink:
+      print "error: nlink field for inode id %s is %d, should be %d" % (id, nlink, have_nlink)
+      fail = True
+
   c.close()
   if fail:
     sys.exit (1)
