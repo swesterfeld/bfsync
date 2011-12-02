@@ -9,6 +9,7 @@ from xzutils import xzcat
 import argparse
 import subprocess
 import datetime
+import random
 
 def get_remote_objects (remote_repo, transfer_objs):
   # make a list of hashes that we need
@@ -257,10 +258,20 @@ def restore_inode_links (want_links, have_links):
       changes += [ [ "l+", str (add_link[0]), str (add_link[1]), str (add_link[2]) ] ]
   return changes
 
+def gen_id():
+  id = ""
+  for i in range (5):
+    id += "%08x" % random.randint (0, 2**32 - 1)
+  return id
+
 class DiffRewriter:
   def __init__ (self, c):
     self.c = c
     self.link_rewrite = dict()
+    self.subst = dict()
+
+  def subst_inode (self, old_id, new_id):
+    self.subst[old_id] = new_id
 
   def rewrite (self, changes):
     # determine current db version
@@ -285,6 +296,10 @@ class DiffRewriter:
           change[2] = self.link_rewrite[lrkey]
       if change[0] == "l!":
         raise Exception ("unable to deal with l! changes during merge/local history apply")
+      if change[0] == "i!" or change[0] == "i-":
+        if self.subst.has_key (change[1]):
+          change[1] = self.subst[change[1]]
+
       # write change to diff
       s = ""
       for change_field in change:
@@ -322,6 +337,7 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
   # ASK USER
   inode_ignore_change = dict()
   restore_inode = dict()
+  use_both_versions = dict()
 
   print
   conflicts = find_conflicts (master_merge_history, local_merge_history)
@@ -330,10 +346,12 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
       choice = "l"
     elif pull_args.always_master:
       choice = "m"
+    elif pull_args.always_both:
+      choice = "b"
     else:
       while True:
         print "CONFLICT (%s): %s" % (conflict, printable_name (c, conflict, common_version))
-        print "(m)aster / (l)ocal / (s)how ? ",
+        print "(m)aster / (l)ocal / (b)oth / (s)how ? ",
         line = raw_input ("How should this conflict be resolved? ")
         if line == "s":
           print "=== MASTER ==="
@@ -341,7 +359,7 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
           print "=== LOCAL ==="
           local_merge_history.show_changes (conflict)
           print "=============="
-        if line == "m" or line == "l":
+        if line == "m" or line == "l" or line == "b":
           choice = line
           break
     if choice == "l":
@@ -350,6 +368,9 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
     elif choice == "m":
       print "... master version will be used"
       inode_ignore_change[conflict] = True
+    elif choice == "b":
+      print "... both versions will be used"
+      use_both_versions[conflict] = True
 
   print
 
@@ -379,6 +400,17 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
       changes += [ map (str, [ "i+" ] + common_inode) ]
     changes += restore_inode_links (db_links (c, common_version, inode), db_links (c, master_version, inode))
 
+  for inode in use_both_versions:
+    # duplicate inode
+    common_inode = db_inode (c, common_version, inode)
+    new_id = gen_id()
+    changes += [ map (str, [ "i+", new_id ] + common_inode[1:]) ]
+    diff_rewriter.subst_inode (common_inode[0], new_id)
+
+    # duplicate inode links
+    for link in db_links (c, common_version, inode):
+      changes.append ([ "l+", link[0], link[1], new_id ])
+
   new_diff = diff_rewriter.rewrite (changes)
 
   if new_diff != "":
@@ -403,6 +435,8 @@ def pull (repo, args, server = True):
                        help='always use local version for merge conflicts')
   parser.add_argument ('--always-master', action='store_const', const=True,
                        help='always use master version for merge conflicts')
+  parser.add_argument ('--always-both', action='store_const', const=True,
+                       help='always use both versions for merge conflicts')
   parser.add_argument ('repo', nargs = '?')
   pull_args = parser.parse_args (args)
 
