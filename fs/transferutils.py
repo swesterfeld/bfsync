@@ -295,6 +295,8 @@ class DiffRewriter:
           lrkey = (change[1], change[2])
           self.link_rewrite[lrkey] = change[2] + "~%d" % suffix
       if change[0] == "l+" or change[0] == "l-":
+        if self.subst.has_key (change[1]):
+          change[1] = self.subst[change[1]]
         lrkey = (change[1], change[2])
         if self.link_rewrite.has_key (lrkey):
           change[2] = self.link_rewrite[lrkey]

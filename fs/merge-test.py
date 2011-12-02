@@ -568,6 +568,32 @@ tests += [
   ( subdir_rm, "subdir-rm", "change a file that exists in a subdir; rm -rf subdir")
 ]
 
+def subdir_rm2 (a, b):
+  a.runx ("mkdir dir")
+  a.commit()
+  sync_repos (a, b)
+
+  b.runx ("echo data > dir/data")
+  b.commit()
+  b.runx ("mv dir/data dir/new_data")
+  b.commit()
+  a.runx ("rm -rf dir")
+  a.commit()
+
+  a.push()    # ensure that a is the version in the master history
+  sync_repos (a, b)
+  print "#########################################################################"
+  print "after merge:"
+  print "#########################################################################"
+  print "# REPO A:"
+  a.run ("ls -l")
+  print "# REPO B:"
+  b.run ("ls -l")
+
+tests += [
+  ( subdir_rm2, "subdir-rm2", "change/mv a file that exists in a subdir; rm -rf subdir")
+]
+
 def setup_initial():
   if os.path.exists ("merge-test"):
     os.system ("rm -rf merge-test")
