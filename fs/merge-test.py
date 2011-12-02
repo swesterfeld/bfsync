@@ -536,6 +536,7 @@ def mv3 (a, b):
   print "#########################################################################"
   print "# REPO A:"
   a.run ("ls -l")
+  a.run ("stat ax2 bx2 la lb")
   print "# REPO B:"
   b.run ("ls -l")
 

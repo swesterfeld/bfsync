@@ -283,6 +283,8 @@ class DiffRewriter:
     new_diff = ""
     for change in changes:
       if change[0] == "l+":
+        if self.subst.has_key (change[3]):
+          change[3] = self.subst[change[3]]
         if db_contains_link (self.c, VERSION, change[1], change[2]):
           print "LINK CONFLICT"
           suffix = 1
@@ -347,7 +349,10 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
     elif pull_args.always_master:
       choice = "m"
     elif pull_args.always_both:
-      choice = "b"
+      if conflict == "0"*40:
+        choice = "m"
+      else:
+        choice = "b"
     else:
       while True:
         print "CONFLICT (%s): %s" % (conflict, printable_name (c, conflict, common_version))
