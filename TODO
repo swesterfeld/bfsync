@@ -48,3 +48,4 @@ RELEASE:
 * remove bfsync1 stuff from repo
 * add man page(s)
 * remote put
+* unclutter output
