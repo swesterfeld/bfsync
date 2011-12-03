@@ -18,8 +18,8 @@ ENCRYPTED MODE:
 
 bfsync2 TODO:
 
+* test with filenames that are not 7 bit ascii
 * config-file should allow ignoring repo uid/gid
-* remote put
 * speedup commit
 * make get/put use temp dir (and remove stale temp dirs)
 * check for open files before allowing readonly mode
@@ -32,8 +32,6 @@ Performance:
 * use Berkeley DB (with inode-affinity)
 * fix redundant inserts (should be updates)
 * use infinity as vmax, so that committing doesn't require an update
-* change protocol: it should send a list of required objects, and
-  send back the objects that are available on the remote host
 
 MERGE:
 ======
@@ -44,3 +42,9 @@ MERGE:
   - change logs
   - inode values
 * support aborting the merge
+
+RELEASE:
+========
+* remove bfsync1 stuff from repo
+* add man page(s)
+* remote put
