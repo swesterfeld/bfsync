@@ -157,7 +157,6 @@ def find_common_version (local_history, remote_history):
       common_version = v + 1
     else:
       break
-  print "merge: last common version:", common_version
   return common_version
 
 def db_link_inode (c, VERSION, dir_id, name):
@@ -201,12 +200,9 @@ class MergeHistory:
 
   def add_changes (self, version, changes):
     for change in changes:
-      print self.name, ".........", "|".join(change)
       if change[0] == "l!":
         change1 = [ "l-", change[1], change[2] ]
         change2 = [ "l+", change[1], change[2], change[3] ]
-        print self.name, " 1 .........", "|".join (change1)
-        print self.name, " 2 .........", "|".join (change2)
         self.add_1_change (version, change1)
         self.add_1_change (version, change2)
       else:
@@ -339,7 +335,6 @@ class DiffRewriter:
       for change_field in change:
         s += change_field + "\0"
       new_diff += s
-      print "MERGED%d> " % VERSION, "|".join (change)
 
     return new_diff
 
