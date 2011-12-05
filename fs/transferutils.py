@@ -11,7 +11,7 @@ import subprocess
 import datetime
 import random
 
-def get_remote_objects (remote_repo, transfer_objs):
+def get_remote_objects (repo, remote_repo, transfer_objs):
   # make a list of hashes that we need
   need_hash = dict()
   need_hash_list = []
@@ -27,12 +27,10 @@ def get_remote_objects (remote_repo, transfer_objs):
   tlist = TransferList()
   for rfile in remote_list:
     if need_hash.has_key (rfile.hash):
-      src_file = os.path.join (remote_repo.path, "objects", make_object_filename (rfile.hash))
-      dest_file = os.path.join ("objects", make_object_filename (rfile.hash))
-      tlist.add (TransferFile (src_file, dest_file, rfile.size, 0400))
+      tlist.add (TransferFile (rfile.hash, rfile.size))
 
   # do the actual copying
-  remote_repo.get_objects (tlist)
+  remote_repo.get_objects (repo, tlist)
 
 def get (repo, urls):
   conn = repo.conn
@@ -58,7 +56,7 @@ def get (repo, urls):
     if len (s) == 40:
       objs += [ s ]
 
-  get_remote_objects (remote_repo, objs)
+  get_remote_objects (repo, remote_repo, objs)
 
 def put (repo, urls):
   conn = repo.conn
@@ -79,9 +77,9 @@ def put (repo, urls):
   for hash in need_objs:
     src_file = os.path.join ("objects", make_object_filename (hash))
     if validate_object (src_file, hash):
-      tl.add (TransferFile (src_file, os.path.join (remote_repo.path, src_file), os.path.getsize (src_file), 0400))
+      tl.add (TransferFile (hash, os.path.getsize (src_file)))
 
-  remote_repo.put_objects (tl)
+  remote_repo.put_objects (repo, tl)
 
 def push (repo, urls):
   conn = repo.conn
@@ -136,9 +134,9 @@ def push (repo, urls):
   for hash in need_objs:
     src_file = os.path.join ("objects", make_object_filename (hash))
     if validate_object (src_file, hash):
-      tl.add (TransferFile (src_file, os.path.join (remote_repo.path, src_file), os.path.getsize (src_file), 0400))
+      tl.add (TransferFile (hash, os.path.getsize (src_file)))
 
-  remote_repo.put_objects (tl)
+  remote_repo.put_objects (repo, tl)
 
 def load_diff (hash):
   obj_name = os.path.join ("objects", make_object_filename (hash))
@@ -529,7 +527,7 @@ def pull (repo, args, server = True):
     return
 
   # transfer required history objects
-  get_remote_objects (remote_repo, transfer_objs)
+  get_remote_objects (repo, remote_repo, transfer_objs)
 
   if can_fast_forward:
     print "will fast-forward %d versions..." % len (ff_apply)

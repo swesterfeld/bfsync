@@ -313,9 +313,9 @@ def cmd_remote():
       hashes = cPickle.loads (sys.stdin.read (hashes_len))
       result = cPickle.dumps (remote_ls (repo, hashes))
     elif command == "send":
-      remote_send()
+      remote_send (repo)
     elif command == "receive":
-      remote_receive()
+      remote_receive (repo)
     elif command == "update-history":
       dhlen = int (sys.stdin.readline())
       delta_history = cPickle.loads (sys.stdin.read (dhlen))
@@ -372,6 +372,9 @@ def cmd_init():
   os.mkdir ("objects", 0700)
   for i in range (0, 256):
     os.mkdir ("objects/%02x" % i, 0700)
+
+  # create tmp dir
+  os.mkdir ("tmp", 0700)
 
   # create history table
   repo = cd_repo_connect_db()
@@ -494,6 +497,7 @@ def cmd_clone():
   init_tables (c)
   conn.commit()
 
+  os.mkdir ("tmp", 0700)
   os.mkdir ("new", 0700)
   os.mkdir ("objects", 0700)
   for i in range (0, 256):
@@ -553,11 +557,11 @@ if command_func != None:
     else:
       command_func()
   except Exception, ex:
-    print "\n\n"
-    print "=================================================="
+    sys.stderr.write ("\n\n\n")
+    sys.stderr.write ("==================================================\n")
     traceback.print_exc()
-    print "=================================================="
-    print "\n\n"
+    sys.stderr.write ("==================================================\n")
+    sys.stderr.write ("\n\n\n")
     hash_cache.save()
     sys.stderr.write ("bfsync2: %s\n" % ex)
     sys.exit (1)

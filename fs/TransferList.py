@@ -3,15 +3,13 @@ import sys
 import os
 import shutil
 import cPickle
-from utils import mkdir_recursive, format_size, format_rate, format_time
+from utils import *
 from StatusLine import status_line
 
 class TransferFile:
-  def __init__ (self, src_path, dest_path, size, mode):
-    self.src_path = src_path
-    self.dest_path = dest_path
+  def __init__ (self, hash, size):
+    self.hash = hash
     self.size = size
-    self.mode = mode
 
 class TransferList:
   def __init__ (self):
@@ -28,11 +26,11 @@ class TransferList:
     # prepend pickled string len
     tlist_str = str (len (tlist_str)) + "\n" + tlist_str
     pipe.write (tlist_str)
-  def send_files (self, pipe, verbose):
+  def send_files (self, repo, pipe, verbose):
     self.start_time = time.time()
     for tfile in self.tlist:
       self.file_number += 1
-      f = open (tfile.src_path)
+      f = open (os.path.join (repo.path, "objects", make_object_filename (tfile.hash)))
       remaining = tfile.size
       while (remaining > 0):
         todo = min (remaining, 256 * 1024)
@@ -68,12 +66,12 @@ class TransferList:
         format_rate (bytes_per_sec),
         format_time (eta)
       ))
-  def receive_files (self, pipe, verbose):
+  def receive_files (self, repo, pipe, verbose):
     self.start_time = time.time()
     for tfile in self.tlist:
       self.file_number += 1
-      mkdir_recursive (os.path.dirname (tfile.dest_path))
-      f = open (tfile.dest_path, "w")
+      dest_path = repo.make_temp_name()
+      f = open (dest_path, "w")
       remaining = tfile.size
       while (remaining > 0):
         todo = min (remaining, 256 * 1024)
@@ -84,19 +82,20 @@ class TransferList:
         if (verbose):
           self.update_status_line()
       f.close()
-      os.chmod (tfile.dest_path, tfile.mode)
+      move_file_to_objects (repo, dest_path)
     if (verbose):
       print
-  def copy_files (self):
+  def copy_files (self, dest_repo, src_repo):
     self.start_time = time.time()
     for tfile in self.tlist:
       self.file_number += 1
+      dest_path = dest_repo.make_temp_name()
+      src_path = os.path.join (src_repo.path, "objects", make_object_filename (tfile.hash))
       try:
-        mkdir_recursive (os.path.dirname (tfile.dest_path))
-        shutil.copy2 (tfile.src_path, tfile.dest_path)
-        os.chmod (tfile.dest_path, tfile.mode)
+        shutil.copy2 (src_path, dest_path)
+        move_file_to_objects (dest_repo, dest_path)
       except Exception, ex:
-        sys.stderr.write ("can't copy file %s to %s: %s\n" % (tfile.src_path, tfile.dest_path, ex))
+        sys.stderr.write ("can't copy file %s to %s: %s\n" % (src_path, dest_path, ex))
         sys.exit (1)
       self.bytes_done += tfile.size
       self.update_status_line()

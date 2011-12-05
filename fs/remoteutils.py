@@ -12,8 +12,11 @@ def remote_ls (repo, hashes):
   object_dir = os.path.join (repo.path, "objects")
   for hash in hashes:
     full_name = os.path.join (object_dir, make_object_filename (hash))
-    st = os.stat (full_name)
-    if S_ISREG (st.st_mode):
+    try:
+      st = os.stat (full_name)
+    except:
+      st = False   # file not there
+    if st and S_ISREG (st.st_mode):
       real_hash = hash_cache.compute_hash (full_name)
       if (hash == real_hash):
         remote_file = RemoteFile()
@@ -22,16 +25,16 @@ def remote_ls (repo, hashes):
         file_list += [ remote_file ]
   return file_list
 
-def remote_send():
+def remote_send (repo):
   tl = TransferList()
   tl.receive_list (sys.stdin)
-  tl.send_files (sys.stdout, False)
+  tl.send_files (repo, sys.stdout, False)
   sys.stdout.flush()
 
-def remote_receive():
+def remote_receive (repo):
   tl = TransferList()
   tl.receive_list (sys.stdin)
-  tl.receive_files (sys.stdin, False)
+  tl.receive_files (repo, sys.stdin, False)
 
 def remote_update_history (repo, delta_history):
   conn = repo.conn

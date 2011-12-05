@@ -64,19 +64,19 @@ class RemoteRepo:
       result_len = int (self.remote_p.stdout.readline())
       return cPickle.loads (self.remote_p.stdout.read (result_len))
 
-  def get_objects (self, tlist):
+  def get_objects (self, repo, tlist):
     if self.conn == LOCAL:
-      tlist.copy_files()
+      tlist.copy_files (repo, self.repo)
     else:
       self.remote_p.stdin.write ("send\n")
       tlist.send_list (self.remote_p.stdin)
-      tlist.receive_files (self.remote_p.stdout, True)
+      tlist.receive_files (repo, self.remote_p.stdout, True)
 
-  def put_objects (self, tlist):
+  def put_objects (self, repo, tlist):
     if self.conn == LOCAL:
-      tlist.copy_files()
+      tlist.copy_files (self.repo, repo)
     else:
       self.remote_p.stdin.write ("receive\n")
       tlist.send_list (self.remote_p.stdin)
-      tlist.send_files (self.remote_p.stdin, True)
+      tlist.send_files (repo, self.remote_p.stdin, True)
       self.remote_p.stdin.flush()

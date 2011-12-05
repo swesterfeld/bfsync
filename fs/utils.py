@@ -1,6 +1,7 @@
 import os
 import sqlite3
 import CfgParser
+from tempfile import NamedTemporaryFile
 
 def format_size (size, total_size):
   unit_str = [ "B", "KB", "MB", "GB", "TB" ]
@@ -73,7 +74,10 @@ def find_repo_dir():
     dir = newdir
 
 class Repo:
-  pass
+  def make_temp_name (self):
+    tmp_file = NamedTemporaryFile (dir = os.path.join (self.path, "tmp"), delete = False)
+    tmp_file.close()
+    return tmp_file.name
 
 def cd_repo_connect_db():
   repo_path = find_repo_dir()
