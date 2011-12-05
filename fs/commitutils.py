@@ -81,6 +81,8 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
   diff_file = open (diff_filename, "w")
   diff (c, VERSION - 1, VERSION, diff_file)
   diff_file.close()
+
+  commit_size_ok = True
   if expected_diff:
     diff_file = open (diff_filename, "r")
     new_diff = diff_file.read()
@@ -92,16 +94,22 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
     if not validate_object (object_name, hash):
       raise Exception ("commit called with expected_diff argument, but object with hash %s doesn't validate" % hash)
   else:
-    xz (diff_filename)
-    hash = move_file_to_objects (repo, diff_filename + ".xz")
+    if os.path.getsize (diff_filename) != 0:
+      xz (diff_filename)
+      hash = move_file_to_objects (repo, diff_filename + ".xz")
+    else:
+      commit_size_ok = False
 
   status_line.update ("done.")
   status_line.cleanup()
 
-  c.execute ('''UPDATE inodes SET vmax=? WHERE vmax = ?''', (VERSION + 1, VERSION))
-  c.execute ('''UPDATE links SET vmax=? WHERE vmax = ?''', (VERSION + 1, VERSION))
-  c.execute ('''UPDATE history SET message="commit message", author="author", hash=? WHERE version=?''', (hash, VERSION, ))
-  c.execute ('''INSERT INTO history VALUES (?,?,?,?,?)''', (VERSION + 1, "", "", "", 0))
+  if commit_size_ok:
+    c.execute ('''UPDATE inodes SET vmax=? WHERE vmax = ?''', (VERSION + 1, VERSION))
+    c.execute ('''UPDATE links SET vmax=? WHERE vmax = ?''', (VERSION + 1, VERSION))
+    c.execute ('''UPDATE history SET message="commit message", author="author", hash=? WHERE version=?''', (hash, VERSION, ))
+    c.execute ('''INSERT INTO history VALUES (?,?,?,?,?)''', (VERSION + 1, "", "", "", 0))
+  else:
+    print "Nothing to commit."
   conn.commit()
   c.close()
 
