@@ -77,6 +77,9 @@ class Repo:
   def make_temp_name (self):
     tmp_file = NamedTemporaryFile (dir = os.path.join (self.path, "tmp"), delete = False)
     tmp_file.close()
+    c = self.conn.cursor()
+    c.execute ('''INSERT INTO temp_files VALUES (?, ?)''', (os.path.basename (tmp_file.name), os.getpid()))
+    self.conn.commit()
     return tmp_file.name
 
 def cd_repo_connect_db():
@@ -102,6 +105,23 @@ def cd_repo_connect_db():
   if not sqlite_sync:
     c = repo.conn.cursor()
     c.execute ('''PRAGMA synchronous=off''')
+
+  # wipe old temp files
+  try:
+    c.execute ('''SELECT * FROM temp_files''')
+    for row in c:
+      filename = os.path.join (repo_path, "tmp", row[0])
+      pid = row[1]
+      try:
+        os.kill (pid, 0)
+        # pid still running
+      except:
+        try:
+          os.remove (filename)
+        except:
+          pass
+  except:
+    pass # no temp_files table => no temp files
 
   return repo
 

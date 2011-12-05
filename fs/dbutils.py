@@ -44,6 +44,11 @@ def create_tables (c):
                  )''')
   c.execute ('''CREATE INDEX local_inodes_idx_id ON local_inodes (id)''')
   c.execute ('''CREATE INDEX local_inodes_idx_ino ON local_inodes (ino)''')
+  c.execute ('''CREATE TABLE temp_files
+                 (
+                   name    text,
+                   pid     integer
+                 )''')
 
 def init_tables (c):
   c.execute ('''PRAGMA default_cache_size=%d''' % (1024 * 1024))     # use 128M cache size

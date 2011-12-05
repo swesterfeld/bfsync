@@ -388,6 +388,12 @@ def cmd_init():
                    message text,
                    time    integer
                  )''')
+  # and temp_files table
+  c.execute ('''CREATE TABLE temp_files
+                 (
+                   name    text,
+                   pid     integer
+                 )''')
   conn.commit()
 
   # create initial commit diff
