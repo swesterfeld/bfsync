@@ -1,21 +1,3 @@
-* use config file from repo, not hardcoded
-* allow mv on directory
-* detect protocol version
-* cache friendly get would hash and copy file-by-file, since then the data
-  is read only once from the physical media
-
-==============================================================================================
-
-ENCRYPTED MODE:
-* files are stored as continuous stream of encrypted data
-* index is stored as pointers into file stream
-* splitting (as 16M blocks) enables easy update
-* passphrase-derived key
-* sha-256 checksum for each block at the beginning
-  -> partial writes become invisible
-
-==============================================================================================
-
 bfsync2 TODO:
 
 * test with filenames that are not 7 bit ascii
@@ -26,12 +8,15 @@ bfsync2 TODO:
 * better cache expiring for INodeLinks
 * background hashing for fs
 * merge INodeLinks and INode cache
+* detect protocol version
 
 Performance:
 ============
 * use Berkeley DB (with inode-affinity)
 * fix redundant inserts (should be updates)
 * use infinity as vmax, so that committing doesn't require an update
+* cache friendly get would hash and copy file-by-file, since then the data
+  is read only once from the physical media
 
 MERGE:
 ======
@@ -49,3 +34,15 @@ RELEASE:
 * add man page(s)
 * remote put
 * unclutter output
+
+==============================================================================================
+
+ENCRYPTED MODE:
+* files are stored as continuous stream of encrypted data
+* index is stored as pointers into file stream
+* splitting (as 16M blocks) enables easy update
+* passphrase-derived key
+* sha-256 checksum for each block at the beginning
+  -> partial writes become invisible
+
+==============================================================================================
