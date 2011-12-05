@@ -101,9 +101,13 @@ def push (repo, urls):
     if v + 1 > common_version:
       delta_history += [ local_history[v] ]
 
-  print remote_repo.update_history (delta_history)
+  remote_repo.update_history (delta_history)
 
   need_objs = remote_repo.need_objects()
+
+  if len (delta_history) == 0 and len (need_objs) == 0:
+    print "Everything up-to-date."
+    return
 
   tl = TransferList()
   for hash in need_objs:
