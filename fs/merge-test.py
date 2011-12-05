@@ -605,6 +605,8 @@ def setup_initial():
   os.system ("bfsync2 clone master repo-b")
   os.system ("""echo 'default { get "'$PWD/repo-b'"; }' >> repo-a/.bfsync/config""")
   os.system ("""echo 'default { get "'$PWD/repo-a'"; }' >> repo-b/.bfsync/config""")
+  os.system ("""echo 'default { put "'$PWD/repo-b'"; }' >> repo-a/.bfsync/config""")
+  os.system ("""echo 'default { put "'$PWD/repo-a'"; }' >> repo-b/.bfsync/config""")
   os.mkdir ("a")
   os.mkdir ("b")
   os.system ("rsync -a master repo-a repo-b backup")

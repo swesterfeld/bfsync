@@ -45,7 +45,7 @@ from HashCache import hash_cache
 from ServerConn import ServerConn
 from RemoteRepo import RemoteRepo
 from stat import *
-from transferutils import get, get_remote_objects, push, pull
+from transferutils import get, put, push, pull
 
 def find_bfsync_dir():
   old_cwd = os.getcwd()
@@ -322,7 +322,9 @@ def cmd_remote():
 
       result = remote_update_history (repo, delta_history)
     elif command == "need-objects":
-      result = cPickle.dumps (remote_need_objects (repo))
+      table_len = int (sys.stdin.readline())
+      table = cPickle.loads (sys.stdin.read (table_len))
+      result = cPickle.dumps (remote_need_objects (repo, table))
     elif command == "":
       return
     else:
@@ -343,6 +345,11 @@ def cmd_get():
   repo = cd_repo_connect_db()
 
   get (repo, args)
+
+def cmd_put():
+  repo = cd_repo_connect_db()
+
+  put (repo, args)
 
 def cmd_init():
   dir = args[0]
@@ -413,6 +420,32 @@ def guess_dir_name (url):
     dir_name = ch + dir_name
   return url
 
+def check_table (repo, table, table_name):
+  conn = repo.conn
+  c = conn.cursor()
+
+  objs = 0
+  need_objs = 0
+  c.execute ("""SELECT DISTINCT hash FROM %s""" % table)
+  for row in c:
+    hash = row[0]
+    if len (hash) == 40:
+      objs += 1
+      dest_file = os.path.join (repo.path, "objects", make_object_filename (hash))
+      if not validate_object (dest_file, hash):
+        need_objs += 1
+
+  if need_objs != 0:
+    print "%s:\n - need to transfer %d/%d objects." % (table_name, need_objs, objs)
+  else:
+    print "%s:\n - all %d objects available." % (table_name, objs)
+
+def cmd_check():
+  repo = cd_repo_connect_db()
+
+  check_table (repo, "history", "History")
+  check_table (repo, "inodes", "Files")
+
 def cmd_clone():
   url = args[0]
   if len (args) > 1:
@@ -477,11 +510,13 @@ args = []
 
 for arg in arg_iter:
   commands = [
+    ( "check",                  cmd_check, 1),
     ( "commit",                 cmd_commit, 1),
     ( "log",                    cmd_log, 0),
     ( "pull",                   cmd_pull, 1),
     ( "push",                   cmd_push, 1),
     ( "get",                    cmd_get, 1),
+    ( "put",                    cmd_put, 1),
     ( "status",                 cmd_status, 0),
     ( "revert",                 cmd_revert, 1),
     ( "init",                   cmd_init, 1),

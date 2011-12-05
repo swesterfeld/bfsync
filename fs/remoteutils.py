@@ -59,14 +59,14 @@ def remote_history (repo):
     hlist += [ row ]
   return hlist
 
-def remote_need_objects (repo):
+def remote_need_objects (repo, table):
   conn = repo.conn
   repo_path = repo.path
   c = conn.cursor()
 
   # MERGE ME WITH get
-  c.execute ('''SELECT DISTINCT hash FROM history''')
   objs = []
+  c.execute ('''SELECT DISTINCT hash FROM %s''' % table)
   for row in c:
     hash = "%s" % row[0]
     if len (hash) == 40:
@@ -75,5 +75,3 @@ def remote_need_objects (repo):
         objs += [ hash ]
   # end MERGE ME
   return objs
-
-

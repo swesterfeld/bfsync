@@ -44,11 +44,12 @@ class RemoteRepo:
       result_len = int (self.remote_p.stdout.readline())
       return self.remote_p.stdout.read (result_len)
 
-  def need_objects (self):
+  def need_objects (self, table):
     if self.conn == LOCAL:
-      return remote_need_objects (self.repo)
+      return remote_need_objects (self.repo, table)
     else:
-      self.remote_p.stdin.write ("need-objects\n")
+      table_str = cPickle.dumps (table)
+      self.remote_p.stdin.write ("need-objects\n%s\n%s" % (len (table_str), table_str))
       result_len = int (self.remote_p.stdout.readline())
       return cPickle.loads (self.remote_p.stdout.read (result_len))
 

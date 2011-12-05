@@ -60,6 +60,29 @@ def get (repo, urls):
 
   get_remote_objects (remote_repo, objs)
 
+def put (repo, urls):
+  conn = repo.conn
+  repo_path = repo.path
+
+  if len (urls) == 0:
+    default_get = repo.config.get ("default/put")
+    if len (default_get) == 0:
+      raise Exception ("put: no repository specified and default/put config value empty")
+    url = default_get[0]
+  else:
+    url = urls[0]
+
+  remote_repo = RemoteRepo (url)
+  need_objs = remote_repo.need_objects ("inodes")
+
+  tl = TransferList()
+  for hash in need_objs:
+    src_file = os.path.join ("objects", make_object_filename (hash))
+    if validate_object (src_file, hash):
+      tl.add (TransferFile (src_file, os.path.join (remote_repo.path, src_file), os.path.getsize (src_file), 0400))
+
+  remote_repo.put_objects (tl)
+
 def push (repo, urls):
   conn = repo.conn
   repo_path = repo.path
@@ -103,7 +126,7 @@ def push (repo, urls):
 
   remote_repo.update_history (delta_history)
 
-  need_objs = remote_repo.need_objects()
+  need_objs = remote_repo.need_objects ("history")
 
   if len (delta_history) == 0 and len (need_objs) == 0:
     print "Everything up-to-date."
