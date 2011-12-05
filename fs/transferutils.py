@@ -496,6 +496,11 @@ def pull (repo, args, server = True):
       else:
         ff_apply += [ hash ]
 
+  # Already up-to-date?
+  if can_fast_forward and len (ff_apply) == 0:
+    print "Already up-to-date."
+    return
+
   # transfer required history objects
   get_remote_objects (remote_repo, transfer_objs)
 
