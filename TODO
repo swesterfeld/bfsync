@@ -3,7 +3,6 @@ bfsync2 TODO:
 * test with filenames that are not 7 bit ascii
 * config-file should allow ignoring repo uid/gid
 * speedup commit
-* make get/put use temp dir (and remove stale temp dirs)
 * check for open files before allowing readonly mode
 * better cache expiring for INodeLinks
 * background hashing for fs
@@ -32,7 +31,6 @@ RELEASE:
 ========
 * remove bfsync1 stuff from repo
 * add man page(s)
-* remote put
 * unclutter output
 
 ==============================================================================================

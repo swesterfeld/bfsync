@@ -77,7 +77,7 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
   # compute commit diff
   status_line.set_op ("COMMIT-DIFF")
   status_line.update ("computing changes between version %d and %d... " % (VERSION - 1, VERSION))
-  diff_filename = os.path.join (repo_path, "tmp-commit-diff")
+  diff_filename = repo.make_temp_name()
   diff_file = open (diff_filename, "w")
   diff (c, VERSION - 1, VERSION, diff_file)
   diff_file.close()
