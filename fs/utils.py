@@ -99,6 +99,7 @@ def cd_repo_connect_db():
 
   repo = Repo()
   repo.conn = sqlite3.connect (os.path.join (repo_path, 'db'))
+  repo.conn.text_factory = str;
   repo.path = repo_path
   repo.config = bfsync_info
 

@@ -1,4 +1,5 @@
 #!/usr/bin/python
+# -*- coding: utf-8 -*-
 
 import os
 import sys
@@ -11,7 +12,8 @@ from stat import *
 class FuseFS:
   def init (self):
     cwd = os.getcwd()
-    if subprocess.call (["mkdir", "-m", "0700", "-p", "test/new",
+    if subprocess.call (["mkdir", "-m", "0700", "-p", "test/tmp",
+                                                      "test/new",
                                                       "test/objects",
                                                       "test/.bfsync"]) != 0:
       raise Exception ("error during setup (can't create dirs)")
@@ -1031,6 +1033,17 @@ def test_revert():
 bf_tests += [ ("test-revert", test_revert) ]
 
 #####
+
+def test_8bit_filename():
+  write_file ("mnt/äöüß", "Umlaute")
+  commit()
+  if read_file ("mnt/äöüß") != "Umlaute":
+    raise Exception ("file not stored properly")
+
+bf_tests += [ ("test-8bit-filename", test_8bit_filename) ]
+
+#####
+
 
 def start_bfsyncfs():
   if os.system ("""( echo "*** fs start (`date`)"; ./bfsyncfs -f test mnt; echo "*** fs stop (`date`), exit $?"
