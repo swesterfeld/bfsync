@@ -102,7 +102,7 @@ class TransferList:
       self.file_number += 1
       src_path = os.path.join (src_repo.path, "objects", make_object_filename (tfile.hash))
       try:
-        shutil.copy2 (src_path, dest_path)
+        shutil.copyfile (src_path, dest_path)
         move_file_to_objects (dest_repo, dest_path)
       except Exception, ex:
         sys.stderr.write ("can't copy file %s to %s: %s\n" % (src_path, dest_path, ex))
