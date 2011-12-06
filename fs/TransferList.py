@@ -87,9 +87,9 @@ class TransferList:
       print
   def copy_files (self, dest_repo, src_repo):
     self.start_time = time.time()
+    dest_path = dest_repo.make_temp_name()
     for tfile in self.tlist:
       self.file_number += 1
-      dest_path = dest_repo.make_temp_name()
       src_path = os.path.join (src_repo.path, "objects", make_object_filename (tfile.hash))
       try:
         shutil.copy2 (src_path, dest_path)
