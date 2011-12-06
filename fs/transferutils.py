@@ -408,15 +408,19 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
   print
 
   master_version = common_version
+  status_line.set_op ("MERGE")
 
+  patch_count = 1
   # APPLY master history
   for rh in remote_history:
     if rh[0] > common_version:
       diff = rh[1]
       diff_file = os.path.join ("objects", make_object_filename (diff))
 
-      print "applying patch %s" % diff
-      apply (repo, xzcat (diff_file), diff)
+      status_line.update ("applying patch %d" % patch_count)
+      patch_count += 1
+
+      apply (repo, xzcat (diff_file), diff, verbose = False)
       master_version = rh[0]
 
   # APPLY extra commit to be able to apply local history without problems
@@ -447,8 +451,9 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
   new_diff = diff_rewriter.rewrite (changes)
 
   if new_diff != "":
-    print "applying patch tmp"
-    apply (repo, new_diff)
+    status_line.update ("applying patch %d" % patch_count)
+    patch_count += 1
+    apply (repo, new_diff, verbose = False)
 
   # APPLY modified local history
 
@@ -459,8 +464,9 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
 
       new_diff = diff_rewriter.rewrite (changes)
       # apply modified diff
-      print "applying patch tmp-merge-diff/%d" % lh[0]
-      apply (repo, new_diff)
+      status_line.update ("applying patch %d" % patch_count)
+      patch_count += 1
+      apply (repo, new_diff, verbose = False)
 
 def pull (repo, args, server = True):
   parser = argparse.ArgumentParser (prog='bfsync2 pull')
