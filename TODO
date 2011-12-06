@@ -1,6 +1,5 @@
 bfsync2 TODO:
 
-* test with filenames that are not 7 bit ascii
 * config-file should allow ignoring repo uid/gid
 * speedup commit
 * check for open files before allowing readonly mode
@@ -33,6 +32,7 @@ RELEASE:
 * add man page(s)
 * unclutter output
 * disallow pull with uncommitted changes
+* history
 
 ==============================================================================================
 
