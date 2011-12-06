@@ -6,6 +6,7 @@ from utils import *
 from applyutils import apply
 from commitutils import revert
 from xzutils import xzcat
+from StatusLine import status_line
 import argparse
 import subprocess
 import datetime
@@ -525,10 +526,12 @@ def pull (repo, args, server = True):
   get_remote_objects (repo, remote_repo, transfer_objs)
 
   if can_fast_forward:
-    print "will fast-forward %d versions..." % len (ff_apply)
+    status_line.set_op ("PULL")
+    count = 1
     for diff in ff_apply:
       diff_file = os.path.join ("objects", make_object_filename (diff))
-      print "applying patch %s" % diff
-      apply (repo, xzcat (diff_file), diff, server = server)
+      status_line.update ("fast-forward: patch %d / %d" % (count, len (ff_apply)))
+      apply (repo, xzcat (diff_file), diff, server = server, verbose = False)
+      count += 1
   else:
     history_merge (c, repo, local_history, remote_history, pull_args)

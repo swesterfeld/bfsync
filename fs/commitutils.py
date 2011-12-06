@@ -24,7 +24,7 @@ class NoServerConn:
     pass
 
 
-def commit (repo, expected_diff = None, expected_diff_hash = None, server = True):
+def commit (repo, expected_diff = None, expected_diff_hash = None, server = True, verbose = True):
   conn = repo.conn
   repo_path = repo.path
 
@@ -56,7 +56,9 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
     hash = hash_cache.compute_hash (filename)
     add_new_list += [id, hash]
 
-  status_line.set_op ("ADD-NEW")
+  if verbose:
+    status_line.set_op ("ADD-NEW")
+
   files_added = 0
   files_total = len (add_new_list) / 2
   while len (add_new_list) > 0:
@@ -64,8 +66,11 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
     server_conn.add_new (add_new_list[0:items])
     add_new_list = add_new_list[items:]
     files_added += items / 2
-    status_line.update ("file %d/%d" % (files_added, files_total))
-  status_line.cleanup()
+    if verbose:
+      status_line.update ("file %d/%d" % (files_added, files_total))
+
+  if verbose:
+    status_line.cleanup()
 
   server_conn.save_changes()
 
@@ -75,8 +80,10 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
     VERSION = max (row[0], VERSION)
 
   # compute commit diff
-  status_line.set_op ("COMMIT-DIFF")
-  status_line.update ("computing changes between version %d and %d... " % (VERSION - 1, VERSION))
+  if verbose:
+    status_line.set_op ("COMMIT-DIFF")
+    status_line.update ("computing changes between version %d and %d... " % (VERSION - 1, VERSION))
+
   diff_filename = repo.make_temp_name()
   diff_file = open (diff_filename, "w")
   diff (c, VERSION - 1, VERSION, diff_file)
@@ -100,8 +107,9 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
     else:
       commit_size_ok = False
 
-  status_line.update ("done.")
-  status_line.cleanup()
+  if verbose:
+    status_line.update ("done.")
+    status_line.cleanup()
 
   if commit_size_ok:
     c.execute ('''UPDATE inodes SET vmax=? WHERE vmax = ?''', (VERSION + 1, VERSION))
