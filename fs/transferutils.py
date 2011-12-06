@@ -352,23 +352,23 @@ class UserConflictResolver:
       print "=" * 80
       print "Merge Conflict for '%s'" % printable_name (self.c, conflict, self.common_version)
       print "=" * 80
-      print "(m)aster / (l)ocal / (b)oth / (s)how ? ",
-      line = raw_input ("How should this conflict be resolved? ")
-      if line == "s":
+      line = raw_input ("(m)aster / (l)ocal / (b)oth / (v)iew / (s)hell / (a)bort merge? ")
+      if line == "v":
         print "=== MASTER ==="
         self.master_merge_history.show_changes (conflict)
         print "=== LOCAL ==="
         self.local_merge_history.show_changes (conflict)
         print "=============="
-      if line == "m" or line == "l" or line == "b":
+      if line == "s":
+        os.system (os.environ['SHELL'])
+      if line == "m" or line == "l" or line == "b" or line == "a":
         return line
 
 ################################# MERGE ######################################
 
 def history_merge (c, repo, local_history, remote_history, pull_args):
-  # revert to last common version
+  # figure out last common version
   common_version = find_common_version (local_history, remote_history)
-  revert (repo, common_version, verbose = False)
 
   # initialize as one because of the middle-patch (which is neither from local nor remote history)
   total_patch_count = 1
@@ -422,8 +422,14 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
     elif choice == "b":
       print "... both versions will be used"
       use_both_versions[conflict] = True
+    elif choice == "a":
+      print "... aborting merge"
+      return
 
   print
+
+  # REVERT to common version
+  revert (repo, common_version, verbose = False)
 
   master_version = common_version
 
