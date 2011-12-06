@@ -68,9 +68,9 @@ class TransferList:
       ))
   def receive_files (self, repo, pipe, verbose):
     self.start_time = time.time()
+    dest_path = repo.make_temp_name()
     for tfile in self.tlist:
       self.file_number += 1
-      dest_path = repo.make_temp_name()
       f = open (dest_path, "w")
       remaining = tfile.size
       while (remaining > 0):
