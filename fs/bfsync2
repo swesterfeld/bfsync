@@ -335,20 +335,24 @@ def cmd_remote():
 
 def cmd_pull():
   repo = cd_repo_connect_db ()
+  status_line.set_op ("PULL")
   pull (repo, args)
 
 def cmd_push():
   repo = cd_repo_connect_db()
+  status_line.set_op ("PUSH")
   push (repo, args)
 
 def cmd_get():
   repo = cd_repo_connect_db()
 
+  status_line.set_op ("GET")
   get (repo, args)
 
 def cmd_put():
   repo = cd_repo_connect_db()
 
+  status_line.set_op ("PUT")
   put (repo, args)
 
 def cmd_init():
@@ -492,12 +496,14 @@ def cmd_clone():
     print "fatal: destination path '" + dir + "' already exists"
     sys.exit (1)
 
+  status_line.set_op ("CLONE")
+
   url_list = url.split (":")
   if len (url_list) == 1:
     # local repository => use absolute path
     url = os.path.abspath (url)
 
-  print url, "=>", dir
+  print "Cloning into %s..." % dir
 
   try:
     os.mkdir (dir, 0700)

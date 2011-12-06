@@ -536,7 +536,6 @@ def pull (repo, args, server = True):
     return
 
   # transfer required history objects
-  status_line.set_op ("PULL")
   get_remote_objects (repo, remote_repo, transfer_objs)
 
   if can_fast_forward:
