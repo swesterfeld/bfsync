@@ -18,6 +18,7 @@ class TransferList:
     self.bytes_done = 0
     self.start_time = 0 # must be set to time.time() once sending/receiving starts
     self.file_number = 0
+    self.last_update = 0
   def add (self, tfile):
     self.tlist += [ tfile ]
     self.bytes_total += tfile.size
@@ -38,10 +39,11 @@ class TransferList:
         pipe.write (data)
         remaining -= todo
         self.bytes_done += todo
-        if (verbose):
+        if verbose and self.need_update():
           self.update_status_line()
       f.close()
     if (verbose):
+      self.update_status_line()
       status_line.cleanup()
   def receive_list (self, pipe):
     in_size = True
@@ -55,6 +57,13 @@ class TransferList:
     size = int (size_str)
     tlist_str = pipe.read (size)
     self.tlist = cPickle.loads (tlist_str)
+  def need_update (self):
+    update_time = time.time()
+    if update_time - self.last_update > 1:
+      self.last_update = update_time
+      return True
+    else:
+      return False
   def update_status_line (self):
     elapsed_time = max (time.time() - self.start_time, 1)
     bytes_per_sec = max (self.bytes_done / elapsed_time, 1)
@@ -79,12 +88,13 @@ class TransferList:
         f.write (data)
         remaining -= todo
         self.bytes_done += todo
-        if (verbose):
+        if verbose and self.need_update():
           self.update_status_line()
       f.close()
       move_file_to_objects (repo, dest_path)
     if (verbose):
-      status_bar.cleanup()
+      self.update_status_line()
+      status_line.cleanup()
   def copy_files (self, dest_repo, src_repo):
     self.start_time = time.time()
     dest_path = dest_repo.make_temp_name()
@@ -98,7 +108,9 @@ class TransferList:
         sys.stderr.write ("can't copy file %s to %s: %s\n" % (src_path, dest_path, ex))
         sys.exit (1)
       self.bytes_done += tfile.size
-      self.update_status_line()
+      if self.need_update():
+        self.update_status_line()
+    self.update_status_line()
     status_line.cleanup()
 
 
