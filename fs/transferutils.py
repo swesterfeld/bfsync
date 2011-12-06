@@ -340,6 +340,29 @@ class DiffRewriter:
 
     return new_diff
 
+class UserConflictResolver:
+  def __init__ (self, c, common_version, master_merge_history, local_merge_history):
+    self.c = c
+    self.common_version = common_version
+    self.master_merge_history = master_merge_history
+    self.local_merge_history = local_merge_history
+
+  def ask_user (self, conflict):
+    while True:
+      print "=" * 80
+      print "Merge Conflict for '%s'" % printable_name (self.c, conflict, self.common_version)
+      print "=" * 80
+      print "(m)aster / (l)ocal / (b)oth / (s)how ? ",
+      line = raw_input ("How should this conflict be resolved? ")
+      if line == "s":
+        print "=== MASTER ==="
+        self.master_merge_history.show_changes (conflict)
+        print "=== LOCAL ==="
+        self.local_merge_history.show_changes (conflict)
+        print "=============="
+      if line == "m" or line == "l" or line == "b":
+        return line
+
 ################################# MERGE ######################################
 
 def history_merge (c, repo, local_history, remote_history, pull_args):
@@ -376,6 +399,7 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
   use_both_versions = dict()
 
   print
+  c_resolver = UserConflictResolver (c, common_version, master_merge_history, local_merge_history)
   conflicts = find_conflicts (master_merge_history, local_merge_history)
   for conflict in conflicts:
     if pull_args.always_local:
@@ -388,19 +412,7 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
       else:
         choice = "b"
     else:
-      while True:
-        print "CONFLICT (%s): %s" % (conflict, printable_name (c, conflict, common_version))
-        print "(m)aster / (l)ocal / (b)oth / (s)how ? ",
-        line = raw_input ("How should this conflict be resolved? ")
-        if line == "s":
-          print "=== MASTER ==="
-          master_merge_history.show_changes (conflict)
-          print "=== LOCAL ==="
-          local_merge_history.show_changes (conflict)
-          print "=============="
-        if line == "m" or line == "l" or line == "b":
-          choice = line
-          break
+      choice = c_resolver.ask_user (conflict)
     if choice == "l":
       print "... local version will be used"
       restore_inode[conflict] = True
