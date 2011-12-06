@@ -482,8 +482,13 @@ def cmd_check():
 def cmd_gc():
   repo = cd_repo_connect_db()
 
+  status_line.set_op ("GC")
   objs = unused_objects (repo)
+  lobjs = len (objs)
+  pos = 1
   for o in objs:
+    status_line.update ("removing file %d/%d" % (pos, lobjs))
+    pos += 1
     os.remove (os.path.join (repo.path, "objects", make_object_filename (o)))
 
 def cmd_clone():
