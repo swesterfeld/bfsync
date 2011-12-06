@@ -50,6 +50,7 @@ def get (repo, urls):
   c = conn.cursor()
 
   # create list of required objects
+  status_line.update ("preparing transfer list...")
   objs = []
   c.execute ('''SELECT DISTINCT hash FROM inodes''')
   for row in c:

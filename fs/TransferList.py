@@ -42,7 +42,7 @@ class TransferList:
           self.update_status_line()
       f.close()
     if (verbose):
-      print
+      status_line.cleanup()
   def receive_list (self, pipe):
     in_size = True
     size_str = ""
@@ -84,7 +84,7 @@ class TransferList:
       f.close()
       move_file_to_objects (repo, dest_path)
     if (verbose):
-      print
+      status_bar.cleanup()
   def copy_files (self, dest_repo, src_repo):
     self.start_time = time.time()
     dest_path = dest_repo.make_temp_name()
@@ -99,6 +99,6 @@ class TransferList:
         sys.exit (1)
       self.bytes_done += tfile.size
       self.update_status_line()
-    print
+    status_line.cleanup()
 
 
