@@ -128,7 +128,7 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
   # this will release the lock
   server_conn.close()
 
-def revert (repo, VERSION):
+def revert (repo, VERSION, verbose = True):
   conn = repo.conn
   repo_path = repo.path
 
@@ -146,7 +146,9 @@ def revert (repo, VERSION):
       VERSION = max (row[0], VERSION)
     VERSION -= 1
 
-  print "reverting to version %d..." % VERSION
+  if verbose:
+    print "reverting to version %d..." % VERSION
+
   c.execute ('''SELECT vmin, vmax, id FROM inodes WHERE vmax >= ?''', (VERSION, ))
   del_inode_list = []
   for row in c:

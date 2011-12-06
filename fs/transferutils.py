@@ -344,7 +344,10 @@ class DiffRewriter:
 def history_merge (c, repo, local_history, remote_history, pull_args):
   # revert to last common version
   common_version = find_common_version (local_history, remote_history)
-  revert (repo, common_version)
+  revert (repo, common_version, verbose = False)
+
+  # initialize as one because of the middle-patch (which is neither from local nor remote history)
+  total_patch_count = 1
 
   # ANALYZE master history
   master_merge_history = MergeHistory (c, common_version, "master")
@@ -354,6 +357,7 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
       diff = rh[1]
       changes = parse_diff (load_diff (diff))
       master_merge_history.add_changes (rh[0], changes)
+      total_patch_count += 1
 
   # ANALYZE local history
   local_merge_history = MergeHistory (c, common_version, "local")
@@ -363,6 +367,7 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
       diff = lh[1]
       changes = parse_diff (load_diff (diff))
       local_merge_history.add_changes (lh[0], changes)
+      total_patch_count += 1
 
   # ASK USER
   inode_ignore_change = dict()
@@ -408,7 +413,6 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
   print
 
   master_version = common_version
-  status_line.set_op ("MERGE")
 
   patch_count = 1
   # APPLY master history
@@ -417,7 +421,7 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
       diff = rh[1]
       diff_file = os.path.join ("objects", make_object_filename (diff))
 
-      status_line.update ("applying patch %d" % patch_count)
+      status_line.update ("patch %d/%d" % (patch_count, total_patch_count))
       patch_count += 1
 
       apply (repo, xzcat (diff_file), diff, verbose = False)
@@ -451,9 +455,12 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
   new_diff = diff_rewriter.rewrite (changes)
 
   if new_diff != "":
-    status_line.update ("applying patch %d" % patch_count)
-    patch_count += 1
+    status_line.update ("patch %d/%d" % (patch_count, total_patch_count))
     apply (repo, new_diff, verbose = False)
+
+  # we count the "middle-patch" even if its empty to be able to predict
+  # the number of patches
+  patch_count += 1
 
   # APPLY modified local history
 
@@ -464,7 +471,7 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
 
       new_diff = diff_rewriter.rewrite (changes)
       # apply modified diff
-      status_line.update ("applying patch %d" % patch_count)
+      status_line.update ("patch %d/%d" % (patch_count, total_patch_count))
       patch_count += 1
       apply (repo, new_diff, verbose = False)
 
