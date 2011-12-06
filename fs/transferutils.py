@@ -523,14 +523,14 @@ def pull (repo, args, server = True):
     return
 
   # transfer required history objects
+  status_line.set_op ("PULL")
   get_remote_objects (repo, remote_repo, transfer_objs)
 
   if can_fast_forward:
-    status_line.set_op ("PULL")
     count = 1
     for diff in ff_apply:
       diff_file = os.path.join ("objects", make_object_filename (diff))
-      status_line.update ("fast-forward: patch %d / %d" % (count, len (ff_apply)))
+      status_line.update ("patch %d/%d - fast forward" % (count, len (ff_apply)))
       apply (repo, xzcat (diff_file), diff, server = server, verbose = False)
       count += 1
   else:
