@@ -25,6 +25,7 @@ MERGE:
   - change logs
   - inode values
 * support aborting the merge
+* handle commits which become empty due to merge decision
 
 RELEASE:
 ========
