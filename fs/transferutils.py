@@ -223,6 +223,12 @@ class MergeHistory:
     changes = map (lambda x: x[1], pchanges)
     return changes
 
+  def get_changes (self, inode):
+    changes = []
+    for (position, v, change) in self.inode_changes[inode]:
+      changes += [ change ]
+    return changes
+
   def show_changes (self, inode):
     changes = []
     for (position, v, change) in self.inode_changes[inode]:
@@ -340,6 +346,55 @@ class DiffRewriter:
 
     return new_diff
 
+def apply_inode_changes (inode, changes):
+  inode = inode[:]  # copy inode
+  for change in changes:
+    if change[0] == "i!":
+      assert (change[1] == inode[0])
+      for i in range (len (inode)):
+        new_field = change[i + 1]
+        if new_field != '':
+          if isinstance (inode[i], int):
+            inode[i] = int (new_field)
+          else:
+            inode[i] = new_field
+    if change[0] == "i-":
+      assert (change[1] == inode[0])
+      inode = None
+  return inode
+
+def pretty_date (sec, nsec):
+  return datetime.datetime.fromtimestamp (sec).strftime ("%a, %d %b %Y %H:%M:%S.") + "%09d" % nsec
+
+def pretty_format (inode):
+  pp = []
+  pp += [ ("id", inode[0]) ]
+  pp += [ ("uid", inode[1]) ]
+  pp += [ ("gid", inode[2]) ]
+  pp += [ ("mode", "%o" % inode[3]) ]
+  pp += [ ("type", inode[4]) ]
+  pp += [ ("content", inode[5]) ]
+  pp += [ ("symlink", inode[6]) ]
+  pp += [ ("size", inode[7]) ]
+  pp += [ ("major", inode[8]) ]
+  pp += [ ("minor", inode[9]) ]
+  pp += [ ("nlink", inode[10]) ]
+  pp += [ ("ctime", pretty_date (inode[11], inode[12])) ]
+  pp += [ ("mtime", pretty_date (inode[13], inode[14])) ]
+  return pp
+
+def pretty_print_conflict (common_inode, master_inode, local_inode):
+  c_fmt = pretty_format (common_inode)
+  m_fmt = pretty_format (master_inode)
+  l_fmt = pretty_format (local_inode)
+
+  for i in range (len (c_fmt)):
+    print "Common   ", c_fmt[i][0], ":", c_fmt[i][1]
+    if c_fmt[i] != m_fmt[i]:
+      print " * Master", m_fmt[i][0], ":", m_fmt[i][1]
+    if c_fmt[i] != l_fmt[i]:
+      print " * Local ", l_fmt[i][0], ":", l_fmt[i][1]
+
 class UserConflictResolver:
   def __init__ (self, c, common_version, master_merge_history, local_merge_history):
     self.c = c
@@ -351,6 +406,11 @@ class UserConflictResolver:
     while True:
       print "=" * 80
       print "Merge Conflict for '%s'" % printable_name (self.c, conflict, self.common_version)
+      print "=" * 80
+      common_inode = db_inode (self.c, self.common_version, conflict)
+      master_inode = apply_inode_changes (common_inode, self.master_merge_history.get_changes (conflict))
+      local_inode = apply_inode_changes (common_inode, self.local_merge_history.get_changes (conflict))
+      pretty_print_conflict (common_inode, master_inode, local_inode)
       print "=" * 80
       line = raw_input ("(m)aster / (l)ocal / (b)oth / (v)iew / (s)hell / (a)bort merge? ")
       if line == "v":
