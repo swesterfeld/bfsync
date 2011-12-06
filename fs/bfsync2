@@ -449,11 +449,38 @@ def check_table (repo, table, table_name):
   else:
     print "%s:\n - all %d objects available." % (table_name, objs)
 
+def unused_objects (repo):
+  result = []
+
+  # check objects required by db
+  used_set = set()
+  for table in [ "history", "inodes" ]:
+    for row in repo.conn.execute ("""SELECT DISTINCT hash FROM %s""" % table):
+      hash = row[0]
+      if len (hash) == 40:
+        used_set.add (hash)
+
+  for root, dirs, files in os.walk (os.path.join (repo.path, "objects")):
+    for f in files:
+      hash = os.path.basename (root) + f
+      if hash not in used_set:
+        result.append (hash)
+  return result
+
 def cmd_check():
   repo = cd_repo_connect_db()
 
   check_table (repo, "history", "History")
   check_table (repo, "inodes", "Files")
+  print "Unused:"
+  print " - %d objects are not used." % len (unused_objects (repo))
+
+def cmd_gc():
+  repo = cd_repo_connect_db()
+
+  objs = unused_objects (repo)
+  for o in objs:
+    os.remove (os.path.join (repo.path, "objects", make_object_filename (o)))
 
 def cmd_clone():
   url = args[0]
@@ -525,6 +552,7 @@ for arg in arg_iter:
     ( "log",                    cmd_log, 0),
     ( "pull",                   cmd_pull, 1),
     ( "push",                   cmd_push, 1),
+    ( "gc",                     cmd_gc, 0),
     ( "get",                    cmd_get, 1),
     ( "put",                    cmd_put, 1),
     ( "status",                 cmd_status, 0),
