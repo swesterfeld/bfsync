@@ -56,9 +56,6 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
     hash = hash_cache.compute_hash (filename)
     add_new_list += [id, hash]
 
-  if verbose:
-    status_line.set_op ("ADD-NEW")
-
   files_added = 0
   files_total = len (add_new_list) / 2
   while len (add_new_list) > 0:
@@ -67,7 +64,7 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
     add_new_list = add_new_list[items:]
     files_added += items / 2
     if verbose:
-      status_line.update ("file %d/%d" % (files_added, files_total))
+      status_line.update ("adding file %d/%d" % (files_added, files_total))
 
   if verbose:
     status_line.cleanup()
@@ -81,8 +78,7 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
 
   # compute commit diff
   if verbose:
-    status_line.set_op ("COMMIT-DIFF")
-    status_line.update ("computing changes between version %d and %d... " % (VERSION - 1, VERSION))
+    status_line.update ("computing changes")
 
   diff_filename = repo.make_temp_name()
   diff_file = open (diff_filename, "w")
@@ -108,7 +104,7 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
       commit_size_ok = False
 
   if verbose:
-    status_line.update ("done.")
+    status_line.update ("computing changes: done")
     status_line.cleanup()
 
   if commit_size_ok:

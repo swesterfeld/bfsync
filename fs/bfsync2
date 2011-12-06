@@ -84,6 +84,7 @@ def cmd_commit():
   commit_args = parser.parse_args (args)
 
   repo = cd_repo_connect_db()
+  status_line.set_op ("COMMIT")
   commit (repo)
 
 def cmd_debug_load_all_inodes():
