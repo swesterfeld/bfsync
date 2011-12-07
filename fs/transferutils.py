@@ -416,15 +416,19 @@ def pretty_format (inode):
 
 def pretty_print_conflict (common_inode, master_inode, local_inode):
   c_fmt = pretty_format (common_inode)
-  m_fmt = pretty_format (master_inode)
-  l_fmt = pretty_format (local_inode)
+  if master_inode:
+    m_fmt = pretty_format (master_inode)
+  if local_inode:
+    l_fmt = pretty_format (local_inode)
 
   for i in range (len (c_fmt)):
     print "Common   ", c_fmt[i][0], ":", c_fmt[i][1]
-    if c_fmt[i] != m_fmt[i]:
-      print " * Master", m_fmt[i][0], ":", m_fmt[i][1]
-    if c_fmt[i] != l_fmt[i]:
-      print " * Local ", l_fmt[i][0], ":", l_fmt[i][1]
+    if master_inode:
+      if c_fmt[i] != m_fmt[i]:
+        print " * Master", m_fmt[i][0], ":", m_fmt[i][1]
+    if local_inode:
+      if c_fmt[i] != l_fmt[i]:
+        print " * Local ", l_fmt[i][0], ":", l_fmt[i][1]
 
 class AutoConflictResolver:
   def __init__ (self, c, repo, common_version, master_merge_history, local_merge_history):
@@ -459,6 +463,9 @@ class AutoConflictResolver:
     master_inode = apply_inode_changes (common_inode, self.master_merge_history.get_changes (conflict))
     local_inode = apply_inode_changes (common_inode, self.local_merge_history.get_changes (conflict))
 
+    if master_inode is None or local_inode is None:
+      return ""  # deletion, can't do that automatically
+
     cfields = set()
     for i in range (len (common_inode)):
       if common_inode[i] != master_inode[i] or common_inode[i] != local_inode[i]:
@@ -481,24 +488,29 @@ class UserConflictResolver:
   def shell (self, filename, common_hash, master_hash, local_hash):
     old_cwd = os.getcwd()
 
-    common_file = os.path.join (old_cwd, "objects", make_object_filename (common_hash))
-    master_file = os.path.join (old_cwd, "objects", make_object_filename (master_hash))
-    local_file = os.path.join (old_cwd, "objects", make_object_filename (local_hash))
-
-    default_get = self.repo.config.get ("default/get")
-
-    if len (default_get) == 0:
-      raise Exception ("get: no repository specified and default/get config value empty")
-    url = default_get[0]
-
-    remote_repo = RemoteRepo (url)
-    get_remote_objects (self.repo, remote_repo, [ master_hash ])
-
     os.mkdir ("merge")
     os.chdir ("merge")
+
+    common_file = os.path.join (old_cwd, "objects", make_object_filename (common_hash))
     shutil.copyfile (common_file, "common_%s" % filename)
-    shutil.copyfile (master_file, "master_%s" % filename)
-    shutil.copyfile (local_file, "local_%s" % filename)
+
+    if master_hash:
+      master_file = os.path.join (old_cwd, "objects", make_object_filename (master_hash))
+      default_get = self.repo.config.get ("default/get")
+
+      if len (default_get) == 0:
+        raise Exception ("get: no repository specified and default/get config value empty")
+      url = default_get[0]
+
+      remote_repo = RemoteRepo (url)
+      get_remote_objects (self.repo, remote_repo, [ master_hash ])
+
+      shutil.copyfile (master_file, "master_%s" % filename)
+
+    if local_hash:
+      local_file = os.path.join (old_cwd, "objects", make_object_filename (local_hash))
+      shutil.copyfile (local_file, "local_%s" % filename)
+
     os.system (os.environ['SHELL'])
     try:
       os.remove ("common_%s" % filename)
@@ -511,13 +523,22 @@ class UserConflictResolver:
 
   def resolve (self, conflict):
     while True:
-      fullname = printable_name (self.c, conflict, self.common_version)
-      print "=" * 80
-      print "Merge Conflict for '%s'" % fullname
-      print "=" * 80
       common_inode = db_inode (self.c, self.common_version, conflict)
       master_inode = apply_inode_changes (common_inode, self.master_merge_history.get_changes (conflict))
       local_inode = apply_inode_changes (common_inode, self.local_merge_history.get_changes (conflict))
+
+      fullname = printable_name (self.c, conflict, self.common_version)
+      print "=" * 80
+      print "Merge Conflict: '%s' was" % fullname
+      if master_inode is None:
+        print " - deleted in master history"
+      else:
+        print " - modified in master history"
+      if local_inode is None:
+        print " - deleted locally"
+      else:
+        print " - modified locally"
+      print "=" * 80
       pretty_print_conflict (common_inode, master_inode, local_inode)
       print "=" * 80
       line = raw_input ("(m)aster / (l)ocal / (b)oth / (v)iew / (s)hell / (a)bort merge? ")
@@ -534,10 +555,16 @@ class UserConflictResolver:
           print "Sorry, shell is only supported for plain files, but conflict type is %s." % conflict_type
           print
         else:
-          self.shell (os.path.basename (fullname),
-                      common_inode[INODE_CONTENT],
-                      master_inode[INODE_CONTENT],
-                      local_inode[INODE_CONTENT])
+          c_hash = common_inode[INODE_CONTENT]
+          if master_inode:
+            m_hash = master_inode[INODE_CONTENT]
+          else:
+            m_hash = None
+          if local_inode:
+            l_hash = local_inode[INODE_CONTENT]
+          else:
+            l_hash = None
+          self.shell (os.path.basename (fullname), c_hash, m_hash, l_hash)
       if line == "m" or line == "l" or line == "b" or line == "a":
         if line == "l":
           print "... local version will be used"
@@ -545,7 +572,7 @@ class UserConflictResolver:
           print "... master version will be used"
         elif line == "b":
           print "... both versions will be used"
-        elif choice == "a":
+        elif line == "a":
           print "... aborting merge"
         return line
 
