@@ -387,7 +387,7 @@ def apply_inode_changes (inode, changes):
   return inode
 
 def pretty_date (sec, nsec):
-  return datetime.datetime.fromtimestamp (sec).strftime ("%a, %d %b %Y %H:%M:%S.") + "%09d" % nsec
+  return datetime.datetime.fromtimestamp (sec).strftime ("%F %H:%M:%S.") + "%d" % (nsec / 100 / 1000 / 1000)
 
 INODE_TYPE = 4
 INODE_CONTENT = 5
@@ -399,19 +399,18 @@ INODE_MTIME_NS = 14
 
 def pretty_format (inode):
   pp = []
-  pp += [ ("id", inode[0]) ]
-  pp += [ ("uid", inode[1]) ]
-  pp += [ ("gid", inode[2]) ]
-  pp += [ ("mode", "%o" % inode[3]) ]
-  pp += [ ("type", inode[INODE_TYPE]) ]
-  pp += [ ("content", inode[INODE_CONTENT]) ]
-  pp += [ ("symlink", inode[6]) ]
-  pp += [ ("size", inode[7]) ]
-  pp += [ ("major", inode[8]) ]
-  pp += [ ("minor", inode[9]) ]
-  pp += [ ("nlink", inode[10]) ]
-  pp += [ ("ctime", pretty_date (inode[11], inode[12])) ]
-  pp += [ ("mtime", pretty_date (inode[13], inode[14])) ]
+  pp += [ ("User", inode[1]) ]
+  pp += [ ("Group", inode[2]) ]
+  pp += [ ("Mode", "%o" % (inode[3] & 07777)) ]
+  pp += [ ("Type", inode[INODE_TYPE]) ]
+  pp += [ ("Content", inode[INODE_CONTENT]) ]
+  pp += [ ("Symlink", inode[6]) ]
+  pp += [ ("Size", inode[7]) ]
+  pp += [ ("Major", inode[8]) ]
+  pp += [ ("Minor", inode[9]) ]
+  pp += [ ("NLink", inode[10]) ]
+  pp += [ ("CTime", pretty_date (inode[11], inode[12])) ]
+  pp += [ ("MTime", pretty_date (inode[13], inode[14])) ]
   return pp
 
 def pretty_print_conflict (common_inode, master_inode, local_inode):
@@ -421,14 +420,30 @@ def pretty_print_conflict (common_inode, master_inode, local_inode):
   if local_inode:
     l_fmt = pretty_format (local_inode)
 
+  print "%-8s| %-22s| %-22s| %-22s" % ("", "Common", "Master", "Local")
+  print "--------|-----------------------|-----------------------|----------------------"
   for i in range (len (c_fmt)):
-    print "Common   ", c_fmt[i][0], ":", c_fmt[i][1]
-    if master_inode:
-      if c_fmt[i] != m_fmt[i]:
-        print " * Master", m_fmt[i][0], ":", m_fmt[i][1]
-    if local_inode:
-      if c_fmt[i] != l_fmt[i]:
-        print " * Local ", l_fmt[i][0], ":", l_fmt[i][1]
+    c = c_fmt[i][1]
+    m = m_fmt[i][1]
+    l = l_fmt[i][1]
+    if c_fmt[i][0] == "Content":
+      c = "old content"
+      if m_fmt[i][1] != c_fmt[i][1]:
+        m = "new content 1"
+      else:
+        m = c
+      if l_fmt[i][1] != c_fmt[i][1]:
+        if l_fmt[i][1] != m_fmt[i][1]:
+          l = "new content 2"
+        else:
+          l = m
+      else:
+        l = c
+    if l == c:
+      l = "~"
+    if m == c:
+      m = "~"
+    print "%-8s| %-22s| %-22s| %-22s" % (c_fmt[i][0], c, m, l)
 
 class AutoConflictResolver:
   def __init__ (self, c, repo, common_version, master_merge_history, local_merge_history):
