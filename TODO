@@ -18,7 +18,6 @@ Performance:
 
 MERGE:
 ======
-* better name substitution: foo.gif => foo~1.gif
 * better information for the user
   - change logs
   - inode values
