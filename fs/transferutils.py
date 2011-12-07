@@ -370,6 +370,11 @@ def pretty_date (sec, nsec):
 INODE_TYPE = 4
 INODE_CONTENT = 5
 
+INODE_CTIME = 11
+INODE_CTIME_NS = 12
+INODE_MTIME = 13
+INODE_MTIME_NS = 14
+
 def pretty_format (inode):
   pp = []
   pp += [ ("id", inode[0]) ]
@@ -398,6 +403,50 @@ def pretty_print_conflict (common_inode, master_inode, local_inode):
       print " * Master", m_fmt[i][0], ":", m_fmt[i][1]
     if c_fmt[i] != l_fmt[i]:
       print " * Local ", l_fmt[i][0], ":", l_fmt[i][1]
+
+class AutoConflictResolver:
+  def __init__ (self, c, repo, common_version, master_merge_history, local_merge_history):
+    self.c = c
+    self.repo = repo
+    self.common_version = common_version
+    self.master_merge_history = master_merge_history
+    self.local_merge_history = local_merge_history
+
+  def auto_merge_by_ctime (self, master_inode, local_inode):
+    m_sec = master_inode[INODE_CTIME]
+    l_sec = local_inode[INODE_CTIME]
+
+    if m_sec > l_sec:
+      return "m"
+    if l_sec > m_sec:
+      return "l"
+
+    # m_sec == l_sec
+    m_nsec = master_inode[INODE_CTIME_NS]
+    l_nsec = local_inode[INODE_CTIME_NS]
+    if m_nsec > l_nsec:
+      return "m"
+    if l_nsec > m_nsec:
+      return "l"
+
+    # same ctime
+    return "m"
+
+  def resolve (self, conflict):
+    common_inode = db_inode (self.c, self.common_version, conflict)
+    master_inode = apply_inode_changes (common_inode, self.master_merge_history.get_changes (conflict))
+    local_inode = apply_inode_changes (common_inode, self.local_merge_history.get_changes (conflict))
+
+    cfields = set()
+    for i in range (len (common_inode)):
+      if common_inode[i] != master_inode[i] or common_inode[i] != local_inode[i]:
+        cfields.add (i)
+
+    if cfields.issubset ([INODE_CTIME, INODE_CTIME_NS,
+                          INODE_MTIME, INODE_MTIME_NS]):
+      return self.auto_merge_by_ctime (master_inode, local_inode)
+    else:
+      return ""   # could not resolve automatically
 
 class UserConflictResolver:
   def __init__ (self, c, repo, common_version, master_merge_history, local_merge_history):
@@ -438,7 +487,7 @@ class UserConflictResolver:
     os.chdir (old_cwd)
     os.rmdir ("merge")
 
-  def ask_user (self, conflict):
+  def resolve (self, conflict):
     while True:
       fullname = printable_name (self.c, conflict, self.common_version)
       print "=" * 80
@@ -505,7 +554,8 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
   use_both_versions = dict()
 
   print
-  c_resolver = UserConflictResolver (c, repo, common_version, master_merge_history, local_merge_history)
+  auto_resolver = AutoConflictResolver (c, repo, common_version, master_merge_history, local_merge_history)
+  user_resolver = UserConflictResolver (c, repo, common_version, master_merge_history, local_merge_history)
   conflicts = find_conflicts (master_merge_history, local_merge_history)
   for conflict in conflicts:
     if pull_args.always_local:
@@ -518,7 +568,12 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
       else:
         choice = "b"
     else:
-      choice = c_resolver.ask_user (conflict)
+      # try to handle this conflict automatically
+      choice = auto_resolver.resolve (conflict)
+
+      # ask user if this did not work
+      if choice == "":
+        choice = user_resolver.resolve (conflict)
     if choice == "l":
       print "... local version will be used"
       restore_inode[conflict] = True
