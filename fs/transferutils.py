@@ -539,6 +539,14 @@ class UserConflictResolver:
                       master_inode[INODE_CONTENT],
                       local_inode[INODE_CONTENT])
       if line == "m" or line == "l" or line == "b" or line == "a":
+        if line == "l":
+          print "... local version will be used"
+        elif line == "m":
+          print "... master version will be used"
+        elif line == "b":
+          print "... both versions will be used"
+        elif choice == "a":
+          print "... aborting merge"
         return line
 
 ################################# MERGE ######################################
@@ -575,7 +583,6 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
   restore_inode = dict()
   use_both_versions = dict()
 
-  print
   auto_resolver = AutoConflictResolver (c, repo, common_version, master_merge_history, local_merge_history)
   user_resolver = UserConflictResolver (c, repo, common_version, master_merge_history, local_merge_history)
   conflicts = find_conflicts (master_merge_history, local_merge_history)
@@ -597,19 +604,13 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
       if choice == "":
         choice = user_resolver.resolve (conflict)
     if choice == "l":
-      print "... local version will be used"
       restore_inode[conflict] = True
     elif choice == "m":
-      print "... master version will be used"
       inode_ignore_change[conflict] = True
     elif choice == "b":
-      print "... both versions will be used"
       use_both_versions[conflict] = True
     elif choice == "a":
-      print "... aborting merge"
       return
-
-  print
 
   # REVERT to common version
   revert (repo, common_version, verbose = False)
