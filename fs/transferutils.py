@@ -321,12 +321,20 @@ class DiffRewriter:
         if self.subst.has_key (change[1]):
           change[1] = self.subst[change[1]]
         if db_contains_link (self.c, VERSION, change[1], change[2]):
-          print "LINK CONFLICT"
+          filename = change[2]
+          base, ext = os.path.splitext (filename)
+
           suffix = 1
-          while db_contains_link (self.c, VERSION, change[1], change[2] + "~%d" % suffix):
+          while True:
+            # foo.gif => foo~1.gif
+            newname = base + "~%d" % suffix + ext
+            if not db_contains_link (self.c, VERSION, change[1], newname):
+              break
             suffix += 1
+
           lrkey = (change[1], change[2])
-          self.link_rewrite[lrkey] = change[2] + "~%d" % suffix
+          self.link_rewrite[lrkey] = newname
+
       if change[0] == "l+" or change[0] == "l-":
         if self.subst.has_key (change[1]):
           change[1] = self.subst[change[1]]
