@@ -302,6 +302,7 @@ class DiffRewriter:
     self.c = c
     self.link_rewrite = dict()
     self.subst = dict()
+    self.changes = []
 
   def subst_inode (self, old_id, new_id):
     self.subst[old_id] = new_id
@@ -334,6 +335,8 @@ class DiffRewriter:
 
           lrkey = (change[1], change[2])
           self.link_rewrite[lrkey] = newname
+          path = printable_name (self.c, change[1], VERSION)
+          self.changes += [ (os.path.join (path, filename), os.path.join (path, newname)) ]
 
       if change[0] == "l+" or change[0] == "l-":
         if self.subst.has_key (change[1]):
@@ -354,6 +357,17 @@ class DiffRewriter:
       new_diff += s
 
     return new_diff
+
+  def show_changes (self):
+    if len (self.changes) > 0:
+      status_line.cleanup()
+      print
+      print "The following local files were renamed to avoid name conflicts"
+      print "with the master history:"
+      print
+      for old, new in self.changes:
+        print " * '%s' => '%s'" % (old, new)
+      print
 
 def apply_inode_changes (inode, changes):
   inode = inode[:]  # copy inode
@@ -662,6 +676,8 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
       status_line.update ("patch %d/%d" % (patch_count, total_patch_count))
       patch_count += 1
       apply (repo, new_diff, verbose = False)
+
+  diff_rewriter.show_changes()
 
 def pull (repo, args, server = True):
   parser = argparse.ArgumentParser (prog='bfsync2 pull')
