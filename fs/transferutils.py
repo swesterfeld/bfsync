@@ -406,7 +406,7 @@ class UserConflictResolver:
     self.master_merge_history = master_merge_history
     self.local_merge_history = local_merge_history
 
-  def shell (self, common_hash, master_hash, local_hash):
+  def shell (self, filename, common_hash, master_hash, local_hash):
     old_cwd = os.getcwd()
 
     common_file = os.path.join (old_cwd, "objects", make_object_filename (common_hash))
@@ -424,14 +424,14 @@ class UserConflictResolver:
 
     os.mkdir ("merge")
     os.chdir ("merge")
-    shutil.copyfile (common_file, "common")
-    shutil.copyfile (master_file, "master")
-    shutil.copyfile (local_file, "local")
+    shutil.copyfile (common_file, "common_%s" % filename)
+    shutil.copyfile (master_file, "master_%s" % filename)
+    shutil.copyfile (local_file, "local_%s" % filename)
     os.system (os.environ['SHELL'])
     try:
-      os.remove ("common")
-      os.remove ("master")
-      os.remove ("local")
+      os.remove ("common_%s" % filename)
+      os.remove ("master_%s" % filename)
+      os.remove ("local_%s" % filename)
     except:
       pass
     os.chdir (old_cwd)
@@ -439,8 +439,9 @@ class UserConflictResolver:
 
   def ask_user (self, conflict):
     while True:
+      fullname = printable_name (self.c, conflict, self.common_version)
       print "=" * 80
-      print "Merge Conflict for '%s'" % printable_name (self.c, conflict, self.common_version)
+      print "Merge Conflict for '%s'" % fullname
       print "=" * 80
       common_inode = db_inode (self.c, self.common_version, conflict)
       master_inode = apply_inode_changes (common_inode, self.master_merge_history.get_changes (conflict))
@@ -455,7 +456,10 @@ class UserConflictResolver:
         self.local_merge_history.show_changes (conflict)
         print "=============="
       if line == "s":
-        self.shell (common_inode[INODE_CONTENT], master_inode[INODE_CONTENT], local_inode[INODE_CONTENT])
+        self.shell (os.path.basename (fullname),
+                    common_inode[INODE_CONTENT],
+                    master_inode[INODE_CONTENT],
+                    local_inode[INODE_CONTENT])
       if line == "m" or line == "l" or line == "b" or line == "a":
         return line
 
