@@ -367,6 +367,7 @@ def apply_inode_changes (inode, changes):
 def pretty_date (sec, nsec):
   return datetime.datetime.fromtimestamp (sec).strftime ("%a, %d %b %Y %H:%M:%S.") + "%09d" % nsec
 
+INODE_TYPE = 4
 INODE_CONTENT = 5
 
 def pretty_format (inode):
@@ -375,7 +376,7 @@ def pretty_format (inode):
   pp += [ ("uid", inode[1]) ]
   pp += [ ("gid", inode[2]) ]
   pp += [ ("mode", "%o" % inode[3]) ]
-  pp += [ ("type", inode[4]) ]
+  pp += [ ("type", inode[INODE_TYPE]) ]
   pp += [ ("content", inode[INODE_CONTENT]) ]
   pp += [ ("symlink", inode[6]) ]
   pp += [ ("size", inode[7]) ]
@@ -456,10 +457,16 @@ class UserConflictResolver:
         self.local_merge_history.show_changes (conflict)
         print "=============="
       if line == "s":
-        self.shell (os.path.basename (fullname),
-                    common_inode[INODE_CONTENT],
-                    master_inode[INODE_CONTENT],
-                    local_inode[INODE_CONTENT])
+        conflict_type = common_inode[INODE_TYPE]
+        if conflict_type != "file":
+          print
+          print "Sorry, shell is only supported for plain files, but conflict type is %s." % conflict_type
+          print
+        else:
+          self.shell (os.path.basename (fullname),
+                      common_inode[INODE_CONTENT],
+                      master_inode[INODE_CONTENT],
+                      local_inode[INODE_CONTENT])
       if line == "m" or line == "l" or line == "b" or line == "a":
         return line
 
