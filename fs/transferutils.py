@@ -11,6 +11,7 @@ import argparse
 import subprocess
 import datetime
 import random
+import shutil
 
 def get_remote_objects (repo, remote_repo, transfer_objs):
   # make a list of hashes that we need
@@ -366,6 +367,8 @@ def apply_inode_changes (inode, changes):
 def pretty_date (sec, nsec):
   return datetime.datetime.fromtimestamp (sec).strftime ("%a, %d %b %Y %H:%M:%S.") + "%09d" % nsec
 
+INODE_CONTENT = 5
+
 def pretty_format (inode):
   pp = []
   pp += [ ("id", inode[0]) ]
@@ -373,7 +376,7 @@ def pretty_format (inode):
   pp += [ ("gid", inode[2]) ]
   pp += [ ("mode", "%o" % inode[3]) ]
   pp += [ ("type", inode[4]) ]
-  pp += [ ("content", inode[5]) ]
+  pp += [ ("content", inode[INODE_CONTENT]) ]
   pp += [ ("symlink", inode[6]) ]
   pp += [ ("size", inode[7]) ]
   pp += [ ("major", inode[8]) ]
@@ -396,11 +399,43 @@ def pretty_print_conflict (common_inode, master_inode, local_inode):
       print " * Local ", l_fmt[i][0], ":", l_fmt[i][1]
 
 class UserConflictResolver:
-  def __init__ (self, c, common_version, master_merge_history, local_merge_history):
+  def __init__ (self, c, repo, common_version, master_merge_history, local_merge_history):
     self.c = c
+    self.repo = repo
     self.common_version = common_version
     self.master_merge_history = master_merge_history
     self.local_merge_history = local_merge_history
+
+  def shell (self, common_hash, master_hash, local_hash):
+    old_cwd = os.getcwd()
+
+    common_file = os.path.join (old_cwd, "objects", make_object_filename (common_hash))
+    master_file = os.path.join (old_cwd, "objects", make_object_filename (master_hash))
+    local_file = os.path.join (old_cwd, "objects", make_object_filename (local_hash))
+
+    default_get = self.repo.config.get ("default/get")
+
+    if len (default_get) == 0:
+      raise Exception ("get: no repository specified and default/get config value empty")
+    url = default_get[0]
+
+    remote_repo = RemoteRepo (url)
+    get_remote_objects (self.repo, remote_repo, [ master_hash ])
+
+    os.mkdir ("merge")
+    os.chdir ("merge")
+    shutil.copyfile (common_file, "common")
+    shutil.copyfile (master_file, "master")
+    shutil.copyfile (local_file, "local")
+    os.system (os.environ['SHELL'])
+    try:
+      os.remove ("common")
+      os.remove ("master")
+      os.remove ("local")
+    except:
+      pass
+    os.chdir (old_cwd)
+    os.rmdir ("merge")
 
   def ask_user (self, conflict):
     while True:
@@ -420,7 +455,7 @@ class UserConflictResolver:
         self.local_merge_history.show_changes (conflict)
         print "=============="
       if line == "s":
-        os.system (os.environ['SHELL'])
+        self.shell (common_inode[INODE_CONTENT], master_inode[INODE_CONTENT], local_inode[INODE_CONTENT])
       if line == "m" or line == "l" or line == "b" or line == "a":
         return line
 
@@ -459,7 +494,7 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
   use_both_versions = dict()
 
   print
-  c_resolver = UserConflictResolver (c, common_version, master_merge_history, local_merge_history)
+  c_resolver = UserConflictResolver (c, repo, common_version, master_merge_history, local_merge_history)
   conflicts = find_conflicts (master_merge_history, local_merge_history)
   for conflict in conflicts:
     if pull_args.always_local:
