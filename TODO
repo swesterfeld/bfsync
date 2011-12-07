@@ -22,6 +22,7 @@ MERGE:
   - change logs
   - inode values
 * handle commits which become empty due to merge decision
+* fix rename conflict handling ("mv-mv")
 
 RELEASE:
 ========
