@@ -500,17 +500,17 @@ class UserConflictResolver:
     self.master_merge_history = master_merge_history
     self.local_merge_history = local_merge_history
 
-  def shell (self, filename, common_hash, master_hash, local_hash):
-    old_cwd = os.getcwd()
+  def init_merge_dir (self, filename, common_hash, master_hash, local_hash):
+    merge_dir = os.path.join (self.repo.path, "merge")
+    os.mkdir (merge_dir)
 
-    os.mkdir ("merge")
-    os.chdir ("merge")
+    # Common content
+    common_file = os.path.join (self.repo.path, "objects", make_object_filename (common_hash))
+    shutil.copyfile (common_file, os.path.join (merge_dir, "common_%s" % filename))
 
-    common_file = os.path.join (old_cwd, "objects", make_object_filename (common_hash))
-    shutil.copyfile (common_file, "common_%s" % filename)
-
+    # Master content
     if master_hash:
-      master_file = os.path.join (old_cwd, "objects", make_object_filename (master_hash))
+      master_file = os.path.join (self.repo.path, "objects", make_object_filename (master_hash))
       default_get = self.repo.config.get ("default/get")
 
       if len (default_get) == 0:
@@ -520,29 +520,48 @@ class UserConflictResolver:
       remote_repo = RemoteRepo (url)
       get_remote_objects (self.repo, remote_repo, [ master_hash ])
 
-      shutil.copyfile (master_file, "master_%s" % filename)
+      shutil.copyfile (master_file, os.path.join (merge_dir, "master_%s" % filename))
 
+    # Local content
     if local_hash:
-      local_file = os.path.join (old_cwd, "objects", make_object_filename (local_hash))
-      shutil.copyfile (local_file, "local_%s" % filename)
+      local_file = os.path.join (self.repo.path, "objects", make_object_filename (local_hash))
+      shutil.copyfile (local_file, os.path.join (merge_dir, "local_%s" % filename))
 
-    os.system (os.environ['SHELL'])
+  def rm_merge_dir (self, filename):
+    merge_dir = os.path.join (self.repo.path, "merge")
+
     try:
-      os.remove ("common_%s" % filename)
-      os.remove ("master_%s" % filename)
-      os.remove ("local_%s" % filename)
+      os.remove (os.path.join (merge_dir, "common_%s" % filename))
+      os.remove (os.path.join (merge_dir, "master_%s" % filename))
+      os.remove (os.path.join (merge_dir, "local_%s" % filename))
     except:
       pass
+    os.rmdir (merge_dir)
+
+  def shell (self, filename, common_hash, master_hash, local_hash, display = None):
+    old_cwd = os.getcwd()
+    os.chdir ("merge")
+    if display == "M":
+      subprocess.call ([ "xdg-open", "master_%s" % filename ])
+    elif display == "L":
+      subprocess.call ([ "xdg-open", "local_%s" % filename ])
+    elif display == "C":
+      subprocess.call ([ "xdg-open", "common_%s" % filename ])
+    else:
+      os.system (os.environ['SHELL'])
     os.chdir (old_cwd)
-    os.rmdir ("merge")
 
   def resolve (self, conflict):
+    have_merge_dir = False
+
     while True:
       common_inode = db_inode (self.c, self.common_version, conflict)
       master_inode = apply_inode_changes (common_inode, self.master_merge_history.get_changes (conflict))
       local_inode = apply_inode_changes (common_inode, self.local_merge_history.get_changes (conflict))
 
       fullname = printable_name (self.c, conflict, self.common_version)
+      filename = os.path.basename (fullname)
+
       print "=" * 80
       print "Merge Conflict: '%s' was" % fullname
       if master_inode is None:
@@ -556,14 +575,14 @@ class UserConflictResolver:
       print "=" * 80
       pretty_print_conflict (common_inode, master_inode, local_inode)
       print "=" * 80
-      line = raw_input ("(m)aster / (l)ocal / (b)oth / (v)iew / (s)hell / (a)bort merge? ")
+      line = raw_input ("(m)aster / (l)ocal / (b)oth / (v)iew / (s)hell / (a)bort merge\ndisplay (M)aster content / display (L)ocal content / display (C)ommon content? ")
       if line == "v":
         print "=== MASTER ==="
         self.master_merge_history.show_changes (conflict)
         print "=== LOCAL ==="
         self.local_merge_history.show_changes (conflict)
         print "=============="
-      if line == "s":
+      if line == "s" or line == "C" or line == "M" or line == "L":
         conflict_type = common_inode[INODE_TYPE]
         if conflict_type != "file":
           print
@@ -579,7 +598,16 @@ class UserConflictResolver:
             l_hash = local_inode[INODE_CONTENT]
           else:
             l_hash = None
-          self.shell (os.path.basename (fullname), c_hash, m_hash, l_hash)
+          if line == "s":
+            display = None
+          else:
+            display = line
+
+          if not have_merge_dir:
+            self.init_merge_dir (filename, c_hash, m_hash, l_hash)
+            have_merge_dir = True
+
+          self.shell (filename, c_hash, m_hash, l_hash, display)
       if line == "m" or line == "l" or line == "b" or line == "a":
         if line == "l":
           print "... local version will be used"
@@ -589,6 +617,11 @@ class UserConflictResolver:
           print "... both versions will be used"
         elif line == "a":
           print "... aborting merge"
+
+        # cleanup merge dir
+        if have_merge_dir:
+          self.rm_merge_dir (filename)
+
         return line
 
 ################################# MERGE ######################################
