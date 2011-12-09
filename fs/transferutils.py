@@ -386,6 +386,31 @@ def apply_inode_changes (inode, changes):
       inode = None
   return inode
 
+def apply_link_changes (links, changes):
+  links = links[:]  # copy links
+  for change in changes:
+    if change[0] == "l+":
+      links += [ change[1:] ]
+    if change[0] == "l-":
+      new_links = []
+      for l in links:
+        if l[0] == change[1] and l[1] == change[2]:
+          pass
+        else:
+          new_links += [ l ]
+      links = new_links
+  return links
+
+def link_filename (c, common_version, dir_id, changes):
+  if dir_id == "0" * 40:
+    return "/"
+
+  links = db_links (c, common_version, dir_id)
+  links = apply_link_changes (links, changes[dir_id])
+  for link in links:
+    return os.path.join (link_filename (c, common_version, link[0], changes), link[1])
+  return links
+
 def pretty_date (sec, nsec):
   return datetime.datetime.fromtimestamp (sec).strftime ("%F %H:%M:%S.") + "%d" % (nsec / 100 / 1000 / 1000)
 
@@ -559,6 +584,29 @@ class UserConflictResolver:
       master_inode = apply_inode_changes (common_inode, self.master_merge_history.get_changes (conflict))
       local_inode = apply_inode_changes (common_inode, self.local_merge_history.get_changes (conflict))
 
+      common_links = db_links (self.c, self.common_version, conflict)
+      master_links = apply_link_changes (common_links, self.master_merge_history.get_changes (conflict))
+      local_links  = apply_link_changes (common_links, self.local_merge_history.get_changes (conflict))
+
+      common_links.sort()
+      master_links.sort()
+      local_links.sort()
+
+      master_rename = (common_links != master_links)
+      local_rename = (common_links != local_links)
+
+      common_names = []
+      for link in common_links:
+        common_names.append (os.path.join (link_filename (self.c, self.common_version, link[0], []), link[1]))
+
+      master_names = []
+      for link in master_links:
+        master_names.append (os.path.join (link_filename (self.c, self.common_version, link[0], []), link[1])) # FIXME: apply proper link changes
+
+      local_names = []
+      for link in local_links:
+        local_names.append (os.path.join (link_filename (self.c, self.common_version, link[0], []), link[1])) # FIXME: apply proper link changes
+
       fullname = printable_name (self.c, conflict, self.common_version)
       filename = os.path.basename (fullname)
 
@@ -568,10 +616,16 @@ class UserConflictResolver:
         print " - deleted in master history"
       else:
         print " - modified in master history"
+        if master_rename:
+          for n in master_names:
+            print " - renamed to '%s' in master history" % n
       if local_inode is None:
         print " - deleted locally"
       else:
         print " - modified locally"
+        if local_rename:
+          for n in local_names:
+            print " - renamed to '%s' in local history" % n
       print "=" * 80
       pretty_print_conflict (common_inode, master_inode, local_inode)
       print "=" * 80
