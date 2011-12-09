@@ -486,9 +486,9 @@ class AutoConflictResolver:
     self.master_merge_history = master_merge_history
     self.local_merge_history = local_merge_history
 
-  def auto_merge_by_ctime (self, master_inode, local_inode):
-    m_sec = master_inode[INODE_CTIME]
-    l_sec = local_inode[INODE_CTIME]
+  def auto_merge_by_ctime (self, conflict):
+    m_sec = conflict.master_inode[INODE_CTIME]
+    l_sec = conflict.local_inode[INODE_CTIME]
 
     if m_sec > l_sec:
       return "m"
@@ -496,8 +496,8 @@ class AutoConflictResolver:
       return "l"
 
     # m_sec == l_sec
-    m_nsec = master_inode[INODE_CTIME_NS]
-    l_nsec = local_inode[INODE_CTIME_NS]
+    m_nsec = conflict.master_inode[INODE_CTIME_NS]
+    l_nsec = conflict.local_inode[INODE_CTIME_NS]
     if m_nsec > l_nsec:
       return "m"
     if l_nsec > m_nsec:
@@ -507,21 +507,21 @@ class AutoConflictResolver:
     return "m"
 
   def resolve (self, conflict):
-    common_inode = db_inode (self.c, self.common_version, conflict.id)
-    master_inode = apply_inode_changes (common_inode, self.master_merge_history.get_changes (conflict.id))
-    local_inode = apply_inode_changes (common_inode, self.local_merge_history.get_changes (conflict.id))
-
-    if master_inode is None or local_inode is None:
+    if conflict.master_inode is None or conflict.local_inode is None:
       return ""  # deletion, can't do that automatically
 
     cfields = set()
-    for i in range (len (common_inode)):
-      if common_inode[i] != master_inode[i] or common_inode[i] != local_inode[i]:
+    for i in range (len (conflict.common_inode)):
+      cdata = conflict.common_inode[i]
+      mdata = conflict.master_inode[i]
+      ldata = conflict.local_inode[i]
+
+      if cdata != mdata or cdata != ldata:
         cfields.add (i)
 
     if cfields.issubset ([INODE_CTIME, INODE_CTIME_NS,
                           INODE_MTIME, INODE_MTIME_NS]):
-      return self.auto_merge_by_ctime (master_inode, local_inode)
+      return self.auto_merge_by_ctime (conflict)
     else:
       return ""   # could not resolve automatically
 
@@ -588,9 +588,9 @@ class UserConflictResolver:
     have_merge_dir = False
 
     while True:
-      common_inode = db_inode (self.c, self.common_version, conflict.id)
-      master_inode = apply_inode_changes (common_inode, self.master_merge_history.get_changes (conflict.id))
-      local_inode = apply_inode_changes (common_inode, self.local_merge_history.get_changes (conflict.id))
+      common_inode = conflict.common_inode
+      master_inode = conflict.master_inode
+      local_inode = conflict.local_inode
 
       common_links = db_links (self.c, self.common_version, conflict.id)
       master_links = apply_link_changes (common_links, self.master_merge_history.get_changes (conflict.id))
@@ -740,9 +740,21 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
       else:
         choice = "b"
     else:
-      # try to handle this conflict automatically
       conflict = Conflict()
       conflict.id = conflict_id
+
+      # determine inode content for common, local and master version
+      conflict.common_inode = db_inode (c, common_version, conflict.id)
+
+      conflict.master_inode = apply_inode_changes (
+        conflict.common_inode,
+        master_merge_history.get_changes (conflict.id))
+
+      conflict.local_inode = apply_inode_changes (
+        conflict.common_inode,
+        local_merge_history.get_changes (conflict.id))
+
+      # try to handle this conflict automatically
       choice = auto_resolver.resolve (conflict)
 
       # ask user if this did not work
