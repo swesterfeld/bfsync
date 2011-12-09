@@ -21,7 +21,6 @@ MERGE:
 * better information for the user
   - change logs
   - inode values
-* handle commits which become empty due to merge decision
 
 RELEASE:
 ========

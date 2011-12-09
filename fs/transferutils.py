@@ -361,7 +361,6 @@ class DiffRewriter:
 
   def show_changes (self):
     if len (self.changes) > 0:
-      status_line.cleanup()
       print
       print "The following local files were renamed to avoid name conflicts"
       print "with the master history:"
@@ -863,8 +862,10 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
       # apply modified diff
       status_line.update ("patch %d/%d" % (patch_count, total_patch_count))
       patch_count += 1
-      apply (repo, new_diff, verbose = False)
+      if new_diff != "":
+        apply (repo, new_diff, verbose = False)
 
+  status_line.cleanup()
   diff_rewriter.show_changes()
 
 def pull (repo, args, server = True):
