@@ -27,7 +27,6 @@ RELEASE:
 * remove bfsync1 stuff from repo
 * add man page(s)
 * unclutter output
-* disallow pull with uncommitted changes
 * history
 
 ==============================================================================================
