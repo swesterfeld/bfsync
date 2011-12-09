@@ -427,16 +427,25 @@ INODE_MTIME = 13
 INODE_MTIME_NS = 14
 
 def pretty_format (inode):
+  inode_type = inode[INODE_TYPE]
   pp = []
+  pp += [ ("Type", inode[INODE_TYPE]) ]
+
+  if inode_type == "file":
+    pp += [ ("Content", inode[INODE_CONTENT]) ]
+    pp += [ ("Size", inode[7]) ]
+
   pp += [ ("User", inode[1]) ]
   pp += [ ("Group", inode[2]) ]
   pp += [ ("Mode", "%o" % (inode[3] & 07777)) ]
-  pp += [ ("Type", inode[INODE_TYPE]) ]
-  pp += [ ("Content", inode[INODE_CONTENT]) ]
-  pp += [ ("Symlink", inode[6]) ]
-  pp += [ ("Size", inode[7]) ]
-  pp += [ ("Major", inode[8]) ]
-  pp += [ ("Minor", inode[9]) ]
+
+  if inode_type == "symlink":
+    pp += [ ("Symlink", inode[6]) ]
+
+  if inode_type == "blockdev" or inode_type == "chardev":
+    pp += [ ("Major", inode[8]) ]
+    pp += [ ("Minor", inode[9]) ]
+
   pp += [ ("NLink", inode[10]) ]
   pp += [ ("CTime", pretty_date (inode[11], inode[12])) ]
   pp += [ ("MTime", pretty_date (inode[13], inode[14])) ]
