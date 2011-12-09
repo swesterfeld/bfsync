@@ -118,7 +118,7 @@ def push (repo, urls):
     else:
       break
   if common_version != len (remote_history):
-    raise Exception ("push failed, remote history contains commits not in local history (pull to fix this)")
+    raise BFSyncError ("push failed, remote history contains commits not in local history (pull to fix this)")
 
   delta_history = []
   for v in range (len (local_history)):
@@ -913,7 +913,7 @@ def pull (repo, args, server = True):
 
   # Uncommitted changes?
   if check_uncommitted_changes (repo):
-    raise Exception ("pull failed, there are uncommitted changes in this repo (commit or revert to fix this)")
+    raise BFSyncError ("pull failed, there are uncommitted changes in this repo (commit or revert to fix this)")
 
   if pull_args.repo is None:
     default_pull = repo.config.get ("default/pull")

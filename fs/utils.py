@@ -215,3 +215,6 @@ def printable_name (c, id, VERSION):
 
 class RemoteFile:
   pass
+
+class BFSyncError (Exception):
+  pass
