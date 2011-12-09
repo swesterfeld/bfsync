@@ -877,6 +877,26 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
   status_line.cleanup()
   diff_rewriter.show_changes()
 
+def check_uncommitted_changes (repo):
+  conn = repo.conn
+  c = conn.cursor()
+
+  VERSION = 1
+  c.execute ('''SELECT version FROM history''')
+  for row in c:
+    VERSION = max (row[0], VERSION)
+  c.execute ('''SELECT COUNT (*) FROM inodes WHERE vmin=%d AND vmax=%d''' % (VERSION, VERSION))
+  for row in c:
+    if row[0] > 0:
+      return True
+
+  c.execute ('''SELECT COUNT (*) FROM links WHERE vmin=%d AND vmax=%d''' % (VERSION, VERSION))
+  for row in c:
+    if row[0] > 0:
+      return True
+
+  return False
+
 def pull (repo, args, server = True):
   parser = argparse.ArgumentParser (prog='bfsync pull')
   parser.add_argument ('--always-local', action='store_const', const=True,
@@ -890,6 +910,10 @@ def pull (repo, args, server = True):
 
   conn = repo.conn
   repo_path = repo.path
+
+  # Uncommitted changes?
+  if check_uncommitted_changes (repo):
+    raise Exception ("pull failed, there are uncommitted changes in this repo (commit or revert to fix this)")
 
   if pull_args.repo is None:
     default_pull = repo.config.get ("default/pull")
