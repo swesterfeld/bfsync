@@ -552,6 +552,43 @@ def cmd_clone():
   # pull changes from master
   pull (repo, [ url ], server = False)
 
+def cmd_repo_files():
+  repo = connect_db (os.getcwd())
+
+  parser = argparse.ArgumentParser (prog='bfsync repo-files')
+  parser.add_argument ("-0", "--null",
+                  action="store_true", dest="null", default=False)
+  parser.add_argument ('dirs', nargs = '+')
+  repo_files_args = parser.parse_args (args)
+
+  dir_list = repo_files_args.dirs
+  null = repo_files_args.null
+
+  c = repo.conn.cursor()
+
+  # determine current db version
+  VERSION = 1
+  c.execute ('''SELECT version FROM history''')
+  for row in c:
+    VERSION = max (row[0], VERSION)
+
+  hash_dict = dict()
+  c.execute ("SELECT hash FROM inodes WHERE ? >= vmin AND ? <= vmax", (VERSION, VERSION))
+  for row in c:
+    if len (row[0]) == 40:
+      hash_dict[row[0]] = True
+
+  for dir in dir_list:
+    for walk_dir, walk_dirs, walk_files in os.walk (dir):
+      for f in walk_files:
+        full_name = os.path.join (walk_dir, f)
+        hash = hash_cache.compute_hash (full_name)
+        if hash_dict.has_key (hash):
+          if null:
+            sys.stdout.write (full_name + '\0')
+          else:
+            print full_name
+
 command = None
 command_func = None
 arg_iter = sys.argv[1:].__iter__()
@@ -571,6 +608,7 @@ for arg in arg_iter:
     ( "revert",                 cmd_revert, 1),
     ( "init",                   cmd_init, 1),
     ( "clone",                  cmd_clone, 1),
+    ( "repo-files",             cmd_repo_files, 1),
     ( "db-fingerprint",         cmd_db_fingerprint, 0),
     ( "remote",                 cmd_remote, 1),
     ( "debug-load-all-inodes",  cmd_debug_load_all_inodes, 0),
