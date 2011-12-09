@@ -226,8 +226,9 @@ class MergeHistory:
 
   def get_changes (self, inode):
     changes = []
-    for (position, v, change) in self.inode_changes[inode]:
-      changes += [ change ]
+    if self.inode_changes.has_key (inode):     # if the inode was not changed, we return an empty list
+      for (position, v, change) in self.inode_changes[inode]:
+        changes += [ change ]
     return changes
 
   def show_changes (self, inode):
@@ -406,7 +407,11 @@ def link_filename (c, common_version, dir_id, merge_history):
     return "/"
 
   links = db_links (c, common_version, dir_id)
-  links = apply_link_changes (links, merge_history.get_changes (dir_id))
+  if merge_history is None:
+    pass
+  else:
+    links = apply_link_changes (links, merge_history.get_changes (dir_id))
+
   for link in links:
     return os.path.join (link_filename (c, common_version, link[0], merge_history), link[1])
   return links
@@ -597,7 +602,7 @@ class UserConflictResolver:
 
       common_names = []
       for link in common_links:
-        common_names.append (os.path.join (link_filename (self.c, self.common_version, link[0], []), link[1]))
+        common_names.append (os.path.join (link_filename (self.c, self.common_version, link[0], None), link[1]))
 
       master_names = []
       for link in master_links:
