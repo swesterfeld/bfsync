@@ -464,6 +464,31 @@ tests += [
   ( mv2dir, "mv2dir", "move common file into two different subdirs")
 ]
 
+def dir_dir_mv (a, b):
+  # create f in both repos
+  a.runx ("mkdir -p dir1/sub1 dir1/sub2 dir2/sub1")
+  a.runx ("echo 'file f' > dir1/sub1/f")
+  a.commit()
+  sync_repos (a, b)
+  # move to subdir in repo a
+  a.runx ("mv dir1/sub1/f dir1/sub2/f")
+  a.commit()
+  # move to subdir in repo b
+  b.runx ("mv dir1/sub1/f dir2/sub1/f")
+  b.commit()
+  sync_repos (a, b)
+  print "#########################################################################"
+  print "after merge:"
+  print "#########################################################################"
+  print "# REPO A:"
+  a.runx ("""find . \( -name '.bfsync' -prune \) -o -type f -print""")
+  print "# REPO B:"
+  b.runx ("""find . \( -name '.bfsync' -prune \) -o -type f -print""")
+
+tests += [
+  ( dir_dir_mv, "dir-dir-mv", "move common file from subdir to subdir")
+]
+
 def relink (a, b):
   # create f, g, h in both repos
   a.runx ("echo 'file f' > f")
