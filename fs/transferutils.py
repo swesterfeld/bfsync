@@ -475,6 +475,9 @@ def pretty_print_conflict (common_inode, master_inode, local_inode):
       m = "~"
     print "%-8s| %-22s| %-22s| %-22s" % (c_fmt[i][0], c, m, l)
 
+class Conflict:
+  pass
+
 class AutoConflictResolver:
   def __init__ (self, c, repo, common_version, master_merge_history, local_merge_history):
     self.c = c
@@ -504,9 +507,9 @@ class AutoConflictResolver:
     return "m"
 
   def resolve (self, conflict):
-    common_inode = db_inode (self.c, self.common_version, conflict)
-    master_inode = apply_inode_changes (common_inode, self.master_merge_history.get_changes (conflict))
-    local_inode = apply_inode_changes (common_inode, self.local_merge_history.get_changes (conflict))
+    common_inode = db_inode (self.c, self.common_version, conflict.id)
+    master_inode = apply_inode_changes (common_inode, self.master_merge_history.get_changes (conflict.id))
+    local_inode = apply_inode_changes (common_inode, self.local_merge_history.get_changes (conflict.id))
 
     if master_inode is None or local_inode is None:
       return ""  # deletion, can't do that automatically
@@ -585,13 +588,13 @@ class UserConflictResolver:
     have_merge_dir = False
 
     while True:
-      common_inode = db_inode (self.c, self.common_version, conflict)
-      master_inode = apply_inode_changes (common_inode, self.master_merge_history.get_changes (conflict))
-      local_inode = apply_inode_changes (common_inode, self.local_merge_history.get_changes (conflict))
+      common_inode = db_inode (self.c, self.common_version, conflict.id)
+      master_inode = apply_inode_changes (common_inode, self.master_merge_history.get_changes (conflict.id))
+      local_inode = apply_inode_changes (common_inode, self.local_merge_history.get_changes (conflict.id))
 
-      common_links = db_links (self.c, self.common_version, conflict)
-      master_links = apply_link_changes (common_links, self.master_merge_history.get_changes (conflict))
-      local_links  = apply_link_changes (common_links, self.local_merge_history.get_changes (conflict))
+      common_links = db_links (self.c, self.common_version, conflict.id)
+      master_links = apply_link_changes (common_links, self.master_merge_history.get_changes (conflict.id))
+      local_links  = apply_link_changes (common_links, self.local_merge_history.get_changes (conflict.id))
 
       common_links.sort()
       master_links.sort()
@@ -618,7 +621,7 @@ class UserConflictResolver:
           link[1]
         ))
 
-      fullname = printable_name (self.c, conflict, self.common_version)
+      fullname = printable_name (self.c, conflict.id, self.common_version)
       filename = os.path.basename (fullname)
 
       print "=" * 80
@@ -643,9 +646,9 @@ class UserConflictResolver:
       line = raw_input ("(m)aster / (l)ocal / (b)oth / (v)iew / (s)hell / (a)bort merge\ndisplay (M)aster content / display (L)ocal content / display (C)ommon content? ")
       if line == "v":
         print "=== MASTER ==="
-        self.master_merge_history.show_changes (conflict)
+        self.master_merge_history.show_changes (conflict.id)
         print "=== LOCAL ==="
-        self.local_merge_history.show_changes (conflict)
+        self.local_merge_history.show_changes (conflict.id)
         print "=============="
       if line == "s" or line == "C" or line == "M" or line == "L":
         conflict_type = common_inode[INODE_TYPE]
@@ -725,30 +728,32 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
 
   auto_resolver = AutoConflictResolver (c, repo, common_version, master_merge_history, local_merge_history)
   user_resolver = UserConflictResolver (c, repo, common_version, master_merge_history, local_merge_history)
-  conflicts = find_conflicts (master_merge_history, local_merge_history)
-  for conflict in conflicts:
+  conflict_ids = find_conflicts (master_merge_history, local_merge_history)
+  for conflict_id in conflict_ids:
     if pull_args.always_local:
       choice = "l"
     elif pull_args.always_master:
       choice = "m"
     elif pull_args.always_both:
-      if conflict == "0"*40:
+      if conflict_inode == "0"*40:
         choice = "m"
       else:
         choice = "b"
     else:
       # try to handle this conflict automatically
+      conflict = Conflict()
+      conflict.id = conflict_id
       choice = auto_resolver.resolve (conflict)
 
       # ask user if this did not work
       if choice == "":
         choice = user_resolver.resolve (conflict)
     if choice == "l":
-      restore_inode[conflict] = True
+      restore_inode[conflict_id] = True
     elif choice == "m":
-      inode_ignore_change[conflict] = True
+      inode_ignore_change[conflict_id] = True
     elif choice == "b":
-      use_both_versions[conflict] = True
+      use_both_versions[conflict_id] = True
     elif choice == "a":
       return
 
