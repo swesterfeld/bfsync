@@ -401,14 +401,14 @@ def apply_link_changes (links, changes):
       links = new_links
   return links
 
-def link_filename (c, common_version, dir_id, changes):
+def link_filename (c, common_version, dir_id, merge_history):
   if dir_id == "0" * 40:
     return "/"
 
   links = db_links (c, common_version, dir_id)
-  links = apply_link_changes (links, changes[dir_id])
+  links = apply_link_changes (links, merge_history.get_changes (dir_id))
   for link in links:
-    return os.path.join (link_filename (c, common_version, link[0], changes), link[1])
+    return os.path.join (link_filename (c, common_version, link[0], merge_history), link[1])
   return links
 
 def pretty_date (sec, nsec):
@@ -601,11 +601,17 @@ class UserConflictResolver:
 
       master_names = []
       for link in master_links:
-        master_names.append (os.path.join (link_filename (self.c, self.common_version, link[0], []), link[1])) # FIXME: apply proper link changes
+        master_names.append (os.path.join (
+          link_filename (self.c, self.common_version, link[0], self.master_merge_history),
+          link[1]
+        ))
 
       local_names = []
       for link in local_links:
-        local_names.append (os.path.join (link_filename (self.c, self.common_version, link[0], []), link[1])) # FIXME: apply proper link changes
+        local_names.append (os.path.join (
+          link_filename (self.c, self.common_version, link[0], self.local_merge_history),
+          link[1]
+        ))
 
       fullname = printable_name (self.c, conflict, self.common_version)
       filename = os.path.basename (fullname)
