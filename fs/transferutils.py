@@ -510,6 +510,9 @@ class AutoConflictResolver:
     if conflict.master_inode is None or conflict.local_inode is None:
       return ""  # deletion, can't do that automatically
 
+    if conflict.master_rename or conflict.local_rename:
+      return "" # rename, can't do that automatically
+
     cfields = set()
     for i in range (len (conflict.common_inode)):
       cdata = conflict.common_inode[i]
@@ -592,16 +595,9 @@ class UserConflictResolver:
       master_inode = conflict.master_inode
       local_inode = conflict.local_inode
 
-      common_links = db_links (self.c, self.common_version, conflict.id)
-      master_links = apply_link_changes (common_links, self.master_merge_history.get_changes (conflict.id))
-      local_links  = apply_link_changes (common_links, self.local_merge_history.get_changes (conflict.id))
-
-      common_links.sort()
-      master_links.sort()
-      local_links.sort()
-
-      master_rename = (common_links != master_links)
-      local_rename = (common_links != local_links)
+      common_links = conflict.common_links
+      master_links = conflict.master_links
+      local_links  = conflict.local_links
 
       common_names = []
       for link in common_links:
@@ -630,14 +626,14 @@ class UserConflictResolver:
         print " - deleted in master history"
       else:
         print " - modified in master history"
-        if master_rename:
+        if conflict.master_rename:
           for n in master_names:
             print " - renamed to '%s' in master history" % n
       if local_inode is None:
         print " - deleted locally"
       else:
         print " - modified locally"
-        if local_rename:
+        if conflict.local_rename:
           for n in local_names:
             print " - renamed to '%s' in local history" % n
       print "=" * 80
@@ -735,7 +731,7 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
     elif pull_args.always_master:
       choice = "m"
     elif pull_args.always_both:
-      if conflict_inode == "0"*40:
+      if conflict_id == "0"*40:
         choice = "m"
       else:
         choice = "b"
@@ -753,6 +749,18 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
       conflict.local_inode = apply_inode_changes (
         conflict.common_inode,
         local_merge_history.get_changes (conflict.id))
+
+      # determine inode links for common/local/master version
+      conflict.common_links = db_links (c, common_version, conflict.id)
+      conflict.master_links = apply_link_changes (conflict.common_links, master_merge_history.get_changes (conflict.id))
+      conflict.local_links  = apply_link_changes (conflict.common_links, local_merge_history.get_changes (conflict.id))
+
+      conflict.common_links.sort()
+      conflict.master_links.sort()
+      conflict.local_links.sort()
+
+      conflict.master_rename = (conflict.common_links != conflict.master_links)
+      conflict.local_rename = (conflict.common_links != conflict.local_links)
 
       # try to handle this conflict automatically
       choice = auto_resolver.resolve (conflict)
