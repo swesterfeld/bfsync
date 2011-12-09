@@ -20,7 +20,7 @@ class RemoteRepo:
       self.host = url_list[0]
       self.path = url_list[1]
       self.conn = SSH
-      command = ["ssh", self.host, "bfsync2", "remote", self.path]
+      command = ["ssh", self.host, "bfsync", "remote", self.path]
       self.remote_p = subprocess.Popen (command, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     else:
       raise Exception ("unknown url type %s, neither local nor remote?" % url)

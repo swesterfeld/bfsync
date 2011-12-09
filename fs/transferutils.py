@@ -869,7 +869,7 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
   diff_rewriter.show_changes()
 
 def pull (repo, args, server = True):
-  parser = argparse.ArgumentParser (prog='bfsync2 pull')
+  parser = argparse.ArgumentParser (prog='bfsync pull')
   parser.add_argument ('--always-local', action='store_const', const=True,
                        help='always use local version for merge conflicts')
   parser.add_argument ('--always-master', action='store_const', const=True,

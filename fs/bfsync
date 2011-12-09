@@ -79,7 +79,7 @@ def commit_msg_ok (filename):
   return result
 
 def cmd_commit():
-  parser = argparse.ArgumentParser (prog='bfsync2 commit')
+  parser = argparse.ArgumentParser (prog='bfsync commit')
   parser.add_argument ('-m', help='set commit message')
   commit_args = parser.parse_args (args)
 
@@ -599,7 +599,7 @@ if command_func != None:
     if False: # profiling
       import cProfile
 
-      cProfile.run ("command_func()", "/tmp/bfsync2-profile-%s" % command)
+      cProfile.run ("command_func()", "/tmp/bfsync-profile-%s" % command)
     else:
       command_func()
   except Exception, ex:
@@ -609,7 +609,7 @@ if command_func != None:
     sys.stderr.write ("==================================================\n")
     sys.stderr.write ("\n\n\n")
     hash_cache.save()
-    sys.stderr.write ("bfsync2: %s\n" % ex)
+    sys.stderr.write ("bfsync: %s\n" % ex)
     sys.exit (1)
   hash_cache.save()
 else:

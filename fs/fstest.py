@@ -29,17 +29,17 @@ class FuseFS:
   def commit (self):
     cwd = os.getcwd()
     os.chdir ("mnt")
-    if run_quiet ([cwd + "/bfsync2", "commit", "-m", "fstest"]) != 0:
+    if run_quiet ([cwd + "/bfsync", "commit", "-m", "fstest"]) != 0:
       raise Exception ("commit failed")
     os.chdir (cwd)
 
   def check_integrity (self):
     cwd = os.getcwd()
     os.chdir ("mnt")
-    success = run_quiet ([cwd + "/bfsync2", "debug-integrity"]) == 0
+    success = run_quiet ([cwd + "/bfsync", "debug-integrity"]) == 0
     if not success:
       print
-      os.system ("%s/bfsync2 debug-integrity" % cwd)
+      os.system ("%s/bfsync debug-integrity" % cwd)
       print
     os.chdir (cwd)
     if not success:
@@ -106,7 +106,7 @@ def remount():
 def clear_cache():
   cwd = os.getcwd()
   os.chdir ("mnt")
-  if run_quiet ([cwd + "/bfsync2", "debug-clear-cache"]) != 0:
+  if run_quiet ([cwd + "/bfsync", "debug-clear-cache"]) != 0:
     raise Exception ("commit failed")
   os.chdir (cwd)
 
@@ -983,14 +983,14 @@ bf_tests += [ ("test-quad-commit-links", test_quad_commit_links) ]
 def fprint():
   cwd = os.getcwd()
   os.chdir ("mnt")
-  fp = subprocess.Popen ([os.path.join (cwd, "bfsync2"), "db-fingerprint"], stdout=subprocess.PIPE).communicate()[0]
+  fp = subprocess.Popen ([os.path.join (cwd, "bfsync"), "db-fingerprint"], stdout=subprocess.PIPE).communicate()[0]
   os.chdir (cwd)
   return fp
 
 def revert (n):
   cwd = os.getcwd()
   os.chdir ("mnt")
-  out = subprocess.Popen ([os.path.join (cwd, "bfsync2"), "revert", "%d" % n], stdout=subprocess.PIPE).communicate()[0]
+  out = subprocess.Popen ([os.path.join (cwd, "bfsync"), "revert", "%d" % n], stdout=subprocess.PIPE).communicate()[0]
   os.chdir (cwd)
 
 def test_revert():

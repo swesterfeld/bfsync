@@ -6,7 +6,7 @@ do
   mkdir run$run
   cd run$run
   /usr/bin/time -f "$run mkfiles-time %e" mkfiles.sh 2>&1
-  /usr/bin/time -f "$run commit-time  %e" bfsync2 commit 2>&1
+  /usr/bin/time -f "$run commit-time  %e" bfsync commit 2>&1
   cd ..
 done
 

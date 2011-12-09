@@ -69,10 +69,10 @@ class Repo:
   def check_integrity (self):
     old_cwd = os.getcwd()
     os.chdir (self.repo.path)
-    success = os.system ("bfsync2 debug-integrity >/dev/null") == 0
+    success = os.system ("bfsync debug-integrity >/dev/null") == 0
     if not success:
       print
-      os.system ("bfsync2 debug-integrity") == 0
+      os.system ("bfsync debug-integrity") == 0
       print
     os.chdir (old_cwd)
     if not success:
@@ -625,9 +625,9 @@ def setup_initial():
 
   os.mkdir ("merge-test")
   os.chdir ("merge-test")
-  os.system ("bfsync2 init master")
-  os.system ("bfsync2 clone master repo-a")
-  os.system ("bfsync2 clone master repo-b")
+  os.system ("bfsync init master")
+  os.system ("bfsync clone master repo-a")
+  os.system ("bfsync clone master repo-b")
   os.system ("""echo 'default { get "'$PWD/repo-b'"; }' >> repo-a/.bfsync/config""")
   os.system ("""echo 'default { get "'$PWD/repo-a'"; }' >> repo-b/.bfsync/config""")
   os.system ("""echo 'default { put "'$PWD/repo-b'"; }' >> repo-a/.bfsync/config""")
@@ -707,6 +707,6 @@ def main():
 if False: # profiling
   import cProfile
 
-  cProfile.run ("main()", "/tmp/bfsync2-profile-merge-test")
+  cProfile.run ("main()", "/tmp/bfsync-profile-merge-test")
 else:
   main()
