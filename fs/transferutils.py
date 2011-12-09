@@ -447,23 +447,41 @@ def pretty_print_conflict (common_inode, master_inode, local_inode):
   c_fmt = pretty_format (common_inode)
   if master_inode:
     m_fmt = pretty_format (master_inode)
+    mdel = ""
+  else:
+    mdel = "(deleted)"
   if local_inode:
     l_fmt = pretty_format (local_inode)
+    ldel = ""
+  else:
+    ldel = "(deleted)"
 
-  print "%-8s| %-22s| %-22s| %-22s" % ("", "Common", "Master", "Local")
+  print "%-8s| %-22s| %-22s| %-22s" % ("", "Common", "Master %s" % mdel, "Local %s" % ldel)
   print "--------|-----------------------|-----------------------|----------------------"
   for i in range (len (c_fmt)):
-    c = c_fmt[i][1]
-    m = m_fmt[i][1]
-    l = l_fmt[i][1]
+    cdata = c_fmt[i][1]
+
+    if master_inode:
+      mdata = m_fmt[i][1]
+    else:
+      mdata = "!"
+    if local_inode:
+      ldata = l_fmt[i][1]
+    else:
+      ldata = "!"
+
+    c = cdata
+    l = ldata
+    m = mdata
+
     if c_fmt[i][0] == "Content":
       c = "old content"
-      if m_fmt[i][1] != c_fmt[i][1]:
+      if mdata != cdata:
         m = "new content 1"
       else:
         m = c
-      if l_fmt[i][1] != c_fmt[i][1]:
-        if l_fmt[i][1] != m_fmt[i][1]:
+      if ldata != cdata:
+        if ldata != mdata:
           l = "new content 2"
         else:
           l = m
@@ -473,6 +491,10 @@ def pretty_print_conflict (common_inode, master_inode, local_inode):
       l = "~"
     if m == c:
       m = "~"
+    if not master_inode:
+      m = "!"
+    if not local_inode:
+      l = "!"
     print "%-8s| %-22s| %-22s| %-22s" % (c_fmt[i][0], c, m, l)
 
 class Conflict:
