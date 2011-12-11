@@ -997,6 +997,7 @@ def collect (repo, args, old_cwd):
   fcount = 0
   found = 0
   fsize = 0
+  found_size = 0
   for cdir in args:
     collect_dir = os.path.abspath (os.path.join (old_cwd, cdir))
     for root, dirs, files in os.walk (collect_dir):
@@ -1011,10 +1012,11 @@ def collect (repo, args, old_cwd):
             shutil.copyfile (full_name, dest_path)
             move_file_to_objects (repo, dest_path)
             found += 1
+            found_size += size
 
           fcount += 1
           fsize += size
-          status_line.update ("%d local files (%s) / need %d files / found %d files" % (fcount, format_size1 (fsize), len (need_hash), found))
+          status_line.update ("%d local files (%s) / found %d/%d files (%s)" % (fcount, format_size1 (fsize), found, len (need_hash), format_size1 (found_size)))
         except IOError:
           pass  # usually: insufficient permissions to read file
         except OSError:
