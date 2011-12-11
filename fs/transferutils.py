@@ -7,6 +7,7 @@ from applyutils import apply
 from commitutils import revert
 from xzutils import xzcat
 from StatusLine import status_line
+from HashCache import hash_cache
 import argparse
 import subprocess
 import datetime
@@ -973,3 +974,48 @@ def pull (repo, args, server = True):
       count += 1
   else:
     history_merge (c, repo, local_history, remote_history, pull_args)
+
+def collect (repo, args, old_cwd):
+  conn = repo.conn
+  c = conn.cursor()
+
+  status_line.set_op ("COLLECT")
+
+  # create list of required objects
+  need_hash = dict()
+  c.execute ('''SELECT DISTINCT hash FROM inodes''')
+  for row in c:
+    hash = row[0]
+    if len (hash) == 40:
+      dest_file = os.path.join ("objects", make_object_filename (hash))
+      if not validate_object (dest_file, hash):
+        need_hash[hash] = True
+    status_line.update ("preparing object list... need %d files" % len (need_hash))
+
+  dest_path = repo.make_temp_name()
+  # walk dirs to find objects
+  fcount = 0
+  found = 0
+  fsize = 0
+  for cdir in args:
+    collect_dir = os.path.abspath (os.path.join (old_cwd, cdir))
+    for root, dirs, files in os.walk (collect_dir):
+      for f in files:
+        full_name = os.path.join (root, f)
+
+        try:
+          hash = hash_cache.compute_hash (full_name)
+          size = os.path.getsize (full_name)
+
+          if need_hash.has_key (hash):
+            shutil.copyfile (full_name, dest_path)
+            move_file_to_objects (repo, dest_path)
+            found += 1
+
+          fcount += 1
+          fsize += size
+          status_line.update ("%d local files (%s) / need %d files / found %d files" % (fcount, format_size1 (fsize), len (need_hash), found))
+        except IOError:
+          pass  # usually: insufficient permissions to read file
+        except OSError:
+          pass  # usually: file not found

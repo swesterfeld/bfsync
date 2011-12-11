@@ -12,6 +12,14 @@ def format_size (size, total_size):
     unit += 1
   return "%d/%d %s" % (size, total_size, unit_str[unit])
 
+def format_size1 (size):
+  unit_str = [ "B", "KB", "MB", "GB", "TB" ]
+  unit = 0
+  while (size > 10000) and (unit + 1 < len (unit_str)):
+    size = (size + 512) / 1024
+    unit += 1
+  return "%d %s" % (size, unit_str[unit])
+
 def format_rate (bytes_per_sec):
   unit_str = [ "B/s", "KB/s", "MB/s", "GB/s", "TB/s" ]
   unit = 0

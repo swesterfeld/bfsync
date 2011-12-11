@@ -45,7 +45,7 @@ from HashCache import hash_cache
 from ServerConn import ServerConn
 from RemoteRepo import RemoteRepo
 from stat import *
-from transferutils import get, put, push, pull
+from transferutils import get, put, push, pull, collect
 
 def find_bfsync_dir():
   old_cwd = os.getcwd()
@@ -589,6 +589,11 @@ def cmd_repo_files():
           else:
             print full_name
 
+def cmd_collect():
+  old_cwd = os.getcwd()
+  repo = cd_repo_connect_db()
+  collect (repo, args, old_cwd)
+
 command = None
 command_func = None
 arg_iter = sys.argv[1:].__iter__()
@@ -597,6 +602,7 @@ args = []
 for arg in arg_iter:
   commands = [
     ( "check",                  cmd_check, 1),
+    ( "collect",                cmd_collect, 1),
     ( "commit",                 cmd_commit, 1),
     ( "log",                    cmd_log, 0),
     ( "pull",                   cmd_pull, 1),
