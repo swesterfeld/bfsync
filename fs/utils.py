@@ -161,7 +161,8 @@ def parse_config (filename):
     "default/get",
     "default/put",
     "get-rate-limit",
-    "put-rate-limit"
+    "put-rate-limit",
+    "ignore-uid-gid"
   ])
   return bfsync_info
 
