@@ -26,10 +26,7 @@ avoid entering your password over and over again.
 == COMMANDS ==
 
 ; '''clone''' ''<repo>''
-: Initialize new cloned bfsync repo from git repo ''<repo>''; it's '''highly recommended''' to always work with a bare git main repo (git init --bare).
-
-; '''add''' ''<file>...''
-: Add files to the bfsync repository
+: Initialize new cloned bfsync repo from bfsync master repo ''<repo>''.
 
 ; '''commit'''
 : Commit changes to the repository
@@ -40,23 +37,17 @@ avoid entering your password over and over again.
 ; '''pull'''
 : Pull changes from upstream repository
 
-; '''get''' ''<dir>|<remote dir>...''
-: Transfer file contents from directory - usually the directory should contain a bfsync checkout of the repository you're working with. However, it is possible to get data from any directory (local or remote), and as long as required hash values are found, it doesn't matter where the data comes from. A path with a ":" is interpreted as remote path, a path without ":" is a local path. Examples for remote paths are stefan@server:/big/files or server:some/dir
+; '''get''' ''<repo>|<remote repo>...''
+: Transfer file contents from repository - the directory should contain a bfsync checkout of the repository you're working with. A path with a ":" is interpreted as remote path, a path without ":" is a local path. Examples for remote paths are stefan@server:/repos/files.bfsync or server:some/dir
 
 ; '''put''' ''<remote repo>''
-: Transfer file contents from local directory to remote repo.
+: Transfer file contents from local repo to remote repo.
 
 ; '''check'''
 : Checks local repository - ideally, all files that are known to the git index of the repository should be found and their hash values should match the values in the git repo. If thats not the case, put/get can be used to complete the local repository.
 
-; '''mv''' ''<src_file>'' ''<dest_file>''
-: Use this for renaming a file - in the local repo, the data is automatically adapted, but for remote repositories, you'll need to use get/put to get the data right, and delete to delete the old file.
-
-; '''rm''' ''<file>...''
-: Remove a file from the repository. On the local checkout the data file is removed automatically; however on remote hosts, using '''bfsync delete''' is required to remove the file.
-
-; '''delete'''
-: This will check for files that are present locally, but not known to the index git repo. This can occur if you create new files, or if remote renames have been done. Since bfsync cannot distinguish these two cases, you'll have to confirm the delete list or abort if files that you have newly created are on that list.
+; '''gc'''
+: This will check for objects that are present in the local repo, but not used. This can happen when using revert, or for instance if the merge algorithm needs no modify diffs due to merge decisions (then the old diff becomes unused).
 
 ; '''repo-files''' [-0|--null] ''<dir>''
 : This searches a directory for files that are also in the repo. If you start moving data to the repo, you can clean up copies that might be present elsewhere. Using -0|--null makes the output suitable for use with xargs -0.
@@ -66,39 +57,54 @@ avoid entering your password over and over again.
 
 == WALKTHROUGH ==
 
-First, we create and setup repositories on three computers: server, client1 and client2. The server will hold the main repository (a git bare repository containing hashes of files); this repo is the canonical index which files are checked into the repository. It is stored under ~/repos/big.git. All computers will contain a checkout, so that the actual contents of the files can be kept there.
+First, we create and setup repositories on three computers: server, client1 and client2. The server will hold the master repository (which manages the history, but nothing else). It is stored under ~/repos/big.bfsync. All computers will contain a checkout, so that the actual contents of the files can be kept there.
 
-; '''server:~$ mkdir -p repos/big.git'''
-: Create a directory on the server for the main git index repository.
+; '''server:~$ mkdir repos'''
+: Create a directory on the server for the master repository.
 
-; '''server:~$ cd repos/big.git'''
+; '''server:~$ cd repos'''
 : Change dir.
 
-; '''server:~/repos/big.git$ git init --bare'''
-: Init git repo.
+; '''server:~/repos$ bfsync init big.bfsync'''
+: Init master repo.
 
-; '''server:~/repos/big.git$ cd ~'''
+; '''server:~/repos$ cd ~'''
 : Change dir.
 
-; '''server:~$ bfsync clone repos/big.git'''
+; '''server:~$ bfsync clone repos/big.bfsync'''
 : Clone repository on the server.
 
-; '''client1:~$ bfsync clone server:repos/big.git'''
+; '''server:~$ mkdir big'''
+: Create mount point on the server.
+
+; '''server:~$ bfsyncfs big.bfsync big'''
+: Mount repository on the server.
+
+; '''client1:~$ bfsync clone server:repos/big.bfsync'''
 : Clone repository on client1.
 
-; '''client2:~$ bfsync clone server:repos/big.git'''
+; '''client1:~$ mkdir big'''
+: Create mount point on client1.
+
+; '''client1:~$ bfsyncfs big.bfsync big'''
+: Mount repository on client1.
+
+; '''client2:~$ bfsync clone server:repos/big.bfsync'''
 : Clone repository on client2.
 
-As second step, we add a music file on client1. Of course it's possible to add more files in one step, either by passing more than one filename to bfsync add, or by calling bfsync add more than once. Whenever files are added or otherwise changed, we need to commit and push the changes to the server, so that it contains the canonical index of files.
+; '''client2:~$ mkdir big'''
+: Create mount point on client2.
+
+; '''client2:~$ bfsyncfs big.bfsync big'''
+: Mount repository on client2.
+
+As second step, we add a music file on client1. Of course it's possible to add more files in one step; you can also use rsync, mc or a file manager to copy files into the repository. Whenever files are added or otherwise changed, we need to commit and push the changes to the server, so that it contains the canonical index of files.
  
 ; '''client1:~$ cd big'''
 : Change dir.
 
 ; '''client1:~/big$ cp ~/download/01-some-music.flac .'''
 : Copy a big file into the repository checkout
-
-; '''client1:~/big$ bfsync add 01-some-music.flac'''
-: Add the file to the repository.
 
 ; '''client1:~/big$ bfsync commit'''
 : Commit the changes to the repository.
@@ -112,7 +118,7 @@ So far, we have added the file to the repository on client1, but the contents of
 : Change directory.
 
 ; '''server:~/big$ bfsync pull'''
-: Updating the git index repository is required on the server before we can transfer the file there. By pulling, the server will have the necessary information, or in other words: the server can know that a file named 01-some-music.flac is part of the bfsync repository and ''should'' be there. Running '''bfsync check''' will report one missing file after this step.
+: Using pull is required on the server before we can transfer the file there. By pulling, the server will have the necessary information, or in other words: the server can know that a file named 01-some-music.flac is part of the bfsync repository and ''should'' be there. Running '''bfsync check''' will report one missing file after this step.
 
 ; '''client1:~/big$ bfsync put server:big'''
 : Now the actual transfer: after this step, both client1 and server will have a copy of ''01-some-music.flac''.

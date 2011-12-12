@@ -1,4 +1,4 @@
-.TH "BFSYNC" "1" "2011\-08\-29" "Revision 615" "bfsync Manual Page"
+.TH "BFSYNC" "1" "2011\-12\-12" "Revision 619" "bfsync Manual Page"
 
 .SH NAME
 
@@ -25,11 +25,7 @@ avoid entering your password over and over again.
 .SH COMMANDS
 .TP
 \fBclone\fR \fI<repo>\fR
-Initialize new cloned bfsync repo from git repo \fI<repo>\fR; it's \fBhighly recommended\fR to always work with a bare git main repo (git init --bare).
-.PP
-.TP
-\fBadd\fR \fI<file>...\fR
-Add files to the bfsync repository
+Initialize new cloned bfsync repo from bfsync master repo \fI<repo>\fR.
 .PP
 .TP
 \fBcommit\fR
@@ -44,28 +40,20 @@ Push changes to upstream repository
 Pull changes from upstream repository
 .PP
 .TP
-\fBget\fR \fI<dir>|<remote dir>...\fR
-Transfer file contents from directory - usually the directory should contain a bfsync checkout of the repository you're working with. However, it is possible to get data from any directory (local or remote), and as long as required hash values are found, it doesn't matter where the data comes from. A path with a ":" is interpreted as remote path, a path without ":" is a local path. Examples for remote paths are stefan@server:/big/files or server:some/dir
+\fBget\fR \fI<repo>|<remote repo>...\fR
+Transfer file contents from repository - the directory should contain a bfsync checkout of the repository you're working with. A path with a ":" is interpreted as remote path, a path without ":" is a local path. Examples for remote paths are stefan@server:/repos/files.bfsync or server:some/dir
 .PP
 .TP
 \fBput\fR \fI<remote repo>\fR
-Transfer file contents from local directory to remote repo.
+Transfer file contents from local repo to remote repo.
 .PP
 .TP
 \fBcheck\fR
 Checks local repository - ideally, all files that are known to the git index of the repository should be found and their hash values should match the values in the git repo. If thats not the case, put/get can be used to complete the local repository.
 .PP
 .TP
-\fBmv\fR \fI<src_file>\fR \fI<dest_file>\fR
-Use this for renaming a file - in the local repo, the data is automatically adapted, but for remote repositories, you'll need to use get/put to get the data right, and delete to delete the old file.
-.PP
-.TP
-\fBrm\fR \fI<file>...\fR
-Remove a file from the repository. On the local checkout the data file is removed automatically; however on remote hosts, using \fBbfsync delete\fR is required to remove the file.
-.PP
-.TP
-\fBdelete\fR
-This will check for files that are present locally, but not known to the index git repo. This can occur if you create new files, or if remote renames have been done. Since bfsync cannot distinguish these two cases, you'll have to confirm the delete list or abort if files that you have newly created are on that list.
+\fBgc\fR
+This will check for objects that are present in the local repo, but not used. This can happen when using revert, or for instance if the merge algorithm needs no modify diffs due to merge decisions (then the old diff becomes unused).
 .PP
 .TP
 \fBrepo-files\fR [-0|--null] \fI<dir>\fR
@@ -78,37 +66,61 @@ Show status information about files in repo.
 
 .SH WALKTHROUGH
 
-First, we create and setup repositories on three computers: server, client1 and client2. The server will hold the main repository (a git bare repository containing hashes of files); this repo is the canonical index which files are checked into the repository. It is stored under ~/repos/big.git. All computers will contain a checkout, so that the actual contents of the files can be kept there.
+First, we create and setup repositories on three computers: server, client1 and client2. The server will hold the master repository (which manages the history, but nothing else). It is stored under ~/repos/big.bfsync. All computers will contain a checkout, so that the actual contents of the files can be kept there.
 .TP
-\fBserver:~$ mkdir -p repos/big.git\fR
-Create a directory on the server for the main git index repository.
+\fBserver:~$ mkdir repos\fR
+Create a directory on the server for the master repository.
 .PP
 .TP
-\fBserver:~$ cd repos/big.git\fR
+\fBserver:~$ cd repos\fR
 Change dir.
 .PP
 .TP
-\fBserver:~/repos/big.git$ git init --bare\fR
-Init git repo.
+\fBserver:~/repos$ bfsync init big.bfsync\fR
+Init master repo.
 .PP
 .TP
-\fBserver:~/repos/big.git$ cd ~\fR
+\fBserver:~/repos$ cd ~\fR
 Change dir.
 .PP
 .TP
-\fBserver:~$ bfsync clone repos/big.git\fR
+\fBserver:~$ bfsync clone repos/big.bfsync\fR
 Clone repository on the server.
 .PP
 .TP
-\fBclient1:~$ bfsync clone server:repos/big.git\fR
+\fBserver:~$ mkdir big\fR
+Create mount point on the server.
+.PP
+.TP
+\fBserver:~$ bfsyncfs big.bfsync big\fR
+Mount repository on the server.
+.PP
+.TP
+\fBclient1:~$ bfsync clone server:repos/big.bfsync\fR
 Clone repository on client1.
 .PP
 .TP
-\fBclient2:~$ bfsync clone server:repos/big.git\fR
+\fBclient1:~$ mkdir big\fR
+Create mount point on client1.
+.PP
+.TP
+\fBclient1:~$ bfsyncfs big.bfsync big\fR
+Mount repository on client1.
+.PP
+.TP
+\fBclient2:~$ bfsync clone server:repos/big.bfsync\fR
 Clone repository on client2.
 .PP
+.TP
+\fBclient2:~$ mkdir big\fR
+Create mount point on client2.
+.PP
+.TP
+\fBclient2:~$ bfsyncfs big.bfsync big\fR
+Mount repository on client2.
+.PP
 
-As second step, we add a music file on client1. Of course it's possible to add more files in one step, either by passing more than one filename to bfsync add, or by calling bfsync add more than once. Whenever files are added or otherwise changed, we need to commit and push the changes to the server, so that it contains the canonical index of files.
+As second step, we add a music file on client1. Of course it's possible to add more files in one step; you can also use rsync, mc or a file manager to copy files into the repository. Whenever files are added or otherwise changed, we need to commit and push the changes to the server, so that it contains the canonical index of files.
 .TP
 \fBclient1:~$ cd big\fR
 Change dir.
@@ -116,10 +128,6 @@ Change dir.
 .TP
 \fBclient1:~/big$ cp ~/download/01-some-music.flac .\fR
 Copy a big file into the repository checkout
-.PP
-.TP
-\fBclient1:~/big$ bfsync add 01-some-music.flac\fR
-Add the file to the repository.
 .PP
 .TP
 \fBclient1:~/big$ bfsync commit\fR
@@ -137,7 +145,7 @@ Change directory.
 .PP
 .TP
 \fBserver:~/big$ bfsync pull\fR
-Updating the git index repository is required on the server before we can transfer the file there. By pulling, the server will have the necessary information, or in other words: the server can know that a file named 01-some-music.flac is part of the bfsync repository and \fIshould\fR be there. Running \fBbfsync check\fR will report one missing file after this step.
+Using pull is required on the server before we can transfer the file there. By pulling, the server will have the necessary information, or in other words: the server can know that a file named 01-some-music.flac is part of the bfsync repository and \fIshould\fR be there. Running \fBbfsync check\fR will report one missing file after this step.
 .PP
 .TP
 \fBclient1:~/big$ bfsync put server:big\fR
