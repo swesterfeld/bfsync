@@ -69,29 +69,19 @@ class RemoteRepo:
     param_str = cPickle.dumps (param)
     self.remote_p.stdin.write ("%s\n%d\n%s" % (command, len (param_str), param_str))
 
-  def get_objects (self, repo, tlist):
+  def get_objects (self, repo, tlist, tparams):
     if self.conn == LOCAL:
       tlist.copy_files (repo, self.repo)
     else:
-      cfg_limit = repo.config.get ("get-rate-limit")
-      if len (cfg_limit) == 1:
-        params = TransferParams (int (cfg_limit[0]))
-      else:
-        params = TransferParams (0)
-      self.send_cmd ("send", params)
+      self.send_cmd ("send", tparams)
       tlist.send_list (self.remote_p.stdin)
       tlist.receive_files (repo, self.remote_p.stdout, True)
 
-  def put_objects (self, repo, tlist):
+  def put_objects (self, repo, tlist, tparams):
     if self.conn == LOCAL:
       tlist.copy_files (self.repo, repo)
     else:
-      cfg_limit = repo.config.get ("put-rate-limit")
-      if len (cfg_limit) == 1:
-        params = TransferParams (int (cfg_limit[0]))
-      else:
-        params = TransferParams (0)
       self.remote_p.stdin.write ("receive\n")
       tlist.send_list (self.remote_p.stdin)
-      tlist.send_files (repo, self.remote_p.stdin, True, params)
+      tlist.send_files (repo, self.remote_p.stdin, True, tparams)
       self.remote_p.stdin.flush()

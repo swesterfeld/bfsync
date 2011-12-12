@@ -1,5 +1,5 @@
 from RemoteRepo import RemoteRepo
-from TransferList import TransferList, TransferFile
+from TransferList import TransferList, TransferFile, TransferParams
 import os
 import sys
 from utils import *
@@ -14,7 +14,7 @@ import datetime
 import random
 import shutil
 
-def get_remote_objects (repo, remote_repo, transfer_objs):
+def get_remote_objects (repo, remote_repo, transfer_objs, tparams):
   # make a list of hashes that we need
   need_hash = dict()
   need_hash_list = []
@@ -33,7 +33,7 @@ def get_remote_objects (repo, remote_repo, transfer_objs):
       tlist.add (TransferFile (rfile.hash, rfile.size))
 
   # do the actual copying
-  remote_repo.get_objects (repo, tlist)
+  remote_repo.get_objects (repo, tlist, tparams)
 
 def get (repo, urls):
   conn = repo.conn
@@ -60,7 +60,14 @@ def get (repo, urls):
     if len (s) == 40:
       objs += [ s ]
 
-  get_remote_objects (repo, remote_repo, objs)
+  # setup rate limit
+  cfg_limit = repo.config.get ("get-rate-limit")
+  if len (cfg_limit) == 1:
+    tparams = TransferParams (int (cfg_limit[0]))
+  else:
+    tparams = TransferParams (0)
+
+  get_remote_objects (repo, remote_repo, objs, tparams)
 
 def put (repo, urls):
   conn = repo.conn
@@ -83,7 +90,14 @@ def put (repo, urls):
     if validate_object (src_file, hash):
       tl.add (TransferFile (hash, os.path.getsize (src_file)))
 
-  remote_repo.put_objects (repo, tl)
+  # setup rate limit
+  cfg_limit = repo.config.get ("put-rate-limit")
+  if len (cfg_limit) == 1:
+    tparams = TransferParams (int (cfg_limit[0]))
+  else:
+    tparams = TransferParams (0)
+
+  remote_repo.put_objects (repo, tl, tparams)
 
 def push (repo, urls):
   conn = repo.conn
@@ -140,7 +154,7 @@ def push (repo, urls):
     if validate_object (src_file, hash):
       tl.add (TransferFile (hash, os.path.getsize (src_file)))
 
-  remote_repo.put_objects (repo, tl)
+  remote_repo.put_objects (repo, tl, TransferParams (0))
 
 def load_diff (hash):
   obj_name = os.path.join ("objects", make_object_filename (hash))
@@ -585,7 +599,7 @@ class UserConflictResolver:
       url = default_get[0]
 
       remote_repo = RemoteRepo (url)
-      get_remote_objects (self.repo, remote_repo, [ master_hash ])
+      get_remote_objects (self.repo, remote_repo, [ master_hash ], TransferParams (0))
 
       shutil.copyfile (master_file, os.path.join (merge_dir, "master_%s" % filename))
 
@@ -963,7 +977,7 @@ def pull (repo, args, server = True):
     return
 
   # transfer required history objects
-  get_remote_objects (repo, remote_repo, transfer_objs)
+  get_remote_objects (repo, remote_repo, transfer_objs, TransferParams (0))
 
   if can_fast_forward:
     count = 1
