@@ -1,8 +1,8 @@
 bfsync2 TODO:
 
-* collect mode (to collect local files)
+* bfsync check should have progress notification
+* bfsync get/put should have rate limiting
 * config-file should allow ignoring repo uid/gid
-* speedup commit
 * check for open files before allowing readonly mode
 * better cache expiring for INodeLinks
 * background hashing for fs
