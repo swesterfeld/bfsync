@@ -24,8 +24,23 @@ class RateLimiter:
 
   def write (self, data):
     if self.params.rate_limit > 0:
+      # we divide data into smaller chunks so that we have approximately 8 data
+      # packets per second
+      MAX_DATA = self.params.rate_limit * 1024 / 8
+      while len (data) != 0:
+        self.real_write (data[0:MAX_DATA])
+        data = data[MAX_DATA:]
+    else:
+      self.real_write (data)
+
+  def real_write (self, data):
+    if self.params.rate_limit > 0:
       while (self.sent_bytes / (time.time() - self.start_time)) > (self.params.rate_limit * 1024):
         time.sleep (0.1)
+      # reset transfer stats every 15 seconds
+      if time.time() - self.start_time > 15:
+        self.sent_bytes = 0
+        self.start_time = time.time()
     self.pipe.write (data)
     self.sent_bytes += len (data)
 
