@@ -314,7 +314,9 @@ def cmd_remote():
       hashes = cPickle.loads (sys.stdin.read (hashes_len))
       result = cPickle.dumps (remote_ls (repo, hashes))
     elif command == "send":
-      remote_send (repo)
+      params_len = int (sys.stdin.readline())
+      params = cPickle.loads (sys.stdin.read (params_len))
+      remote_send (repo, params)
     elif command == "receive":
       remote_receive (repo)
     elif command == "update-history":

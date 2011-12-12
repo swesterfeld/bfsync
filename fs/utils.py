@@ -160,6 +160,8 @@ def parse_config (filename):
     "default/push",
     "default/get",
     "default/put",
+    "get-rate-limit",
+    "put-rate-limit"
   ])
   return bfsync_info
 

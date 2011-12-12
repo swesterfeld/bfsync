@@ -25,10 +25,10 @@ def remote_ls (repo, hashes):
         file_list += [ remote_file ]
   return file_list
 
-def remote_send (repo):
+def remote_send (repo, params):
   tl = TransferList()
   tl.receive_list (sys.stdin)
-  tl.send_files (repo, sys.stdout, False)
+  tl.send_files (repo, sys.stdout, False, params)
   sys.stdout.flush()
 
 def remote_receive (repo):

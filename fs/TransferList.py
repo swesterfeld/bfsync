@@ -11,6 +11,24 @@ class TransferFile:
     self.hash = hash
     self.size = size
 
+class TransferParams:
+  def __init__ (self, rate_limit):
+    self.rate_limit = rate_limit
+
+class RateLimiter:
+  def __init__ (self, pipe, params):
+    self.pipe = pipe
+    self.params = params
+    self.sent_bytes = 0
+    self.start_time = time.time()
+
+  def write (self, data):
+    if self.params.rate_limit > 0:
+      while (self.sent_bytes / (time.time() - self.start_time)) > (self.params.rate_limit * 1024):
+        time.sleep (0.1)
+    self.pipe.write (data)
+    self.sent_bytes += len (data)
+
 class TransferList:
   def __init__ (self):
     self.tlist = []
@@ -27,8 +45,9 @@ class TransferList:
     # prepend pickled string len
     tlist_str = str (len (tlist_str)) + "\n" + tlist_str
     pipe.write (tlist_str)
-  def send_files (self, repo, pipe, verbose):
+  def send_files (self, repo, pipe, verbose, params):
     self.start_time = time.time()
+    rate_limiter = RateLimiter (pipe, params)
     for tfile in self.tlist:
       self.file_number += 1
       f = open (os.path.join (repo.path, "objects", make_object_filename (tfile.hash)))
@@ -36,7 +55,7 @@ class TransferList:
       while (remaining > 0):
         todo = min (remaining, 256 * 1024)
         data = f.read (todo)
-        pipe.write (data)
+        rate_limiter.write (data)
         remaining -= todo
         self.bytes_done += todo
         if verbose and self.need_update():
