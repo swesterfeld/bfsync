@@ -1,13 +1,12 @@
 bfsync2 TODO:
 
 * bfsync check should have progress notification
-* bfsync get/put should have rate limiting
-* config-file should allow ignoring repo uid/gid
 * check for open files before allowing readonly mode
 * better cache expiring for INodeLinks
 * background hashing for fs
 * merge INodeLinks and INode cache
 * detect protocol version
+* check permissions for touch
 
 Performance:
 ============
