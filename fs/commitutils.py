@@ -44,12 +44,6 @@ def commit_msg_ok (filename):
   file.close()
   return result
 
-def get_inode_type (c, inode, version):
-  c.execute ('''SELECT type FROM inodes WHERE id = ? AND ? >= vmin AND ? <= vmax''', (inode, version, version))
-  for row in c:
-    return row[0]
-  return "*unknown*"
-
 class INode2Name:
   def __init__ (self, c, version):
     self.link_dict = dict()
@@ -64,9 +58,22 @@ class INode2Name:
     if id == "0" * 40:
       return "/"
     if not self.link_dict.has_key (id):
-      return "*unknown*"
+      raise Exception ("INode2Name: id %s not found" % id)
     (dir_id, name) = self.link_dict[id]
     return os.path.join (self.lookup (dir_id), name)
+
+class INodeInfo:
+  def __init__ (self, c, version):
+    self.inode_dict = dict()
+    self.c = c
+    self.version = version
+
+    c.execute ("SELECT id, type FROM inodes WHERE ? >= vmin AND ? <= VMAX", (version, version))
+    for row in c:
+      self.inode_dict[row[0]] = row[1:]
+
+  def get_type (self, id):
+    return self.inode_dict[id][0]
 
 def init_commit_msg (repo, filename):
   conn = repo.conn
@@ -100,12 +107,14 @@ def init_commit_msg (repo, filename):
   n_deleted = 0
 
   old_inode2name = INode2Name (c, VERSION - 1)
+  old_inode_info = INodeInfo (c, VERSION - 1)
   new_inode2name = INode2Name (c, VERSION)
+  new_inode_info = INodeInfo (c, VERSION)
 
   change_list = []
   for inode in touched_inodes:
     inode_name = new_inode2name.lookup (inode)
-    inode_type = get_inode_type (c, inode, VERSION)
+    inode_type = new_inode_info.get_type (inode)
     if inode in old_inodes:
       change_list.append (("!", inode_type, inode_name))
       n_changed += 1
@@ -116,7 +125,7 @@ def init_commit_msg (repo, filename):
   for inode in old_inodes:
     if not inode in new_inodes:
       inode_name = old_inode2name.lookup (inode)
-      inode_type = get_inode_type (c, inode, VERSION - 1)
+      inode_type = old_inode_info.get_type (inode)
       change_list.append (("-", inode_type, inode_name))
       n_deleted += 1
 
