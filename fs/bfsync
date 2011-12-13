@@ -65,19 +65,6 @@ def find_bfsync_dir():
       raise Exception ("can not find .bfsync directory")
     dir = newdir
 
-def commit_msg_ok (filename):
-  file = open (filename, "r")
-  result = False
-  for line in file:
-    line = line.strip()
-    if len (line):
-      if line[0] == "#":
-        pass
-      else:
-        result = True
-  file.close()
-  return result
-
 def cmd_commit():
   parser = argparse.ArgumentParser (prog='bfsync commit')
   parser.add_argument ('-m', help='set commit message')

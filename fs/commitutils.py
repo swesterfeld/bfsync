@@ -23,6 +23,91 @@ class NoServerConn:
   def close (self):
     pass
 
+def launch_editor (filename):
+  editor = os.getenv ("VISUAL")
+  if editor is None:
+    editor = os.getenv ("EDITOR")
+  if editor is None:
+    editor = "vi"
+  os.system ("%s %s" % (editor, filename))
+
+def commit_msg_ok (filename):
+  file = open (filename, "r")
+  result = False
+  for line in file:
+    line = line.strip()
+    if len (line):
+      if line[0] == "#":
+        pass
+      else:
+        result = True
+  file.close()
+  return result
+
+def get_inode_type (c, inode, version):
+  c.execute ('''SELECT type FROM inodes WHERE id = ? AND ? >= vmin AND ? <= vmax''', (inode, version, version))
+  for row in c:
+    return row[0]
+  return "*unknown*"
+
+def init_commit_msg (repo, filename):
+  conn = repo.conn
+  c = conn.cursor()
+
+  VERSION = 1
+  c.execute ('''SELECT version FROM history''')
+  for row in c:
+    VERSION = max (row[0], VERSION)
+
+  msg_file = open (filename, "w")
+  msg_file.write ("\n# commit version %d\n#\n" % VERSION)
+
+  touched_inodes = set()
+  c.execute ('''SELECT * FROM inodes WHERE vmin = ?''', (VERSION,))
+  for row in c:
+    touched_inodes.add (row[2])
+
+  old_inodes = set()
+  c.execute ('''SELECT * FROM inodes WHERE ? >= vmin AND ? <= vmax''', (VERSION - 1, VERSION - 1,))
+  for row in c:
+    old_inodes.add (row[2])
+
+  new_inodes = set()
+  c.execute ('''SELECT * FROM inodes WHERE ? >= vmin AND ? <= vmax''', (VERSION, VERSION,))
+  for row in c:
+    new_inodes.add (row[2])
+
+  n_changed = 0
+  n_added = 0
+  n_deleted = 0
+
+  change_list = []
+  for inode in touched_inodes:
+    inode_name = printable_name (c, inode, VERSION)
+    inode_type = get_inode_type (c, inode, VERSION)
+    if inode in old_inodes:
+      change_list.append (("!", inode_type, inode_name))
+      n_changed += 1
+    else:
+      change_list.append (("+", inode_type, inode_name))
+      n_added += 1
+
+  for inode in old_inodes:
+    if not inode in new_inodes:
+      inode_name = printable_name (c, inode, VERSION - 1)
+      inode_type = get_inode_type (c, inode, VERSION - 1)
+      change_list.append (("-", inode_type, inode_name))
+      n_deleted += 1
+
+  msg_file.write ("# %d objects added.\n" % n_added)
+  msg_file.write ("# %d objects changed.\n" % n_changed)
+  msg_file.write ("# %d objects deleted.\n" % n_deleted)
+  msg_file.write ("#\n")
+
+  change_list.sort (key = lambda x: x[2])
+  for change in change_list:
+    msg_file.write ("# %s %-8s %s\n" % change)
+  msg_file.close()
 
 def commit (repo, expected_diff = None, expected_diff_hash = None, server = True, verbose = True):
   conn = repo.conn
@@ -46,6 +131,13 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
     filename = os.path.join (repo_path, "new", id[0:2], id[2:])
     hash_list += [ filename ]
     file_list += [ (filename, id) ]
+
+  if verbose:
+    commit_msg_filename = repo.make_temp_name()
+    init_commit_msg (repo, commit_msg_filename)
+    launch_editor (commit_msg_filename)
+    if not commit_msg_ok (commit_msg_filename):
+      raise BFSyncError ("commit: empty commit message - aborting commit")
 
   #hash_cache.hash_all (hash_list)
   #status_line.cleanup()
