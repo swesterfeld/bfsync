@@ -73,7 +73,7 @@ Server::init_socket (const string& repo_path)
   assert (!socket_ok);
 
   // if pid file is there, and pid does not exist anymore, remove old socket file
-  FILE *pid_file = fopen ((Options::the()->repo_path + "/.bfsync/pid").c_str(), "r");
+  FILE *pid_file = fopen ((Options::the()->repo_path + "/pid").c_str(), "r");
   if (pid_file)
     {
       char buffer[64];
@@ -82,7 +82,7 @@ Server::init_socket (const string& repo_path)
           int pid = atoi (buffer);
           if (kill (pid, 0) == -1 && errno == ESRCH)
             {
-              unlink ((Options::the()->repo_path + "/.bfsync/socket").c_str());
+              unlink ((Options::the()->repo_path + "/socket").c_str());
             }
         }
       fclose (pid_file);
@@ -102,7 +102,7 @@ Server::init_socket (const string& repo_path)
       return false;
     }
 
-  socket_path = repo_path + "/.bfsync/socket";
+  socket_path = repo_path + "/socket";
 
   struct sockaddr_un socket_addr;
 
@@ -140,7 +140,7 @@ Server::run()
 {
   debug ("Server::run()\n");
 
-  FILE *pid_file = fopen ((Options::the()->repo_path + "/.bfsync/pid").c_str(), "w");
+  FILE *pid_file = fopen ((Options::the()->repo_path + "/pid").c_str(), "w");
   if (pid_file)
     {
       fprintf (pid_file, "%d\n", getpid());

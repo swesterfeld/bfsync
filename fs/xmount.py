@@ -22,7 +22,7 @@ except:
 
 # remount
 
-if subprocess.call (["./bfsyncfs", "test", mount_point]) != 0:
+if subprocess.call (["./bfsyncfs", "test/repo", mount_point]) != 0:
   print "can't start bfsyncfs"
   sys.exit (1)
 else:

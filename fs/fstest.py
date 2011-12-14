@@ -12,18 +12,14 @@ from stat import *
 class FuseFS:
   def init (self):
     cwd = os.getcwd()
-    if subprocess.call (["mkdir", "-m", "0700", "-p", "test/tmp",
-                                                      "test/new",
-                                                      "test/objects",
-                                                      "test/.bfsync"]) != 0:
+    if subprocess.call (["mkdir", "-p", "test"]) != 0:
       raise Exception ("error during setup (can't create dirs)")
+    if subprocess.call (["bfsync", "init", "test/master"]) != 0:
+      raise Exception ("error during setup (can't init master repo)")
+    if run_quiet (["bfsync", "clone", "test/master", "test/repo"]) != 0:
+      raise Exception ("error during setup (can't clone master repo)")
     if subprocess.call (["mkdir", "-p", "mnt"]) != 0:
       raise Exception ("error during setup (can't create dirs)")
-    for i in range (0, 256):
-      os.mkdir ("test/new/%02x" % i, 0700)
-      os.mkdir ("test/objects/%02x" % i, 0700)
-    if subprocess.call (["./setupdb.py"]) != 0:
-      raise Exception ("error during setup")
     start_bfsyncfs()
 
   def commit (self):
@@ -51,9 +47,7 @@ class FuseFS:
       if subprocess.call (["fusermount", "-u", "mnt"]):
         print "can't stop bfsyncfs"
         sys.exit (1)
-    if subprocess.call (["rm", "-rf", cwd + "/test/new", cwd + "/test/objects",
-                         cwd + "/test/.bfsync/pid",
-                         cwd + "/test/.bfsync/socket"]) != 0:
+    if subprocess.call (["rm", "-rf", cwd + "/test/master", cwd + "/test/repo"]) != 0:
       print "error during teardown"
       sys.exit (1)
 
@@ -843,8 +837,8 @@ tests += [ ("link-inode", test_link_inode) ]
 
 def test_commits_dir():
   os.stat ("mnt/.bfsync/commits")
-  os.stat ("mnt/.bfsync/commits/1/README")
-  os.stat ("mnt/.bfsync/commits/1/subdir")
+  os.stat ("mnt/.bfsync/commits/2/README")
+  os.stat ("mnt/.bfsync/commits/2/subdir")
 
 bf_tests += [ ("commits-dir", test_commits_dir) ]
 
@@ -855,10 +849,10 @@ def test_commits_rm():
   os.remove ("mnt/README")
   commit()
   clear_cache()
-  st = os.stat ("mnt/.bfsync/commits/1/README")
+  st = os.stat ("mnt/.bfsync/commits/2/README")
   if st.st_size != start_size:
     raise Exception ("README in commits dir wrong")
-  if os.path.exists ("mnt/.bfsync/commits/2/README"):
+  if os.path.exists ("mnt/.bfsync/commits/3/README"):
     raise Exception ("README not removed in commits dir")
 
 bf_tests += [ ("commits-rm", test_commits_rm) ]
@@ -871,19 +865,19 @@ def test_commits_rename():
   commit()
   clear_cache()
   # README old
-  st = os.stat ("mnt/.bfsync/commits/1/README")
+  st = os.stat ("mnt/.bfsync/commits/2/README")
   if st.st_size != start_size:
-    raise Exception ("README in commits/1 dir wrong")
+    raise Exception ("README in commits/2 dir wrong")
   # README new
-  if os.path.exists ("mnt/.bfsync/commits/2/README"):
-    raise Exception ("README not removed in commits/2 dir")
+  if os.path.exists ("mnt/.bfsync/commits/3/README"):
+    raise Exception ("README not removed in commits/3 dir")
   # MEREAD old
-  if os.path.exists ("mnt/.bfsync/commits/1/MEREAD"):
-    raise Exception ("MEREAD shows up in commits/1 dir")
+  if os.path.exists ("mnt/.bfsync/commits/2/MEREAD"):
+    raise Exception ("MEREAD shows up in commits/2 dir")
   # MEREAD new
-  st = os.stat ("mnt/.bfsync/commits/2/MEREAD")
+  st = os.stat ("mnt/.bfsync/commits/3/MEREAD")
   if st.st_size != start_size:
-    raise Exception ("MEREAD in commits/2 dir wrong")
+    raise Exception ("MEREAD in commits/3 dir wrong")
 
 bf_tests += [ ("commits-rename", test_commits_rename) ]
 
@@ -895,9 +889,9 @@ def test_commits_change_file():
   write_file ("mnt/README", new_readme)
   commit()
   clear_cache()
-  if read_file ("mnt/.bfsync/commits/1/README") != old_readme:
+  if read_file ("mnt/.bfsync/commits/2/README") != old_readme:
     raise Exception ("old README changed")
-  if read_file ("mnt/.bfsync/commits/2/README") != new_readme:
+  if read_file ("mnt/.bfsync/commits/3/README") != new_readme:
     raise Exception ("new README not written")
 
 bf_tests += [ ("commits-change-file", test_commits_change_file) ]
@@ -910,10 +904,10 @@ def test_remount_rm():
   os.remove ("mnt/README")
   commit()
   remount()
-  st = os.stat ("mnt/.bfsync/commits/1/README")
+  st = os.stat ("mnt/.bfsync/commits/2/README")
   if st.st_size != start_size:
     raise Exception ("README in commits dir wrong")
-  if os.path.exists ("mnt/.bfsync/commits/2/README"):
+  if os.path.exists ("mnt/.bfsync/commits/3/README"):
     raise Exception ("README not removed in commits dir")
 
 bf_tests += [ ("remount-rm", test_remount_rm) ]
@@ -927,9 +921,9 @@ def test_remount_change_file():
   write_file ("mnt/README", new_readme)
   commit()
   remount()
-  if read_file ("mnt/.bfsync/commits/1/README") != old_readme:
+  if read_file ("mnt/.bfsync/commits/2/README") != old_readme:
     raise Exception ("old README changed")
-  if read_file ("mnt/.bfsync/commits/2/README") != new_readme:
+  if read_file ("mnt/.bfsync/commits/3/README") != new_readme:
     raise Exception ("new README not written")
 
 bf_tests += [ ("remount-change-file", test_remount_change_file) ]
@@ -938,21 +932,21 @@ bf_tests += [ ("remount-change-file", test_remount_change_file) ]
 
 def test_quad_commit():
   write_file ("mnt/1", "1")
-  commit()                  # commit 2
-  write_file ("mnt/2", "2")
   commit()                  # commit 3
-  write_file ("mnt/3", "3")
+  write_file ("mnt/2", "2")
   commit()                  # commit 4
-  write_file ("mnt/4", "4")
+  write_file ("mnt/3", "3")
   commit()                  # commit 5
-  if read_file ("mnt/.bfsync/commits/2/1") != "1":
-    raise Exception ("commit '2' not readable")
-  if read_file ("mnt/.bfsync/commits/3/2") != "2":
+  write_file ("mnt/4", "4")
+  commit()                  # commit 6
+  if read_file ("mnt/.bfsync/commits/3/1") != "1":
     raise Exception ("commit '3' not readable")
-  if read_file ("mnt/.bfsync/commits/4/3") != "3":
+  if read_file ("mnt/.bfsync/commits/4/2") != "2":
     raise Exception ("commit '4' not readable")
-  if read_file ("mnt/.bfsync/commits/5/4") != "4":
+  if read_file ("mnt/.bfsync/commits/5/3") != "3":
     raise Exception ("commit '5' not readable")
+  if read_file ("mnt/.bfsync/commits/6/4") != "4":
+    raise Exception ("commit '6' not readable")
 
 bf_tests += [ ("test-quad-commit", test_quad_commit) ]
 
@@ -960,21 +954,21 @@ bf_tests += [ ("test-quad-commit", test_quad_commit) ]
 
 def test_quad_commit_links():
   write_file ("mnt/link", "link")
-  commit()                  # commit 2
-  os.remove ("mnt/link")
   commit()                  # commit 3
-  write_file ("mnt/link", "link")
+  os.remove ("mnt/link")
   commit()                  # commit 4
+  write_file ("mnt/link", "link")
+  commit()                  # commit 5
   os.remove ("mnt/link")
   commit()                  # commit 5
-  if read_file ("mnt/.bfsync/commits/2/link") != "link":
-    raise Exception ("commit '2' not readable")
-  if os.path.exists ("mnt/.bfsync/commits/3/link"):
-    raise Exception ("commit '3' should not contain link")
-  if read_file ("mnt/.bfsync/commits/4/link") != "link":
-    raise Exception ("commit '4' not readable")
-  if os.path.exists ("mnt/.bfsync/commits/5/link"):
-    raise Exception ("commit '5' should not contain link")
+  if read_file ("mnt/.bfsync/commits/3/link") != "link":
+    raise Exception ("commit '3' not readable")
+  if os.path.exists ("mnt/.bfsync/commits/4/link"):
+    raise Exception ("commit '4' should not contain link")
+  if read_file ("mnt/.bfsync/commits/5/link") != "link":
+    raise Exception ("commit '5' not readable")
+  if os.path.exists ("mnt/.bfsync/commits/6/link"):
+    raise Exception ("commit '6' should not contain link")
 
 bf_tests += [ ("test-quad-commit-links", test_quad_commit_links) ]
 
@@ -994,25 +988,29 @@ def revert (n):
   os.chdir (cwd)
 
 def test_revert():
-  fp_v1 = fprint()
+  fp_v2 = fprint()
   write_file ("mnt/1", "file 1")
   write_file ("mnt/2", "file 3")
   write_file ("mnt/3", "file 3")
   commit()
 
-  fp_v2 = fprint()
+  fp_v3 = fprint()
   write_file ("mnt/subdir/x", "changed x\n")
   commit()
 
-  fp_v3 = fprint()
+  fp_v4 = fprint()
   os.remove ("mnt/README")
   commit()
 
-  fp_v4 = fprint()
+  fp_v5 = fprint()
   write_file ("mnt/blub", "blub")
   os.rename ("mnt/subdir", "mnt/dirsub")
   commit()
 
+  # 5
+  revert (5)
+  if fp_v5 != fprint():
+    raise Exception ("revert to version 5 broken (fingerprint mismatch)")
   # 4
   revert (4)
   if fp_v4 != fprint():
@@ -1025,10 +1023,6 @@ def test_revert():
   revert (2)
   if fp_v2 != fprint():
     raise Exception ("revert to version 2 broken (fingerprint mismatch)")
-  # 1
-  revert (1)
-  if fp_v1 != fprint():
-    raise Exception ("revert to version 1 broken (fingerprint mismatch)")
 
 bf_tests += [ ("test-revert", test_revert) ]
 
@@ -1046,7 +1040,7 @@ bf_tests += [ ("test-8bit-filename", test_8bit_filename) ]
 
 
 def start_bfsyncfs():
-  if os.system ("""( echo "*** fs start (`date`)"; ./bfsyncfs -f test mnt; echo "*** fs stop (`date`), exit $?"
+  if os.system ("""( echo "*** fs start (`date`)"; ./bfsyncfs -f test/repo mnt; echo "*** fs stop (`date`), exit $?"
                    ) >> fs.log 2>&1 &""") != 0:
     raise Exception ("can't start bfsyncfs")
   while not os.path.exists ("mnt/.bfsync/info"):

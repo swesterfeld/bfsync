@@ -52,14 +52,22 @@ def find_repo_dir():
   while True:
     file_ok = False
     try:
-      cfg_file = os.path.join (dir, ".bfsync/info")
-      f = open (cfg_file, "r")
+      cfg_filename = os.path.join (dir, ".bfsync/info")
+      f = open (cfg_filename, "r")
       f.close()
       file_ok = True
     except:
       pass
+    try:
+      bfsync_filename = os.path.join (dir, ".bfsync")
+      f = open (bfsync_filename, "r")
+      f.close()
+      file_ok = True
+      cfg_filename = os.path.join (dir, "info")
+    except:
+      pass
     if file_ok:
-      cfg = parse_config (cfg_file)
+      cfg = parse_config (cfg_filename)
       repo_type_list = cfg.get ("repo-type")
       if len (repo_type_list) != 1:
         raise Exception ("bad repo-type list (should have exactly 1 entry)")
@@ -78,7 +86,7 @@ def find_repo_dir():
     newdir = os.path.dirname (dir)
     if newdir == dir:
       # no more parent
-      raise Exception ("error: can not find .bfsync directory")
+      raise Exception ("error: can not find .bfsync directory/file")
     dir = newdir
 
 class Repo:
@@ -92,7 +100,7 @@ class Repo:
 
 def cd_repo_connect_db():
   repo_path = find_repo_dir()
-  bfsync_info = parse_config (repo_path + "/.bfsync/config")
+  bfsync_info = parse_config (repo_path + "/config")
 
   sqlite_sync = bfsync_info.get ("sqlite-sync")
   if len (sqlite_sync) != 1:
@@ -229,3 +237,9 @@ class RemoteFile:
 
 class BFSyncError (Exception):
   pass
+
+def init_bfsync_file (dir):
+  bfsync_file = os.path.join (dir, ".bfsync")
+  f = open (bfsync_file, "w")
+  f.write ("# do not delete: this file allows bfsync recognizing this directory as repository\n")
+  f.close()

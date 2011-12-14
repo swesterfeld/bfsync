@@ -1445,7 +1445,7 @@ bfsyncfs_main (int argc, char **argv)
   options.mount_point = mount_point;
 
   CfgParser repo_cfg_parser;
-  if (!repo_cfg_parser.parse (repo_path + "/.bfsync/config"))
+  if (!repo_cfg_parser.parse (repo_path + "/config"))
     {
       printf ("bfsyncfs: parse error in repo config:\n%s\n", repo_cfg_parser.error().c_str());
       exit (1);

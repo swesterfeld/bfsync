@@ -366,16 +366,19 @@ def cmd_init():
     os.mkdir (dir, 0700)
   except:
     raise Exception ("can't create directory %s for repository" % dir)
-  bfsync_dir = os.path.join (dir, ".bfsync")
-  os.mkdir (bfsync_dir)
-  f = open (os.path.join (bfsync_dir, "info"), "w")
-  f.write ("repo-type master;")
-  f.close()
-  f = open (os.path.join (bfsync_dir, "config"), "w")
-  f.write ("sqlite-sync 1;")
+
+  init_bfsync_file (dir)
+  os.chdir (dir)
+
+  # info file
+  f = open ("info", "w")
+  f.write ("repo-type master;\n")
   f.close()
 
-  os.chdir (dir)
+  # config file
+  f = open ("config", "w")
+  f.write ("sqlite-sync 1;\n")
+  f.close()
 
   # create objects directory
   os.mkdir ("objects", 0700)
@@ -548,16 +551,15 @@ def cmd_clone():
   except:
     raise Exception ("can't create directory %s for repository" % dir)
 
-  bfsync_dir = os.path.join (dir, ".bfsync")
-  os.mkdir (bfsync_dir)
+  init_bfsync_file (dir)
 
-  # init .bfsync/info
-  f = open (os.path.join (bfsync_dir, "info"), "w")
-  f.write ("repo-type store;")
+  # init info
+  f = open (os.path.join (dir, "info"), "w")
+  f.write ("repo-type store;\n")
   f.close()
 
   # default config
-  f = open (os.path.join (bfsync_dir, "config"), "w")
+  f = open (os.path.join (dir, "config"), "w")
   f.write ("sqlite-sync 1;\n")
   f.write ("default {\n")
   f.write ("""  pull "%s";\n""" % url)

@@ -77,4 +77,4 @@ class ServerConn:
 
   def __init__ (self, repo_dir):
     self.conn_socket = socket.socket (socket.AF_UNIX, socket.SOCK_STREAM)
-    self.conn_socket.connect (repo_dir + "/.bfsync/socket")
+    self.conn_socket.connect (repo_dir + "/socket")
