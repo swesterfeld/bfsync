@@ -423,7 +423,8 @@ def guess_dir_name (url):
     dir_name = ch + dir_name
   return url
 
-def check_table (repo, table, table_name):
+def table_objs (repo, table):
+  thashes = []
   conn = repo.conn
   c = conn.cursor()
 
@@ -433,15 +434,40 @@ def check_table (repo, table, table_name):
   for row in c:
     hash = row[0]
     if len (hash) == 40:
-      objs += 1
-      dest_file = os.path.join (repo.path, "objects", make_object_filename (hash))
-      if not validate_object (dest_file, hash):
-        need_objs += 1
+      thashes.append (hash)
 
-  if need_objs != 0:
-    print "%s:\n - need to transfer %d/%d objects." % (table_name, need_objs, objs)
-  else:
-    print "%s:\n - all %d objects available." % (table_name, objs)
+  return thashes
+
+def check_objs (repo, hobjs, iobjs):
+  all_objs = len (hobjs) + len (iobjs)
+
+  check_objs = 0
+  need_hobjs = 0
+  need_iobjs = 0
+
+  for hash in hobjs:
+    dest_file = os.path.join (repo.path, "objects", make_object_filename (hash))
+    check_objs += 1
+    if not validate_object (dest_file, hash):
+      need_hobjs += 1
+    status_line.update ("checking object %d/%d" % (check_objs, all_objs))
+
+  for hash in iobjs:
+    dest_file = os.path.join (repo.path, "objects", make_object_filename (hash))
+    check_objs += 1
+    if not validate_object (dest_file, hash):
+      need_iobjs += 1
+    status_line.update ("checking object %d/%d" % (check_objs, all_objs))
+
+  status_line.cleanup()
+
+  print
+  for x in [("History", need_hobjs, len (hobjs)),
+            ("Files", need_iobjs, len (iobjs))]:
+    if x[1] != 0:
+      print "%s:\n - need to transfer %d/%d objects." % (x[0], x[1], x[2])
+    else:
+      print "%s:\n - all %d objects available." % (x[0], x[2])
 
 def unused_objects (repo):
   result = []
@@ -464,8 +490,10 @@ def unused_objects (repo):
 def cmd_check():
   repo = cd_repo_connect_db()
 
-  check_table (repo, "history", "History")
-  check_table (repo, "inodes", "Files")
+  status_line.set_op ("CHECK")
+  history_objs = table_objs (repo, "history")
+  inode_objs = table_objs (repo, "inodes")
+  check_objs (repo, history_objs, inode_objs)
   print "Unused:"
   print " - %d objects are not used." % len (unused_objects (repo))
 
