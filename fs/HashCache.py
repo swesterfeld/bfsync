@@ -87,7 +87,7 @@ class HashCache:
     stat_hash = hashlib.sha1 (cPickle.dumps (l)).hexdigest()
     return stat_hash
 
-  def hash_all (self, filenames):
+  def hash_all (self, filenames, verbose):
     # compute total size of all files
     bytes_total = 0
     for filename in filenames:
@@ -96,7 +96,6 @@ class HashCache:
     bytes_done = 0
     file_number = 0
     start_time = time.time()
-    status_line.set_op ("HASH")
     for filename in filenames:
       file = open (filename, "r")
       file_number += 1
@@ -115,13 +114,14 @@ class HashCache:
             elapsed_time = max (time.time() - start_time, 1)
             bytes_per_sec = max (bytes_done / elapsed_time, 1)
             eta = int ((bytes_total - bytes_done) / bytes_per_sec)
-            status_line.update ("file %d/%d    %s    %.1f%%   %s   ETA: %s" % (
-              file_number, len (filenames),
-              format_size (bytes_done, bytes_total),
-              bytes_done * 100.0 / max (bytes_total, 1),
-              format_rate (bytes_per_sec),
-              format_time (eta)
-            ))
+            if verbose:
+              status_line.update ("hashing file %d/%d    %s    %.1f%%   %s   ETA: %s" % (
+                file_number, len (filenames),
+                format_size (bytes_done, bytes_total),
+                bytes_done * 100.0 / max (bytes_total, 1),
+                format_rate (bytes_per_sec),
+                format_time (eta)
+              ))
         file.close()
         result = hash.hexdigest()
         self.insert (stat_hash, result)
