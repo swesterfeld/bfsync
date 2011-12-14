@@ -62,6 +62,11 @@ class INode2Name:
     (dir_id, name) = self.link_dict[id]
     return os.path.join (self.lookup (dir_id), name)
 
+  def links (self, id):
+    if id == "0" * 40:
+      return "/"
+    return self.link_dict[id]
+
 class INodeInfo:
   def __init__ (self, c, version):
     self.inode_dict = dict()
@@ -105,6 +110,7 @@ def init_commit_msg (repo, filename):
   n_changed = 0
   n_added = 0
   n_deleted = 0
+  n_renamed = 0
 
   old_inode2name = INode2Name (c, VERSION - 1)
   old_inode_info = INodeInfo (c, VERSION - 1)
@@ -116,7 +122,14 @@ def init_commit_msg (repo, filename):
     inode_name = new_inode2name.lookup (inode)
     inode_type = new_inode_info.get_type (inode)
     if inode in old_inodes:
-      change_list.append (("!", inode_type, inode_name))
+      old_links = old_inode2name.links (inode)
+      new_links = new_inode2name.links (inode)
+      if old_links != new_links:
+        old_name = old_inode2name.lookup (inode)
+        change_list.append (("R!", inode_type, "%s => %s" % (old_name, inode_name)))
+        n_renamed += 1
+      else:
+        change_list.append (("!", inode_type, inode_name))
       n_changed += 1
     else:
       change_list.append (("+", inode_type, inode_name))
@@ -129,14 +142,15 @@ def init_commit_msg (repo, filename):
       change_list.append (("-", inode_type, inode_name))
       n_deleted += 1
 
-  msg_file.write ("# %d objects added.\n" % n_added)
-  msg_file.write ("# %d objects changed.\n" % n_changed)
-  msg_file.write ("# %d objects deleted.\n" % n_deleted)
+  msg_file.write ("# + %d objects added.\n" % n_added)
+  msg_file.write ("# ! %d objects changed.\n" % n_changed)
+  msg_file.write ("# - %d objects deleted.\n" % n_deleted)
+  msg_file.write ("# R %d objects renamed.\n" % n_renamed)
   msg_file.write ("#\n")
 
   change_list.sort (key = lambda x: x[2])
   for change in change_list:
-    msg_file.write ("# %s %-8s %s\n" % change)
+    msg_file.write ("# %2s %-8s %s\n" % change)
   msg_file.close()
 
 def commit (repo, expected_diff = None, expected_diff_hash = None, server = True, verbose = True):
