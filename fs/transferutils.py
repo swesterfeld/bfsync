@@ -837,7 +837,12 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
       status_line.update ("patch %d/%d" % (patch_count, total_patch_count))
       patch_count += 1
 
-      apply (repo, xzcat (diff_file), diff, verbose = False)
+      commit_args = dict()
+      commit_args["author"] = rh[2]
+      commit_args["message"] = rh[3]
+      commit_args["time"] = rh[4]
+
+      apply (repo, xzcat (diff_file), diff, verbose = False, commit_args = commit_args)
       master_version = rh[0]
 
   # APPLY extra commit to be able to apply local history without problems
@@ -869,7 +874,9 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
 
   if new_diff != "":
     status_line.update ("patch %d/%d" % (patch_count, total_patch_count))
-    apply (repo, new_diff, verbose = False)
+    commit_args["author"] = "no author"
+    commit_args["message"] = "automatically generated merge commit"
+    apply (repo, new_diff, verbose = False, commit_args = commit_args)
 
   # we count the "middle-patch" even if its empty to be able to predict
   # the number of patches
@@ -887,7 +894,12 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
       status_line.update ("patch %d/%d" % (patch_count, total_patch_count))
       patch_count += 1
       if new_diff != "":
-        apply (repo, new_diff, verbose = False)
+        commit_args = dict()
+        commit_args["author"] = lh[2]
+        commit_args["message"] = lh[3]
+        commit_args["time"] = lh[4]
+
+        apply (repo, new_diff, verbose = False, commit_args = commit_args)
 
   status_line.cleanup()
   diff_rewriter.show_changes()
