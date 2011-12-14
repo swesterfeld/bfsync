@@ -69,17 +69,29 @@ class INode2Name:
     return self.link_dict[id]
 
 class INodeInfo:
-  def __init__ (self, c, version):
+  def __init__ (self, repo, c, version):
     self.inode_dict = dict()
+    self.repo = repo
     self.c = c
     self.version = version
 
-    c.execute ("SELECT id, type FROM inodes WHERE ? >= vmin AND ? <= VMAX", (version, version))
+    c.execute ("SELECT id, type, size, hash FROM inodes WHERE ? >= vmin AND ? <= VMAX", (version, version))
     for row in c:
       self.inode_dict[row[0]] = row[1:]
 
   def get_type (self, id):
     return self.inode_dict[id][0]
+
+  def get_size (self, id):
+    r = self.inode_dict[id]
+    hash = r[2]
+    size = r[1]
+    if hash == "new":
+      try:
+        size = os.path.getsize (os.path.join (self.repo.path, "new", make_object_filename (id)))
+      except:
+        pass
+    return size
 
 def init_commit_msg (repo, filename):
   conn = repo.conn
@@ -109,14 +121,18 @@ def init_commit_msg (repo, filename):
     new_inodes.add (row[2])
 
   n_changed = 0
+  bytes_changed_old = 0
+  bytes_changed_new = 0
   n_added = 0
+  bytes_added = 0
   n_deleted = 0
+  bytes_deleted = 0
   n_renamed = 0
 
   old_inode2name = INode2Name (c, VERSION - 1)
-  old_inode_info = INodeInfo (c, VERSION - 1)
+  old_inode_info = INodeInfo (repo, c, VERSION - 1)
   new_inode2name = INode2Name (c, VERSION)
-  new_inode_info = INodeInfo (c, VERSION)
+  new_inode_info = INodeInfo (repo, c, VERSION)
 
   change_list = []
   for inode in touched_inodes:
@@ -132,9 +148,12 @@ def init_commit_msg (repo, filename):
       else:
         change_list.append (("!", inode_type, inode_name))
       n_changed += 1
+      bytes_changed_old += old_inode_info.get_size (inode)
+      bytes_changed_new += new_inode_info.get_size (inode)
     else:
       change_list.append (("+", inode_type, inode_name))
       n_added += 1
+      bytes_added += new_inode_info.get_size (inode)
 
   for inode in old_inodes:
     if not inode in new_inodes:
@@ -142,10 +161,13 @@ def init_commit_msg (repo, filename):
       inode_type = old_inode_info.get_type (inode)
       change_list.append (("-", inode_type, inode_name))
       n_deleted += 1
+      bytes_deleted += old_inode_info.get_size (inode)
 
-  msg_file.write ("# + %d objects added.\n" % n_added)
-  msg_file.write ("# ! %d objects changed.\n" % n_changed)
-  msg_file.write ("# - %d objects deleted.\n" % n_deleted)
+  msg_file.write ("# + %d objects added (%s).\n" % (n_added, format_size1 (bytes_added)))
+  msg_file.write ("# ! %d objects changed (%s => %s).\n" % (n_changed,
+                                                            format_size1 (bytes_changed_old),
+                                                            format_size1 (bytes_changed_new)))
+  msg_file.write ("# - %d objects deleted (%s).\n" % (n_deleted, format_size1 (bytes_deleted)))
   msg_file.write ("# R %d objects renamed.\n" % n_renamed)
   msg_file.write ("#\n")
 
