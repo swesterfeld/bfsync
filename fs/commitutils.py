@@ -182,6 +182,14 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
     launch_editor (commit_msg_filename)
     if not commit_msg_ok (commit_msg_filename):
       raise BFSyncError ("commit: empty commit message - aborting commit")
+    commit_msg = ""
+    commit_msg_file = open (commit_msg_filename, "r")
+    for line in commit_msg_file:
+      if line[0] != "#":
+        commit_msg += line
+    commit_msg_file.close()
+  else:
+    commit_msg = "commit message"
 
   #hash_cache.hash_all (hash_list)
   #status_line.cleanup()
@@ -246,7 +254,7 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
   if commit_size_ok:
     c.execute ('''UPDATE inodes SET vmax=? WHERE vmax = ?''', (VERSION + 1, VERSION))
     c.execute ('''UPDATE links SET vmax=? WHERE vmax = ?''', (VERSION + 1, VERSION))
-    c.execute ('''UPDATE history SET message="commit message", author="author", hash=? WHERE version=?''', (hash, VERSION, ))
+    c.execute ('''UPDATE history SET message=?, author="author", hash=? WHERE version=?''', (commit_msg, hash, VERSION, ))
     c.execute ('''INSERT INTO history VALUES (?,?,?,?,?)''', (VERSION + 1, "", "", "", 0))
   else:
     print "Nothing to commit."
