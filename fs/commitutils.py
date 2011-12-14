@@ -159,7 +159,7 @@ def get_author():
   hostname = os.uname()[1]
   return "%s@%s" % (username, hostname)
 
-def commit (repo, expected_diff = None, expected_diff_hash = None, server = True, verbose = True):
+def commit (repo, expected_diff = None, expected_diff_hash = None, server = True, verbose = True, commit_args = None):
   conn = repo.conn
   repo_path = repo.path
 
@@ -197,7 +197,21 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
   else:
     commit_msg = "commit message"
 
-  author = get_author()
+  commit_author = None
+  commit_time = None
+
+  if commit_args:
+    commit_author = commit_args.get ("author")
+    commit_time = commit_args.get ("time")
+    xcommit_msg = commit_args.get ("message")
+    if xcommit_msg is not None:
+      commit_msg = xcommit_msg
+
+  if commit_author is None:
+    commit_author = get_author()
+
+  if commit_time is None:
+    commit_time = int (time.time())
 
   #hash_cache.hash_all (hash_list)
   #status_line.cleanup()
@@ -263,7 +277,7 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
     c.execute ('''UPDATE inodes SET vmax=? WHERE vmax = ?''', (VERSION + 1, VERSION))
     c.execute ('''UPDATE links SET vmax=? WHERE vmax = ?''', (VERSION + 1, VERSION))
     c.execute ('''UPDATE history SET message=?, author=?, hash=?, time=? WHERE version=?''',
-              (commit_msg, author, hash, int (time.time()), VERSION, ))
+              (commit_msg, commit_author, hash, commit_time, VERSION, ))
     c.execute ('''INSERT INTO history VALUES (?,?,?,?,?)''', (VERSION + 1, "", "", "", 0))
   else:
     print "Nothing to commit."

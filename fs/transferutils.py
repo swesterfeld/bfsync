@@ -969,7 +969,11 @@ def pull (repo, args, server = True):
         else:
           pass    # same version, local and remote
       else:
-        ff_apply += [ hash ]
+        args = dict()
+        args["author"] = rh[2]
+        args["message"] = rh[3]
+        args["time"] = rh[4]
+        ff_apply += [ (hash, args) ]
 
   # Already up-to-date?
   if can_fast_forward and len (ff_apply) == 0:
@@ -981,10 +985,10 @@ def pull (repo, args, server = True):
 
   if can_fast_forward:
     count = 1
-    for diff in ff_apply:
+    for diff, commit_args in ff_apply:
       diff_file = os.path.join ("objects", make_object_filename (diff))
       status_line.update ("patch %d/%d - fast forward" % (count, len (ff_apply)))
-      apply (repo, xzcat (diff_file), diff, server = server, verbose = False)
+      apply (repo, xzcat (diff_file), diff, server = server, verbose = False, commit_args = commit_args)
       count += 1
   else:
     history_merge (c, repo, local_history, remote_history, pull_args)
