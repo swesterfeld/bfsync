@@ -190,10 +190,10 @@ main()
 {
   printf ("resetting db... ");
   fflush (stdout);
-  system ("rm test/db; setupdb.py");
+  system ("fstest.py -r");
   printf ("done.\n");
 
-  int rc = sqlite_open ("test/db");
+  int rc = sqlite_open ("test/repo/db");
   if (rc != SQLITE_OK)
     {
       printf ("sqlperf: error opening db: %d\n", rc);
