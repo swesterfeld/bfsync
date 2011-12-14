@@ -68,11 +68,18 @@ def find_bfsync_dir():
 def cmd_commit():
   parser = argparse.ArgumentParser (prog='bfsync commit')
   parser.add_argument ('-m', help='set commit message')
-  commit_args = parser.parse_args (args)
+  parser.add_argument ('-a', help='set author')
+  parsed_args = parser.parse_args (args)
+
+  commit_args = dict()
+  if parsed_args.m is not None:
+    commit_args["message"] = parsed_args.m
+  if parsed_args.a is not None:
+    commit_args["author"] = parsed_args.a
 
   repo = cd_repo_connect_db()
   status_line.set_op ("COMMIT")
-  commit (repo)
+  commit (repo, commit_args = commit_args)
 
 def cmd_debug_load_all_inodes():
   bfsync_dir = find_bfsync_dir()

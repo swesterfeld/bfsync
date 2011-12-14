@@ -17,6 +17,9 @@ def parse_config (filename):
     "cached-inodes",
     "cached-dirs",
     "sqlite-sync",
+    "get-rate-limit",
+    "put-rate-limit",
+    "ignore-uid-gid"
   ])
   return bfsync_info
 

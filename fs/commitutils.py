@@ -182,7 +182,12 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
     hash_list += [ filename ]
     file_list += [ (filename, id) ]
 
-  if verbose:
+  have_message = False
+  if commit_args:
+    if commit_args.get ("message"):
+      have_message = True
+
+  if verbose and not have_message:
     commit_msg_filename = repo.make_temp_name()
     init_commit_msg (repo, commit_msg_filename)
     launch_editor (commit_msg_filename)
