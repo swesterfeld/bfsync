@@ -204,13 +204,18 @@ def cmd_log():
     hash    = row[1]
     author  = row[2]
     msg     = row[3]
+    time    = row[4]
 
     if msg != "":
-      print "%4d   hash '%s', author '%s'" % (version, hash, author)
+      msg = msg.strip()
+      print "-" * 80
+      print "%4d   Hash   %s" % (version, hash)
+      print "       Author %s" % author
+      print "       Date   %s" % datetime.datetime.fromtimestamp (time).strftime ("%F %H:%M:%S")
       print
       for line in msg.split ("\n"):
         print "       %s" % line
-      print
+  print "-" * 80
 
 def cmd_status():
   repo = cd_repo_connect_db()

@@ -6,6 +6,7 @@ from xzutils import xz
 from HashCache import hash_cache
 
 import os
+import time
 
 # in case the repo is not mounted, we don't need a ServerConn
 #
@@ -254,7 +255,8 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
   if commit_size_ok:
     c.execute ('''UPDATE inodes SET vmax=? WHERE vmax = ?''', (VERSION + 1, VERSION))
     c.execute ('''UPDATE links SET vmax=? WHERE vmax = ?''', (VERSION + 1, VERSION))
-    c.execute ('''UPDATE history SET message=?, author="author", hash=? WHERE version=?''', (commit_msg, hash, VERSION, ))
+    c.execute ('''UPDATE history SET message=?, author="author", hash=?, time=? WHERE version=?''',
+              (commit_msg, hash, int (time.time()), VERSION, ))
     c.execute ('''INSERT INTO history VALUES (?,?,?,?,?)''', (VERSION + 1, "", "", "", 0))
   else:
     print "Nothing to commit."
