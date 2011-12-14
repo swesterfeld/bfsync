@@ -203,11 +203,14 @@ def cmd_log():
     version = row[0]
     hash    = row[1]
     author  = row[2]
-    commit  = row[3]
+    msg     = row[3]
 
-    if commit != "":
-      print "%4d   hash '%s', author '%s', msg '%s'" % (version, hash, author, commit)
-  return
+    if msg != "":
+      print "%4d   hash '%s', author '%s'" % (version, hash, author)
+      print
+      for line in msg.split ("\n"):
+        print "       %s" % line
+      print
 
 def cmd_status():
   repo = cd_repo_connect_db()
