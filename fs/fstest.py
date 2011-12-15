@@ -11,15 +11,21 @@ from stat import *
 
 class FuseFS:
   def init (self):
-    cwd = os.getcwd()
-    if subprocess.call (["mkdir", "-p", "test"]) != 0:
-      raise Exception ("error during setup (can't create dirs)")
-    if subprocess.call (["bfsync", "init", "test/master"]) != 0:
-      raise Exception ("error during setup (can't init master repo)")
-    if run_quiet (["bfsync", "clone", "test/master", "test/repo"]) != 0:
-      raise Exception ("error during setup (can't clone master repo)")
-    if subprocess.call (["mkdir", "-p", "mnt"]) != 0:
-      raise Exception ("error during setup (can't create dirs)")
+    if os.path.exists ("test/backup"):
+      if run_quiet (["rsync", "--delete", "-a", "test/backup/", "test/repo"]) != 0:
+        raise Exception ("rsync backup => repo failed")
+    else:
+      cwd = os.getcwd()
+      if subprocess.call (["mkdir", "-p", "test"]) != 0:
+        raise Exception ("error during setup (can't create dirs)")
+      if subprocess.call (["mkdir", "-p", "mnt"]) != 0:
+        raise Exception ("error during setup (can't create dirs)")
+      if subprocess.call (["bfsync", "init", "test/master"]) != 0:
+        raise Exception ("error during setup (can't init master repo)")
+      if run_quiet (["bfsync", "clone", "test/master", "test/repo"]) != 0:
+        raise Exception ("error during setup (can't clone master repo)")
+      if run_quiet (["rsync", "-a", "test/repo/", "test/backup"]) != 0:
+        raise Exception ("rsync repo => backup failed")
     start_bfsyncfs()
 
   def commit (self):
@@ -47,9 +53,6 @@ class FuseFS:
       if subprocess.call (["fusermount", "-u", "mnt"]):
         print "can't stop bfsyncfs"
         sys.exit (1)
-    if subprocess.call (["rm", "-rf", cwd + "/test/master", cwd + "/test/repo"]) != 0:
-      print "error during teardown"
-      sys.exit (1)
 
   def umount (self):
     if subprocess.call (["fusermount", "-u", "mnt"]):
@@ -1129,4 +1132,10 @@ else:
   tests += bf_tests
 
 os.putenv ("BFSYNC_NO_HASH_CACHE", "1")
-main (fstest_args)
+
+if False: # profiling
+  import cProfile
+
+  cProfile.run ("main (fstest_args)", "/tmp/bfsync-profile-fstest")
+else:
+  main (fstest_args)
