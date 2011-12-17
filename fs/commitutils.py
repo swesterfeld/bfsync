@@ -93,7 +93,7 @@ class INodeInfo:
         pass
     return size
 
-def init_commit_msg (repo, filename):
+def gen_status (repo):
   conn = repo.conn
   c = conn.cursor()
 
@@ -101,9 +101,6 @@ def init_commit_msg (repo, filename):
   c.execute ('''SELECT version FROM history''')
   for row in c:
     VERSION = max (row[0], VERSION)
-
-  msg_file = open (filename, "w")
-  msg_file.write ("\n# commit version %d\n#\n" % VERSION)
 
   touched_inodes = set()
   c.execute ('''SELECT * FROM inodes WHERE vmin = ?''', (VERSION,))
@@ -163,17 +160,34 @@ def init_commit_msg (repo, filename):
       n_deleted += 1
       bytes_deleted += old_inode_info.get_size (inode)
 
-  msg_file.write ("# + %d objects added (%s).\n" % (n_added, format_size1 (bytes_added)))
-  msg_file.write ("# ! %d objects changed (%s => %s).\n" % (n_changed,
-                                                            format_size1 (bytes_changed_old),
-                                                            format_size1 (bytes_changed_new)))
-  msg_file.write ("# - %d objects deleted (%s).\n" % (n_deleted, format_size1 (bytes_deleted)))
-  msg_file.write ("# R %d objects renamed.\n" % n_renamed)
-  msg_file.write ("#\n")
+  status = []
+  status += [ "+ %d objects added (%s)." % (n_added, format_size1 (bytes_added)) ]
+  status += [ "! %d objects changed (%s => %s)." % (n_changed,
+                                                    format_size1 (bytes_changed_old),
+                                                    format_size1 (bytes_changed_new)) ]
+  status += [ "- %d objects deleted (%s)." % (n_deleted, format_size1 (bytes_deleted)) ]
+  status += [ "R %d objects renamed." % n_renamed ]
+  status += [ "" ]
 
   change_list.sort (key = lambda x: x[2])
   for change in change_list:
-    msg_file.write ("# %2s %-8s %s\n" % change)
+    status += [ "%2s %-8s %s" % change ]
+  return status
+
+def init_commit_msg (repo, filename):
+  conn = repo.conn
+  c = conn.cursor()
+
+  VERSION = 1
+  c.execute ('''SELECT version FROM history''')
+  for row in c:
+    VERSION = max (row[0], VERSION)
+
+  msg_file = open (filename, "w")
+  msg_file.write ("\n# commit version %d\n#\n" % VERSION)
+  status = gen_status (repo)
+  for s in status:
+    msg_file.write ("# %s\n" % s)
   msg_file.close()
 
 def get_author():

@@ -37,7 +37,7 @@ import datetime
 from utils import *
 from dbutils import *
 from diffutils import diff
-from commitutils import commit, revert
+from commitutils import commit, revert, gen_status
 from remoteutils import *
 from TransferList import TransferList, TransferFile
 from StatusLine import status_line
@@ -226,32 +226,12 @@ def cmd_log():
 
 def cmd_status():
   repo = cd_repo_connect_db()
-  conn = repo.conn
-  repo_path = repo.path
+  status = gen_status (repo)
 
-  c = conn.cursor()
-
-  VERSION = 1
-  c.execute ('''SELECT version FROM history''')
-  for row in c:
-    VERSION = max (row[0], VERSION)
-  c.execute ('''SELECT id FROM inodes WHERE vmin=%d AND vmax=%d''' % (VERSION, VERSION))
-  inode_ids = []
-  for row in c:
-    inode_ids += [ row[0] ]
-  c.execute ('''SELECT dir_id, name, inode_id FROM links WHERE vmin=%d AND vmax=%d''' % (VERSION, VERSION))
-  link_ids = []
-  for row in c:
-    link_ids += [ row[0:3] ]
-  print "%d inodes modified:" % len (inode_ids)
-  print
-  for id in inode_ids:
-    print " - %s, name %s" % (id, printable_name (c, id, VERSION))
-  print
-  print "%d links modified:" % len (link_ids)
-  print
-  for lid in link_ids:
-    print " - %s->%s, name %s" % (lid[0], lid[2], os.path.join (printable_name (c, lid[0], VERSION), lid[1]))
+  print "=" * 80
+  for s in status:
+    print s
+  print "=" * 80
 
 def cmd_revert():
   repo = cd_repo_connect_db()
