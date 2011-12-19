@@ -13,7 +13,6 @@ setup (
     'bfsync': 'src/bfsync'
   },
   packages = ['bfsync'],
-  data_files=[('man/man1', ['bfsync.1'])],
   entry_points = {
     "console_scripts": [ "bfsync = bfsync.main:main" ]
   }

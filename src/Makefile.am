@@ -1,0 +1,5 @@
+PYTHON_FILES = bfsync.py
+
+SUBDIRS = bfsync
+
+EXTRA_DIST = $(PYTHON_FILES)

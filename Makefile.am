@@ -1,7 +1,9 @@
 AUTOMAKE_OPTIONS = dist-bzip2 no-dist-gzip
 
-SUBDIRS = docs fs
-EXTRA_DIST = TODO
+PYTHON_FILES = setup.py
+
+SUBDIRS = docs fs src
+EXTRA_DIST = TODO $(PYTHON_FILES)
 
 install-exec-hook:
 	$(PYTHON) setup.py install --prefix=${prefix}
