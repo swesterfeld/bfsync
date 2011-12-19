@@ -255,7 +255,8 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
     commit_time = int (time.time())
 
   hash_cache.hash_all (hash_list, verbose)
-  status_line.cleanup()
+  if verbose:
+    status_line.cleanup()
 
   # add new files via BFSync::Server
   add_new_list = []
