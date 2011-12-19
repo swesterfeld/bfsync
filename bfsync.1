@@ -1,4 +1,4 @@
-.TH "BFSYNC" "1" "2011\-12\-12" "Revision 619" "bfsync Manual Page"
+.TH "BFSYNC" "1" "2011\-12\-19" "Revision 654" "bfsync Manual Page"
 
 .SH NAME
 
@@ -61,8 +61,50 @@ This searches a directory for files that are also in the repo. If you start movi
 .PP
 .TP
 \fBstatus\fR
-Show status information about files in repo.
+Show status information for files which have been modified in the local checkout, but not committed yet.
 .PP
+.TP
+\fBcollect\fR \fI<dir>\fR
+This command allows using a non-checkout directory to populate a repository with file contents. It computes the SHA1 hash of all files in the directory, and copies those files with matching hash that are required for the local repository to its object directory. This is for instance useful if you're converting from an old bfsync format to the new one, because by using collect you don't have to retransfer the file contents.
+.PP
+
+.SH CONFIGURATION
+
+Every bfsync checkout has a file called "config", which can be used to set configuration variables for this checkout.
+.TP
+\fBsqlite-sync\fR \fI0|1\fR;
+This can be used to control whether sqlite should block the application until all data has been written to the disk. With sqlite-sync set to 1 (the default), sqlite will wait for the disk; this is slower than setting this to zero; however the sqlite documentation indicates that setting sqlite-sync to 0 might lead to a corrupt database if the system has a power failure or operating system crash while writing changes.
+.PP
+.TP
+\fBignore-uid-gid\fR \fI0|1\fR;
+Normally (default), bfsync will use the user and group settings from the repository. This works fine if all checkouts are on systems with the same user and group id numbers. If you want to use bfsync checkouts on systems with different uid/gid settings, it can be useful to simply ignore the uid/gid values stored in the repository. This can be done by setting ignore-uid-gid to 1.
+.PP
+.TP
+\fBdefault { get\fR "\fI<url>|<path>\fR"; \fB}\fR
+Set default location for get (an <url> or <path>) to be used if \fBbfsync get\fR is called without an argument.
+.PP
+.TP
+\fBdefault { put\fR "\fI<url>|<path>\fR"; \fB}\fR
+Set default location for put (an <url> or <path>) to be used if \fBbfsync put\fR is called without an argument.
+.PP
+.TP
+\fBdefault { pull\fR "\fI<url>|<path>\fR"; \fB}\fR
+Set default location for pull (an <url> or <path>) to be used if \fBbfsync pull\fR is called without an argument.
+.PP
+.TP
+\fBdefault { push\fR "\fI<url>|<path>\fR"; \fB}\fR
+Set default location for push (an <url> or <path>) to be used if \fBbfsync push\fR is called without an argument.
+.PP
+
+The configuration keys in the \fBdefault group\fR can be set simultaneously, by using
+.EX
+ default {
+   get "...";
+   put "...";
+   push "...";
+   pull "...";
+ }
+.EE
 
 .SH WALKTHROUGH
 
