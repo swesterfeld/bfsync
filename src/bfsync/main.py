@@ -614,6 +614,7 @@ args = []
 def main():
   command_func = None
   command = None
+  global args
 
   arg_iter = sys.argv[1:].__iter__()
   for arg in arg_iter:
