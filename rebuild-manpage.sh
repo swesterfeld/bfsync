@@ -1,5 +1,5 @@
 #!/bin/bash
-for p in bfsync.1
+for p in bfsync.1 bfsyncfs.1
 do \
   curl -sfS http://testbit.eu/$p?action=render >$p.web; \
   curl -sfS "http://testbit.eu/index.php?title=$p&action=raw" > $p.wiki; \
