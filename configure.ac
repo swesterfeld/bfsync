@@ -69,5 +69,5 @@ MC_PROG_CC_SUPPORTS_OPTION([-Wall], [
 ])
 
 
-AC_CONFIG_FILES([Makefile fs/Makefile])
+AC_CONFIG_FILES([Makefile fs/Makefile docs/Makefile])
 AC_OUTPUT

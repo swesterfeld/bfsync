@@ -1,0 +1,24 @@
+.TH "BFSYNC" "1" "2011\-12\-19" "Revision 646" "bfsync Manual Page"
+
+.SH NAME
+
+bfsync - manage git-like repository with big files
+
+.SH SYNOPSIS
+
+\fBbfsyncfs\fR \fI<options>\fR \fI<repo>\fR \fI<mount-point>\fR
+
+.SH DESCRIPTION
+
+\fBbfsyncfs\fR is a FuSE filesystem which can be used to modify the contents of a bfsync repsitory.
+
+.SH OPTIONS
+
+To start bfsyncfs, the argument \fI<repo>\fR and \fI<mount-point>\fR are required. The repository argument should point to a local bfsync checkout (created with bfsync clone). The mount point is an empty directory. Upon successful start of the bfsync filesystem, the contents of the repository can be accessed (and modified) via the directory given as mount point.
+
+.SH SEE ALSO
+
+bfsync.1 <http://testbit.eu/Bfsync.1>,
+git.1 <http://testbit.eu/index.php?title=Git.1&action=edit&redlink=1>,
+rsync.1 <http://testbit.eu/index.php?title=Rsync.1&action=edit&redlink=1>
+
