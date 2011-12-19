@@ -18,3 +18,5 @@ bfperf_LDADD = $(GLIB_LIBS) $(FUSE_LIBS) libbfsync.la
 
 sqlperf_SOURCES = sqlperf.cc
 sqlperf_LDADD = $(GLIB_LIBS) $(FUSE_LIBS) libbfsync.la
+
+bftesthelper_SOURCES = bftesthelper.cc
