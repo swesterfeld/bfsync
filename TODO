@@ -29,6 +29,7 @@ RELEASE:
 NEXT RELEASE:
 =============
 * excludes
+* lock repository during commit, push and pull
 
 ==============================================================================================
 

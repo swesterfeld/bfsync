@@ -596,12 +596,13 @@ def cmd_repo_files():
     for walk_dir, walk_dirs, walk_files in os.walk (dir):
       for f in walk_files:
         full_name = os.path.join (walk_dir, f)
-        hash = hash_cache.compute_hash (full_name)
-        if hash_dict.has_key (hash):
-          if null:
-            sys.stdout.write (full_name + '\0')
-          else:
-            print full_name
+        if os.path.isfile (full_name):        # ignore symlinks
+          hash = hash_cache.compute_hash (full_name)
+          if hash_dict.has_key (hash):
+            if null:
+              sys.stdout.write (full_name + '\0')
+            else:
+              print full_name
 
 def cmd_collect():
   old_cwd = os.getcwd()
