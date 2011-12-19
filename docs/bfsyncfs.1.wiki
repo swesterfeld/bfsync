@@ -1,0 +1,23 @@
+= bfsync(1) =
+Manual: bfsync Manual Page <br />
+Release: Revision {{REVISIONID}} <br />
+Updated: {{REVISIONYEAR}}-{{padleft:{{REVISIONMONTH}}|2}}-{{REVISIONDAY}} <br />
+
+==NAME==
+bfsync - manage git-like repository with big files
+
+==SYNOPSIS==
+'''bfsyncfs''' ''<options>'' ''<repo>'' ''<mount-point>''
+
+== DESCRIPTION ==
+
+'''bfsyncfs''' is a FuSE filesystem which can be used to modify the contents of a bfsync repsitory.
+
+== OPTIONS ==
+
+To start bfsyncfs, the argument ''<repo>'' and ''<mount-point>'' are required. The repository argument should point to a local bfsync checkout (created with bfsync clone). The mount point is an empty directory. Upon successful start of the bfsync filesystem, the contents of the repository can be accessed (and modified) via the directory given as mount point.
+
+== SEE ALSO ==
+[[bfsync.1]],
+[[git.1]],
+[[rsync.1]]
