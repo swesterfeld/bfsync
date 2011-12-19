@@ -86,7 +86,7 @@ def find_repo_dir():
     newdir = os.path.dirname (dir)
     if newdir == dir:
       # no more parent
-      raise Exception ("error: can not find .bfsync directory/file")
+      raise BFSyncError ("error: can not find .bfsync directory/file")
     dir = newdir
 
 class Repo:
