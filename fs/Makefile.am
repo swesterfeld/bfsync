@@ -23,7 +23,3 @@ sqlperf_SOURCES = sqlperf.cc
 sqlperf_LDADD = $(GLIB_LIBS) $(FUSE_LIBS) libbfsync.la
 
 bftesthelper_SOURCES = bftesthelper.cc
-
-PYTHON_FILES = fstest.py
-
-EXTRA_DIST = $(PYTHON_FILES)

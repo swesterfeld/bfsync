@@ -622,7 +622,7 @@ root_tests += [ ("chown-ctime", test_chown_ctime) ]
 def test_truncate_ctime():
   old_stat = os.stat ("mnt/README")
   time.sleep (0.1)
-  if os.system ("bftesthelper truncate mnt/README 0") != 0:
+  if os.system ("../fs/bftesthelper truncate mnt/README 0") != 0:
     raise Exception ("error truncating via bftesthelper")
   new_stat = os.stat ("mnt/README")
   if old_stat.st_ctime == new_stat.st_ctime:
@@ -1045,7 +1045,7 @@ bf_tests += [ ("test-8bit-filename", test_8bit_filename) ]
 
 
 def start_bfsyncfs():
-  if os.system ("""( echo "*** fs start (`date`)"; ./bfsyncfs -f test/repo mnt; echo "*** fs stop (`date`), exit $?"
+  if os.system ("""( echo "*** fs start (`date`)"; ../fs/bfsyncfs -f test/repo mnt; echo "*** fs stop (`date`), exit $?"
                    ) >> fs.log 2>&1 &""") != 0:
     raise Exception ("can't start bfsyncfs")
   while not os.path.exists ("mnt/.bfsync/info"):
@@ -1063,11 +1063,6 @@ else:
   print "%d root tests skipped, because fstest.py is not running with uid=0.\n" % len (root_tests)
 
 def main (fstest_args):
-  # compile
-  if subprocess.call (["make"]):
-    print "compilation failed"
-    sys.exit (1)
-
   # unmount if mounted
   try:
     subprocess.call (["fusermount", "-u", "mnt"])
