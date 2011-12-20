@@ -8,6 +8,7 @@ from bfsync.transferutils import get, push, pull
 from bfsync.utils import connect_db
 
 BFSYNC = os.path.join (os.getcwd(), "bfsync.py")
+BFSYNCFS = os.path.join (os.getcwd(), "../fs/bfsyncfs")
 
 tests = []
 
@@ -650,8 +651,8 @@ def setup():
   # rsync'ing the repo data is faster than creating it from scratch
   os.system ("rsync -a --delete backup/* .")
 
-  os.system ("bfsyncfs repo-a a")
-  os.system ("bfsyncfs repo-b b")
+  os.system ("%s repo-a a" % BFSYNCFS)
+  os.system ("%s repo-b b" % BFSYNCFS)
 
 def main():
   if len (sys.argv) == 2:
