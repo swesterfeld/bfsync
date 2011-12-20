@@ -1,10 +1,10 @@
 #!/usr/bin/python
 
 import sqlite3
-import CfgParser
 import sys
-from utils import *
-from diffutils import diff
+import bfsync.CfgParser
+from bfsync.utils import *
+from bfsync.diffutils import diff
 
 repo = cd_repo_connect_db()
 conn = repo.conn
