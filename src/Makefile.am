@@ -1,5 +1,5 @@
-PYTHON_FILES = bfsync.py merge-test.py bfapply.py bfview.py
-SH_FILES = mkfiles.sh multi-run-test.sh
+PYTHON_FILES = bfsync.py merge-test.py bfapply.py bfview.py xzperf.py
+SH_FILES = mkfiles.sh multi-run-test.sh writetest.sh
 
 SUBDIRS = bfsync
 
