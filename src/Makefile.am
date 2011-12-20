@@ -1,4 +1,4 @@
-PYTHON_FILES = bfsync.py
+PYTHON_FILES = bfsync.py merge-test.py
 
 SUBDIRS = bfsync
 

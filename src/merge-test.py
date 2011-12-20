@@ -3,9 +3,11 @@
 import os
 import sys
 import time
-from commitutils import commit
-from transferutils import get, push, pull
-from utils import connect_db
+from bfsync.commitutils import commit
+from bfsync.transferutils import get, push, pull
+from bfsync.utils import connect_db
+
+BFSYNC = os.path.join (os.getcwd(), "bfsync.py")
 
 tests = []
 
@@ -69,10 +71,10 @@ class Repo:
   def check_integrity (self):
     old_cwd = os.getcwd()
     os.chdir (self.repo.path)
-    success = os.system ("bfsync debug-integrity >/dev/null") == 0
+    success = os.system ("%s debug-integrity >/dev/null" % BFSYNC) == 0
     if not success:
       print
-      os.system ("bfsync debug-integrity") == 0
+      os.system ("%s debug-integrity" % BFSYNC) == 0
       print
     os.chdir (old_cwd)
     if not success:
@@ -625,9 +627,9 @@ def setup_initial():
 
   os.mkdir ("merge-test")
   os.chdir ("merge-test")
-  os.system ("bfsync init master")
-  os.system ("bfsync clone master repo-a")
-  os.system ("bfsync clone master repo-b")
+  os.system ("%s init master" % BFSYNC)
+  os.system ("%s clone master repo-a" % BFSYNC)
+  os.system ("%s clone master repo-b" % BFSYNC)
   os.system ("""echo 'default { get "'$PWD/repo-b'"; }' >> repo-a/config""")
   os.system ("""echo 'default { get "'$PWD/repo-a'"; }' >> repo-b/config""")
   os.system ("""echo 'default { put "'$PWD/repo-b'"; }' >> repo-a/config""")
