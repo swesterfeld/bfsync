@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# bfsync: Big File synchronization based on Git
+# bfsync: Big File synchronization tool
 
 # Copyright (C) 2011 Stefan Westerfeld
 #
