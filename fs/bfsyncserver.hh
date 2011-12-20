@@ -1,5 +1,5 @@
 /*
-  bfsync: Big File synchronization based on Git - FUSE filesystem
+  bfsync: Big File synchronization tool - FUSE filesystem
 
   Copyright (C) 2011 Stefan Westerfeld
 
