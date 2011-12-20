@@ -3,8 +3,8 @@
 import sys
 import os
 import subprocess
-from utils import *
-from xzutils import xzcat
+from bfsync.utils import *
+from bfsync.xzutils import xzcat
 
 if len (sys.argv) == 2:
   obj_name = os.path.join (find_repo_dir(), "objects", make_object_filename (sys.argv[1]))
