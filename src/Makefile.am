@@ -1,5 +1,5 @@
 PYTHON_FILES = bfsync.py merge-test.py bfapply.py bfview.py xzperf.py socktest.py slowwrite.py \
-               testdbsize.py bfdiff.py fstest.py
+               testdbsize.py bfdiff.py fstest.py xmount.py
 
 SH_FILES = mkfiles.sh multi-run-test.sh writetest.sh
 

@@ -6,11 +6,6 @@ import sys
 # mount_point
 mount_point = "mnt"
 
-# compile
-if subprocess.call (["make"]):
-  print "compilation failed"
-  sys.exit (1)
-
 # unmount if mounted
 try:
   f = open (mount_point + "/.bfsync/info")
@@ -22,7 +17,7 @@ except:
 
 # remount
 
-if subprocess.call (["./bfsyncfs", "test/repo", mount_point]) != 0:
+if subprocess.call (["../fs/bfsyncfs", "test/repo", mount_point]) != 0:
   print "can't start bfsyncfs"
   sys.exit (1)
 else:
