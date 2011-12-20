@@ -53,7 +53,41 @@ avoid entering your password over and over again.
 : This searches a directory for files that are also in the repo. If you start moving data to the repo, you can clean up copies that might be present elsewhere. Using -0|--null makes the output suitable for use with xargs -0.
 
 ; '''status'''
-: Show status information about files in repo.
+: Show status information for files which have been modified in the local checkout, but not committed yet.
+
+; '''collect''' ''<dir>''
+: This command allows using a non-checkout directory to populate a repository with file contents. It computes the SHA1 hash of all files in the directory, and copies those files with matching hash that are required for the local repository to its object directory. This is for instance useful if you're converting from an old bfsync format to the new one, because by using collect you don't have to retransfer the file contents.
+
+== CONFIGURATION ==
+
+Every bfsync checkout has a file called "config", which can be used to set configuration variables for this checkout.
+
+; '''sqlite-sync''' ''0|1'';
+: This can be used to control whether sqlite should block the application until all data has been written to the disk. With sqlite-sync set to 1 (the default), sqlite will wait for the disk; this is slower than setting this to zero; however the sqlite documentation indicates that setting sqlite-sync to 0 might lead to a corrupt database if the system has a power failure or operating system crash while writing changes.
+
+; '''ignore-uid-gid''' ''0|1'';
+: Normally (default), bfsync will use the user and group settings from the repository. This works fine if all checkouts are on systems with the same user and group id numbers. If you want to use bfsync checkouts on systems with different uid/gid settings, it can be useful to simply ignore the uid/gid values stored in the repository. This can be done by setting ignore-uid-gid to 1.
+
+; '''default { get''' "''<url>|<path>''"; '''}'''
+: Set default location for get (an <url> or <path>) to be used if '''bfsync get''' is called without an argument.
+
+; '''default { put''' "''<url>|<path>''"; '''}'''
+: Set default location for put (an <url> or <path>) to be used if '''bfsync put''' is called without an argument.
+
+; '''default { pull''' "''<url>|<path>''"; '''}'''
+: Set default location for pull (an <url> or <path>) to be used if '''bfsync pull''' is called without an argument.
+
+; '''default { push''' "''<url>|<path>''"; '''}'''
+: Set default location for push (an <url> or <path>) to be used if '''bfsync push''' is called without an argument.
+
+The configuration keys in the '''default group''' can be set simultaneously, by using
+
+  default {
+    get "...";
+    put "...";
+    push "...";
+    pull "...";
+  }
 
 == WALKTHROUGH ==
 

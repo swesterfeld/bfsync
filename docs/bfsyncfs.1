@@ -1,20 +1,44 @@
-.TH "BFSYNC" "1" "2011\-12\-19" "Revision 646" "bfsync Manual Page"
+.TH "BFSYNCFS" "1" "2011\-12\-20" "Revision 660" "bfsync Manual Page"
 
 .SH NAME
 
-bfsync - manage git-like repository with big files
+bfsyncfs - FuSE filesystem to be used with bfsync big file synchronization tool
 
 .SH SYNOPSIS
 
-\fBbfsyncfs\fR \fI<options>\fR \fI<repo>\fR \fI<mount-point>\fR
+\fBbfsyncfs\fR \fI[<options>]\fR \fI<repo>\fR \fI<mount-point>\fR
 
 .SH DESCRIPTION
 
-\fBbfsyncfs\fR is a FuSE filesystem which can be used to modify the contents of a bfsync repsitory.
+\fBbfsyncfs\fR is a FuSE filesystem which can be used to modify the contents of a bfsync repsitory. To use it, you need a local bfsync checkout (created with bfsync clone) and a mount point, which must be empty before running bfsyncfs. Upon successful mount, the mount point directory will be used to display the contents of the repository and modifications can be made with any program that can operate on files/directories, like a filemanager, rsync or regular shell commands like cp or mv.
+
+Note that changes only become permanent after using bfsync commit. Other bfsync commands can be used to synchronize the repository history/contents with other bfsync repos.
 
 .SH OPTIONS
+.TP
+\fB<repo>\fR
+The repository argument should point to a local bfsync checkout (created with bfsync clone).
+.PP
+.TP
+\fB<mount-point>\fR
+The mount point should be an empty directory.
+.PP
+.TP
+\fB-a\fR
+Allows other users to access the mounted filesystem (this sets the -oallow_other option). Without this option, the contents of the filesystem will only be readable/writeable by the user that mounted it.
+.PP
+.TP
+\fB-f\fR
+Run the filesystem as foreground process. Without this option, bfsyncfs will be started as background process.
+.PP
+.TP
+\fB-d\fR
+Enables debugging output, this option is mainly useful during development/debugging.
+.PP
 
-To start bfsyncfs, the argument \fI<repo>\fR and \fI<mount-point>\fR are required. The repository argument should point to a local bfsync checkout (created with bfsync clone). The mount point is an empty directory. Upon successful start of the bfsync filesystem, the contents of the repository can be accessed (and modified) via the directory given as mount point.
+.SH CONFIGURATION
+
+There are configuration options from the repository config file that affect bfsyncfs, they are documented in the bfsync manual page.
 
 .SH SEE ALSO
 

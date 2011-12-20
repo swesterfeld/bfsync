@@ -1,21 +1,40 @@
-= bfsync(1) =
+= bfsyncfs(1) =
 Manual: bfsync Manual Page <br />
 Release: Revision {{REVISIONID}} <br />
 Updated: {{REVISIONYEAR}}-{{padleft:{{REVISIONMONTH}}|2}}-{{REVISIONDAY}} <br />
 
 ==NAME==
-bfsync - manage git-like repository with big files
+bfsyncfs - FuSE filesystem to be used with bfsync big file synchronization tool
 
 ==SYNOPSIS==
-'''bfsyncfs''' ''<options>'' ''<repo>'' ''<mount-point>''
+'''bfsyncfs''' ''[<options>]'' ''<repo>'' ''<mount-point>''
 
 == DESCRIPTION ==
 
-'''bfsyncfs''' is a FuSE filesystem which can be used to modify the contents of a bfsync repsitory.
+'''bfsyncfs''' is a FuSE filesystem which can be used to modify the contents of a bfsync repsitory. To use it, you need a local bfsync checkout (created with bfsync clone) and a mount point, which must be empty before running bfsyncfs. Upon successful mount, the mount point directory will be used to display the contents of the repository and modifications can be made with any program that can operate on files/directories, like a filemanager, rsync or regular shell commands like cp or mv.
+
+Note that changes only become permanent after using bfsync commit. Other bfsync commands can be used to synchronize the repository history/contents with other bfsync repos. 
 
 == OPTIONS ==
 
-To start bfsyncfs, the argument ''<repo>'' and ''<mount-point>'' are required. The repository argument should point to a local bfsync checkout (created with bfsync clone). The mount point is an empty directory. Upon successful start of the bfsync filesystem, the contents of the repository can be accessed (and modified) via the directory given as mount point.
+; '''<repo>'''
+: The repository argument should point to a local bfsync checkout (created with bfsync clone).
+
+; '''<mount-point>'''
+: The mount point should be an empty directory.
+
+; '''-a'''
+: Allows other users to access the mounted filesystem (this sets the -oallow_other option). Without this option, the contents of the filesystem will only be readable/writeable by the user that mounted it.
+
+; '''-f'''
+: Run the filesystem as foreground process. Without this option, bfsyncfs will be started as background process.
+
+; '''-d'''
+: Enables debugging output, this option is mainly useful during development/debugging.
+
+== CONFIGURATION ==
+
+There are configuration options from the repository config file that affect bfsyncfs, they are documented in the bfsync manual page.
 
 == SEE ALSO ==
 [[bfsync.1]],
