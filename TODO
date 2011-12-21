@@ -1,5 +1,4 @@
-bfsync2 TODO:
-
+* properly handle copy-on-write() errors (disk full, ...)
 * check for open files before allowing readonly mode
 * better cache expiring for INodeLinks
 * background hashing for fs
