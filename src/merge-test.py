@@ -657,6 +657,13 @@ def setup_initial():
   os.mkdir ("b")
   os.system ("rsync -a master repo-a repo-b backup")
 
+def start_bfsyncfs (a_or_b):
+  if os.system ("""( echo "*** fs start (`date`)"; %s -f repo-%s %s; echo "*** fs stop (`date`), exit $?"
+                   ) >> mtfs.log 2>&1 &""" % (BFSYNCFS, a_or_b, a_or_b)) != 0:
+    raise Exception ("can't start bfsyncfs")
+  while not os.path.exists ("%s/.bfsync/info" % a_or_b):
+    time.sleep (0.1)
+
 def setup():
   os.system ("fusermount -u merge-test/a")
   os.system ("fusermount -u merge-test/b")
@@ -669,8 +676,8 @@ def setup():
   # rsync'ing the repo data is faster than creating it from scratch
   os.system ("rsync -a --delete backup/* .")
 
-  os.system ("%s repo-a a" % BFSYNCFS)
-  os.system ("%s repo-b b" % BFSYNCFS)
+  start_bfsyncfs ("a")
+  start_bfsyncfs ("b")
 
 def main():
   if len (sys.argv) == 2:
