@@ -1,3 +1,14 @@
+Overview of Changes in bfsync-0.2.0:
+
+* almost completely rewrote all code
+* use SQLite DB instead of git to store history
+* use FuSE filesystem to get rid of explicit bfsync add/mv/...
+* use python package for bfsync
+* allow accessing old versions directly in the FuSE filesystem
+* proper history: clone/pull/... will now get current and all past versions
+* store more metadata (like user id, group id, devices, hard links,...)
+* added code to ask user in case of conflicts / merge decisions
+
 Overview of Changes in bfsync-0.1.1:
 
 * improved check output (added missing stdout flush)
