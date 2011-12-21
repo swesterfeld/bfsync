@@ -1,4 +1,4 @@
-.TH "BFSYNC" "1" "2011\-12\-21" "Revision 663" "bfsync Manual Page"
+.TH "BFSYNC" "1" "2011\-12\-21" "Revision 673" "bfsync Manual Page"
 
 .SH NAME
 
@@ -28,28 +28,32 @@ avoid entering your password over and over again.
 Initialize new cloned bfsync repo from bfsync master repo \fI<repo>\fR.
 .PP
 .TP
-\fBcommit\fR
-Commit changes to the repository
+\fBcommit\fR \fI[-m <message>]\fR \fI[-a <author>]\fR
+Commit changes to the repository. Normally, an editor will be started to allow the user to enter a commit message. If the -m option is used, the commit message is set to the <message> argument, and no editor will be started. The -a option allows to specify the author of the commit (otherwise it defaults to user@host).
 .PP
 .TP
-\fBpush\fR
-Push changes to upstream repository
+\fBpush\fR \fI[<repo>]\fR
+Push changes to master repository. If the <repo> argument is missing, the default from the config file will be used.
 .PP
 .TP
-\fBpull\fR
-Pull changes from upstream repository
+\fBpull\fR \fI[<repo>]\fR
+Pull changes from master repository. If there are new local commits and new commits in the master repository, pull will merge the local and master history. See section \fBMERGES\fR. If the <repo> argument is missing, the default from the config file is used.
 .PP
 .TP
-\fBget\fR \fI<repo>|<remote repo>...\fR
-Transfer file contents from repository - the directory should contain a bfsync checkout of the repository you're working with. A path with a ":" is interpreted as remote path, a path without ":" is a local path. Examples for remote paths are stefan@server:/repos/files.bfsync or server:some/dir
+\fBget\fR \fI<repo>\fR
+Transfer file contents from repository - the directory should contain a bfsync checkout of the repository you're working with. A path with a ":" is interpreted as remote path, a path without ":" is a local path. Examples for remote paths are stefan@server:/repos/files.bfsync or server:some/dir. If the <repo> argument is missing, the default from the config file is used.
 .PP
 .TP
-\fBput\fR \fI<remote repo>\fR
-Transfer file contents from local repo to remote repo.
+\fBput\fR \fI<repo>\fR
+Transfer file contents from local checkout to <repo>. If the <repo> argument is missing, the default from the config file is used.
 .PP
 .TP
 \fBcheck\fR
-Checks local repository - ideally, all files that are known to the git index of the repository should be found and their hash values should match the values in the git repo. If thats not the case, put/get can be used to complete the local repository.
+Checks local repository - ideally, all file contents that are known to the history of the repository are available in the objects directory of the repository (which stores one file per SHA1 hash). If thats not the case, put/get can be used to complete the local repository.
+.PP
+.TP
+\fBlog\fR
+Displays the history of the repository. For each commit, one version will show up in this log.
 .PP
 .TP
 \fBgc\fR
@@ -66,6 +70,10 @@ Show status information for files which have been modified in the local checkout
 .TP
 \fBcollect\fR \fI<dir>\fR
 This command allows using a non-checkout directory to populate a repository with file contents. It computes the SHA1 hash of all files in the directory, and copies those files with matching hash that are required for the local repository to its object directory. This is for instance useful if you're converting from an old bfsync format to the new one, because by using collect you don't have to retransfer the file contents.
+.PP
+.TP
+\fBrevert\fR \fI[<version>]\fR
+If <version> is not specified, revert will discard all uncommitted changes, and revert to the newest version available in the history. If <version> is specified, it will go back in time to that version.
 .PP
 
 .SH CONFIGURATION
@@ -108,7 +116,7 @@ The configuration keys in the \fBdefault group\fR can be set simultaneously, by 
 
 .SH MERGES
 
-bfsync allows independent modifications of the data/history contained in a checkout. Upon push, bfsync will check that the master history doesn't contain new commits that are unknown to the local checkout. If two clients modify the repository independently, the first client that uses bfsync push will simply reintegrate its changes into the master history, and the new master history will be this client's history.
+bfsync allows independent modifications of the data/history contained in different checkouts. Upon push, bfsync will check that the master history doesn't contain new commits that are unknown to the local checkout. If two clients modify the repository independently, the first client that uses bfsync push will simply reintegrate its changes into the master history, and the new master history will be this client's history.
 
 However, if the second client tries a bfsync push, the push will be refused. To resolve the situation, the second client can use bfsync pull. Once it is detected that merging both histories is necessary, a merge algorithm will be used. For non-conflicting changes, everything will be merged automatically. Non-conflicting changes could be:
 .TP
@@ -138,9 +146,9 @@ In this case, bfsync pull will ask the user to resolve the situation; it is poss
 bfsync pull will ask the user in this case; it is possible to either keep the file with changes, or delete it.
 .PP
 
-In any case, after the merge decisions are made (if any), the merge algorithm will use them to modify the local history so that it can be executed without conflicts \fBafter\fR the master history. Finally, the modified local commits will become part of the master history. After this point, other checkouts can be updated and will contain the changes made on client 1 and client 2.
+In any case, after the merge decisions are made (if any), the merge algorithm will use them to modify the local history so that it can be executed without conflicts \fBafter\fR the master history. After this step, the modified local commits will be based on the master history. This means that then, bfsync push will succeed, and the modified changes of client 2 can be pushed to the master history.
 
-Note that the master history is always linear, so the history branch that was present before the merge algorithm was used will not be visible in the master history. It will simply contain the old history (before client 1 and client 2 made their changes), the changes made on client 1, an extra merge commit (if necessary to resolve merge issues), and the \fBmodified changes\fR of client 2.
+Note that the master history is always linear, so the history branch that was present before the merge algorithm was used will no longer be visible in the history after the pull. The merged history will simply contain the old history (before client 1 and client 2 made their changes), the changes made on client 1, an extra merge commit (if necessary to resolve merge issues), and the \fBmodified changes\fR of client 2.
 
 .SH WALKTHROUGH
 
@@ -205,7 +213,7 @@ Change dir.
 .PP
 .TP
 \fBclient1:~/big$ cp ~/download/01-some-music.flac .\fR
-Copy a big file into the repository checkout
+Copy a big file into the repository checkout. If you get a "permission denied" error at this point, you probably have different uid/gid settings on the server and client 1. To make this work, you need to use put "ignore-uid-gid 1;" (see CONFIGURATION section) into the config file and remount the repository.
 .PP
 .TP
 \fBclient1:~/big$ bfsync commit\fR
@@ -246,6 +254,5 @@ Get the file from the server.
 
 .SH SEE ALSO
 
-git.1 <http://testbit.eu/index.php?title=Git.1&action=edit&redlink=1>,
-rsync.1 <http://testbit.eu/index.php?title=Rsync.1&action=edit&redlink=1>
+bfsyncfs.1 <http://testbit.eu/Bfsyncfs.1>
 
