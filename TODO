@@ -5,6 +5,7 @@
 * merge INodeLinks and INode cache
 * detect protocol version
 * check permissions for touch
+* rename bfsync.transferutils => bfsync.transfer (and other fooutils => foo)
 
 Performance:
 ============
