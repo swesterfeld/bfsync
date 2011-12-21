@@ -1315,7 +1315,7 @@ bfsync_readlink (const char *path_arg, char *buffer, size_t size)
   if (inode->type != FILE_SYMLINK)
     return -EINVAL;
 
-  int len = inode->link.size();
+  size_t len = inode->link.size();
 
   if (len >= size)
     len = size - 1;
