@@ -62,7 +62,7 @@ perf_split()
   const char *long_path = "/usr/local/include/frob/bar.h";
 
   double start_t = gettime();
-  static int N = 20 * 1000 * 1000;
+  static size_t N = 20 * 1000 * 1000;
   int k = 0;
   for (size_t i = 0; i < N; i++)
     {
@@ -168,8 +168,13 @@ perf_id_hash()
 void
 perf_getattr()
 {
-  system ("mkdir -p mnt/xtest/ytest/ztest");
-  system ("touch mnt/xtest/ytest/ztest/foo");
+  int sysrc;
+
+  sysrc = system ("mkdir -p mnt/xtest/ytest/ztest");
+  assert (WEXITSTATUS (sysrc) == 0);
+
+  sysrc = system ("touch mnt/xtest/ytest/ztest/foo");
+  assert (WEXITSTATUS (sysrc) == 0);
 
   struct stat st;
 
