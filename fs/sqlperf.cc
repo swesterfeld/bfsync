@@ -209,7 +209,8 @@ main()
 {
   printf ("resetting db... ");
   fflush (stdout);
-  system ("fstest.py -r");
+  int sysrc = system ("fstest.py -r");
+  assert (WEXITSTATUS (sysrc) == 0);
   printf ("done.\n");
 
   int rc = sqlite_open ("test/repo/db");
