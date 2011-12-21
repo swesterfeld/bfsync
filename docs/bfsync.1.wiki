@@ -4,16 +4,16 @@ Release: Revision {{REVISIONID}} <br />
 Updated: {{REVISIONYEAR}}-{{padleft:{{REVISIONMONTH}}|2}}-{{REVISIONDAY}} <br />
 
 ==NAME==
-bfsync - manage git-like repository with big files
+bfsync - big file synchronization tool
 
 ==SYNOPSIS==
 '''bfsync''' ''<command>'' ''<args>...''
 
 == DESCRIPTION ==
 
-'''bfsync''' is a program that provides git-style revision control for collections of big files. The
-contents of the files are managed by bfsync, and a git repository is used to do version control; in
-this repo only the hashes of the actual data files are stored.
+'''bfsync''' is a file-synchronization tool which allows to keep a collection of big files synchronized on many machines. There are two types of repositories: master repositories and checkouts. Master repositories only contain the history information. Usually they should be stored on a central server which all computers that should view/edit this data can reach (at least some of the time). Master repositories are created using bfsync init. The other repository type is a checkout. A checkout can be created using bfsync clone. Besides the history information checkouts contain the actual file contents, so a checkout can be huge (houndreds of gigabytes) whereas a master repository is usually small.
+
+To view/edit the data in a checked out repository, the repository must be mounted using bfsyncfs. Once mounted, bfsync can be called with the commands given below. For instance bfsync commit/push/pull can be used to modify the local history and resynchronize the history with the master history. Other commands like bfsync get/put can be used to transfer data between checkouts.
 
 For transfer, bfsync needs to be installed on every system that needs to be accessed. The actual transfer
 is done using ssh. Transfer has only be tested with ssh keys; it's highly recommended to use ssh-agent to
@@ -88,6 +88,36 @@ The configuration keys in the '''default group''' can be set simultaneously, by 
     push "...";
     pull "...";
   }
+
+== MERGES ==
+
+bfsync allows independent modifications of the data/history contained in a checkout. Upon push, bfsync will check that the master history doesn't contain new commits that are unknown to the local checkout. If two clients modify the repository independently, the first client that uses bfsync push will simply reintegrate its changes into the master history, and the new master history will be this client's history.
+
+However, if the second client tries a bfsync push, the push will be refused. To resolve the situation, the second client can use bfsync pull. Once it is detected that merging both histories is necessary, a merge algorithm will be used. For non-conflicting changes, everything will be merged automatically. Non-conflicting changes could be:
+
+; '''master history has new file F - client 2 has new file G
+: After merging, both files will be present in the repository
+
+; '''master history has new dir A, with new files in it - client 2 has new dir B, with new files in it'''
+: After merging, both directories will be part of the repository
+
+; '''master history has renamed file F to G - client 2 has renamed dir X to Y'''
+: After merging, both renames will be done
+
+; '''master history has new file X - client 2 has new file X'''
+: In this case, one of the files will be renamed to X~1, since they were both independently added it is likely that the user wants to keep both files.
+
+However, there are situations where the merge algorithm can't merge both histories automatically:
+
+; '''master history has edited file F - client 2 has edited file F'''
+: In this case, bfsync pull will ask the user to resolve the situation; it is possible to keep the master version, or the local version or both.
+
+; '''master history has edited file F - client 2 has deleted file F'''
+: bfsync pull will ask the user in this case; it is possible to either keep the file with changes, or delete it.
+
+In any case, after the merge decisions are made (if any), the merge algorithm will use them to modify the local history so that it can be executed without conflicts '''after''' the master history. Finally, the modified local commits will become part of the master history. After this point, other checkouts can be updated and will contain the changes made on client 1 and client 2.
+
+Note that the master history is always linear, so the history branch that was present before the merge algorithm was used will not be visible in the master history. It will simply contain the old history (before client 1 and client 2 made their changes), the changes made on client 1, an extra merge commit (if necessary to resolve merge issues), and the '''modified changes''' of client 2.
 
 == WALKTHROUGH ==
 

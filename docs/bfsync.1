@@ -1,4 +1,4 @@
-.TH "BFSYNC" "1" "2011\-12\-20" "Revision 662" "bfsync Manual Page"
+.TH "BFSYNC" "1" "2011\-12\-21" "Revision 663" "bfsync Manual Page"
 
 .SH NAME
 
@@ -112,29 +112,29 @@ bfsync allows independent modifications of the data/history contained in a check
 
 However, if the second client tries a bfsync push, the push will be refused. To resolve the situation, the second client can use bfsync pull. Once it is detected that merging both histories is necessary, a merge algorithm will be used. For non-conflicting changes, everything will be merged automatically. Non-conflicting changes could be:
 .TP
-master history has new file F - client 2 has new file G
+\fBmaster history has new file F - client 2 has new file G\fR
 After merging, both files will be present in the repository
 .PP
 .TP
-master history has new dir A, with new files in it - client 2 has new dir B, with new files in it
+\fBmaster history has new dir A, with new files in it - client 2 has new dir B, with new files in it\fR
 After merging, both directories will be part of the repository
 .PP
 .TP
-master history has renamed file F to G - client 2 has renamed dir X to Y
+\fBmaster history has renamed file F to G - client 2 has renamed dir X to Y\fR
 After merging, both renames will be done
 .PP
 .TP
-master history has new file X - client 2 has new file X
+\fBmaster history has new file X - client 2 has new file X\fR
 In this case, one of the files will be renamed to X~1, since they were both independently added it is likely that the user wants to keep both files.
 .PP
 
-However, there are situations where the merge algorithm can't merge both histories:
+However, there are situations where the merge algorithm can't merge both histories automatically:
 .TP
-master history has edited file F - client 2 has edited file F
+\fBmaster history has edited file F - client 2 has edited file F\fR
 In this case, bfsync pull will ask the user to resolve the situation; it is possible to keep the master version, or the local version or both.
 .PP
 .TP
-master history has edited file F - client 2 has deleted file F
+\fBmaster history has edited file F - client 2 has deleted file F\fR
 bfsync pull will ask the user in this case; it is possible to either keep the file with changes, or delete it.
 .PP
 
