@@ -20,6 +20,7 @@
 import os
 import sys
 import time
+import traceback
 from bfsync.commitutils import commit
 from bfsync.transferutils import get, push, pull
 from bfsync.utils import connect_db
@@ -692,6 +693,14 @@ def main():
             b.check_integrity()
           except Exception, e:
             results += [ (t[1] + " / merge=%s" % merge_mode, "FAIL", "%s" % e) ]
+
+            if False:  # print stacktrace for FAIL
+              sys.stderr.write ("\n\n\n")
+              sys.stderr.write ("==================================================\n")
+              traceback.print_exc()
+              sys.stderr.write ("==================================================\n")
+              sys.stderr.write ("\n\n\n")
+              sys.exit (1)
           else:
             results += [ (t[1] + " / merge=%s" % merge_mode, "OK") ]
           a.close()
