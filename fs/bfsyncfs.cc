@@ -476,15 +476,15 @@ bfsync_getattr (const char *path_arg, struct stat *stbuf)
   int inode_mode = inode->mode & ~S_IFMT;
 
   memset (stbuf, 0, sizeof (struct stat));
-  if (Options::the()->ignore_uid_gid)
+  if (Options::the()->use_uid_gid)
     {
-      stbuf->st_uid = getuid();
-      stbuf->st_gid = getgid();
+      stbuf->st_uid = inode->uid;
+      stbuf->st_gid = inode->gid;
     }
   else
     {
-      stbuf->st_uid          = inode->uid;
-      stbuf->st_gid          = inode->gid;
+      stbuf->st_uid = getuid();
+      stbuf->st_gid = getgid();
     }
   stbuf->st_mtime        = inode->mtime;
   stbuf->st_mtim.tv_nsec = inode->mtime_ns;
@@ -1463,19 +1463,19 @@ bfsyncfs_main (int argc, char **argv)
     {
       options.sqlite_sync = true;
     }
-  const vector<string>& ignore_uid_gid = cfg_values["ignore-uid-gid"];
-  options.ignore_uid_gid = false;
-  if (ignore_uid_gid.size() == 1)
+  const vector<string>& use_uid_gid = cfg_values["use-uid-gid"];
+  options.use_uid_gid = false;
+  if (use_uid_gid.size() == 1)
     {
-      if (ignore_uid_gid[0] == "1")
-        options.ignore_uid_gid = true;
+      if (use_uid_gid[0] == "1")
+        options.use_uid_gid = true;
     }
 
   special_files.info  = "repo-type mount;\n";
   special_files.info += "repo-path \"" + repo_path + "\";\n";
   special_files.info += "mount-point \"" + mount_point + "\";\n";
   special_files.info += "sqlite-sync " + string (options.sqlite_sync ? "1" : "0") + ";\n";
-  special_files.info += "ignore-uid-gid " + string (options.ignore_uid_gid ? "1" : "0") + ";\n";
+  special_files.info += "use-uid-gid " + string (options.use_uid_gid ? "1" : "0") + ";\n";
 
   debug ("starting bfsyncfs; info = \n{\n%s}\n", special_files.info.c_str());
 

@@ -508,9 +508,16 @@ def cmd_gc():
     os.remove (os.path.join (repo.path, "objects", make_object_filename (o)))
 
 def cmd_clone():
-  url = args[0]
-  if len (args) > 1:
-    dir = args[1]
+  parser = argparse.ArgumentParser (prog='bfsync clone')
+  parser.add_argument ("-u", action="store_true", dest="use_uid_gid", default=False)
+  parser.add_argument ("repo")
+  parser.add_argument ("dest_dir", nargs = "?")
+  parsed_args = parser.parse_args (args)
+
+
+  url = parsed_args.repo
+  if parsed_args.dest_dir:
+    dir = parsed_args.dest_dir
   else:
     dir = guess_dir_name (args[0])
   if os.path.exists (dir):
@@ -540,7 +547,17 @@ def cmd_clone():
 
   # default config
   f = open (os.path.join (dir, "config"), "w")
+
+  ## sqlite sync
   f.write ("sqlite-sync 1;\n")
+
+  ## use-uid-gid
+  if parsed_args.use_uid_gid:
+    f.write ("use-uid-gid 1;\n")
+  else:
+    f.write ("use-uid-gid 0;\n")
+
+  ## default push/pull
   f.write ("default {\n")
   f.write ("""  pull "%s";\n""" % url)
   f.write ("""  push "%s";\n""" % url)

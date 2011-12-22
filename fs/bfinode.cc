@@ -749,7 +749,7 @@ INode::read_perm_ok (const Context& ctx) const
   if (ctx.fc->uid == 0)
     return true;
 
-  if (ctx.fc->uid == uid || Options::the()->ignore_uid_gid)
+  if (ctx.fc->uid == uid || !Options::the()->use_uid_gid)
     return (mode & S_IRUSR);
 
   if (ctx.fc->gid == gid)
@@ -764,7 +764,7 @@ INode::write_perm_ok (const Context& ctx) const
   if (ctx.fc->uid == 0)
     return true;
 
-  if (ctx.fc->uid == uid || Options::the()->ignore_uid_gid)
+  if (ctx.fc->uid == uid || !Options::the()->use_uid_gid)
     return (mode & S_IWUSR);
 
   if (ctx.fc->gid == gid)
@@ -779,7 +779,7 @@ INode::search_perm_ok (const Context& ctx) const
   if (ctx.fc->uid == 0)
     return true;
 
-  if (ctx.fc->uid == uid || Options::the()->ignore_uid_gid)
+  if (ctx.fc->uid == uid || !Options::the()->use_uid_gid)
     return (mode & S_IXUSR);
 
   if (ctx.fc->gid == gid)

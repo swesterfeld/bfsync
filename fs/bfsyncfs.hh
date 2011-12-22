@@ -170,7 +170,7 @@ struct Options {
   bool         mount_all;
   bool         mount_fg;
   bool         sqlite_sync;
-  bool         ignore_uid_gid;
+  bool         use_uid_gid;
 
   static Options *the();
 };
