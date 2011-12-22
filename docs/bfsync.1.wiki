@@ -25,26 +25,29 @@ avoid entering your password over and over again.
 
 == COMMANDS ==
 
-; '''clone''' ''<repo>''
-: Initialize new cloned bfsync repo from bfsync master repo ''<repo>''.
+; '''clone''' ''[ -u ]'' ''<repo>'' ''[ <dest-dir> ]''
+: Initialize new cloned bfsync repo from bfsync master repo ''<repo>''. If ''<dest-dir>'' is not specified, bfsync clone will generate a directory name from the repository name, otherwise it will clone into the directory ''<dest-dir>''. If -u is given, bfsync clone will set the "use-uid-gid" option in the config file for the cloned repository to 1. This means that upon mount, the user id settings and group id settings for files/directories will be taken from the repository. This will only make sense if all machines that access the data have the same uid/gid numbers. The default (without -u) is not to use the uid/gid numbers, which should be perfect for almost every use case.  
 
-; '''commit'''
-: Commit changes to the repository
+; '''commit''' ''[-m <message>]'' ''[-a <author>]''
+: Commit changes to the repository. Normally, an editor will be started to allow the user to enter a commit message. If the -m option is used, the commit message is set to the <message> argument, and no editor will be started. The -a option allows to specify the author of the commit (otherwise it defaults to user@host).
 
-; '''push'''
-: Push changes to upstream repository
+; '''push''' ''[<repo>]''
+: Push changes to master repository. If the <repo> argument is missing, the default from the config file will be used.
 
-; '''pull'''
-: Pull changes from upstream repository
+; '''pull''' ''[<repo>]''
+: Pull changes from master repository. If there are new local commits and new commits in the master repository, pull will merge the local and master history. See section '''MERGES'''. If the <repo> argument is missing, the default from the config file is used.
 
-; '''get''' ''<repo>|<remote repo>...''
-: Transfer file contents from repository - the directory should contain a bfsync checkout of the repository you're working with. A path with a ":" is interpreted as remote path, a path without ":" is a local path. Examples for remote paths are stefan@server:/repos/files.bfsync or server:some/dir
+; '''get''' ''<repo>''
+: Transfer file contents from repository - the directory should contain a bfsync checkout of the repository you're working with. A path with a ":" is interpreted as remote path, a path without ":" is a local path. Examples for remote paths are stefan@server:/repos/files.bfsync or server:some/dir. If the <repo> argument is missing, the default from the config file is used.
 
-; '''put''' ''<remote repo>''
-: Transfer file contents from local repo to remote repo.
+; '''put''' ''<repo>''
+: Transfer file contents from local checkout to <repo>. If the <repo> argument is missing, the default from the config file is used.
 
 ; '''check'''
-: Checks local repository - ideally, all files that are known to the git index of the repository should be found and their hash values should match the values in the git repo. If thats not the case, put/get can be used to complete the local repository.
+: Checks local repository - ideally, all file contents that are known to the history of the repository are available in the objects directory of the repository (which stores one file per SHA1 hash). If thats not the case, put/get can be used to complete the local repository.
+
+; '''log'''
+: Displays the history of the repository. For each commit, one version will show up in this log. 
 
 ; '''gc'''
 : This will check for objects that are present in the local repo, but not used. This can happen when using revert, or for instance if the merge algorithm needs no modify diffs due to merge decisions (then the old diff becomes unused).
@@ -58,6 +61,9 @@ avoid entering your password over and over again.
 ; '''collect''' ''<dir>''
 : This command allows using a non-checkout directory to populate a repository with file contents. It computes the SHA1 hash of all files in the directory, and copies those files with matching hash that are required for the local repository to its object directory. This is for instance useful if you're converting from an old bfsync format to the new one, because by using collect you don't have to retransfer the file contents.
 
+; '''revert''' ''[<version>]''
+: If <version> is not specified, revert will discard all uncommitted changes, and revert to the newest version available in the history. If <version> is specified, it will go back in time to that version.
+ 
 == CONFIGURATION ==
 
 Every bfsync checkout has a file called "config", which can be used to set configuration variables for this checkout.
@@ -65,8 +71,8 @@ Every bfsync checkout has a file called "config", which can be used to set confi
 ; '''sqlite-sync''' ''0|1'';
 : This can be used to control whether sqlite should block the application until all data has been written to the disk. With sqlite-sync set to 1 (the default), sqlite will wait for the disk; this is slower than setting this to zero; however the sqlite documentation indicates that setting sqlite-sync to 0 might lead to a corrupt database if the system has a power failure or operating system crash while writing changes.
 
-; '''ignore-uid-gid''' ''0|1'';
-: Normally (default), bfsync will use the user and group settings from the repository. This works fine if all checkouts are on systems with the same user and group id numbers. If you want to use bfsync checkouts on systems with different uid/gid settings, it can be useful to simply ignore the uid/gid values stored in the repository. This can be done by setting ignore-uid-gid to 1.
+; '''use-uid-gid''' ''0|1'';
+: Bfsync was designed to store all file meta data, including the user id and group id of each file. These numbers will only make sense if all checkouts use the same uid/gid number to name mappings. Since for most users we cannot assume that the uid/gid numbers are the same on every system that has a checkout, bfsync defaults to ignoring the access permissions and uid/gid numbers stored in the repository. All files will appear to belong to the user that mounted the filesystem, and access rights will also not be enforced. To use the uid/gid numbers and enforce access rights, set use-uid-gid to 1. This is for instance useful if you want to copy data into the repository as root and preserve the ownership of the files.
 
 ; '''default { get''' "''<url>|<path>''"; '''}'''
 : Set default location for get (an <url> or <path>) to be used if '''bfsync get''' is called without an argument.
@@ -91,7 +97,7 @@ The configuration keys in the '''default group''' can be set simultaneously, by 
 
 == MERGES ==
 
-bfsync allows independent modifications of the data/history contained in a checkout. Upon push, bfsync will check that the master history doesn't contain new commits that are unknown to the local checkout. If two clients modify the repository independently, the first client that uses bfsync push will simply reintegrate its changes into the master history, and the new master history will be this client's history.
+bfsync allows independent modifications of the data/history contained in different checkouts. Upon push, bfsync will check that the master history doesn't contain new commits that are unknown to the local checkout. If two clients modify the repository independently, the first client that uses bfsync push will simply reintegrate its changes into the master history, and the new master history will be this client's history.
 
 However, if the second client tries a bfsync push, the push will be refused. To resolve the situation, the second client can use bfsync pull. Once it is detected that merging both histories is necessary, a merge algorithm will be used. For non-conflicting changes, everything will be merged automatically. Non-conflicting changes could be:
 
@@ -115,9 +121,9 @@ However, there are situations where the merge algorithm can't merge both histori
 ; '''master history has edited file F - client 2 has deleted file F'''
 : bfsync pull will ask the user in this case; it is possible to either keep the file with changes, or delete it.
 
-In any case, after the merge decisions are made (if any), the merge algorithm will use them to modify the local history so that it can be executed without conflicts '''after''' the master history. Finally, the modified local commits will become part of the master history. After this point, other checkouts can be updated and will contain the changes made on client 1 and client 2.
+In any case, after the merge decisions are made (if any), the merge algorithm will use them to modify the local history so that it can be executed without conflicts '''after''' the master history. After this step, the modified local commits will be based on the master history. This means that then, bfsync push will succeed, and the modified changes of client 2 can be pushed to the master history.
 
-Note that the master history is always linear, so the history branch that was present before the merge algorithm was used will not be visible in the master history. It will simply contain the old history (before client 1 and client 2 made their changes), the changes made on client 1, an extra merge commit (if necessary to resolve merge issues), and the '''modified changes''' of client 2.
+Note that the master history is always linear, so the history branch that was present before the merge algorithm was used will no longer be visible in the history after the pull. The merged history will simply contain the old history (before client 1 and client 2 made their changes), the changes made on client 1, an extra merge commit (if necessary to resolve merge issues), and the '''modified changes''' of client 2.
 
 == WALKTHROUGH ==
 
@@ -168,7 +174,7 @@ As second step, we add a music file on client1. Of course it's possible to add m
 : Change dir.
 
 ; '''client1:~/big$ cp ~/download/01-some-music.flac .'''
-: Copy a big file into the repository checkout
+: Copy a big file into the repository checkout.
 
 ; '''client1:~/big$ bfsync commit'''
 : Commit the changes to the repository.
@@ -199,5 +205,4 @@ As last step, we'll transfer the file to client2. Of course we could use the sam
 : Get the file from the server.
 
 == SEE ALSO ==
-[[git.1]],
-[[rsync.1]]
+[[bfsyncfs.1]]

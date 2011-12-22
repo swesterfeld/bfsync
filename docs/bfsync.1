@@ -1,4 +1,4 @@
-.TH "BFSYNC" "1" "2011\-12\-21" "Revision 673" "bfsync Manual Page"
+.TH "BFSYNC" "1" "2011\-12\-22" "Revision 680" "bfsync Manual Page"
 
 .SH NAME
 
@@ -24,8 +24,8 @@ avoid entering your password over and over again.
 
 .SH COMMANDS
 .TP
-\fBclone\fR \fI<repo>\fR
-Initialize new cloned bfsync repo from bfsync master repo \fI<repo>\fR.
+\fBclone\fR \fI[ -u ]\fR \fI<repo>\fR \fI[ <dest-dir> ]\fR
+Initialize new cloned bfsync repo from bfsync master repo \fI<repo>\fR. If \fI<dest-dir>\fR is not specified, bfsync clone will generate a directory name from the repository name, otherwise it will clone into the directory \fI<dest-dir>\fR. If -u is given, bfsync clone will set the "use-uid-gid" option in the config file for the cloned repository to 1. This means that upon mount, the user id settings and group id settings for files/directories will be taken from the repository. This will only make sense if all machines that access the data have the same uid/gid numbers. The default (without -u) is not to use the uid/gid numbers, which should be perfect for almost every use case.
 .PP
 .TP
 \fBcommit\fR \fI[-m <message>]\fR \fI[-a <author>]\fR
@@ -84,8 +84,8 @@ Every bfsync checkout has a file called "config", which can be used to set confi
 This can be used to control whether sqlite should block the application until all data has been written to the disk. With sqlite-sync set to 1 (the default), sqlite will wait for the disk; this is slower than setting this to zero; however the sqlite documentation indicates that setting sqlite-sync to 0 might lead to a corrupt database if the system has a power failure or operating system crash while writing changes.
 .PP
 .TP
-\fBignore-uid-gid\fR \fI0|1\fR;
-Normally (default), bfsync will use the user and group settings from the repository. This works fine if all checkouts are on systems with the same user and group id numbers. If you want to use bfsync checkouts on systems with different uid/gid settings, it can be useful to simply ignore the uid/gid values stored in the repository. This can be done by setting ignore-uid-gid to 1.
+\fBuse-uid-gid\fR \fI0|1\fR;
+Bfsync was designed to store all file meta data, including the user id and group id of each file. These numbers will only make sense if all checkouts use the same uid/gid number to name mappings. Since for most users we cannot assume that the uid/gid numbers are the same on every system that has a checkout, bfsync defaults to ignoring the access permissions and uid/gid numbers stored in the repository. All files will appear to belong to the user that mounted the filesystem, and access rights will also not be enforced. To use the uid/gid numbers and enforce access rights, set use-uid-gid to 1. This is for instance useful if you want to copy data into the repository as root and preserve the ownership of the files.
 .PP
 .TP
 \fBdefault { get\fR "\fI<url>|<path>\fR"; \fB}\fR
@@ -213,7 +213,7 @@ Change dir.
 .PP
 .TP
 \fBclient1:~/big$ cp ~/download/01-some-music.flac .\fR
-Copy a big file into the repository checkout. If you get a "permission denied" error at this point, you probably have different uid/gid settings on the server and client 1. To make this work, you need to use put "ignore-uid-gid 1;" (see CONFIGURATION section) into the config file and remount the repository.
+Copy a big file into the repository checkout.
 .PP
 .TP
 \fBclient1:~/big$ bfsync commit\fR

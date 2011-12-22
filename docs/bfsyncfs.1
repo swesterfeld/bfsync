@@ -1,4 +1,4 @@
-.TH "BFSYNCFS" "1" "2011\-12\-20" "Revision 660" "bfsync Manual Page"
+.TH "BFSYNCFS" "1" "2011\-12\-21" "Revision 676" "bfsync Manual Page"
 
 .SH NAME
 
@@ -36,13 +36,15 @@ Run the filesystem as foreground process. Without this option, bfsyncfs will be 
 Enables debugging output, this option is mainly useful during development/debugging.
 .PP
 
+.SH THE .BFSYNC DIRECTORY
+
+Once a repository is mounted, all data contained in the current version of the repository will be available through the mount point. However, one additional directory will show up in the file system, the ".bfsync" directory. Within the .bfsync directory, all previous versions of the file system are available inside the commits directory. So if you access the contents of .bfsync/commits/8, this directory will contain the contents of the repository version 8. It is not possible to modify old commits, the .bfsync directory is only for reading.
+
 .SH CONFIGURATION
 
 There are configuration options from the repository config file that affect bfsyncfs, they are documented in the bfsync manual page.
 
 .SH SEE ALSO
 
-bfsync.1 <http://testbit.eu/Bfsync.1>,
-git.1 <http://testbit.eu/index.php?title=Git.1&action=edit&redlink=1>,
-rsync.1 <http://testbit.eu/index.php?title=Rsync.1&action=edit&redlink=1>
+bfsync.1 <http://testbit.eu/Bfsync.1>
 
