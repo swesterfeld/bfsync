@@ -23,6 +23,7 @@
 #include "bfsyncfs.hh"
 #include "bfhistory.hh"
 #include "bfcfgparser.hh"
+#include "bfbdb.hh"
 #include <sqlite3.h>
 
 #include <sys/time.h>
@@ -1532,6 +1533,12 @@ bfsyncfs_main (int argc, char **argv)
   if (rc != SQLITE_OK)
     {
       printf ("bfsyncfs: error opening db: %d\n", rc);
+      return 1;
+    }
+  string bdb_path = options.repo_path + "/bdb";
+  if (!bdb_open (bdb_path))
+    {
+      printf ("bfsyncfs: error opening bdb: %d\n", rc);
       return 1;
     }
   History::the()->read();
