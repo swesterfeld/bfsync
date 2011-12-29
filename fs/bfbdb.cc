@@ -22,16 +22,19 @@
 #include <assert.h>
 
 using std::string;
+using std::vector;
 
 namespace BFSync
 {
 
+BDB *bdb = NULL;
 Db *db = NULL;
 
 bool
 bdb_open (const string& path)
 {
   assert (!db);
+  assert (!bdb);
 
   try
     {
@@ -49,12 +52,78 @@ bdb_open (const string& path)
                 oFlags,              // Open flags
                 0);                  // File mode (using defaults)
 
+      bdb = new BDB();
       return true;
     }
   catch (...)
     {
       return false;
     }
+}
+
+bool
+bdb_close()
+{
+  assert (db != 0);
+  assert (bdb != 0);
+
+  delete bdb;
+  bdb = NULL;
+
+  int ret = db->close (0);
+  delete db;
+  db = NULL;
+
+  return (ret == 0);
+}
+
+void
+write_string (vector<char>& out, const string& s)
+{
+  out.insert (out.end(), s.begin(), s.end());
+  out.push_back (0);
+}
+
+void
+write_guint32 (vector<char>& out, guint32 i)
+{
+  char *s = reinterpret_cast <char *> (&i);
+  assert (sizeof (guint32) == 4);
+
+  out.insert (out.end(), s, s + 4);
+}
+
+void
+BDB::store_link (const LinkPtr& lp)
+{
+  vector<char> key;
+  vector<char> data;
+
+  write_string (key, lp->dir_id.str());
+
+  write_guint32 (data, lp->vmin);
+  write_guint32 (data, lp->vmax);
+  write_string (data, lp->inode_id.str());
+  write_string (data, lp->name);
+
+  Dbt lkey (&key[0], key.size());
+  Dbt ldata (&data[0], data.size());
+
+  int ret = db->put (NULL, &lkey, &ldata, 0);
+  assert (ret == 0);
+}
+
+Db*
+BDB::get_db()
+{
+  return db;
+}
+
+BDB*
+BDB::the()
+{
+  assert (bdb);
+  return bdb;
 }
 
 }

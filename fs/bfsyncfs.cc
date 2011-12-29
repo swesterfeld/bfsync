@@ -1566,5 +1566,9 @@ bfsyncfs_main (int argc, char **argv)
     {
       printf ("bfsyncfs: can't close db\n");
     }
+  if (!bdb_close())
+    {
+      printf ("bfsyncfs: can't close bdb\n");
+    }
   return fuse_rc;
 }

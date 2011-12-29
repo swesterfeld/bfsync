@@ -5,7 +5,7 @@ AM_CFLAGS = $(GLIB_CFLAGS) $(FUSE_CFLAGS) $(SQLITE_CFLAGS)
 BDB_LIBS = -ldb_cxx
 
 bin_PROGRAMS = bfsyncfs
-noinst_PROGRAMS = bftesthelper sqlperf bfperf
+noinst_PROGRAMS = bftesthelper sqlperf bfperf bfdbdump
 
 lib_LTLIBRARIES = libbfsync.la
 
@@ -24,5 +24,8 @@ bfperf_LDADD = $(GLIB_LIBS) $(FUSE_LIBS) libbfsync.la
 
 sqlperf_SOURCES = sqlperf.cc
 sqlperf_LDADD = $(GLIB_LIBS) $(FUSE_LIBS) libbfsync.la
+
+bfdbdump_SOURCES = bfdbdump.cc
+bfdbdump_LDADD = $(GLIB_LIBS) $(FUSE_LIBS) $(BDB_LIBS) libbfsync.la
 
 bftesthelper_SOURCES = bftesthelper.cc

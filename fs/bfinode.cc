@@ -26,6 +26,7 @@
 #include "bfleakdebugger.hh"
 #include "bflink.hh"
 #include "bfsql.hh"
+#include "bfbdb.hh"
 
 #include <set>
 
@@ -922,6 +923,8 @@ INodeLinks::save (SQLStatement& stmt)
               stmt.bind_text (4, lp->inode_id.str());
               stmt.bind_text (5, lp->name);
               stmt.step();
+              BDB::the()->store_link (lp);
+              printf ("writing link: (%d, %d): %s->%s: %s\n", lp->vmin, lp->vmax, lp->dir_id.str().c_str(), lp->inode_id.str().c_str(), lp->name.c_str());
             }
           Link *link = lp.get_ptr_without_update();
           link->updated = false;

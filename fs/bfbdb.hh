@@ -21,11 +21,23 @@
 #define BFSYNC_BDB_HH
 
 #include <string>
+#include <db_cxx.h>
+#include "bfinode.hh"
 
 namespace BFSync
 {
 
 bool bdb_open (const std::string& path);
+bool bdb_close();
+
+class BDB
+{
+public:
+  static BDB *the();
+
+  Db*   get_db();
+  void  store_link (const LinkPtr& link);
+};
 
 }
 
