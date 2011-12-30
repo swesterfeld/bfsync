@@ -74,8 +74,6 @@ INodeRepo::save_changes (SaveChangesMode sc)
 
   SQLStatement& inode_stmt = sql_statements().get
     ("INSERT INTO inodes VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
-  SQLStatement& link_stmt = sql_statements().get
-    ("INSERT INTO links VALUES (?,?,?,?,?)");
   SQLStatement& del_inode_stmt = sql_statements().get
     ("DELETE FROM inodes WHERE id=? and (vmin=? or vmax=?)");
   SQLStatement& addi_stmt = sql_statements().get
@@ -139,7 +137,7 @@ INodeRepo::save_changes (SaveChangesMode sc)
       if (need_save && links)
         {
           INodeLinks *inode_links = links.get_ptr_without_update();
-          inode_links->save (link_stmt);
+          inode_links->save();
         }
     }
 
@@ -156,7 +154,7 @@ INodeRepo::save_changes (SaveChangesMode sc)
          inodes_saved);
   inode_stmt.commit();
 
-  if (inode_stmt.success() && link_stmt.success() && del_inode_stmt.success())
+  if (inode_stmt.success() && del_inode_stmt.success())
     debug ("sql exec OK\n");
   else
     debug ("sql exec FAIL\n");
@@ -571,30 +569,11 @@ INode::load (const Context& ctx, const ID& id)
 
   links = cache_links;
 
-  SQLStatement& load_links = INodeRepo::the()->sql_statements().get
-    ("SELECT * FROM links WHERE dir_id = ? AND ? >= vmin AND ? <= vmax");
+  vector<Link*> load_links;
+  BDB::the()->load_links (load_links, id.str(), ctx.version);
 
-  load_links.reset();
-  load_links.bind_text (1, id.str());
-  load_links.bind_int (2, ctx.version);
-  load_links.bind_int (3, ctx.version);
-  for (;;)
-    {
-      int rc = load_links.step();
-      if (rc != SQLITE_ROW)
-        break;
-
-      Link *link = new Link();
-
-      link->vmin = load_links.column_int (0);
-      link->vmax = load_links.column_int (1);
-      link->dir_id = load_links.column_id (2);
-      link->inode_id = load_links.column_id (3);
-      link->name = load_links.column_text (4);
-      link->updated = false;
-
-      links.update()->link_map[link->name].add (LinkPtr (link));
-    }
+  for (vector<Link*>::const_iterator li = load_links.begin(); li != load_links.end(); li++)
+    links.update()->link_map[(*li)->name].add (LinkPtr (*li));
 
   load_or_alloc_ino();
   updated = false;
@@ -885,26 +864,12 @@ INodeLinks::~INodeLinks()
 }
 
 bool
-INodeLinks::save (SQLStatement& stmt)
+INodeLinks::save()
 {
-  SQLStatement& del_links_stmt = INodeRepo::the()->sql_statements().get
-    ("DELETE FROM links WHERE dir_id=? and inode_id=? and (vmin=? or vmax=?)");
-
   // delete links that were (possibly) modified
   for (map<string, LinkVersionList>::const_iterator li = link_map.begin(); li != link_map.end(); li++)
     {
       const LinkVersionList& lvlist = li->second;
-      for (size_t i = 0; i < lvlist.size(); i++)
-        {
-          const LinkPtr& lp = lvlist[i];
-
-          del_links_stmt.reset();
-          del_links_stmt.bind_text (1, lp->dir_id.str());
-          del_links_stmt.bind_text (2, lp->inode_id.str());
-          del_links_stmt.bind_int  (3, lp->vmin);
-          del_links_stmt.bind_int  (4, lp->vmax);
-          del_links_stmt.step();
-        }
       BDB::the()->delete_links (lvlist);
     }
   // re-write links
@@ -916,17 +881,8 @@ INodeLinks::save (SQLStatement& stmt)
           const LinkPtr& lp = lvlist[i];
 
           if (!lp->deleted)
-            {
-              stmt.reset();
-              stmt.bind_int  (1, lp->vmin);
-              stmt.bind_int  (2, lp->vmax);
-              stmt.bind_text (3, lp->dir_id.str());
-              stmt.bind_text (4, lp->inode_id.str());
-              stmt.bind_text (5, lp->name);
-              stmt.step();
-              BDB::the()->store_link (lp);
-              printf ("writing link: (%d, %d): %s->%s: %s\n", lp->vmin, lp->vmax, lp->dir_id.str().c_str(), lp->inode_id.str().c_str(), lp->name.c_str());
-            }
+            BDB::the()->store_link (lp);
+
           Link *link = lp.get_ptr_without_update();
           link->updated = false;
         }

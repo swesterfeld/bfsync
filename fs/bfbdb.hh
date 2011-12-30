@@ -30,6 +30,18 @@ namespace BFSync
 bool bdb_open (const std::string& path);
 bool bdb_close();
 
+class DataBuffer
+{
+  const char *ptr;
+  size_t      remaining;
+
+public:
+  DataBuffer (const char *ptr, size_t size);
+
+  guint32     read_uint32();
+  std::string read_string();
+};
+
 class BDB
 {
 public:
@@ -38,6 +50,7 @@ public:
   Db*   get_db();
   void  store_link (const LinkPtr& link);
   void  delete_links (const LinkVersionList& links);
+  void  load_links (std::vector<Link*>& links, const std::string& id, guint32 version);
 };
 
 }

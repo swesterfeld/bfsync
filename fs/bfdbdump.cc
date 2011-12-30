@@ -26,55 +26,6 @@ using namespace BFSync;
 
 using std::string;
 
-class DataBuffer
-{
-  const char *ptr;
-  size_t      remaining;
-
-public:
-  DataBuffer (const char *ptr, size_t size);
-
-  guint32 read_uint32();
-  string  read_string();
-};
-
-DataBuffer::DataBuffer (const char *ptr, size_t size) :
-  ptr (ptr),
-  remaining (size)
-{
-}
-
-guint32
-DataBuffer::read_uint32()
-{
-  assert (remaining >= 4);
-
-  guint32 result;
-  memcpy (&result, ptr, 4);
-  remaining -= 4;
-  ptr += 4;
-
-  return result;
-}
-
-string
-DataBuffer::read_string()
-{
-  string s;
-
-  while (remaining)
-    {
-      char c = *ptr++;
-      remaining--;
-
-      if (c == 0)
-        return s;
-      else
-        s += c;
-    }
-  assert (false);
-}
-
 int
 main (int argc, char **argv)
 {

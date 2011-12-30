@@ -237,7 +237,7 @@ public:
   INodeLinks();
   ~INodeLinks();
 
-  bool save (SQLStatement& stmt);
+  bool save();
 
   void
   ref()

@@ -20,6 +20,7 @@
 #include "bfbdb.hh"
 #include <db_cxx.h>
 #include <assert.h>
+#include <string.h>
 
 #include <set>
 
@@ -161,7 +162,6 @@ BDB::delete_links (const LinkVersionList& links)
 
   // iterate over key elements and delete records which are in LinkVersionList
   ret = dbc->get (&lkey, &ldata, DB_SET);
-  assert (ret == 0);
   while (ret == 0)
     {
       vector<char> cursor_data ((char *) ldata.get_data(), (char *) ldata.get_data() + ldata.get_size());
@@ -170,6 +170,52 @@ BDB::delete_links (const LinkVersionList& links)
         {
           ret = dbc->del (0);
           assert (ret == 0);
+        }
+      ret = dbc->get (&lkey, &ldata, DB_NEXT_DUP);
+    }
+
+  dbc->close();
+}
+
+void
+BDB::load_links (std::vector<Link*>& links, const std::string& id, guint32 version)
+{
+  vector<char> key;
+
+  write_string (key, id);
+  Dbt lkey (&key[0], key.size());
+  Dbt ldata;
+
+  /* Acquire a cursor for the database. */
+  Dbc *dbc;
+
+  int ret;
+  ret = db->cursor (NULL, &dbc, 0);
+  assert (ret == 0);
+
+  // iterate over key elements and delete records which are in LinkVersionList
+  ret = dbc->get (&lkey, &ldata, DB_SET);
+  while (ret == 0)
+    {
+      DataBuffer dbuffer ((char *) ldata.get_data(), ldata.get_size());
+
+      int vmin = dbuffer.read_uint32();
+      int vmax = dbuffer.read_uint32();
+      string inode_id = dbuffer.read_string();
+      string name = dbuffer.read_string();
+
+      if (version >= vmin && version <= vmax)
+        {
+          Link *l = new Link;
+
+          l->vmin = vmin;
+          l->vmax = vmax;
+          l->dir_id = id;
+          l->inode_id = inode_id;
+          l->name = name;
+          l->updated = false;
+
+          links.push_back (l);
         }
       ret = dbc->get (&lkey, &ldata, DB_NEXT_DUP);
     }
@@ -188,6 +234,43 @@ BDB::the()
 {
   assert (bdb);
   return bdb;
+}
+
+DataBuffer::DataBuffer (const char *ptr, size_t size) :
+  ptr (ptr),
+  remaining (size)
+{
+}
+
+guint32
+DataBuffer::read_uint32()
+{
+  assert (remaining >= 4);
+
+  guint32 result;
+  memcpy (&result, ptr, 4);
+  remaining -= 4;
+  ptr += 4;
+
+  return result;
+}
+
+string
+DataBuffer::read_string()
+{
+  string s;
+
+  while (remaining)
+    {
+      char c = *ptr++;
+      remaining--;
+
+      if (c == 0)
+        return s;
+      else
+        s += c;
+    }
+  assert (false);
 }
 
 }
