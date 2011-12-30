@@ -25,6 +25,7 @@
 using namespace BFSync;
 
 using std::string;
+using std::vector;
 
 int
 main (int argc, char **argv)
@@ -48,6 +49,8 @@ main (int argc, char **argv)
       return 1;
     }
 
+  vector<char *> links, inodes;
+
   Dbt key;
   Dbt data;
 
@@ -59,17 +62,67 @@ main (int argc, char **argv)
       xk[key.get_size()] = 0;
 
       DataBuffer dbuffer ((char *) data.get_data(), data.get_size());
-      int vmin = dbuffer.read_uint32();
-      int vmax = dbuffer.read_uint32();
-      string inode_id = dbuffer.read_string();
-      string name = dbuffer.read_string();
 
-      printf ("%s=%d|%d|%s|%s\n", xk, vmin, vmax, inode_id.c_str(), name.c_str());
+      char table = xk[key.get_size() - 1];
+      xk[key.get_size() - 1] = 0;
+
+      if (table == BDB_TABLE_INODES)
+        {
+          int vmin = dbuffer.read_uint32();
+          int vmax = dbuffer.read_uint32();
+          int uid = dbuffer.read_uint32();
+          int gid = dbuffer.read_uint32();
+          int mode = dbuffer.read_uint32();
+          int type = dbuffer.read_uint32();
+          string hash = dbuffer.read_string();
+          string link = dbuffer.read_string();
+          int size = dbuffer.read_uint32(); // FIXME
+          int major = dbuffer.read_uint32();
+          int minor = dbuffer.read_uint32();
+          int nlink = dbuffer.read_uint32();
+          int ctime = dbuffer.read_uint32();
+          int ctime_ns = dbuffer.read_uint32();
+          int mtime = dbuffer.read_uint32();
+          int mtime_ns = dbuffer.read_uint32();
+
+          inodes.push_back (g_strdup_printf ("%s=%d|%d|%d|%d|%o|%d|%s|%s|%d|%d|%d|%d|%d|%d|%d|%d",
+                                             xk, vmin, vmax, uid, gid, mode, type, hash.c_str(), link.c_str(),
+                                             size, major, minor, nlink, ctime, ctime_ns, mtime, mtime_ns));
+        }
+      else if (table == BDB_TABLE_LINKS)
+        {
+          int vmin = dbuffer.read_uint32();
+          int vmax = dbuffer.read_uint32();
+          string inode_id = dbuffer.read_string();
+          string name = dbuffer.read_string();
+
+          links.push_back (g_strdup_printf ("%s=%d|%d|%s|%s", xk, vmin, vmax, inode_id.c_str(), name.c_str()));
+        }
+      else
+        {
+          printf ("unknown record type\n");
+        }
 
       ret = dbcp->get (&key, &data, DB_NEXT_DUP);
       if (ret != 0)
         ret = dbcp->get (&key, &data, DB_NEXT);
     }
+
+  printf ("\n");
+  printf ("INodes:\n");
+  printf ("=======\n\n");
+
+  for (size_t i = 0; i < inodes.size(); i++)
+    printf ("%s\n", inodes[i]);
+
+  printf ("\n");
+  printf ("Links:\n");
+  printf ("======\n\n");
+
+  for (size_t i = 0; i < links.size(); i++)
+    printf ("%s\n", links[i]);
+
+  printf ("\n");
 
   if (!bdb_close())
     {

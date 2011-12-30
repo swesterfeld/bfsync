@@ -72,17 +72,12 @@ INodeRepo::save_changes (SaveChangesMode sc)
 {
   Lock lock (mutex);
 
-  SQLStatement& inode_stmt = sql_statements().get
-    ("INSERT INTO inodes VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
-  SQLStatement& del_inode_stmt = sql_statements().get
-    ("DELETE FROM inodes WHERE id=? and (vmin=? or vmax=?)");
   SQLStatement& addi_stmt = sql_statements().get
    ("INSERT INTO local_inodes VALUES (?,?)");
 
   double start_t = gettime();
 
   int inodes_saved = 0;
-  inode_stmt.begin();
   for (map<ID, INodeVersionList>::iterator ci = cache.begin(); ci != cache.end(); ci++)
     {
       INodeVersionList& ivlist = ci->second;
@@ -101,21 +96,11 @@ INodeRepo::save_changes (SaveChangesMode sc)
         }
       if (need_save)
         {
-          for (size_t i = 0; i < ivlist.size(); i++)
-            {
-              INodePtr inode_ptr = ivlist[i];
-              assert (inode_ptr);
-
-              // this will reliably delete the old inode entry for both modifications that
-              // can be made for an inode entry:
-              //  - just change some fields
-              //  - split into two inodes (copy-on-write)
-              del_inode_stmt.reset();
-              del_inode_stmt.bind_text (1, id_str);
-              del_inode_stmt.bind_int (2, inode_ptr->vmin);
-              del_inode_stmt.bind_int (3, inode_ptr->vmax);
-              del_inode_stmt.step();
-            }
+          // this will reliably delete the old inode entry for both modifications that
+          // can be made for an inode entry:
+          //  - just change some fields
+          //  - split into two inodes (copy-on-write)
+          BDB::the()->delete_inodes (ivlist);
         }
 
       INodeLinksPtr links = INodeLinksPtr::null();
@@ -128,7 +113,7 @@ INodeRepo::save_changes (SaveChangesMode sc)
               inodes_saved++;
 
               INode *inode = inode_ptr.get_ptr_without_update();
-              inode->save (inode_stmt);
+              inode->save();
               inode->updated = false;
               if (!links)
                 links = inode->links;
@@ -142,6 +127,7 @@ INodeRepo::save_changes (SaveChangesMode sc)
     }
 
   // write newly allocated inodes to local_inodes table
+  addi_stmt.begin();
   for (map<ino_t, ID>::const_iterator ni = new_inodes.begin(); ni != new_inodes.end(); ni++)
     {
       addi_stmt.reset();
@@ -149,15 +135,10 @@ INodeRepo::save_changes (SaveChangesMode sc)
       addi_stmt.bind_int (2, ni->first);
       addi_stmt.step();
     }
+  addi_stmt.commit();
   new_inodes.clear();
   debug ("time for sql prepare: %.2fms (%d inodes needed saving)\n", (gettime() - start_t) * 1000,
          inodes_saved);
-  inode_stmt.commit();
-
-  if (inode_stmt.success() && del_inode_stmt.success())
-    debug ("sql exec OK\n");
-  else
-    debug ("sql exec FAIL\n");
 
   double end_t = gettime();
   debug ("time for sql: %.2fms\n", (end_t - start_t) * 1000);
@@ -436,64 +417,10 @@ INode::set_ctime_now()
 }
 
 bool
-INode::save (SQLStatement& stmt)
+INode::save()
 {
-  string type_str;
-  if (type == FILE_REGULAR)
-    {
-      type_str = "file";
-    }
-  else if (type == FILE_DIR)
-    {
-      type_str = "dir";
-    }
-  else if (type == FILE_SYMLINK)
-    {
-      type_str = "symlink";
-    }
-  else if (type == FILE_FIFO)
-    {
-      type_str = "fifo";
-    }
-  else if (type == FILE_SOCKET)
-    {
-      type_str = "socket";
-    }
-  else if (type == FILE_BLOCK_DEV)
-    {
-      type_str = "blockdev";
-    }
-  else if (type == FILE_CHAR_DEV)
-    {
-      type_str = "chardev";
-    }
-  else
-    {
-      return false; // unsupported type
-    }
-
   if (nlink != 0) // nlink == 0 means that the inode is not referenced anymore and can be deleted
-    {
-      stmt.reset();
-      stmt.bind_int   (1 + INODES_VMIN, vmin);
-      stmt.bind_int   (1 + INODES_VMAX, vmax);
-      stmt.bind_text  (1 + INODES_ID, id.str());
-      stmt.bind_int   (1 + INODES_UID, uid);
-      stmt.bind_int   (1 + INODES_GID, gid);
-      stmt.bind_int   (1 + INODES_MODE, mode);
-      stmt.bind_text  (1 + INODES_TYPE, type_str);
-      stmt.bind_text  (1 + INODES_HASH, hash);
-      stmt.bind_text  (1 + INODES_LINK, link);
-      stmt.bind_int   (1 + INODES_SIZE, size);
-      stmt.bind_int   (1 + INODES_MAJOR, major);
-      stmt.bind_int   (1 + INODES_MINOR, minor);
-      stmt.bind_int   (1 + INODES_NLINK, nlink);
-      stmt.bind_int   (1 + INODES_CTIME, ctime);
-      stmt.bind_int   (1 + INODES_CTIME_NS, ctime_ns);
-      stmt.bind_int   (1 + INODES_MTIME, mtime);
-      stmt.bind_int   (1 + INODES_MTIME_NS, mtime_ns);
-      stmt.step();
-    }
+    BDB::the()->store_inode (this);
 
   return true;
 }
@@ -501,61 +428,8 @@ INode::save (SQLStatement& stmt)
 bool
 INode::load (const Context& ctx, const ID& id)
 {
-  bool found = false;
+  bool found = BDB::the()->load_inode (id, ctx.version, this);
 
-  SQLStatement& load_inode = INodeRepo::the()->sql_statements().get
-    ("SELECT * FROM inodes WHERE id = ? AND ? >= vmin AND ? <= vmax");
-
-  load_inode.reset();
-  load_inode.bind_text (1, id.str());
-  load_inode.bind_int (2, ctx.version);
-  load_inode.bind_int (3, ctx.version);
-
-  for (;;)
-    {
-      int rc = load_inode.step();
-      if (rc != SQLITE_ROW)
-        break;
-
-      vmin     = load_inode.column_int  (INODES_VMIN);
-      vmax     = load_inode.column_int  (INODES_VMAX);
-      this->id = load_inode.column_id   (INODES_ID);
-      uid      = load_inode.column_int  (INODES_UID);
-      gid      = load_inode.column_int  (INODES_GID);
-      mode     = load_inode.column_int  (INODES_MODE);
-
-      string val = load_inode.column_text (INODES_TYPE);
-
-      if (val == "file")
-        type = FILE_REGULAR;
-      else if (val == "symlink")
-        type = FILE_SYMLINK;
-      else if (val == "dir")
-        type = FILE_DIR;
-      else if (val == "fifo")
-        type = FILE_FIFO;
-      else if (val == "socket")
-        type = FILE_SOCKET;
-      else if (val == "blockdev")
-        type = FILE_BLOCK_DEV;
-      else if (val == "chardev")
-        type = FILE_CHAR_DEV;
-      else
-        type = FILE_NONE;
-
-      hash     = load_inode.column_text (INODES_HASH);
-      link     = load_inode.column_text (INODES_LINK);
-      size     = load_inode.column_int  (INODES_SIZE);
-      major    = load_inode.column_int  (INODES_MAJOR);
-      minor    = load_inode.column_int  (INODES_MINOR);
-      nlink    = load_inode.column_int  (INODES_NLINK);
-      ctime    = load_inode.column_int  (INODES_CTIME);
-      ctime_ns = load_inode.column_int  (INODES_CTIME_NS);
-      mtime    = load_inode.column_int  (INODES_MTIME);
-      mtime_ns = load_inode.column_int  (INODES_MTIME_NS);
-
-      found = true;
-    }
   if (!found)
     return false;
 
@@ -806,6 +680,12 @@ INodeVersionList::size() const
 
 INodePtr&
 INodeVersionList::operator[] (size_t pos)
+{
+  return inodes[pos];
+}
+
+const INodePtr&
+INodeVersionList::operator[] (size_t pos) const
 {
   return inodes[pos];
 }

@@ -27,6 +27,12 @@
 namespace BFSync
 {
 
+enum BDBTables
+{
+  BDB_TABLE_INODES = 1,
+  BDB_TABLE_LINKS  = 2
+};
+
 bool bdb_open (const std::string& path);
 bool bdb_close();
 
@@ -45,12 +51,19 @@ public:
 class BDB
 {
 public:
+  Mutex mutex;
+
   static BDB *the();
 
   Db*   get_db();
+
   void  store_link (const LinkPtr& link);
   void  delete_links (const LinkVersionList& links);
   void  load_links (std::vector<Link*>& links, const std::string& id, guint32 version);
+
+  void  store_inode (const INode *inode);
+  void  delete_inodes (const INodeVersionList& inodes);
+  bool  load_inode (const ID& id, int version, INode *inode);
 };
 
 }

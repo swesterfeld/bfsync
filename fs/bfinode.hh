@@ -156,7 +156,7 @@ public:
   INode (const INode& other);
   ~INode();
 
-  bool          save (SQLStatement& inode_stmt);
+  bool          save();
   bool          load (const Context& ctx, const ID& id);
 
   void          set_mtime_ctime_now();
@@ -212,6 +212,7 @@ class INodeVersionList
 public:
   size_t size() const;
   INodePtr& operator[] (size_t pos);
+  const INodePtr& operator[] (size_t pos) const;
   void add (INodePtr& inode);
 };
 
