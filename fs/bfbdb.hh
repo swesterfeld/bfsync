@@ -37,6 +37,7 @@ public:
 
   Db*   get_db();
   void  store_link (const LinkPtr& link);
+  void  delete_links (const LinkVersionList& links);
 };
 
 }

@@ -905,6 +905,7 @@ INodeLinks::save (SQLStatement& stmt)
           del_links_stmt.bind_int  (4, lp->vmax);
           del_links_stmt.step();
         }
+      BDB::the()->delete_links (lvlist);
     }
   // re-write links
   for (map<string, LinkVersionList>::const_iterator li = link_map.begin(); li != link_map.end(); li++)

@@ -21,8 +21,11 @@
 #include <db_cxx.h>
 #include <assert.h>
 
+#include <set>
+
 using std::string;
 using std::vector;
+using std::set;
 
 namespace BFSync
 {
@@ -94,23 +97,84 @@ write_guint32 (vector<char>& out, guint32 i)
 }
 
 void
+write_link_data (vector<char>& out, const LinkPtr& lp)
+{
+  write_guint32 (out, lp->vmin);
+  write_guint32 (out, lp->vmax);
+  write_string (out, lp->inode_id.str());
+  write_string (out, lp->name);
+}
+
+void
 BDB::store_link (const LinkPtr& lp)
 {
   vector<char> key;
   vector<char> data;
 
   write_string (key, lp->dir_id.str());
-
-  write_guint32 (data, lp->vmin);
-  write_guint32 (data, lp->vmax);
-  write_string (data, lp->inode_id.str());
-  write_string (data, lp->name);
+  write_link_data (data, lp);
 
   Dbt lkey (&key[0], key.size());
   Dbt ldata (&data[0], data.size());
 
   int ret = db->put (NULL, &lkey, &ldata, 0);
   assert (ret == 0);
+}
+
+void
+BDB::delete_links (const LinkVersionList& links)
+{
+  if (links.size() == 0) /* nothing to do? */
+    return;
+
+  set< vector<char> > del_links;
+  vector<char> all_key;
+
+  for (size_t i = 0; i < links.size(); i++)
+    {
+      vector<char> data;
+      vector<char> key;
+
+      write_string (key, links[i]->dir_id.str());
+      if (i == 0)
+        {
+          all_key = key;
+        }
+      else
+        {
+          assert (all_key == key); // all links should share the same key
+        }
+      write_link_data (data, links[i]);
+      del_links.insert (data);
+    }
+
+  Dbt lkey (&all_key[0], all_key.size());
+  Dbt ldata;
+
+
+  /* Acquire a cursor for the database. */
+  Dbc *dbc;
+
+  int ret;
+  ret = db->cursor (NULL, &dbc, 0);
+  assert (ret == 0);
+
+  // iterate over key elements and delete records which are in LinkVersionList
+  ret = dbc->get (&lkey, &ldata, DB_SET);
+  assert (ret == 0);
+  while (ret == 0)
+    {
+      vector<char> cursor_data ((char *) ldata.get_data(), (char *) ldata.get_data() + ldata.get_size());
+
+      if (del_links.find (cursor_data) != del_links.end())
+        {
+          ret = dbc->del (0);
+          assert (ret == 0);
+        }
+      ret = dbc->get (&lkey, &ldata, DB_NEXT_DUP);
+    }
+
+  dbc->close();
 }
 
 Db*
