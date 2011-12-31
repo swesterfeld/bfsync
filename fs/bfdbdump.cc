@@ -49,7 +49,7 @@ main (int argc, char **argv)
       return 1;
     }
 
-  vector<char *> links, inodes;
+  vector<char *> links, inodes, id2ino, ino2id;
 
   Dbt key;
   Dbt data;
@@ -98,6 +98,21 @@ main (int argc, char **argv)
 
           links.push_back (g_strdup_printf ("%s=%d|%d|%s|%s", xk, vmin, vmax, inode_id.c_str(), name.c_str()));
         }
+      else if (table == BDB_TABLE_LOCAL_ID2INO)
+        {
+          int ino = dbuffer.read_uint32();
+
+          id2ino.push_back (g_strdup_printf ("%s=%d", xk, ino));
+        }
+      else if (table == BDB_TABLE_LOCAL_INO2ID)
+        {
+          DataBuffer kbuffer ((char *) key.get_data(), key.get_size());
+
+          int   ino = kbuffer.read_uint32();
+          string id = dbuffer.read_string();
+
+          ino2id.push_back (g_strdup_printf ("%d=%s", ino, id.c_str()));
+        }
       else
         {
           printf ("unknown record type\n");
@@ -121,6 +136,20 @@ main (int argc, char **argv)
 
   for (size_t i = 0; i < links.size(); i++)
     printf ("%s\n", links[i]);
+
+  printf ("\n");
+  printf ("ID2ino:\n");
+  printf ("======\n\n");
+
+  for (size_t i = 0; i < id2ino.size(); i++)
+    printf ("%s\n", id2ino[i]);
+
+  printf ("\n");
+  printf ("ino2ID:\n");
+  printf ("======\n\n");
+
+  for (size_t i = 0; i < ino2id.size(); i++)
+    printf ("%s\n", ino2id[i]);
 
   printf ("\n");
 

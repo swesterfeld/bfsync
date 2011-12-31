@@ -29,8 +29,10 @@ namespace BFSync
 
 enum BDBTables
 {
-  BDB_TABLE_INODES = 1,
-  BDB_TABLE_LINKS  = 2
+  BDB_TABLE_INODES        = 1,
+  BDB_TABLE_LINKS         = 2,
+  BDB_TABLE_LOCAL_ID2INO  = 3,
+  BDB_TABLE_LOCAL_INO2ID  = 4
 };
 
 bool bdb_open (const std::string& path);
@@ -64,6 +66,8 @@ public:
   void  store_inode (const INode *inode);
   void  delete_inodes (const INodeVersionList& inodes);
   bool  load_inode (const ID& id, int version, INode *inode);
+
+  void  store_id2ino (const ID& id, int ino);
 };
 
 }

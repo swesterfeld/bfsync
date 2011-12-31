@@ -134,6 +134,8 @@ INodeRepo::save_changes (SaveChangesMode sc)
       addi_stmt.bind_text (1, ni->second.str());
       addi_stmt.bind_int (2, ni->first);
       addi_stmt.step();
+
+      BDB::the()->store_id2ino (ni->second, ni->first);
     }
   addi_stmt.commit();
   new_inodes.clear();

@@ -455,4 +455,38 @@ BDB::load_inode (const ID& id, int version, INode *inode)
   return false;
 }
 
+void
+BDB::store_id2ino (const ID& id, int ino)
+{
+  Lock lock (mutex);
+
+  vector<char> key;
+  vector<char> data;
+
+  write_string (key, id.str());
+  write_table (key, BDB_TABLE_LOCAL_ID2INO);
+
+  write_guint32 (data, ino);
+
+  Dbt ikey (&key[0], key.size());
+  Dbt idata (&data[0], data.size());
+
+  int ret = db->put (NULL, &ikey, &idata, 0);
+  assert (ret == 0);
+
+  key.clear();
+  data.clear();
+
+  write_guint32 (key, ino);
+  write_table (key, BDB_TABLE_LOCAL_INO2ID);
+
+  write_string (data, id.str());
+
+  Dbt rev_ikey (&key[0], key.size());
+  Dbt rev_idata (&data[0], data.size());
+
+  ret = db->put (NULL, &rev_ikey, &rev_idata, 0);
+  assert (ret == 0);
+}
+
 }
