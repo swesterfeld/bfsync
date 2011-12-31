@@ -125,26 +125,6 @@ INodeRepo::save_changes (SaveChangesMode sc)
           inode_links->save();
         }
     }
-
-  // write newly allocated inodes to local_inodes table
-  addi_stmt.begin();
-  for (map<ino_t, ID>::const_iterator ni = new_inodes.begin(); ni != new_inodes.end(); ni++)
-    {
-      addi_stmt.reset();
-      addi_stmt.bind_text (1, ni->second.str());
-      addi_stmt.bind_int (2, ni->first);
-      addi_stmt.step();
-
-      BDB::the()->store_id2ino (ni->second, ni->first);
-    }
-  addi_stmt.commit();
-  new_inodes.clear();
-  debug ("time for sql prepare: %.2fms (%d inodes needed saving)\n", (gettime() - start_t) * 1000,
-         inodes_saved);
-
-  double end_t = gettime();
-  debug ("time for sql: %.2fms\n", (end_t - start_t) * 1000);
-
   if (sc == SC_CLEAR_CACHE)
     {
       cache.clear();
@@ -218,24 +198,6 @@ INodeRepo::cached_dir_count()
   Lock lock (mutex);
   return links_cache.size();
 }
-
-const int INODES_VMIN     = 0;
-const int INODES_VMAX     = 1;
-const int INODES_ID       = 2;
-const int INODES_UID      = 3;
-const int INODES_GID      = 4;
-const int INODES_MODE     = 5;
-const int INODES_TYPE     = 6;
-const int INODES_HASH     = 7;
-const int INODES_LINK     = 8;
-const int INODES_SIZE     = 9;
-const int INODES_MAJOR    = 10;
-const int INODES_MINOR    = 11;
-const int INODES_NLINK    = 12;
-const int INODES_CTIME    = 13;
-const int INODES_CTIME_NS = 14;
-const int INODES_MTIME    = 15;
-const int INODES_MTIME_NS = 16;
 
 INodePtr::INodePtr (const Context& ctx, const ID& id) :
   ptr (NULL)
@@ -463,55 +425,22 @@ INode::load_or_alloc_ino()
 {
   // load inode number
   ino = 0;
-  SQLStatement& loadi_stmt = INodeRepo::the()->sql_statements().get (
-    "SELECT ino FROM local_inodes WHERE id = ?"
-  );
-  loadi_stmt.reset();
-  loadi_stmt.bind_text (1, id.str());
-  for (;;)
-    {
-      int rc = loadi_stmt.step();
-      if (rc != SQLITE_ROW)
-        break;
-      ino = loadi_stmt.column_int (0);
-    }
+  if (BDB::the()->load_ino (id, ino))
+    return;
 
   // need to create new entry
-  if (!ino)
-    alloc_ino();
+  alloc_ino();
 }
 
 void
 INode::alloc_ino()
 {
-  while (ino_pool.empty())
+  do
     {
-      SQLStatement& searchi_stmt = INodeRepo::the()->sql_statements().get (
-        "SELECT * FROM local_inodes WHERE ino in (?, ?, ?, ?, ?, "
-                                                " ?, ?, ?, ?, ?, "
-                                                " ?, ?, ?, ?, ?, "
-                                                " ?, ?, ?, ?, ?)"
-      );
-
-      searchi_stmt.reset();
-      while (ino_pool.size() != 20)
-        {
-          /* low inode numbers are reserved for .bfsync inodes */
-          ino = g_random_int_range (100 * 1000, 2 * 1000 * 1000 * 1000);  // 100000 .. ~ 2^31
-          map<ino_t, ID>::const_iterator ni = INodeRepo::the()->new_inodes.find (ino);
-          if (ni == INodeRepo::the()->new_inodes.end())  // not recently allocated & in use
-            {
-              searchi_stmt.bind_int (1 + ino_pool.size(), ino);
-              ino_pool.push_back (ino);
-            }
-        }
-      int rc = searchi_stmt.step();
-      if (rc == SQLITE_ROW)  // (at least one) inode numbers already in use
-        ino_pool.clear();
+      /* low inode numbers are reserved for .bfsync inodes */
+      ino = g_random_int_range (100 * 1000, 2 * 1000 * 1000 * 1000);  // 100000 .. ~ 2^31
     }
-  ino = ino_pool.back();
-  ino_pool.pop_back();
-  INodeRepo::the()->new_inodes[ino] = id;
+  while (!BDB::the()->try_store_id2ino (id, ino));
 }
 
 string

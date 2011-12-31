@@ -67,7 +67,8 @@ public:
   void  delete_inodes (const INodeVersionList& inodes);
   bool  load_inode (const ID& id, int version, INode *inode);
 
-  void  store_id2ino (const ID& id, int ino);
+  bool  try_store_id2ino (const ID& id, int ino);
+  bool  load_ino (const ID& id, ino_t& ino);
 };
 
 }

@@ -455,14 +455,36 @@ BDB::load_inode (const ID& id, int version, INode *inode)
   return false;
 }
 
-void
-BDB::store_id2ino (const ID& id, int ino)
+bool
+BDB::try_store_id2ino (const ID& id, int ino)
 {
   Lock lock (mutex);
 
   vector<char> key;
   vector<char> data;
 
+  // lookup ino to check whether it is already used:
+  write_guint32 (key, ino);
+  write_table (key, BDB_TABLE_LOCAL_INO2ID);
+
+  Dbt rev_ikey (&key[0], key.size());
+  Dbt rev_lookup;
+
+  int ret = db->get (NULL, &rev_ikey, &rev_lookup, 0);
+  if (ret == 0)
+    return false;
+
+  // add ino->id entry
+  write_string (data, id.str());
+  Dbt rev_idata (&data[0], data.size());
+
+  ret = db->put (NULL, &rev_ikey, &rev_idata, 0);
+  assert (ret == 0);
+
+  key.clear();
+  data.clear();
+
+  // add id->ino entry
   write_string (key, id.str());
   write_table (key, BDB_TABLE_LOCAL_ID2INO);
 
@@ -471,22 +493,32 @@ BDB::store_id2ino (const ID& id, int ino)
   Dbt ikey (&key[0], key.size());
   Dbt idata (&data[0], data.size());
 
-  int ret = db->put (NULL, &ikey, &idata, 0);
+  ret = db->put (NULL, &ikey, &idata, 0);
   assert (ret == 0);
 
-  key.clear();
-  data.clear();
+  return true;
+}
 
-  write_guint32 (key, ino);
-  write_table (key, BDB_TABLE_LOCAL_INO2ID);
+bool
+BDB::load_ino (const ID& id, ino_t& ino)
+{
+  Lock lock (mutex);
 
-  write_string (data, id.str());
+  vector<char> key;
 
-  Dbt rev_ikey (&key[0], key.size());
-  Dbt rev_idata (&data[0], data.size());
+  write_string (key, id.str());
+  write_table (key, BDB_TABLE_LOCAL_ID2INO);
 
-  ret = db->put (NULL, &rev_ikey, &rev_idata, 0);
-  assert (ret == 0);
+  Dbt ikey (&key[0], key.size());
+  Dbt idata;
+
+  if (db->get (NULL, &ikey, &idata, 0) != 0)
+    return false;
+
+  DataBuffer dbuffer ((char *) idata.get_data(), idata.get_size());
+
+  ino = dbuffer.read_uint32();
+  return true;
 }
 
 }
