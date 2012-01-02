@@ -11,6 +11,7 @@ sqlperf
 bfsyncfs
 bfsyncstat
 bftesthelper
+bfdbdump
 mnt
 test
 fs.log
