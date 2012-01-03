@@ -398,8 +398,6 @@ INode::load (const Context& ctx, const ID& id)
   return true;
 }
 
-vector<ino_t> INode::ino_pool;
-
 void
 INode::load_or_alloc_ino()
 {
@@ -415,12 +413,20 @@ INode::load_or_alloc_ino()
 void
 INode::alloc_ino()
 {
-  do
+  static int next_ino = 100 * 1000;
+
+  /*
+   * inode allocation tries to allocate inodes sequentially, this results in performance
+   * improvements when storing inodes (better locality); if sequential allocation fails
+   * we try to restart at some random point in inode space
+   */
+  while (!BDB::the()->try_store_id2ino (id, next_ino))
     {
       /* low inode numbers are reserved for .bfsync inodes */
-      ino = g_random_int_range (100 * 1000, 2 * 1000 * 1000 * 1000);  // 100000 .. ~ 2^31
+      next_ino = g_random_int_range (100 * 1000, 2 * 1000 * 1000 * 1000);  // 100000 .. ~ 2^31
     }
-  while (!BDB::the()->try_store_id2ino (id, ino));
+  ino = next_ino;
+  next_ino++;
 }
 
 string

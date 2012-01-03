@@ -47,6 +47,7 @@ public:
   DataBuffer (const char *ptr, size_t size);
 
   guint32     read_uint32();
+  guint32     read_uint32_be();
   std::string read_string();
   void        read_vec_zero (std::vector<char>& vec);
 };
@@ -61,6 +62,7 @@ public:
   void write_vec_zero (const std::vector<char>& data);
   void write_string (const std::string& s);
   void write_uint32 (guint32 i);
+  void write_uint32_be (guint32 i);
   void write_table (char table);
 };
 

@@ -116,6 +116,12 @@ DataOutBuffer::write_uint32 (guint32 i)
 }
 
 void
+DataOutBuffer::write_uint32_be (guint32 i)
+{
+  write_uint32 (GUINT32_TO_BE (i));
+}
+
+void
 DataOutBuffer::write_table (char table)
 {
   out.push_back (table);
@@ -294,6 +300,12 @@ DataBuffer::read_uint32()
   ptr += 4;
 
   return result;
+}
+
+guint32
+DataBuffer::read_uint32_be()
+{
+  return GUINT32_FROM_BE (read_uint32());
 }
 
 string
@@ -506,7 +518,7 @@ BDB::try_store_id2ino (const ID& id, int ino)
   DataOutBuffer dbuf (data);
 
   // lookup ino to check whether it is already used:
-  kbuf.write_uint32 (ino);
+  kbuf.write_uint32_be (ino);                  /* use big endian storage to make Berkeley DB sort entries properly */
   kbuf.write_table (BDB_TABLE_LOCAL_INO2ID);
 
   Dbt rev_ikey (&key[0], key.size());

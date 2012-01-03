@@ -162,7 +162,7 @@ main (int argc, char **argv)
         {
           DataBuffer kbuffer ((char *) key.get_data(), key.get_size());
 
-          int ino = kbuffer.read_uint32();
+          int ino = kbuffer.read_uint32_be();
           ID  id (dbuffer);
 
           ino2id.push_back (g_strdup_printf ("%d=%s", ino, id.pretty_str().c_str()));
@@ -176,7 +176,6 @@ main (int argc, char **argv)
       if (ret != 0)
         ret = dbcp->get (&key, &data, DB_NEXT);
     }
-
   printf ("\n");
   printf ("INodes:\n");
   printf ("=======\n\n");
