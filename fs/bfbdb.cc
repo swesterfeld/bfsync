@@ -87,6 +87,27 @@ bdb_close()
   return (ret == 0);
 }
 
+class DbcPtr // cursor smart-wrapper: automatically closes cursor in destructor
+{
+  Dbc *dbc;
+public:
+  DbcPtr()
+  {
+    int ret;
+    ret = bdb->get_db()->cursor (NULL, &dbc, 0);
+    assert (ret == 0);
+  }
+  ~DbcPtr()
+  {
+    dbc->close();
+  }
+  Dbc*
+  operator->()
+  {
+    return dbc;
+  }
+};
+
 DataOutBuffer::DataOutBuffer (vector<char>& out) :
   out (out)
 {
@@ -195,15 +216,10 @@ BDB::delete_links (const LinkVersionList& links)
   Dbt ldata;
 
 
-  /* Acquire a cursor for the database. */
-  Dbc *dbc;
-
-  int ret;
-  ret = db->cursor (NULL, &dbc, 0);
-  assert (ret == 0);
+  DbcPtr dbc; /* Acquire a cursor for the database. */
 
   // iterate over key elements and delete records which are in LinkVersionList
-  ret = dbc->get (&lkey, &ldata, DB_SET);
+  int ret = dbc->get (&lkey, &ldata, DB_SET);
   while (ret == 0)
     {
       vector<char> cursor_data ((char *) ldata.get_data(), (char *) ldata.get_data() + ldata.get_size());
@@ -215,8 +231,6 @@ BDB::delete_links (const LinkVersionList& links)
         }
       ret = dbc->get (&lkey, &ldata, DB_NEXT_DUP);
     }
-
-  dbc->close();
 }
 
 void
@@ -233,15 +247,10 @@ BDB::load_links (std::vector<Link*>& links, const ID& id, guint32 version)
   Dbt lkey (&key[0], key.size());
   Dbt ldata;
 
-  /* Acquire a cursor for the database. */
-  Dbc *dbc;
-
-  int ret;
-  ret = db->cursor (NULL, &dbc, 0);
-  assert (ret == 0);
+  DbcPtr dbc; /* Acquire a cursor for the database. */
 
   // iterate over key elements and delete records which are in LinkVersionList
-  ret = dbc->get (&lkey, &ldata, DB_SET);
+  int ret = dbc->get (&lkey, &ldata, DB_SET);
   while (ret == 0)
     {
       DataBuffer dbuffer ((char *) ldata.get_data(), ldata.get_size());
@@ -266,8 +275,6 @@ BDB::load_links (std::vector<Link*>& links, const ID& id, guint32 version)
         }
       ret = dbc->get (&lkey, &ldata, DB_NEXT_DUP);
     }
-
-  dbc->close();
 }
 
 Db*
@@ -421,15 +428,10 @@ BDB::delete_inodes (const INodeVersionList& inodes)
   Dbt idata;
 
 
-  /* Acquire a cursor for the database. */
-  Dbc *dbc;
-
-  int ret;
-  ret = db->cursor (NULL, &dbc, 0);
-  assert (ret == 0);
+  DbcPtr dbc; /* Acquire a cursor for the database. */
 
   // iterate over key elements and delete records which are in INodeVersionList
-  ret = dbc->get (&ikey, &idata, DB_SET);
+  int ret = dbc->get (&ikey, &idata, DB_SET);
   while (ret == 0)
     {
       DataBuffer dbuffer ((char *) idata.get_data(), idata.get_size());
@@ -449,8 +451,6 @@ BDB::delete_inodes (const INodeVersionList& inodes)
         }
       ret = dbc->get (&ikey, &idata, DB_NEXT_DUP);
     }
-
-  dbc->close();
 }
 
 bool
@@ -467,14 +467,9 @@ BDB::load_inode (const ID& id, int version, INode *inode)
   Dbt ikey (&key[0], key.size());
   Dbt idata;
 
-  /* Acquire a cursor for the database. */
-  Dbc *dbc;
+  DbcPtr dbc; /* Acquire a cursor for the database. */
 
-  int ret;
-  ret = db->cursor (NULL, &dbc, 0);
-  assert (ret == 0);
-
-  ret = dbc->get (&ikey, &idata, DB_SET);
+  int ret = dbc->get (&ikey, &idata, DB_SET);
   while (ret == 0)
     {
       DataBuffer dbuffer ((char *) idata.get_data(), idata.get_size());
