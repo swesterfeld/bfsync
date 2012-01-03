@@ -73,7 +73,7 @@ ID::pretty_str() const
 
   string prefix;
   for (size_t i = 0; i < path_prefix.size(); i++)
-    prefix += string_printf ("%02x", path_prefix[i]);
+    prefix += string_printf ("%02x", (unsigned char) path_prefix[i]);
 
   return prefix + "/" + buffer;
 }
