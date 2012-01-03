@@ -54,16 +54,37 @@ public:
 
 class DataOutBuffer
 {
-  std::vector<char>& out;
+  std::vector<char> out;
 
 public:
-  DataOutBuffer (std::vector<char>& out);
+  DataOutBuffer();
 
   void write_vec_zero (const std::vector<char>& data);
   void write_string (const std::string& s);
   void write_uint32 (guint32 i);
   void write_uint32_be (guint32 i);
   void write_table (char table);
+
+  char*
+  begin()
+  {
+    return &out[0];
+  }
+  size_t
+  size()
+  {
+    return out.size();
+  }
+  const std::vector<char>&
+  data() const
+  {
+    return out;
+  }
+  void
+  clear()
+  {
+    out.clear();
+  }
 };
 
 class BDB

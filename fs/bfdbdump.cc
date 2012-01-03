@@ -36,10 +36,7 @@ init (const string& filename)
       return 1;
     }
 
-  vector<char> key;
-  vector<char> data;
-
-  DataOutBuffer kbuf (key), dbuf (data);
+  DataOutBuffer kbuf, dbuf;
 
   ID root = ID::root();
   root.store (kbuf);
@@ -64,8 +61,8 @@ init (const string& filename)
   dbuf.write_uint32 (now); // mtime
   dbuf.write_uint32 (0);
 
-  Dbt ikey (&key[0], key.size());
-  Dbt idata (&data[0], data.size());
+  Dbt ikey (kbuf.begin(), kbuf.size());
+  Dbt idata (dbuf.begin(), dbuf.size());
 
   int ret = BDB::the()->get_db()->put (NULL, &ikey, &idata, 0);
   assert (ret == 0);

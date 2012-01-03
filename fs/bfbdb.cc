@@ -108,8 +108,7 @@ public:
   }
 };
 
-DataOutBuffer::DataOutBuffer (vector<char>& out) :
-  out (out)
+DataOutBuffer::DataOutBuffer()
 {
 }
 
@@ -149,10 +148,8 @@ DataOutBuffer::write_table (char table)
 }
 
 void
-write_link_data (vector<char>& out, const LinkPtr& lp)
+write_link_data (DataOutBuffer& db_out, const LinkPtr& lp)
 {
-  DataOutBuffer db_out (out);
-
   db_out.write_uint32 (lp->vmin);
   db_out.write_uint32 (lp->vmax);
   lp->inode_id.store (db_out);
@@ -164,18 +161,15 @@ BDB::store_link (const LinkPtr& lp)
 {
   Lock lock (mutex);
 
-  vector<char> key;
-  vector<char> data;
-
-  DataOutBuffer kbuf (key);
+  DataOutBuffer kbuf, dbuf;
 
   lp->dir_id.store (kbuf);
   kbuf.write_table (BDB_TABLE_LINKS);
 
-  write_link_data (data, lp);
+  write_link_data (dbuf, lp);
 
-  Dbt lkey (&key[0], key.size());
-  Dbt ldata (&data[0], data.size());
+  Dbt lkey (kbuf.begin(), kbuf.size());
+  Dbt ldata (dbuf.begin(), dbuf.size());
 
   int ret = db->put (NULL, &lkey, &ldata, 0);
   assert (ret == 0);
@@ -194,22 +188,20 @@ BDB::delete_links (const LinkVersionList& links)
 
   for (size_t i = 0; i < links.size(); i++)
     {
-      vector<char> data;
-      vector<char> key;
-      DataOutBuffer kbuf (key);
+      DataOutBuffer dbuf, kbuf;
 
       links[i]->dir_id.store (kbuf);
       kbuf.write_table (BDB_TABLE_LINKS);
       if (i == 0)
         {
-          all_key = key;
+          all_key = kbuf.data();
         }
       else
         {
-          assert (all_key == key); // all links should share the same key
+          assert (all_key == kbuf.data()); // all links should share the same key
         }
-      write_link_data (data, links[i]);
-      del_links.insert (data);
+      write_link_data (dbuf, links[i]);
+      del_links.insert (dbuf.data());
     }
 
   Dbt lkey (&all_key[0], all_key.size());
@@ -238,13 +230,12 @@ BDB::load_links (std::vector<Link*>& links, const ID& id, guint32 version)
 {
   Lock lock (mutex);
 
-  vector<char> key;
-  DataOutBuffer kbuf (key);
+  DataOutBuffer kbuf;
 
   id.store (kbuf);
   kbuf.write_table (BDB_TABLE_LINKS);
 
-  Dbt lkey (&key[0], key.size());
+  Dbt lkey (kbuf.begin(), kbuf.size());
   Dbt ldata;
 
   DbcPtr dbc; /* Acquire a cursor for the database. */
@@ -357,7 +348,7 @@ BDB::store_inode (const INode *inode)
   vector<char> key;
   vector<char> data;
 
-  DataOutBuffer kbuf (key), dbuf (data);
+  DataOutBuffer kbuf, dbuf;
 
   inode->id.store (kbuf);
   kbuf.write_table (BDB_TABLE_INODES);
@@ -379,8 +370,8 @@ BDB::store_inode (const INode *inode)
   dbuf.write_uint32 (inode->mtime);
   dbuf.write_uint32 (inode->mtime_ns);
 
-  Dbt ikey (&key[0], key.size());
-  Dbt idata (&data[0], data.size());
+  Dbt ikey (kbuf.begin(), kbuf.size());
+  Dbt idata (dbuf.begin(), dbuf.size());
 
   int ret = db->put (NULL, &ikey, &idata, 0);
   assert (ret == 0);
@@ -405,20 +396,17 @@ BDB::delete_inodes (const INodeVersionList& inodes)
 
   for (size_t i = 0; i < inodes.size(); i++)
     {
-      vector<char> data;
-      vector<char> key;
-
-      DataOutBuffer kbuf (key);
+      DataOutBuffer kbuf;
 
       inodes[i]->id.store (kbuf);
       kbuf.write_table (BDB_TABLE_INODES);
       if (i == 0)
         {
-          all_key = key;
+          all_key = kbuf.data();
         }
       else
         {
-          assert (all_key == key); // all inodes should share the same key
+          assert (all_key == kbuf.data()); // all inodes should share the same key
         }
       vmin_del.insert (inodes[i]->vmin);
       vmax_del.insert (inodes[i]->vmax);
@@ -458,13 +446,12 @@ BDB::load_inode (const ID& id, int version, INode *inode)
 {
   Lock lock (mutex);
 
-  vector<char> key;
-  DataOutBuffer kbuf (key);
+  DataOutBuffer kbuf;
 
   id.store (kbuf);
   kbuf.write_table (BDB_TABLE_INODES);
 
-  Dbt ikey (&key[0], key.size());
+  Dbt ikey (kbuf.begin(), kbuf.size());
   Dbt idata;
 
   DbcPtr dbc; /* Acquire a cursor for the database. */
@@ -506,17 +493,13 @@ BDB::try_store_id2ino (const ID& id, int ino)
 {
   Lock lock (mutex);
 
-  vector<char> key;
-  vector<char> data;
-
-  DataOutBuffer kbuf (key);
-  DataOutBuffer dbuf (data);
+  DataOutBuffer kbuf, dbuf;
 
   // lookup ino to check whether it is already used:
   kbuf.write_uint32_be (ino);                  /* use big endian storage to make Berkeley DB sort entries properly */
   kbuf.write_table (BDB_TABLE_LOCAL_INO2ID);
 
-  Dbt rev_ikey (&key[0], key.size());
+  Dbt rev_ikey (kbuf.begin(), kbuf.size());
   Dbt rev_lookup;
 
   int ret = db->get (NULL, &rev_ikey, &rev_lookup, 0);
@@ -525,13 +508,13 @@ BDB::try_store_id2ino (const ID& id, int ino)
 
   // add ino->id entry
   id.store (dbuf);
-  Dbt rev_idata (&data[0], data.size());
+  Dbt rev_idata (dbuf.begin(), dbuf.size());
 
   ret = db->put (NULL, &rev_ikey, &rev_idata, 0);
   assert (ret == 0);
 
-  key.clear();
-  data.clear();
+  kbuf.clear();
+  dbuf.clear();
 
   // add id->ino entry
   id.store (kbuf);
@@ -539,8 +522,8 @@ BDB::try_store_id2ino (const ID& id, int ino)
 
   dbuf.write_uint32 (ino);
 
-  Dbt ikey (&key[0], key.size());
-  Dbt idata (&data[0], data.size());
+  Dbt ikey (kbuf.begin(), kbuf.size());
+  Dbt idata (dbuf.begin(), dbuf.size());
 
   ret = db->put (NULL, &ikey, &idata, 0);
   assert (ret == 0);
@@ -553,13 +536,12 @@ BDB::load_ino (const ID& id, ino_t& ino)
 {
   Lock lock (mutex);
 
-  vector<char> key;
-  DataOutBuffer kbuf (key);
+  DataOutBuffer kbuf;
 
   id.store (kbuf);
   kbuf.write_table (BDB_TABLE_LOCAL_ID2INO);
 
-  Dbt ikey (&key[0], key.size());
+  Dbt ikey (kbuf.begin(), kbuf.size());
   Dbt idata;
 
   if (db->get (NULL, &ikey, &idata, 0) != 0)
