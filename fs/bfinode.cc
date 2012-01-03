@@ -25,7 +25,6 @@
 #include "bfsyncfs.hh"
 #include "bfleakdebugger.hh"
 #include "bflink.hh"
-#include "bfsql.hh"
 #include "bfbdb.hh"
 
 #include <set>
@@ -39,8 +38,7 @@ namespace BFSync {
 
 static INodeRepo *inode_repo = 0;
 
-INodeRepo::INodeRepo() :
-  m_sql_statements (0)
+INodeRepo::INodeRepo()
 {
   assert (!inode_repo);
 
@@ -72,18 +70,11 @@ INodeRepo::save_changes (SaveChangesMode sc)
 {
   Lock lock (mutex);
 
-  SQLStatement& addi_stmt = sql_statements().get
-   ("INSERT INTO local_inodes VALUES (?,?)");
-
-  double start_t = gettime();
-
   int inodes_saved = 0;
   for (map<ID, INodeVersionList>::iterator ci = cache.begin(); ci != cache.end(); ci++)
     {
       INodeVersionList& ivlist = ci->second;
       bool need_save = false;
-      const ID& id  = ci->first;
-      string id_str = id.str();
 
       for (size_t i = 0; i < ivlist.size(); i++)
         {
@@ -133,18 +124,6 @@ INodeRepo::save_changes (SaveChangesMode sc)
 }
 
 void
-INodeRepo::free_sql_statements()
-{
-  Lock lock (mutex);
-
-  if (m_sql_statements)
-    {
-      delete m_sql_statements;
-      m_sql_statements = 0;
-    }
-}
-
-void
 INodeRepo::delete_unused_inodes (DeleteMode dmode)
 {
   Lock lock (mutex);
@@ -174,11 +153,12 @@ INodeRepo::delete_unused_inodes (DeleteMode dmode)
             }
           if (del)
             {
-              cache.erase (ci);
-
               map<ID, INodeLinksPtr>::iterator lci = links_cache.find (id);
               if (lci != links_cache.end())
                 links_cache.erase (lci);
+
+              cache.erase (ci);
+              // do not access id after this point (deleted)
             }
         }
       ci = nexti;
@@ -228,12 +208,12 @@ INodePtr::INodePtr (const Context& ctx, const ID& id) :
     }
 }
 
-INodePtr::INodePtr (const Context& ctx)
+INodePtr::INodePtr (const Context& ctx, const char *path)
 {
   ptr = new INode();
   ptr->vmin = ctx.version;
   ptr->vmax = ctx.version;
-  ptr->id = ID::gen_new();
+  ptr->id = ID::gen_new (path);
   ptr->uid = ctx.fc->uid;
   ptr->gid = ctx.fc->gid;
   ptr->size = 0;
@@ -408,7 +388,7 @@ INode::load (const Context& ctx, const ID& id)
   links = cache_links;
 
   vector<Link*> load_links;
-  BDB::the()->load_links (load_links, id.str(), ctx.version);
+  BDB::the()->load_links (load_links, id, ctx.version);
 
   for (vector<Link*>::const_iterator li = load_links.begin(); li != load_links.end(); li++)
     links.update()->link_map[(*li)->name].add (LinkPtr (*li));

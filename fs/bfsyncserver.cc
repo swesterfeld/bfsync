@@ -332,12 +332,14 @@ Server::handle_client (int client_fd)
                   FSLock li_lock (FSLock::READ);
 
                   double t = gettime();
+#if 0 // FIXME: load all inodes
                   SQLStatement stmt ("SELECT * FROM inodes");
                   Context ctx;
                   while (stmt.step() == SQLITE_ROW)
                     {
                       INodePtr ptr (ctx, stmt.column_id (2));
                     }
+#endif
                   double te = gettime();
 
                   string msg = string_printf ("loading took %.2f ms", (te - t) * 1000);
@@ -410,6 +412,9 @@ Server::handle_client (int client_fd)
 bool
 Server::add_file (const string& id, const string& hash, string& error)
 {
+  error = "FIXME: port to new IDs";
+  return false;
+#if 0 // FIXME: port to new ids
   Context  ctx;
   INodePtr inode (ctx, id);
   if (!inode)
@@ -455,4 +460,5 @@ Server::add_file (const string& id, const string& hash, string& error)
       return false;
     }
   return true;
+#endif
 }

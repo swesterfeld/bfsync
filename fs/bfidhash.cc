@@ -18,45 +18,12 @@
 */
 
 #include "bfidhash.hh"
+#include "bfbdb.hh"
 #include <stdio.h>
 
 using std::string;
 
 namespace BFSync {
-
-static unsigned char
-hex_nibble (char c)
-{
-  int uc = (unsigned char)c;
-
-  if (uc >= '0' && uc <= '9') return uc - (unsigned char) '0';
-  if (uc >= 'a' && uc <= 'f') return uc + 10 - (unsigned char) 'a';
-  if (uc >= 'A' && uc <= 'F') return uc + 10 - (unsigned char) 'A';
-
-  return 16;      // error
-}
-
-static guint32
-hex2uint32 (const char *hex)
-{
-  return
-    (hex_nibble (hex[0]) << 28) + (hex_nibble (hex[1]) << 24) +
-    (hex_nibble (hex[2]) << 20) + (hex_nibble (hex[3]) << 16) +
-    (hex_nibble (hex[4]) << 12) + (hex_nibble (hex[5]) << 8) +
-    (hex_nibble (hex[6]) << 4)  + (hex_nibble (hex[7]));
-}
-
-ID::ID (const string& str)
-{
-  g_return_if_fail (str.size() == 40);
-
-  const char *sp = str.c_str();
-  a = hex2uint32 (sp);
-  b = hex2uint32 (sp + 8);
-  c = hex2uint32 (sp + 16);
-  d = hex2uint32 (sp + 24);
-  e = hex2uint32 (sp + 32);
-}
 
 static void
 uint32_hex (guint32 value, char *dest)
@@ -88,14 +55,44 @@ ID::str() const
   return buffer;
 }
 
+string
+ID::pretty_str() const
+{
+  char buffer[45];
+
+  uint32_hex (a, buffer);
+  buffer[8] = '-';
+  uint32_hex (b, buffer + 9);
+  buffer[17] = '-';
+  uint32_hex (c, buffer + 18);
+  buffer[26] = '-';
+  uint32_hex (d, buffer + 27);
+  buffer[35] = '-';
+  uint32_hex (e, buffer + 36);
+  buffer[44] = 0;
+
+  string prefix;
+  for (size_t i = 0; i < path_prefix.size(); i++)
+    prefix += string_printf ("%02x", path_prefix[i]);
+
+  return prefix + "/" + buffer;
+}
+
 ID::ID()
 {
 }
 
 ID
-ID::gen_new()
+ID::gen_new (const char *path)
 {
   ID result;
+
+  SplitPath sp (path);
+
+  const char *p;
+  while ((p = sp.next()))
+    result.path_prefix.push_back (g_str_hash (p) % 255 + 1);
+  result.path_prefix.pop_back();
 
   result.a = g_random_int();
   result.b = g_random_int();
@@ -118,6 +115,27 @@ ID::root()
   result.e = 0;
 
   return result;
+}
+
+void
+ID::store (DataOutBuffer& data_buf) const
+{
+  data_buf.write_vec_zero (path_prefix);
+  data_buf.write_uint32 (a);
+  data_buf.write_uint32 (b);
+  data_buf.write_uint32 (c);
+  data_buf.write_uint32 (d);
+  data_buf.write_uint32 (e);
+}
+
+ID::ID (DataBuffer& data_buf)
+{
+  data_buf.read_vec_zero (path_prefix);
+  a = data_buf.read_uint32();
+  b = data_buf.read_uint32();
+  c = data_buf.read_uint32();
+  d = data_buf.read_uint32();
+  e = data_buf.read_uint32();
 }
 
 }

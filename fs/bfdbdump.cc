@@ -28,8 +28,62 @@ using std::string;
 using std::vector;
 
 int
+init (const string& filename)
+{
+  if (!bdb_open (filename))
+    {
+      printf ("error opening db %s\n", filename.c_str());
+      return 1;
+    }
+
+  vector<char> key;
+  vector<char> data;
+
+  DataOutBuffer kbuf (key), dbuf (data);
+
+  ID root = ID::root();
+  root.store (kbuf);
+  kbuf.write_table (BDB_TABLE_INODES);
+
+  dbuf.write_uint32 (1); // vmin
+  dbuf.write_uint32 (1); // vmax
+  dbuf.write_uint32 (getuid());
+  dbuf.write_uint32 (getgid());
+  dbuf.write_uint32 (0775);
+  dbuf.write_uint32 (FILE_DIR);
+  dbuf.write_string ("");
+  dbuf.write_string ("");
+  dbuf.write_uint32 (0); // size
+  dbuf.write_uint32 (0); // major
+  dbuf.write_uint32 (0); // minor
+  dbuf.write_uint32 (1); // nlink
+
+  time_t now = time (NULL);
+  dbuf.write_uint32 (now); // ctime
+  dbuf.write_uint32 (0);
+  dbuf.write_uint32 (now); // mtime
+  dbuf.write_uint32 (0);
+
+  Dbt ikey (&key[0], key.size());
+  Dbt idata (&data[0], data.size());
+
+  int ret = BDB::the()->get_db()->put (NULL, &ikey, &idata, 0);
+  assert (ret == 0);
+
+  if (!bdb_close())
+    {
+      printf ("error closing db\n");
+      return 1;
+    }
+  return 0;
+}
+
+int
 main (int argc, char **argv)
 {
+  if (argc == 3 && strcmp (argv[1], "init") == 0)
+    return init (argv[2]);
+
   assert (argc == 2);
 
   if (!bdb_open (argv[1]))
@@ -57,17 +111,14 @@ main (int argc, char **argv)
   ret = dbcp->get (&key, &data, DB_FIRST);
   while (ret == 0)
     {
-      char xk[key.get_size() + 1];
-      memcpy (xk, (char *)key.get_data(), key.get_size());
-      xk[key.get_size()] = 0;
-
+      DataBuffer kbuffer ((char *) key.get_data(), key.get_size());
       DataBuffer dbuffer ((char *) data.get_data(), data.get_size());
 
-      char table = xk[key.get_size() - 1];
-      xk[key.get_size() - 1] = 0;
-
+      char table = ((char *) key.get_data()) [key.get_size() - 1];
       if (table == BDB_TABLE_INODES)
         {
+          ID  id (kbuffer);
+
           int vmin = dbuffer.read_uint32();
           int vmax = dbuffer.read_uint32();
           int uid = dbuffer.read_uint32();
@@ -86,32 +137,35 @@ main (int argc, char **argv)
           int mtime_ns = dbuffer.read_uint32();
 
           inodes.push_back (g_strdup_printf ("%s=%d|%d|%d|%d|%o|%d|%s|%s|%d|%d|%d|%d|%d|%d|%d|%d",
-                                             xk, vmin, vmax, uid, gid, mode, type, hash.c_str(), link.c_str(),
+                                             id.pretty_str().c_str(), vmin, vmax, uid, gid, mode, type, hash.c_str(), link.c_str(),
                                              size, major, minor, nlink, ctime, ctime_ns, mtime, mtime_ns));
         }
       else if (table == BDB_TABLE_LINKS)
         {
+          ID  id (kbuffer);
+
           int vmin = dbuffer.read_uint32();
           int vmax = dbuffer.read_uint32();
-          string inode_id = dbuffer.read_string();
+          ID  inode_id (dbuffer);
           string name = dbuffer.read_string();
 
-          links.push_back (g_strdup_printf ("%s=%d|%d|%s|%s", xk, vmin, vmax, inode_id.c_str(), name.c_str()));
+          links.push_back (g_strdup_printf ("%s=%d|%d|%s|%s", id.pretty_str().c_str(), vmin, vmax, inode_id.pretty_str().c_str(), name.c_str()));
         }
       else if (table == BDB_TABLE_LOCAL_ID2INO)
         {
+          ID  id (kbuffer);
           int ino = dbuffer.read_uint32();
 
-          id2ino.push_back (g_strdup_printf ("%s=%d", xk, ino));
+          id2ino.push_back (g_strdup_printf ("%s=%d", id.pretty_str().c_str(), ino));
         }
       else if (table == BDB_TABLE_LOCAL_INO2ID)
         {
           DataBuffer kbuffer ((char *) key.get_data(), key.get_size());
 
-          int   ino = kbuffer.read_uint32();
-          string id = dbuffer.read_string();
+          int ino = kbuffer.read_uint32();
+          ID  id (dbuffer);
 
-          ino2id.push_back (g_strdup_printf ("%d=%s", ino, id.c_str()));
+          ino2id.push_back (g_strdup_printf ("%d=%s", ino, id.pretty_str().c_str()));
         }
       else
         {

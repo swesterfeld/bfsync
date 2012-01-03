@@ -22,19 +22,31 @@
 
 #include <glib.h>
 #include <string>
+#include <vector>
 
 namespace BFSync
 {
 
+class DataBuffer;
+class DataOutBuffer;
+
 struct ID
 {
+  std::vector<char> path_prefix;
   guint32 a, b, c, d, e;
 
   ID();
-  ID (const std::string& str);
-  std::string str() const;
+  ID (const ID& id);
+  ID (DataBuffer& dbuf);
 
-  static ID gen_new();
+  ID& operator= (const ID& id);
+
+  std::string str() const;
+  std::string pretty_str() const;
+
+  void store (DataOutBuffer& data_buf) const;
+
+  static ID gen_new (const char *path);
   static ID root();
 };
 
@@ -53,13 +65,41 @@ operator< (const ID& x, const ID& y)
   if (x.d != y.d)
     return x.d < y.d;
 
-  return x.e < y.e;
+  if (x.e != y.e)
+    return x.e < y.e;
+
+  // for in-memory order, locality doesn't matter much, so we compare path_prefix as
+  // last (not first) step
+  return x.path_prefix < y.path_prefix;
 }
 
 inline bool
 operator== (const ID& x, const ID& y)
 {
-  return (x.a == y.a) && (x.b == y.b) && (x.c == y.c) && (x.d == y.d) && (x.e == y.e);
+  return (x.a == y.a) && (x.b == y.b) && (x.c == y.c) && (x.d == y.d) && (x.e == y.e) && (x.path_prefix == y.path_prefix);
+}
+
+inline ID::ID (const ID& id) :
+  path_prefix (id.path_prefix),
+  a (id.a),
+  b (id.b),
+  c (id.c),
+  d (id.d),
+  e (id.e)
+{
+}
+
+inline ID&
+ID::operator= (const ID& id)
+{
+  path_prefix = id.path_prefix;
+  a = id.a;
+  b = id.b;
+  c = id.c;
+  d = id.d;
+  e = id.e;
+
+  return *this;
 }
 
 }

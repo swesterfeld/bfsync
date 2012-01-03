@@ -48,6 +48,20 @@ public:
 
   guint32     read_uint32();
   std::string read_string();
+  void        read_vec_zero (std::vector<char>& vec);
+};
+
+class DataOutBuffer
+{
+  std::vector<char>& out;
+
+public:
+  DataOutBuffer (std::vector<char>& out);
+
+  void write_vec_zero (const std::vector<char>& data);
+  void write_string (const std::string& s);
+  void write_uint32 (guint32 i);
+  void write_table (char table);
 };
 
 class BDB
@@ -61,7 +75,7 @@ public:
 
   void  store_link (const LinkPtr& link);
   void  delete_links (const LinkVersionList& links);
-  void  load_links (std::vector<Link*>& links, const std::string& id, guint32 version);
+  void  load_links (std::vector<Link*>& links, const ID& id, guint32 version);
 
   void  store_inode (const INode *inode);
   void  delete_inodes (const INodeVersionList& inodes);

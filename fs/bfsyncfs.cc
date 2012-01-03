@@ -24,7 +24,6 @@
 #include "bfhistory.hh"
 #include "bfcfgparser.hh"
 #include "bfbdb.hh"
-#include <sqlite3.h>
 
 #include <sys/time.h>
 #include <fuse.h>
@@ -824,7 +823,7 @@ bfsync_mknod (const char *path_arg, mode_t mode, dev_t dev)
   if (!dir_inode->search_perm_ok (ctx) || !dir_inode->write_perm_ok (ctx))
     return -EACCES;
 
-  INodePtr inode (ctx);  // create new inode
+  INodePtr inode (ctx, path_arg);  // create new inode
 
   inode.update()->mode = mode & ~S_IFMT;
 
@@ -1112,7 +1111,7 @@ bfsync_mkdir (const char *path_arg, mode_t mode)
   if (!inode_dir->write_perm_ok (ctx))
     return -EACCES;
 
-  INodePtr inode (ctx);  // create new inode
+  INodePtr inode (ctx, path_arg);  // create new inode
 
   inode.update()->type = FILE_DIR;
   inode.update()->mode = mode;
@@ -1282,7 +1281,7 @@ bfsync_symlink (const char *from_arg, const char *to_arg)
   if (check_to)
     return -EEXIST;
 
-  INodePtr inode (ctx);
+  INodePtr inode (ctx, to_arg);
   inode.update()->mode = 0777;
   inode.update()->type = FILE_SYMLINK;
   inode.update()->link = from;
@@ -1528,44 +1527,21 @@ bfsyncfs_main (int argc, char **argv)
   my_argv[my_argc] = NULL;
 
 
-  string db_path = options.repo_path + "/db";
-  int rc = sqlite_open (db_path);
-  if (rc != SQLITE_OK)
-    {
-      printf ("bfsyncfs: error opening db: %d\n", rc);
-      return 1;
-    }
   string bdb_path = options.repo_path + "/bdb";
   if (!bdb_open (bdb_path))
     {
-      printf ("bfsyncfs: error opening bdb: %d\n", rc);
+      printf ("bfsyncfs: error opening bdb\n");
       return 1;
     }
   History::the()->read();
-
-  if (!Options::the()->sqlite_sync)
-    {
-      SQLStatement st ("PRAGMA synchronous=off");
-      st.step();
-      if (!st.success())
-        {
-          printf ("bfsyncfs: can't set db in synchronous=off mode\n");
-          return 1;
-        }
-    }
 
   INodeRepo inode_repo;
 
   int fuse_rc = fuse_main (my_argc, my_argv, &bfsync_oper, NULL);
 
   inode_repo.save_changes();
-  inode_repo.free_sql_statements();
   inode_repo.delete_unused_inodes (INodeRepo::DM_ALL);
 
-  if (sqlite3_close (sqlite_db()) != SQLITE_OK)
-    {
-      printf ("bfsyncfs: can't close db\n");
-    }
   if (!bdb_close())
     {
       printf ("bfsyncfs: can't close bdb\n");

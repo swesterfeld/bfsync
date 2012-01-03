@@ -19,7 +19,6 @@
 
 #include "bfhistory.hh"
 #include "bfsyncfs.hh"
-#include "bfsql.hh"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -52,6 +51,11 @@ History::all_versions()
 void
 History::read()
 {
+  m_all_versions.clear();
+  m_all_versions.push_back (1);
+  m_current_version = 1;
+
+#if 0 // FIXME: move history table to BDB
   SQLStatement stmt ("SELECT * FROM history");
 
   m_current_version = -1;
@@ -71,6 +75,7 @@ History::read()
       exit (1);
     }
   debug ("current version is %d\n", m_current_version);
+#endif
 }
 
 }

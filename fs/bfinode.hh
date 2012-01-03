@@ -24,7 +24,6 @@
 #include <vector>
 #include <map>
 
-#include "bfsql.hh"
 #include "bfsyncfs.hh"
 #include "bfidhash.hh"
 
@@ -48,7 +47,7 @@ class INodePtr
   INode *ptr;
 public:
   INodePtr (const Context& ctx, const ID& id);
-  INodePtr (const Context& ctx);
+  INodePtr (const Context& ctx, const char *path);
   INodePtr (INode *inode = NULL);  // == null()
   ~INodePtr();
 
@@ -263,28 +262,16 @@ public:
 
 class INodeRepo
 {
-private:
-  SQLStatementStore              *m_sql_statements;
 public:
   std::map<ID, INodeVersionList>  cache;
   std::map<ino_t, ID>             new_inodes;
   std::map<ID, INodeLinksPtr>     links_cache;
   Mutex                           mutex;
 
-  SQLStatementStore&
-  sql_statements()
-  {
-    if (!m_sql_statements)
-      m_sql_statements = new SQLStatementStore();
-
-    return *m_sql_statements;
-  }
-
   enum SaveChangesMode { SC_NORMAL, SC_CLEAR_CACHE };
 
   void save_changes (SaveChangesMode sc = SC_NORMAL);
   void clear_cache();
-  void free_sql_statements();
 
   enum DeleteMode { DM_ALL, DM_SOME };
   void delete_unused_inodes (DeleteMode dmode);

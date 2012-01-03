@@ -87,15 +87,27 @@ bdb_close()
   return (ret == 0);
 }
 
+DataOutBuffer::DataOutBuffer (vector<char>& out) :
+  out (out)
+{
+}
+
 void
-write_string (vector<char>& out, const string& s)
+DataOutBuffer::write_string (const string& s)
 {
   out.insert (out.end(), s.begin(), s.end());
   out.push_back (0);
 }
 
 void
-write_guint32 (vector<char>& out, guint32 i)
+DataOutBuffer::write_vec_zero (const std::vector<char>& data)
+{
+  out.insert (out.end(), data.begin(), data.end());
+  out.push_back (0);
+}
+
+void
+DataOutBuffer::write_uint32 (guint32 i)
 {
   char *s = reinterpret_cast <char *> (&i);
   assert (sizeof (guint32) == 4);
@@ -104,7 +116,7 @@ write_guint32 (vector<char>& out, guint32 i)
 }
 
 void
-write_table (vector<char>& out, char table)
+DataOutBuffer::write_table (char table)
 {
   out.push_back (table);
 }
@@ -112,10 +124,12 @@ write_table (vector<char>& out, char table)
 void
 write_link_data (vector<char>& out, const LinkPtr& lp)
 {
-  write_guint32 (out, lp->vmin);
-  write_guint32 (out, lp->vmax);
-  write_string (out, lp->inode_id.str());
-  write_string (out, lp->name);
+  DataOutBuffer db_out (out);
+
+  db_out.write_uint32 (lp->vmin);
+  db_out.write_uint32 (lp->vmax);
+  lp->inode_id.store (db_out);
+  db_out.write_string (lp->name);
 }
 
 void
@@ -126,8 +140,10 @@ BDB::store_link (const LinkPtr& lp)
   vector<char> key;
   vector<char> data;
 
-  write_string (key, lp->dir_id.str());
-  write_table (key, BDB_TABLE_LINKS);
+  DataOutBuffer kbuf (key);
+
+  lp->dir_id.store (kbuf);
+  kbuf.write_table (BDB_TABLE_LINKS);
 
   write_link_data (data, lp);
 
@@ -153,9 +169,10 @@ BDB::delete_links (const LinkVersionList& links)
     {
       vector<char> data;
       vector<char> key;
+      DataOutBuffer kbuf (key);
 
-      write_string (key, links[i]->dir_id.str());
-      write_table (key, BDB_TABLE_LINKS);
+      links[i]->dir_id.store (kbuf);
+      kbuf.write_table (BDB_TABLE_LINKS);
       if (i == 0)
         {
           all_key = key;
@@ -197,14 +214,15 @@ BDB::delete_links (const LinkVersionList& links)
 }
 
 void
-BDB::load_links (std::vector<Link*>& links, const std::string& id, guint32 version)
+BDB::load_links (std::vector<Link*>& links, const ID& id, guint32 version)
 {
   Lock lock (mutex);
 
   vector<char> key;
+  DataOutBuffer kbuf (key);
 
-  write_string (key, id);
-  write_table (key, BDB_TABLE_LINKS);
+  id.store (kbuf);
+  kbuf.write_table (BDB_TABLE_LINKS);
 
   Dbt lkey (&key[0], key.size());
   Dbt ldata;
@@ -222,9 +240,9 @@ BDB::load_links (std::vector<Link*>& links, const std::string& id, guint32 versi
     {
       DataBuffer dbuffer ((char *) ldata.get_data(), ldata.get_size());
 
-      int vmin = dbuffer.read_uint32();
-      int vmax = dbuffer.read_uint32();
-      string inode_id = dbuffer.read_string();
+      guint32 vmin = dbuffer.read_uint32();
+      guint32 vmax = dbuffer.read_uint32();
+      ID inode_id (dbuffer);
       string name = dbuffer.read_string();
 
       if (version >= vmin && version <= vmax)
@@ -297,6 +315,22 @@ DataBuffer::read_string()
 }
 
 void
+DataBuffer::read_vec_zero (vector<char>& vec)
+{
+  while (remaining)
+    {
+      char c = *ptr++;
+      remaining--;
+
+      if (c == 0)
+        return;
+      else
+        vec.push_back (c);
+    }
+  assert (false);
+}
+
+void
 BDB::store_inode (const INode *inode)
 {
   Lock lock (mutex);
@@ -304,25 +338,27 @@ BDB::store_inode (const INode *inode)
   vector<char> key;
   vector<char> data;
 
-  write_string (key, inode->id.str());
-  write_table (key, BDB_TABLE_INODES);
+  DataOutBuffer kbuf (key), dbuf (data);
 
-  write_guint32 (data, inode->vmin);
-  write_guint32 (data, inode->vmax);
-  write_guint32 (data, inode->uid);
-  write_guint32 (data, inode->gid);
-  write_guint32 (data, inode->mode);
-  write_guint32 (data, inode->type);
-  write_string  (data, inode->hash);
-  write_string  (data, inode->link);
-  write_guint32 (data, inode->size);
-  write_guint32 (data, inode->major);
-  write_guint32 (data, inode->minor);
-  write_guint32 (data, inode->nlink);
-  write_guint32 (data, inode->ctime);
-  write_guint32 (data, inode->ctime_ns);
-  write_guint32 (data, inode->mtime);
-  write_guint32 (data, inode->mtime_ns);
+  inode->id.store (kbuf);
+  kbuf.write_table (BDB_TABLE_INODES);
+
+  dbuf.write_uint32 (inode->vmin);
+  dbuf.write_uint32 (inode->vmax);
+  dbuf.write_uint32 (inode->uid);
+  dbuf.write_uint32 (inode->gid);
+  dbuf.write_uint32 (inode->mode);
+  dbuf.write_uint32 (inode->type);
+  dbuf.write_string (inode->hash);
+  dbuf.write_string (inode->link);
+  dbuf.write_uint32 (inode->size);
+  dbuf.write_uint32 (inode->major);
+  dbuf.write_uint32 (inode->minor);
+  dbuf.write_uint32 (inode->nlink);
+  dbuf.write_uint32 (inode->ctime);
+  dbuf.write_uint32 (inode->ctime_ns);
+  dbuf.write_uint32 (inode->mtime);
+  dbuf.write_uint32 (inode->mtime_ns);
 
   Dbt ikey (&key[0], key.size());
   Dbt idata (&data[0], data.size());
@@ -353,8 +389,10 @@ BDB::delete_inodes (const INodeVersionList& inodes)
       vector<char> data;
       vector<char> key;
 
-      write_string (key, inodes[i]->id.str());
-      write_table (key, BDB_TABLE_INODES);
+      DataOutBuffer kbuf (key);
+
+      inodes[i]->id.store (kbuf);
+      kbuf.write_table (BDB_TABLE_INODES);
       if (i == 0)
         {
           all_key = key;
@@ -409,9 +447,10 @@ BDB::load_inode (const ID& id, int version, INode *inode)
   Lock lock (mutex);
 
   vector<char> key;
+  DataOutBuffer kbuf (key);
 
-  write_string (key, id.str());
-  write_table (key, BDB_TABLE_INODES);
+  id.store (kbuf);
+  kbuf.write_table (BDB_TABLE_INODES);
 
   Dbt ikey (&key[0], key.size());
   Dbt idata;
@@ -463,9 +502,12 @@ BDB::try_store_id2ino (const ID& id, int ino)
   vector<char> key;
   vector<char> data;
 
+  DataOutBuffer kbuf (key);
+  DataOutBuffer dbuf (data);
+
   // lookup ino to check whether it is already used:
-  write_guint32 (key, ino);
-  write_table (key, BDB_TABLE_LOCAL_INO2ID);
+  kbuf.write_uint32 (ino);
+  kbuf.write_table (BDB_TABLE_LOCAL_INO2ID);
 
   Dbt rev_ikey (&key[0], key.size());
   Dbt rev_lookup;
@@ -475,7 +517,7 @@ BDB::try_store_id2ino (const ID& id, int ino)
     return false;
 
   // add ino->id entry
-  write_string (data, id.str());
+  id.store (dbuf);
   Dbt rev_idata (&data[0], data.size());
 
   ret = db->put (NULL, &rev_ikey, &rev_idata, 0);
@@ -485,10 +527,10 @@ BDB::try_store_id2ino (const ID& id, int ino)
   data.clear();
 
   // add id->ino entry
-  write_string (key, id.str());
-  write_table (key, BDB_TABLE_LOCAL_ID2INO);
+  id.store (kbuf);
+  kbuf.write_table (BDB_TABLE_LOCAL_ID2INO);
 
-  write_guint32 (data, ino);
+  dbuf.write_uint32 (ino);
 
   Dbt ikey (&key[0], key.size());
   Dbt idata (&data[0], data.size());
@@ -505,9 +547,10 @@ BDB::load_ino (const ID& id, ino_t& ino)
   Lock lock (mutex);
 
   vector<char> key;
+  DataOutBuffer kbuf (key);
 
-  write_string (key, id.str());
-  write_table (key, BDB_TABLE_LOCAL_ID2INO);
+  id.store (kbuf);
+  kbuf.write_table (BDB_TABLE_LOCAL_ID2INO);
 
   Dbt ikey (&key[0], key.size());
   Dbt idata;

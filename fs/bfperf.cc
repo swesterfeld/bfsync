@@ -107,8 +107,13 @@ perf_id()
 {
   vector<ID> ids;
 
-  for (size_t i = 0; i < 300000; i++)   // 300000 ~= crude estimate for average files on a linux system
-    ids.push_back (ID::gen_new());
+  for (size_t dir = 0; dir < 3000; dir++)
+    {
+      string dir_str = string_printf ("/dir%zd/foo", dir);
+
+      for (size_t i = 0; i < 100; i++)   // 300000 ~= crude estimate for average files on a linux system
+        ids.push_back (ID::gen_new (dir_str.c_str()));
+    }
 
   map<ID,int> id_map;
   for (size_t i = 0; i < ids.size(); i++)
@@ -134,7 +139,7 @@ perf_id_hash()
   vector<ID> ids;
 
   for (size_t i = 0; i < 300000; i++)   // 300000 ~= crude estimate for average files on a linux system
-    ids.push_back (ID::gen_new());
+    ids.push_back (ID::gen_new ("/foo/par"));
 
   vector< vector<ID> > hmap (49999); // prime
   for (size_t i = 0; i < ids.size(); i++)
