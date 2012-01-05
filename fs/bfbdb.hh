@@ -21,6 +21,7 @@
 #define BFSYNC_BDB_HH
 
 #include <string>
+#include <map>
 #include <db_cxx.h>
 #include "bfinode.hh"
 
@@ -97,7 +98,7 @@ public:
   Db*   get_db();
 
   void  store_link (const LinkPtr& link);
-  void  delete_links (const LinkVersionList& links);
+  void  delete_links (const std::map<std::string, LinkVersionList>& links);
   void  load_links (std::vector<Link*>& links, const ID& id, guint32 version);
 
   void  store_inode (const INode *inode);

@@ -664,11 +664,8 @@ bool
 INodeLinks::save()
 {
   // delete links that were (possibly) modified
-  for (map<string, LinkVersionList>::const_iterator li = link_map.begin(); li != link_map.end(); li++)
-    {
-      const LinkVersionList& lvlist = li->second;
-      BDB::the()->delete_links (lvlist);
-    }
+  BDB::the()->delete_links (link_map);
+
   // re-write links
   for (map<string, LinkVersionList>::const_iterator li = link_map.begin(); li != link_map.end(); li++)
     {

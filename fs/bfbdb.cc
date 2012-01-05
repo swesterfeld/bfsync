@@ -28,6 +28,7 @@
 using std::string;
 using std::vector;
 using std::set;
+using std::map;
 
 namespace BFSync
 {
@@ -176,33 +177,37 @@ BDB::store_link (const LinkPtr& lp)
 }
 
 void
-BDB::delete_links (const LinkVersionList& links)
+BDB::delete_links (const map<string, LinkVersionList>& link_map)
 {
   Lock lock (mutex);
-
-  if (links.size() == 0) /* nothing to do? */
-    return;
 
   set< vector<char> > del_links;
   vector<char> all_key;
 
-  for (size_t i = 0; i < links.size(); i++)
+  for (map<string, LinkVersionList>::const_iterator mapi = link_map.begin(); mapi != link_map.end(); mapi++)
     {
-      DataOutBuffer dbuf, kbuf;
+      const LinkVersionList& links = mapi->second;
+      for (size_t i = 0; i < links.size(); i++)
+        {
+          DataOutBuffer dbuf, kbuf;
 
-      links[i]->dir_id.store (kbuf);
-      kbuf.write_table (BDB_TABLE_LINKS);
-      if (i == 0)
-        {
-          all_key = kbuf.data();
+          links[i]->dir_id.store (kbuf);
+          kbuf.write_table (BDB_TABLE_LINKS);
+          if (i == 0)
+            {
+              all_key = kbuf.data();
+            }
+          else
+            {
+              assert (all_key == kbuf.data()); // all links should share the same key
+            }
+          write_link_data (dbuf, links[i]);
+          del_links.insert (dbuf.data());
         }
-      else
-        {
-          assert (all_key == kbuf.data()); // all links should share the same key
-        }
-      write_link_data (dbuf, links[i]);
-      del_links.insert (dbuf.data());
     }
+
+  if (del_links.size() == 0)
+    return;
 
   Dbt lkey (&all_key[0], all_key.size());
   Dbt ldata;
