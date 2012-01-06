@@ -90,6 +90,7 @@ bdb_close()
 
 DataOutBuffer::DataOutBuffer()
 {
+  out.reserve (256);   // should be enough for most cases (avoids reallocs)
 }
 
 void
