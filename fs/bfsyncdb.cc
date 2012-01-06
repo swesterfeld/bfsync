@@ -7,6 +7,7 @@ using BFSync::DbcPtr;
 using BFSync::BDB_TABLE_INODES;
 using BFSync::BDB_TABLE_LINKS;
 
+using std::string;
 using std::vector;
 
 int
@@ -132,4 +133,32 @@ load_links (const ID *id, int version)
       ret = dbc->get (&lkey, &ldata, DB_NEXT_DUP);
     }
   return result;
+}
+
+void
+do_walk (const ID& id, const string& prefix = "")
+{
+  INode *inode = load_inode (&id, 1);
+  if (inode)
+    {
+      if (inode->type == BFSync::FILE_DIR)
+        {
+          vector<Link> *links = load_links (&id, 1);
+          for (vector<Link>::iterator li = links->begin(); li != links->end(); li++)
+            {
+              printf ("%s/%s\n", prefix.c_str(), li->name.c_str());
+              do_walk (li->inode_id, prefix + "/" + li->name);
+            }
+          delete links;
+        }
+      delete inode;
+    }
+}
+
+void
+walk()
+{
+  ID *root = id_root();
+  do_walk (*root);
+  delete root;
 }
