@@ -23,6 +23,7 @@
 #include <string>
 #include <map>
 #include <db_cxx.h>
+#include <assert.h>
 #include "bfinode.hh"
 
 namespace BFSync
@@ -107,6 +108,27 @@ public:
 
   bool  try_store_id2ino (const ID& id, int ino);
   bool  load_ino (const ID& id, ino_t& ino);
+};
+
+class DbcPtr // cursor smart-wrapper: automatically closes cursor in destructor
+{
+  Dbc *dbc;
+public:
+  DbcPtr()
+  {
+    int ret;
+    ret = BDB::the()->get_db()->cursor (NULL, &dbc, 0);
+    assert (ret == 0);
+  }
+  ~DbcPtr()
+  {
+    dbc->close();
+  }
+  Dbc*
+  operator->()
+  {
+    return dbc;
+  }
 };
 
 }

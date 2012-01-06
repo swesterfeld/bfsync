@@ -88,27 +88,6 @@ bdb_close()
   return (ret == 0);
 }
 
-class DbcPtr // cursor smart-wrapper: automatically closes cursor in destructor
-{
-  Dbc *dbc;
-public:
-  DbcPtr()
-  {
-    int ret;
-    ret = bdb->get_db()->cursor (NULL, &dbc, 0);
-    assert (ret == 0);
-  }
-  ~DbcPtr()
-  {
-    dbc->close();
-  }
-  Dbc*
-  operator->()
-  {
-    return dbc;
-  }
-};
-
 DataOutBuffer::DataOutBuffer()
 {
 }
