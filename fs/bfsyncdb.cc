@@ -5,6 +5,9 @@ using BFSync::DataOutBuffer;
 using BFSync::DataBuffer;
 using BFSync::DbcPtr;
 using BFSync::BDB_TABLE_INODES;
+using BFSync::BDB_TABLE_LINKS;
+
+using std::vector;
 
 int
 foo()
@@ -22,6 +25,17 @@ id_store (const ID *id, DataOutBuffer& data_buf)
   data_buf.write_uint32 (id->c);
   data_buf.write_uint32 (id->d);
   data_buf.write_uint32 (id->e);
+}
+
+void
+id_load (ID *id, DataBuffer& dbuf)
+{
+  id->path_prefix = dbuf.read_string();
+  id->a = dbuf.read_uint32();
+  id->b = dbuf.read_uint32();
+  id->c = dbuf.read_uint32();
+  id->d = dbuf.read_uint32();
+  id->e = dbuf.read_uint32();
 }
 
 INode*
@@ -48,7 +62,7 @@ load_inode (const ID *id, int version)
 
       if (version >= inode->vmin && version <= inode->vmax)
         {
-          // inode->id   = id;
+          inode->id   = *id;
           inode->uid  = dbuffer.read_uint32();
           inode->gid  = dbuffer.read_uint32();
           inode->mode = dbuffer.read_uint32();
@@ -77,4 +91,45 @@ id_root()
   ID *id = new ID();
   id->a = id->b = id->c = id->d = id->e = 0;
   return id;
+}
+
+std::vector<Link>*
+load_links (const ID *id, int version)
+{
+  vector<Link>* result = new vector<Link>;
+
+  DataOutBuffer kbuf;
+
+  id_store (id, kbuf);
+  kbuf.write_table (BDB_TABLE_LINKS);
+
+  Dbt lkey (kbuf.begin(), kbuf.size());
+  Dbt ldata;
+
+  DbcPtr dbc; /* Acquire a cursor for the database. */
+
+  // iterate over key elements and delete records which are in LinkVersionList
+  int ret = dbc->get (&lkey, &ldata, DB_SET);
+  while (ret == 0)
+    {
+      DataBuffer dbuffer ((char *) ldata.get_data(), ldata.get_size());
+
+      guint32 vmin = dbuffer.read_uint32();
+      guint32 vmax = dbuffer.read_uint32();
+
+      if (version >= vmin && version <= vmax)
+        {
+          Link l;
+
+          l.vmin = vmin;
+          l.vmax = vmax;
+          l.dir_id = *id;
+          id_load (&l.inode_id, dbuffer);
+          l.name = dbuffer.read_string();
+
+          result->push_back (l);
+        }
+      ret = dbc->get (&lkey, &ldata, DB_NEXT_DUP);
+    }
+  return result;
 }
