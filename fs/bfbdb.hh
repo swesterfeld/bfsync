@@ -34,7 +34,8 @@ enum BDBTables
   BDB_TABLE_INODES        = 1,
   BDB_TABLE_LINKS         = 2,
   BDB_TABLE_LOCAL_ID2INO  = 3,
-  BDB_TABLE_LOCAL_INO2ID  = 4
+  BDB_TABLE_LOCAL_INO2ID  = 4,
+  BDB_TABLE_HISTORY       = 5
 };
 
 bool bdb_open (const std::string& path);
@@ -89,6 +90,15 @@ public:
   }
 };
 
+struct HistoryEntry
+{
+  int         version;
+  std::string hash;
+  std::string author;
+  std::string message;
+  int         time;
+};
+
 class BDB
 {
 public:
@@ -108,6 +118,10 @@ public:
 
   bool  try_store_id2ino (const ID& id, int ino);
   bool  load_ino (const ID& id, ino_t& ino);
+
+  bool  load_history_entry (int version, HistoryEntry& entry);
+  void  store_history_entry (int version, const HistoryEntry& entry);
+  void  delete_history_entry (int version);
 };
 
 class DbcPtr // cursor smart-wrapper: automatically closes cursor in destructor

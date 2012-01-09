@@ -100,7 +100,7 @@ main (int argc, char **argv)
       return 1;
     }
 
-  vector<char *> links, inodes, id2ino, ino2id;
+  vector<char *> links, inodes, id2ino, ino2id, history;
 
   Dbt key;
   Dbt data;
@@ -164,6 +164,15 @@ main (int argc, char **argv)
 
           ino2id.push_back (g_strdup_printf ("%d=%s", ino, id.pretty_str().c_str()));
         }
+      else if (table == BDB_TABLE_HISTORY)
+        {
+          DataBuffer kbuffer ((char *) key.get_data(), key.get_size());
+          int version = kbuffer.read_uint32_be();
+          HistoryEntry he;
+          BDB::the()->load_history_entry (version, he);
+          history.push_back (g_strdup_printf ("%d=%s|%s|%s|%d", version,
+                                              he.hash.c_str(), he.author.c_str(), he.message.c_str(), he.time));
+        }
       else
         {
           printf ("unknown record type\n");
@@ -198,6 +207,13 @@ main (int argc, char **argv)
 
   for (size_t i = 0; i < ino2id.size(); i++)
     printf ("%s\n", ino2id[i]);
+
+  printf ("\n");
+  printf ("History:\n");
+  printf ("=======\n\n");
+
+  for (size_t i = 0; i < history.size(); i++)
+    printf ("%s\n", history[i]);
 
   printf ("\n");
 

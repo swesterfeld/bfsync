@@ -538,4 +538,83 @@ BDB::load_ino (const ID& id, ino_t& ino)
   return true;
 }
 
+void
+BDB::store_history_entry (int version, const HistoryEntry& he)
+{
+  assert (version == he.version);
+
+  delete_history_entry (version);
+
+  Lock lock (mutex);
+
+  DataOutBuffer kbuf, dbuf;
+
+  kbuf.write_uint32_be (version);        /* use big endian storage to make Berkeley DB sort entries properly */
+  kbuf.write_table (BDB_TABLE_HISTORY);
+
+  dbuf.write_string (he.hash);
+  dbuf.write_string (he.author);
+  dbuf.write_string (he.message);
+  dbuf.write_uint32 (he.time);
+
+  Dbt hkey (kbuf.begin(), kbuf.size());
+  Dbt hdata (dbuf.begin(), dbuf.size());
+
+  int ret = db->put (NULL, &hkey, &hdata, 0);
+  assert (ret == 0);
+}
+
+bool
+BDB::load_history_entry (int version, HistoryEntry& he)
+{
+  Lock lock (mutex);
+
+  DataOutBuffer kbuf;
+
+  kbuf.write_uint32_be (version);        /* use big endian storage to make Berkeley DB sort entries properly */
+  kbuf.write_table (BDB_TABLE_HISTORY);
+
+  Dbt hkey (kbuf.begin(), kbuf.size());
+  Dbt hdata;
+
+  if (db->get (NULL, &hkey, &hdata, 0) != 0)
+    return false;
+
+  DataBuffer dbuffer ((char *) hdata.get_data(), hdata.get_size());
+
+  he.version = version;
+  he.hash = dbuffer.read_string();
+  he.author = dbuffer.read_string();
+  he.message = dbuffer.read_string();
+  he.time = dbuffer.read_uint32();
+
+  return true;
+}
+
+void
+BDB::delete_history_entry (int version)
+{
+  Lock lock (mutex);
+
+  DataOutBuffer kbuf;
+
+  kbuf.write_uint32_be (version);        /* use big endian storage to make Berkeley DB sort entries properly */
+  kbuf.write_table (BDB_TABLE_HISTORY);
+
+  Dbt hkey (kbuf.begin(), kbuf.size());
+  Dbt hdata;
+
+  DbcPtr dbc;
+
+  // iterate over key elements and delete records which are in LinkVersionList
+  int ret = dbc->get (&hkey, &hdata, DB_SET);
+  while (ret == 0)
+    {
+      ret = dbc->del (0);
+      assert (ret == 0);
+
+      ret = dbc->get (&hkey, &hdata, DB_NEXT_DUP);
+    }
+}
+
 }

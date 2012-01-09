@@ -31,11 +31,17 @@ struct Link {
   std::string name;
 };
 
-extern int                foo();
+extern bool               open_db();
+extern void               close_db();
 extern INode             *load_inode (const ID *id, int version);
 extern ID*                id_root();
 extern std::vector<Link> *load_links (const ID *id, int version);
 extern void               walk();
+extern void               store_history_entry (int version,
+                                               const std::string& hash,
+                                               const std::string& author,
+                                               const std::string& msg,
+                                               int time);
 
 class DiffGenerator
 {

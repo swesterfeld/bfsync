@@ -7,16 +7,23 @@ using BFSync::DbcPtr;
 using BFSync::BDB_TABLE_INODES;
 using BFSync::BDB_TABLE_LINKS;
 using BFSync::string_printf;
+using BFSync::BDB;
+using BFSync::HistoryEntry;
 
 using std::string;
 using std::vector;
 using std::map;
 
-int
-foo()
+bool
+open_db()
 {
-  BFSync::bdb_open ("test/bdb");
-  return 42;
+  return BFSync::bdb_open ("test/bdb");
+}
+
+void
+close_db()
+{
+  BFSync::bdb_close();
 }
 
 void
@@ -300,4 +307,18 @@ DiffGenerator::get_next()
     {
       return NULL;
     }
+}
+
+void
+store_history_entry (int version, const string& hash, const string& author, const string& message, int time)
+{
+  HistoryEntry he;
+
+  he.version = version;
+  he.hash    = hash;
+  he.author  = author;
+  he.message = message;
+  he.time    = time;
+
+  BDB::the()->store_history_entry (version, he);
 }
