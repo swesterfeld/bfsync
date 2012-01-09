@@ -31,7 +31,7 @@ struct Link {
   std::string name;
 };
 
-extern bool               open_db();
+extern bool               open_db (const std::string& db);
 extern void               close_db();
 extern INode             *load_inode (const ID *id, int version);
 extern ID*                id_root();

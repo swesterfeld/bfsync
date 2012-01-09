@@ -15,9 +15,9 @@ using std::vector;
 using std::map;
 
 bool
-open_db()
+open_db (const string& db)
 {
-  return BFSync::bdb_open ("test/bdb");
+  return BFSync::bdb_open (db);
 }
 
 void
