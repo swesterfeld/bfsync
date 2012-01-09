@@ -169,9 +169,7 @@ main (int argc, char **argv)
           printf ("unknown record type\n");
         }
 
-      ret = dbcp->get (&key, &data, DB_NEXT_DUP);
-      if (ret != 0)
-        ret = dbcp->get (&key, &data, DB_NEXT);
+      ret = dbcp->get (&key, &data, DB_NEXT);
     }
   printf ("\n");
   printf ("INodes:\n");
