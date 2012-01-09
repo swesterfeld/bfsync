@@ -6,6 +6,7 @@ AC_CONFIG_SRCDIR([fs/bfsyncfs.cc])
 AC_CONFIG_HEADER([config.h])
 AC_PROG_CXX
 AC_PROG_LIBTOOL
+AC_PATH_PROG(PYTHON, python)
 
 dnl
 dnl glib
