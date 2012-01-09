@@ -1,4 +1,5 @@
 #include "glib.h"
+#include "bfbdb.hh"
 #include <string>
 #include <vector>
 
@@ -35,3 +36,21 @@ extern INode             *load_inode (const ID *id, int version);
 extern ID*                id_root();
 extern std::vector<Link> *load_links (const ID *id, int version);
 extern void               walk();
+
+class DiffGenerator
+{
+  BFSync::DbcPtr dbc;
+
+  Dbt key;
+  Dbt data;
+
+  int dbc_ret;
+
+  unsigned int v_old, v_new;
+  std::vector< std::vector<std::string>* > diffs;
+public:
+  DiffGenerator (unsigned int v_old, unsigned int v_new);
+  ~DiffGenerator();
+
+  std::vector<std::string> *get_next();
+};

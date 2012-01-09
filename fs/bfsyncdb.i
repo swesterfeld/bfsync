@@ -9,6 +9,7 @@
 
 // Instantiate templates used
 namespace std {
+   %template(StringVector) vector<string>;
    %template(LinkVector) vector<Link>;
    %template(INodeVector) vector<INode>;
 }
