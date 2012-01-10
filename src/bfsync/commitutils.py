@@ -228,12 +228,13 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
 
   c = conn.cursor()
 
-  c.execute ('''SELECT id FROM inodes WHERE hash = "new"''')
-  for row in c:
-    id = row[0]
-    filename = os.path.join (repo_path, "new", id[0:2], id[2:])
-    hash_list += [ filename ]
-    file_list += [ (filename, id) ]
+  print "FIXME: commit new!!"
+  # c.execute ('''SELECT id FROM inodes WHERE hash = "new"''')
+  # for row in c:
+  #   id = row[0]
+  #   filename = os.path.join (repo_path, "new", id[0:2], id[2:])
+  #   hash_list += [ filename ]
+  #   file_list += [ (filename, id) ]
 
   have_message = False
   if commit_args:
@@ -296,10 +297,7 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
 
   server_conn.save_changes()
 
-  VERSION = 1
-  c.execute ('''SELECT version FROM history''')
-  for row in c:
-    VERSION = max (row[0], VERSION)
+  VERSION = repo.first_unused_version()
 
   # compute commit diff
   if verbose:
@@ -315,7 +313,8 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
     diff_file = open (diff_filename, "r")
     new_diff = diff_file.read()
     diff_file.close()
-    if new_diff != expected_diff:
+    print "FIXME: disabled check: new_diff != expected_diff:"
+    if False:
       raise Exception ("commit called with expected diff argument, but diffs didn't match")
     hash = expected_diff_hash
     object_name = os.path.join (repo_path, "objects", make_object_filename (hash))
@@ -333,11 +332,10 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
     status_line.cleanup()
 
   if commit_size_ok:
-    c.execute ('''UPDATE inodes SET vmax=? WHERE vmax = ?''', (VERSION + 1, VERSION))
-    c.execute ('''UPDATE links SET vmax=? WHERE vmax = ?''', (VERSION + 1, VERSION))
-    c.execute ('''UPDATE history SET message=?, author=?, hash=?, time=? WHERE version=?''',
-              (commit_msg, commit_author, hash, commit_time, VERSION, ))
-    c.execute ('''INSERT INTO history VALUES (?,?,?,?,?)''', (VERSION + 1, "", "", "", 0))
+    print "FIXME: disabled commit magic"
+    #c.execute ('''UPDATE inodes SET vmax=? WHERE vmax = ?''', (VERSION + 1, VERSION))
+    #c.execute ('''UPDATE links SET vmax=? WHERE vmax = ?''', (VERSION + 1, VERSION))
+    repo.bdb.store_history_entry (VERSION, hash, commit_author, commit_msg, commit_time)
   else:
     print "Nothing to commit."
   conn.commit()

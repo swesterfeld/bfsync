@@ -96,6 +96,8 @@ def get_n_entries (c, version_a, version_b):
   return 0
 
 def diff (c, version_a, version_b, outfile):
+  print "FIXME: disabled diff version %d to %d" % (version_a, version_b)
+  return
   change_list = []
 
   n_entries = get_n_entries (c, version_a, version_b)

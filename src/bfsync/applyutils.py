@@ -18,10 +18,12 @@
 from utils import parse_diff
 from commitutils import commit
 import os
+import bfsyncdb
 
 class ApplyTool:
-  def __init__ (self, c, VERSION):
+  def __init__ (self, c, bdb, VERSION):
     self.c = c
+    self.bdb = bdb
     self.VERSION = VERSION
 
   def detach_link (self, description, dir_id, name):
@@ -79,10 +81,17 @@ class ApplyTool:
     self.apply_link_plus (row)
 
   def apply_inode_plus (self, row):
-    self.c.execute ("""INSERT INTO inodes VALUES (?, ?, ?, ?, ?,
-                                                  ?, ?, ?, ?, ?,
-                                                  ?, ?, ?, ?, ?,
-                                                  ?, ?)""", tuple ([self.VERSION, self.VERSION] + row))
+    print "create inode FIXME: %s" % row
+    inode = bfsyncdb.INode()
+    inode.vmin = self.VERSION
+    inode.vmax = self.VERSION
+    inode.uid  = int (row[0])
+    inode.gid  = int (row[0])
+    self.bdb.store_inode (inode)
+    # self.c.execute ("""INSERT INTO inodes VALUES (?, ?, ?, ?, ?,
+                                                  # ?, ?, ?, ?, ?,
+                                                  # ?, ?, ?, ?, ?,
+                                                  # ?, ?)""", tuple ([self.VERSION, self.VERSION] + row))
 
   def apply_inode_minus (self, row):
     id = row[0]
@@ -113,12 +122,9 @@ def apply (repo, diff, expected_hash = None, server = True, verbose = True, comm
 
   c = conn.cursor()
 
-  VERSION = 1
-  c.execute ('''SELECT version FROM history''')
-  for row in c:
-    VERSION = max (row[0], VERSION)
+  VERSION = repo.first_unused_version()
 
-  apply_tool = ApplyTool (c, VERSION)
+  apply_tool = ApplyTool (c, repo.bdb, VERSION)
 
   for change in changes:
     if change[0] == "l+":

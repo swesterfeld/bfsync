@@ -376,14 +376,6 @@ def cmd_init():
   repo = cd_repo_connect_db()
   conn = repo.conn
   c = conn.cursor()
-  c.execute ('''CREATE TABLE history
-                 (
-                   version integer,
-                   hash    text,
-                   author  text,
-                   message text,
-                   time    integer
-                 )''')
   # and temp_files table
   c.execute ('''CREATE TABLE temp_files
                  (

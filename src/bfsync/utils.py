@@ -116,6 +116,17 @@ class Repo:
     self.conn.commit()
     return tmp_file.name
 
+  def first_unused_version (self):
+    version = 1
+    while True:
+      hentry = self.bdb.load_history_entry (version)
+      if not hentry.valid:
+        break
+
+      version += 1
+    # => return the first version not present in history
+    return version
+
 def cd_repo_connect_db():
   repo_path = find_repo_dir()
   bfsync_info = parse_config (repo_path + "/config")

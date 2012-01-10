@@ -922,17 +922,20 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
   diff_rewriter.show_changes()
 
 def check_uncommitted_changes (repo):
-  conn = repo.conn
-  c = conn.cursor()
+  return False
 
-  VERSION = 1
-  c.execute ('''SELECT version FROM history''')
-  for row in c:
-    VERSION = max (row[0], VERSION)
-  c.execute ('''SELECT COUNT (*) FROM inodes WHERE vmin=%d AND vmax=%d''' % (VERSION, VERSION))
-  for row in c:
-    if row[0] > 0:
-      return True
+  # FIXME
+  # conn = repo.conn
+  # c = conn.cursor()
+
+  # VERSION = 1
+  # c.execute ('''SELECT version FROM history''')
+  # for row in c:
+  #   VERSION = max (row[0], VERSION)
+  # c.execute ('''SELECT COUNT (*) FROM inodes WHERE vmin=%d AND vmax=%d''' % (VERSION, VERSION))
+  # for row in c:
+  #   if row[0] > 0:
+  #     return True
 
   c.execute ('''SELECT COUNT (*) FROM links WHERE vmin=%d AND vmax=%d''' % (VERSION, VERSION))
   for row in c:
@@ -970,12 +973,25 @@ def pull (repo, args, server = True):
   remote_repo = RemoteRepo (url)
   remote_history = remote_repo.get_history()
 
-  c = conn.cursor()
-  c.execute ('''SELECT * FROM history WHERE hash != '' ORDER BY version''')
-
   local_history = []
-  for row in c:
+
+  # c.execute ('''SELECT * FROM history WHERE hash != '' ORDER BY version''')
+  # local_history = []
+  # for row in c:
+  #   local_history += [ row ]
+
+  VERSION = 1
+  while True:
+    hentry = repo.bdb.load_history_entry (VERSION)
+    VERSION += 1
+
+    if not hentry.valid:
+      break
+
+    row = (hentry.version, hentry.hash, hentry.author, hentry.message, hentry.time)
     local_history += [ row ]
+
+  c = conn.cursor()
 
   l_dict = dict()     # dict: version number -> diff hash
   for lh in local_history:

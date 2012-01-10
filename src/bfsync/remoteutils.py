@@ -71,12 +71,19 @@ def remote_update_history (repo, delta_history):
     return "ok"
 
 def remote_history (repo):
-  conn = repo.conn
-  c = conn.cursor()
-  c.execute ('''SELECT * FROM history WHERE hash != '' ORDER BY version''')
   hlist = []
-  for row in c:
+
+  VERSION = 1
+  while True:
+    hentry = repo.bdb.load_history_entry (VERSION)
+    VERSION += 1
+
+    if not hentry.valid:
+      break
+
+    row = (hentry.version, hentry.hash, hentry.author, hentry.message, hentry.time)
     hlist += [ row ]
+
   return hlist
 
 def remote_need_objects (repo, table):
