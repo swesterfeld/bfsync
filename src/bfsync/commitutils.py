@@ -114,6 +114,8 @@ def gen_status (repo):
   conn = repo.conn
   c = conn.cursor()
 
+  return [ "FIXME" ]
+
   VERSION = 1
   c.execute ('''SELECT version FROM history''')
   for row in c:
@@ -195,10 +197,7 @@ def init_commit_msg (repo, filename):
   conn = repo.conn
   c = conn.cursor()
 
-  VERSION = 1
-  c.execute ('''SELECT version FROM history''')
-  for row in c:
-    VERSION = max (row[0], VERSION)
+  VERSION = repo.first_unused_version()
 
   msg_file = open (filename, "w")
   msg_file.write ("\n# commit version %d\n#\n" % VERSION)
