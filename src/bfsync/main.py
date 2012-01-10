@@ -392,7 +392,7 @@ def cmd_init():
     "%d" % os.getuid(), # uid
     "%d" % os.getgid(), # gid
     "%d" % 0755,        # mode
-    "dir",              # type
+    "3",                # type
     "", "", "0", "0", "0", "1",
     "%d" % time_now, "0", # ctime
     "%d" % time_now, "0"  # mtime

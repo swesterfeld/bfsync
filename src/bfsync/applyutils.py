@@ -85,8 +85,20 @@ class ApplyTool:
     inode = bfsyncdb.INode()
     inode.vmin = self.VERSION
     inode.vmax = self.VERSION
-    inode.uid  = int (row[0])
-    inode.gid  = int (row[0])
+    inode.uid  = int (row[1])
+    inode.gid  = int (row[2])
+    inode.mode  = int (row[3])
+    inode.type  = int (row[4])
+    inode.hash  = row[5]
+    inode.link  = row[6]
+    inode.size  = int (row[7])
+    inode.major  = int (row[8])
+    inode.minor  = int (row[9])
+    inode.nlink  = int (row[10])
+    inode.ctime  = int (row[11])
+    inode.ctime_ns  = int (row[12])
+    inode.mtime  = int (row[13])
+    inode.mtime_ns  = int (row[14])
     self.bdb.store_inode (inode)
     # self.c.execute ("""INSERT INTO inodes VALUES (?, ?, ?, ?, ?,
                                                   # ?, ?, ?, ?, ?,
