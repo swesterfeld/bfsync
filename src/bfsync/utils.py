@@ -18,6 +18,7 @@
 import os
 import sqlite3
 import CfgParser
+import bfsyncdb
 from tempfile import NamedTemporaryFile
 
 def format_size (size, total_size):
@@ -132,6 +133,7 @@ def cd_repo_connect_db():
 
   repo = Repo()
   repo.conn = sqlite3.connect (os.path.join (repo_path, 'db'))
+  repo.bdb = bfsyncdb.open_db (os.path.join (repo_path, 'bdb'))
   repo.conn.text_factory = str;
   repo.path = repo_path
   repo.config = bfsync_info

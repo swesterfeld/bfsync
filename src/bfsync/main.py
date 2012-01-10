@@ -410,7 +410,7 @@ def cmd_init():
   hash = move_file_to_objects (repo, "init-diff.xz")
 
   # create initial history entry
-  c.execute ("""INSERT INTO history VALUES (1, ?, "no author", "initial commit", ?)""", (hash, time_now))
+  repo.bdb.store_history_entry (1, hash, "no author", "initial commit", time_now)
   conn.commit()
 
 def guess_dir_name (url):
