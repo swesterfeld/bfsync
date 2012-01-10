@@ -319,9 +319,6 @@ BDB::store_inode (const INode *inode)
 {
   Lock lock (mutex);
 
-  vector<char> key;
-  vector<char> data;
-
   DataOutBuffer kbuf, dbuf;
 
   inode->id.store (kbuf);
