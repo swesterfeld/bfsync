@@ -90,6 +90,7 @@ public:
   ~BDBPtr();
 
   INode             *load_inode (const ID *id, int version);
+  void               store_inode (const INode *inode);
   std::vector<Link> *load_links (const ID *id, int version);
   void               walk();
   void               store_history_entry (int version,

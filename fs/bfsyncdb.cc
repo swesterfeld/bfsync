@@ -99,6 +99,38 @@ BDBPtr::load_inode (const ID *id, int version)
   return NULL;
 }
 
+void
+BDBPtr::store_inode (const INode* inode)
+{
+  DataOutBuffer kbuf, dbuf;
+
+  id_store (&inode->id, kbuf);
+  kbuf.write_table (BDB_TABLE_INODES);
+
+  dbuf.write_uint32 (inode->vmin);
+  dbuf.write_uint32 (inode->vmax);
+  dbuf.write_uint32 (inode->uid);
+  dbuf.write_uint32 (inode->gid);
+  dbuf.write_uint32 (inode->mode);
+  dbuf.write_uint32 (inode->type);
+  dbuf.write_string (inode->hash);
+  dbuf.write_string (inode->link);
+  dbuf.write_uint32 (inode->size);
+  dbuf.write_uint32 (inode->major);
+  dbuf.write_uint32 (inode->minor);
+  dbuf.write_uint32 (inode->nlink);
+  dbuf.write_uint32 (inode->ctime);
+  dbuf.write_uint32 (inode->ctime_ns);
+  dbuf.write_uint32 (inode->mtime);
+  dbuf.write_uint32 (inode->mtime_ns);
+
+  Dbt ikey (kbuf.begin(), kbuf.size());
+  Dbt idata (dbuf.begin(), dbuf.size());
+
+  int ret = ptr->my_bdb->get_db()->put (NULL, &ikey, &idata, 0);
+  assert (ret == 0);
+}
+
 ID*
 id_root()
 {
