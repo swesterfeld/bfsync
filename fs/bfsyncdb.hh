@@ -31,6 +31,17 @@ struct Link {
   std::string name;
 };
 
+struct HistoryEntry
+{
+  bool          valid;
+
+  unsigned int  version;
+  std::string   hash;
+  std::string   author;
+  std::string   message;
+  unsigned int  time;
+};
+
 class BDBWrapper
 {
   unsigned int ref_count;
@@ -86,6 +97,7 @@ public:
                                           const std::string& author,
                                           const std::string& msg,
                                           int time);
+  HistoryEntry       load_history_entry (int version);
   void               close();
 
   BFSync::BDB*

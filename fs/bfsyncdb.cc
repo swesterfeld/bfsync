@@ -7,7 +7,6 @@ using BFSync::DbcPtr;
 using BFSync::BDB_TABLE_INODES;
 using BFSync::BDB_TABLE_LINKS;
 using BFSync::string_printf;
-using BFSync::HistoryEntry;
 
 using std::string;
 using std::vector;
@@ -317,7 +316,7 @@ DiffGenerator::get_next()
 void
 BDBPtr::store_history_entry (int version, const string& hash, const string& author, const string& message, int time)
 {
-  HistoryEntry he;
+  BFSync::HistoryEntry he;
 
   he.version = version;
   he.hash    = hash;
@@ -326,6 +325,31 @@ BDBPtr::store_history_entry (int version, const string& hash, const string& auth
   he.time    = time;
 
   ptr->my_bdb->store_history_entry (version, he);
+}
+
+HistoryEntry
+BDBPtr::load_history_entry (int version)
+{
+  BFSync::HistoryEntry he;
+  HistoryEntry result;
+
+  if (ptr->my_bdb->load_history_entry (version, he))
+    {
+      result.valid      = true;
+      result.version    = he.version;
+      result.hash       = he.hash;
+      result.author     = he.author;
+      result.message    = he.message;
+      result.time       = he.time;
+    }
+  else
+    {
+      result.valid      = false;
+
+      result.version = result.time = 0;
+      result.hash = result.author = result.message = "";
+    }
+  return result;
 }
 
 /* refcounting BDB wrapper */

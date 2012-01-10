@@ -204,24 +204,28 @@ def cmd_log():
   conn = repo.conn
   repo_path = repo.path
 
-  c = conn.cursor()
-  c.execute ('''SELECT * FROM history WHERE hash != '' ORDER BY version''')
-  for row in c:
-    version = row[0]
-    hash    = row[1]
-    author  = row[2]
-    msg     = row[3]
-    time    = row[4]
+  VERSION = 1
+  while True:
+    hentry = repo.bdb.load_history_entry (VERSION)
+    VERSION += 1
 
-    if msg != "":
-      msg = msg.strip()
-      print "-" * 80
-      print "%4d   Hash   %s" % (version, hash)
-      print "       Author %s" % author
-      print "       Date   %s" % datetime.datetime.fromtimestamp (time).strftime ("%F %H:%M:%S")
-      print
-      for line in msg.split ("\n"):
-        print "       %s" % line
+    if not hentry.valid:
+      break
+
+    version = hentry.version
+    hash    = hentry.hash
+    author  = hentry.author
+    msg     = hentry.message
+    time    = hentry.time
+
+    msg = msg.strip()
+    print "-" * 80
+    print "%4d   Hash   %s" % (version, hash)
+    print "       Author %s" % author
+    print "       Date   %s" % datetime.datetime.fromtimestamp (time).strftime ("%F %H:%M:%S")
+    print
+    for line in msg.split ("\n"):
+      print "       %s" % line
   print "-" * 80
 
 def cmd_status():
