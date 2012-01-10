@@ -121,10 +121,10 @@ class DiffGenerator
 
   BDBPtr bdb_ptr;
   unsigned int v_old, v_new;
-  std::vector< std::vector<std::string>* > diffs;
+  std::vector< std::vector<std::string> > diffs;
 public:
   DiffGenerator (BDBPtr bdb_ptr, unsigned int v_old, unsigned int v_new);
   ~DiffGenerator();
 
-  std::vector<std::string> *get_next();
+  std::vector<std::string> get_next();
 };

@@ -388,7 +388,7 @@ def cmd_init():
   time_now = int (time.time())
   change_list = [
     "i+",
-    "0" * 40,           # id (root inode)
+    "/" + "0" * 40,     # id (root inode)
     "%d" % os.getuid(), # uid
     "%d" % os.getgid(), # gid
     "%d" % 0755,        # mode

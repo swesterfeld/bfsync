@@ -304,7 +304,7 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
 
   diff_filename = repo.make_temp_name()
   diff_file = open (diff_filename, "w")
-  diff (c, VERSION - 1, VERSION, diff_file)
+  diff (repo, VERSION - 1, VERSION, diff_file)
   diff_file.close()
 
   commit_size_ok = True
@@ -312,8 +312,7 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
     diff_file = open (diff_filename, "r")
     new_diff = diff_file.read()
     diff_file.close()
-    print "FIXME: disabled check: new_diff != expected_diff:"
-    if False:
+    if new_diff != expected_diff:
       raise Exception ("commit called with expected diff argument, but diffs didn't match")
     hash = expected_diff_hash
     object_name = os.path.join (repo_path, "objects", make_object_filename (hash))

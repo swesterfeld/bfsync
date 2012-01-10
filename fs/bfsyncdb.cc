@@ -216,11 +216,6 @@ DiffGenerator::DiffGenerator (BDBPtr bdb_ptr, unsigned int v_old, unsigned int v
 
 DiffGenerator::~DiffGenerator()
 {
-  while (!diffs.empty())
-    {
-      delete diffs.back();
-      diffs.pop_back();
-    }
 }
 
 void
@@ -245,41 +240,41 @@ print_id (const ID& id)
   return result;
 }
 
-vector<string> *
+vector<string>
 gen_iplus (INode *inode)
 {
-  vector<string> *result = new vector<string>;
-  result->push_back ("i+");
-  result->push_back (print_id (inode->id));
-  result->push_back (string_printf ("%u", inode->uid));
-  result->push_back (string_printf ("%u", inode->gid));
-  result->push_back (string_printf ("%u", inode->mode));
-  result->push_back (string_printf ("%u", inode->type));
-  result->push_back (inode->hash);
-  result->push_back (inode->link);
-  result->push_back (string_printf ("%u", inode->size));
-  result->push_back (string_printf ("%u", inode->major));
-  result->push_back (string_printf ("%u", inode->minor));
-  result->push_back (string_printf ("%u", inode->nlink));
-  result->push_back (string_printf ("%u", inode->ctime));
-  result->push_back (string_printf ("%u", inode->ctime_ns));
-  result->push_back (string_printf ("%u", inode->mtime));
-  result->push_back (string_printf ("%u", inode->mtime_ns));
+  vector<string> result;
+  result.push_back ("i+");
+  result.push_back (print_id (inode->id));
+  result.push_back (string_printf ("%u", inode->uid));
+  result.push_back (string_printf ("%u", inode->gid));
+  result.push_back (string_printf ("%u", inode->mode));
+  result.push_back (string_printf ("%u", inode->type));
+  result.push_back (inode->hash);
+  result.push_back (inode->link);
+  result.push_back (string_printf ("%u", inode->size));
+  result.push_back (string_printf ("%u", inode->major));
+  result.push_back (string_printf ("%u", inode->minor));
+  result.push_back (string_printf ("%u", inode->nlink));
+  result.push_back (string_printf ("%u", inode->ctime));
+  result.push_back (string_printf ("%u", inode->ctime_ns));
+  result.push_back (string_printf ("%u", inode->mtime));
+  result.push_back (string_printf ("%u", inode->mtime_ns));
   return result;
 }
 
-vector<string> *
+vector<string>
 gen_lplus (const Link *link)
 {
-  vector<string> *result = new vector<string>;
-  result->push_back ("l+");
-  result->push_back (print_id (link->dir_id));
-  result->push_back (link->name);
-  result->push_back (print_id (link->inode_id));
+  vector<string> result;
+  result.push_back ("l+");
+  result.push_back (print_id (link->dir_id));
+  result.push_back (link->name);
+  result.push_back (print_id (link->inode_id));
   return result;
 }
 
-vector<string> *
+vector<string>
 DiffGenerator::get_next()
 {
   while (dbc_ret == 0 && diffs.empty())
@@ -335,13 +330,13 @@ DiffGenerator::get_next()
     }
   if (!diffs.empty())
     {
-      vector<string> *d = diffs.back();
+      vector<string> d = diffs.back();
       diffs.pop_back();
       return d;
     }
   else
     {
-      return NULL;
+      return vector<string>();
     }
 }
 
