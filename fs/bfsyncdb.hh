@@ -31,12 +31,52 @@ struct Link {
   std::string name;
 };
 
-class BDB {
+class BDBWrapper
+{
+  unsigned int ref_count;
+  BFSync::Mutex ref_mutex;
 public:
-  BFSync::BDB *my_bdb;
+  BDBWrapper();
+  ~BDBWrapper();
 
-  BDB (BFSync::BDB *bdb);
-  ~BDB();
+  BFSync::BDB  *my_bdb;
+
+  void
+  ref()
+  {
+    BFSync::Lock lock (ref_mutex);
+
+    g_return_if_fail (ref_count > 0);
+    ref_count++;
+  }
+
+  void
+  unref()
+  {
+    BFSync::Lock lock (ref_mutex);
+
+    g_return_if_fail (ref_count > 0);
+    ref_count--;
+  }
+
+  bool
+  has_zero_refs()
+  {
+    BFSync::Lock lock (ref_mutex);
+
+    return ref_count == 0;
+  }
+};
+
+class BDBPtr {
+  BDBWrapper *ptr;
+
+public:
+  BDBPtr (BDBWrapper *wrapper = NULL);
+  BDBPtr (const BDBPtr& other);
+  BDBPtr& operator= (const BDBPtr& other);
+
+  ~BDBPtr();
 
   INode             *load_inode (const ID *id, int version);
   std::vector<Link> *load_links (const ID *id, int version);
@@ -47,9 +87,15 @@ public:
                                           const std::string& msg,
                                           int time);
   void               close();
+
+  BFSync::BDB*
+  get_bdb()
+  {
+    return ptr->my_bdb;
+  }
 };
 
-extern BDB               *open_db (const std::string& db);
+extern BDBPtr             open_db (const std::string& db);
 extern ID*                id_root();
 class DiffGenerator
 {
@@ -60,11 +106,11 @@ class DiffGenerator
 
   int dbc_ret;
 
-  BDB *bdb;
+  BDBPtr bdb_ptr;
   unsigned int v_old, v_new;
   std::vector< std::vector<std::string>* > diffs;
 public:
-  DiffGenerator (BDB *bdb, unsigned int v_old, unsigned int v_new);
+  DiffGenerator (BDBPtr bdb_ptr, unsigned int v_old, unsigned int v_new);
   ~DiffGenerator();
 
   std::vector<std::string> *get_next();

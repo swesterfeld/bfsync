@@ -13,36 +13,22 @@ using std::string;
 using std::vector;
 using std::map;
 
-BDB*
+BDBPtr
 open_db (const string& db)
 {
   BFSync::BDB *bdb = BFSync::bdb_open (db);
 
-  if (bdb)
-    return new BDB (bdb);
-  else
-    return NULL;
-}
+  BDBWrapper *wrapper = new BDBWrapper;
+  wrapper->my_bdb = bdb;
 
-BDB::BDB (BFSync::BDB *bdb) :
-  my_bdb (bdb)
-{
-  printf ("BDB");
-}
-
-BDB::~BDB()
-{
-  printf ("~BDB");
-  if (my_bdb)
-    my_bdb->close();
-  my_bdb = NULL;
+  return BDBPtr (wrapper);
 }
 
 void
-BDB::close()
+BDBPtr::close()
 {
-  my_bdb->close();
-  my_bdb = NULL;
+  ptr->my_bdb->close();
+  ptr->my_bdb = NULL;
 }
 
 void
@@ -68,7 +54,7 @@ id_load (ID *id, DataBuffer& dbuf)
 }
 
 INode*
-BDB::load_inode (const ID *id, int version)
+BDBPtr::load_inode (const ID *id, int version)
 {
   INode *inode = new INode();
   DataOutBuffer kbuf;
@@ -79,7 +65,7 @@ BDB::load_inode (const ID *id, int version)
   Dbt ikey (kbuf.begin(), kbuf.size());
   Dbt idata;
 
-  DbcPtr dbc (my_bdb); /* Acquire a cursor for the database. */
+  DbcPtr dbc (ptr->my_bdb); /* Acquire a cursor for the database. */
 
   int ret = dbc->get (&ikey, &idata, DB_SET);
   while (ret == 0)
@@ -123,7 +109,7 @@ id_root()
 }
 
 std::vector<Link>*
-BDB::load_links (const ID *id, int version)
+BDBPtr::load_links (const ID *id, int version)
 {
   vector<Link>* result = new vector<Link>;
 
@@ -135,7 +121,7 @@ BDB::load_links (const ID *id, int version)
   Dbt lkey (kbuf.begin(), kbuf.size());
   Dbt ldata;
 
-  DbcPtr dbc (my_bdb); /* Acquire a cursor for the database. */
+  DbcPtr dbc (ptr->my_bdb); /* Acquire a cursor for the database. */
 
   // iterate over key elements and delete records which are in LinkVersionList
   int ret = dbc->get (&lkey, &ldata, DB_SET);
@@ -164,14 +150,14 @@ BDB::load_links (const ID *id, int version)
 }
 
 void
-do_walk (BDB *bdb, const ID& id, const string& prefix = "")
+do_walk (BDBPtr bdb, const ID& id, const string& prefix = "")
 {
-  INode *inode = bdb->load_inode (&id, 1);
+  INode *inode = bdb.load_inode (&id, 1);
   if (inode)
     {
       if (inode->type == BFSync::FILE_DIR)
         {
-          vector<Link> *links = bdb->load_links (&id, 1);
+          vector<Link> *links = bdb.load_links (&id, 1);
           for (vector<Link>::iterator li = links->begin(); li != links->end(); li++)
             {
               printf ("%s/%s\n", prefix.c_str(), li->name.c_str());
@@ -184,15 +170,15 @@ do_walk (BDB *bdb, const ID& id, const string& prefix = "")
 }
 
 void
-BDB::walk()
+BDBPtr::walk()
 {
   ID *root = id_root();
-  do_walk (this, *root);
+  do_walk (*this, *root);
   delete root;
 }
 
-DiffGenerator::DiffGenerator (BDB *bdb, unsigned int v_old, unsigned int v_new) :
-  dbc (bdb->my_bdb), v_old (v_old), v_new (v_new)
+DiffGenerator::DiffGenerator (BDBPtr bdb_ptr, unsigned int v_old, unsigned int v_new) :
+  dbc (bdb_ptr.get_bdb()), bdb_ptr (bdb_ptr), v_old (v_old), v_new (v_new)
 {
   dbc_ret = dbc->get (&key, &data, DB_FIRST);
 }
@@ -275,8 +261,8 @@ DiffGenerator::get_next()
           ID id;
 
           id_load (&id, kbuffer);
-          INode *i_old = bdb->load_inode (&id, v_old);
-          INode *i_new = bdb->load_inode (&id, v_new);
+          INode *i_old = bdb_ptr.load_inode (&id, v_old);
+          INode *i_new = bdb_ptr.load_inode (&id, v_new);
 
           if (i_old && i_new)
             {
@@ -294,8 +280,8 @@ DiffGenerator::get_next()
           ID id;
           id_load (&id, kbuffer);
 
-          vector<Link> *lvec_old = bdb->load_links (&id, v_old);
-          vector<Link> *lvec_new = bdb->load_links (&id, v_new);
+          vector<Link> *lvec_old = bdb_ptr.load_links (&id, v_old);
+          vector<Link> *lvec_new = bdb_ptr.load_links (&id, v_new);
 
           map<string, const Link*> lmap_old;
           map<string, const Link*> lmap_new;
@@ -329,7 +315,7 @@ DiffGenerator::get_next()
 }
 
 void
-BDB::store_history_entry (int version, const string& hash, const string& author, const string& message, int time)
+BDBPtr::store_history_entry (int version, const string& hash, const string& author, const string& message, int time)
 {
   HistoryEntry he;
 
@@ -339,5 +325,68 @@ BDB::store_history_entry (int version, const string& hash, const string& author,
   he.message = message;
   he.time    = time;
 
-  my_bdb->store_history_entry (version, he);
+  ptr->my_bdb->store_history_entry (version, he);
+}
+
+/* refcounting BDB wrapper */
+
+BDBPtr::BDBPtr (BDBWrapper *wrapper) :
+  ptr (wrapper)
+{
+}
+
+BDBPtr::BDBPtr (const BDBPtr& other)
+{
+  BDBWrapper *new_ptr = other.ptr;
+
+  if (new_ptr)
+    new_ptr->ref();
+
+  ptr = new_ptr;
+}
+
+BDBPtr&
+BDBPtr::operator=(const BDBPtr& other)
+{
+  BDBWrapper *new_ptr = other.ptr;
+  BDBWrapper *old_ptr = ptr;
+
+  if (new_ptr)
+    new_ptr->ref();
+
+  ptr = new_ptr;
+
+  if (old_ptr)
+    old_ptr->unref();
+
+  return *this;
+}
+
+
+BDBPtr::~BDBPtr()
+{
+  if (ptr)
+    {
+      ptr->unref();
+      /* eager deletion */
+      if (ptr->has_zero_refs())
+        delete ptr;
+      ptr = NULL;
+    }
+}
+
+BDBWrapper::BDBWrapper() :
+  ref_count (1)
+{
+}
+
+BDBWrapper::~BDBWrapper()
+{
+  if (my_bdb)
+    {
+      my_bdb->close();
+      delete my_bdb;
+
+      my_bdb = NULL;
+    }
 }
