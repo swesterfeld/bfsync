@@ -30,6 +30,8 @@
 namespace BFSync
 {
 
+class BDB;
+
 enum FileType {
   FILE_NONE,
   FILE_REGULAR,
@@ -266,6 +268,7 @@ public:
   std::map<ID, INodeVersionList>  cache;
   std::map<ino_t, ID>             new_inodes;
   std::map<ID, INodeLinksPtr>     links_cache;
+  BDB                            *bdb;
   Mutex                           mutex;
 
   enum SaveChangesMode { SC_NORMAL, SC_CLEAR_CACHE };
@@ -280,7 +283,7 @@ public:
 
   static INodeRepo *the();
 
-  INodeRepo();
+  INodeRepo (BDB *bdb);
   ~INodeRepo();
 };
 

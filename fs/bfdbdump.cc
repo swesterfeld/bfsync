@@ -30,7 +30,8 @@ using std::vector;
 int
 init (const string& filename)
 {
-  if (!bdb_open (filename))
+  BDB *bdb = bdb_open (filename);
+  if (!bdb)
     {
       printf ("error opening db %s\n", filename.c_str());
       return 1;
@@ -64,10 +65,10 @@ init (const string& filename)
   Dbt ikey (kbuf.begin(), kbuf.size());
   Dbt idata (dbuf.begin(), dbuf.size());
 
-  int ret = BDB::the()->get_db()->put (NULL, &ikey, &idata, 0);
+  int ret = bdb->get_db()->put (NULL, &ikey, &idata, 0);
   assert (ret == 0);
 
-  if (!bdb_close())
+  if (!bdb->close())
     {
       printf ("error closing db\n");
       return 1;
@@ -83,13 +84,14 @@ main (int argc, char **argv)
 
   assert (argc == 2);
 
-  if (!bdb_open (argv[1]))
+  BDB *bdb = bdb_open (argv[1]);
+  if (!bdb)
     {
       printf ("error opening db %s\n", argv[1]);
       exit (1);
     }
 
-  Db *db = BDB::the()->get_db();
+  Db *db = bdb->get_db();
   Dbc *dbcp;
 
   /* Acquire a cursor for the database. */
@@ -169,7 +171,7 @@ main (int argc, char **argv)
           DataBuffer kbuffer ((char *) key.get_data(), key.get_size());
           int version = kbuffer.read_uint32_be();
           HistoryEntry he;
-          BDB::the()->load_history_entry (version, he);
+          bdb->load_history_entry (version, he);
           history.push_back (g_strdup_printf ("%d=%s|%s|%s|%d", version,
                                               he.hash.c_str(), he.author.c_str(), he.message.c_str(), he.time));
         }
@@ -217,7 +219,7 @@ main (int argc, char **argv)
 
   printf ("\n");
 
-  if (!bdb_close())
+  if (!bdb->close())
     {
       printf ("error closing db %s\n", argv[1]);
       exit (1);

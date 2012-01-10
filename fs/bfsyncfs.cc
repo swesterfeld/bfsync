@@ -1528,21 +1528,22 @@ bfsyncfs_main (int argc, char **argv)
 
 
   string bdb_path = options.repo_path + "/bdb";
-  if (!bdb_open (bdb_path))
+  BDB *bdb = bdb_open (bdb_path);
+  if (!bdb)
     {
       printf ("bfsyncfs: error opening bdb\n");
       return 1;
     }
   History::the()->read();
 
-  INodeRepo inode_repo;
+  INodeRepo inode_repo (bdb);
 
   int fuse_rc = fuse_main (my_argc, my_argv, &bfsync_oper, NULL);
 
   inode_repo.save_changes();
   inode_repo.delete_unused_inodes (INodeRepo::DM_ALL);
 
-  if (!bdb_close())
+  if (!bdb->close())
     {
       printf ("bfsyncfs: can't close bdb\n");
     }

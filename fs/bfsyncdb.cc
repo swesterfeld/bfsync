@@ -7,23 +7,42 @@ using BFSync::DbcPtr;
 using BFSync::BDB_TABLE_INODES;
 using BFSync::BDB_TABLE_LINKS;
 using BFSync::string_printf;
-using BFSync::BDB;
 using BFSync::HistoryEntry;
 
 using std::string;
 using std::vector;
 using std::map;
 
-bool
+BDB*
 open_db (const string& db)
 {
-  return BFSync::bdb_open (db);
+  BFSync::BDB *bdb = BFSync::bdb_open (db);
+
+  if (bdb)
+    return new BDB (bdb);
+  else
+    return NULL;
+}
+
+BDB::BDB (BFSync::BDB *bdb) :
+  my_bdb (bdb)
+{
+  printf ("BDB");
+}
+
+BDB::~BDB()
+{
+  printf ("~BDB");
+  if (my_bdb)
+    my_bdb->close();
+  my_bdb = NULL;
 }
 
 void
-close_db()
+BDB::close()
 {
-  BFSync::bdb_close();
+  my_bdb->close();
+  my_bdb = NULL;
 }
 
 void
@@ -49,7 +68,7 @@ id_load (ID *id, DataBuffer& dbuf)
 }
 
 INode*
-load_inode (const ID *id, int version)
+BDB::load_inode (const ID *id, int version)
 {
   INode *inode = new INode();
   DataOutBuffer kbuf;
@@ -60,7 +79,7 @@ load_inode (const ID *id, int version)
   Dbt ikey (kbuf.begin(), kbuf.size());
   Dbt idata;
 
-  DbcPtr dbc; /* Acquire a cursor for the database. */
+  DbcPtr dbc (my_bdb); /* Acquire a cursor for the database. */
 
   int ret = dbc->get (&ikey, &idata, DB_SET);
   while (ret == 0)
@@ -104,7 +123,7 @@ id_root()
 }
 
 std::vector<Link>*
-load_links (const ID *id, int version)
+BDB::load_links (const ID *id, int version)
 {
   vector<Link>* result = new vector<Link>;
 
@@ -116,7 +135,7 @@ load_links (const ID *id, int version)
   Dbt lkey (kbuf.begin(), kbuf.size());
   Dbt ldata;
 
-  DbcPtr dbc; /* Acquire a cursor for the database. */
+  DbcPtr dbc (my_bdb); /* Acquire a cursor for the database. */
 
   // iterate over key elements and delete records which are in LinkVersionList
   int ret = dbc->get (&lkey, &ldata, DB_SET);
@@ -145,18 +164,18 @@ load_links (const ID *id, int version)
 }
 
 void
-do_walk (const ID& id, const string& prefix = "")
+do_walk (BDB *bdb, const ID& id, const string& prefix = "")
 {
-  INode *inode = load_inode (&id, 1);
+  INode *inode = bdb->load_inode (&id, 1);
   if (inode)
     {
       if (inode->type == BFSync::FILE_DIR)
         {
-          vector<Link> *links = load_links (&id, 1);
+          vector<Link> *links = bdb->load_links (&id, 1);
           for (vector<Link>::iterator li = links->begin(); li != links->end(); li++)
             {
               printf ("%s/%s\n", prefix.c_str(), li->name.c_str());
-              do_walk (li->inode_id, prefix + "/" + li->name);
+              do_walk (bdb, li->inode_id, prefix + "/" + li->name);
             }
           delete links;
         }
@@ -165,15 +184,15 @@ do_walk (const ID& id, const string& prefix = "")
 }
 
 void
-walk()
+BDB::walk()
 {
   ID *root = id_root();
-  do_walk (*root);
+  do_walk (this, *root);
   delete root;
 }
 
-DiffGenerator::DiffGenerator (unsigned int v_old, unsigned int v_new) :
-  v_old (v_old), v_new (v_new)
+DiffGenerator::DiffGenerator (BDB *bdb, unsigned int v_old, unsigned int v_new) :
+  dbc (bdb->my_bdb), v_old (v_old), v_new (v_new)
 {
   dbc_ret = dbc->get (&key, &data, DB_FIRST);
 }
@@ -256,8 +275,8 @@ DiffGenerator::get_next()
           ID id;
 
           id_load (&id, kbuffer);
-          INode *i_old = load_inode (&id, v_old);
-          INode *i_new = load_inode (&id, v_new);
+          INode *i_old = bdb->load_inode (&id, v_old);
+          INode *i_new = bdb->load_inode (&id, v_new);
 
           if (i_old && i_new)
             {
@@ -275,8 +294,8 @@ DiffGenerator::get_next()
           ID id;
           id_load (&id, kbuffer);
 
-          vector<Link> *lvec_old = load_links (&id, v_old);
-          vector<Link> *lvec_new = load_links (&id, v_new);
+          vector<Link> *lvec_old = bdb->load_links (&id, v_old);
+          vector<Link> *lvec_new = bdb->load_links (&id, v_new);
 
           map<string, const Link*> lmap_old;
           map<string, const Link*> lmap_new;
@@ -310,7 +329,7 @@ DiffGenerator::get_next()
 }
 
 void
-store_history_entry (int version, const string& hash, const string& author, const string& message, int time)
+BDB::store_history_entry (int version, const string& hash, const string& author, const string& message, int time)
 {
   HistoryEntry he;
 
@@ -320,5 +339,5 @@ store_history_entry (int version, const string& hash, const string& author, cons
   he.message = message;
   he.time    = time;
 
-  BDB::the()->store_history_entry (version, he);
+  my_bdb->store_history_entry (version, he);
 }

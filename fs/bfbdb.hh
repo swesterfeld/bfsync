@@ -38,8 +38,7 @@ enum BDBTables
   BDB_TABLE_HISTORY       = 5
 };
 
-bool bdb_open (const std::string& path);
-bool bdb_close();
+BDB *bdb_open (const std::string& path);
 
 class DataBuffer
 {
@@ -101,12 +100,14 @@ struct HistoryEntry
 
 class BDB
 {
+  Db   *db;
 public:
   Mutex mutex;
 
-  static BDB *the();
-
   Db*   get_db();
+
+  bool  open (const std::string& path);
+  bool  close();
 
   void  store_link (const LinkPtr& link);
   void  delete_links (const std::map<std::string, LinkVersionList>& links);
@@ -128,10 +129,12 @@ class DbcPtr // cursor smart-wrapper: automatically closes cursor in destructor
 {
   Dbc *dbc;
 public:
-  DbcPtr()
+  DbcPtr (BDB *bdb)
   {
+    assert (bdb);
+
     int ret;
-    ret = BDB::the()->get_db()->cursor (NULL, &dbc, 0);
+    ret = bdb->get_db()->cursor (NULL, &dbc, 0);
     assert (ret == 0);
   }
   ~DbcPtr()

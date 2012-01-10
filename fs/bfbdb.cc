@@ -33,21 +33,24 @@ using std::map;
 namespace BFSync
 {
 
-BDB *bdb = NULL;
-Db *db = NULL;
-
-bool
+BDB*
 bdb_open (const string& path)
 {
-  assert (!db);
-  assert (!bdb);
+  BDB *bdb = new BDB();
+
+  if (bdb->open (path))
+    return bdb;
+  else
+    return NULL;
+}
+
+bool
+BDB::open (const string& path)
+{
+  Lock lock (mutex);
 
   try
     {
-      bdb = new BDB();
-
-      Lock lock (bdb->mutex);
-
       db = new Db (NULL, 0);
       db->set_cachesize (1, 0, 0);  // 1 GB cache size
       db->set_flags (DB_DUP);       // allow duplicate keys
@@ -61,25 +64,18 @@ bdb_open (const string& path)
                 DB_BTREE,           // Database access method
                 oFlags,             // Open flags
                 0);                 // File mode (using defaults)
-
       return true;
     }
   catch (...)
     {
-      db = NULL;
-      bdb = NULL;
       return false;
     }
 }
 
 bool
-bdb_close()
+BDB::close()
 {
   assert (db != 0);
-  assert (bdb != 0);
-
-  delete bdb;
-  bdb = NULL;
 
   int ret = db->close (0);
   delete db;
@@ -193,7 +189,7 @@ BDB::delete_links (const map<string, LinkVersionList>& link_map)
   Dbt ldata;
 
 
-  DbcPtr dbc; /* Acquire a cursor for the database. */
+  DbcPtr dbc (this); /* Acquire a cursor for the database. */
 
   // iterate over key elements and delete records which are in LinkVersionList
   int ret = dbc->get (&lkey, &ldata, DB_SET);
@@ -223,7 +219,7 @@ BDB::load_links (std::vector<Link*>& links, const ID& id, guint32 version)
   Dbt lkey (kbuf.begin(), kbuf.size());
   Dbt ldata;
 
-  DbcPtr dbc; /* Acquire a cursor for the database. */
+  DbcPtr dbc (this); /* Acquire a cursor for the database. */
 
   // iterate over key elements and delete records which are in LinkVersionList
   int ret = dbc->get (&lkey, &ldata, DB_SET);
@@ -257,13 +253,6 @@ Db*
 BDB::get_db()
 {
   return db;
-}
-
-BDB*
-BDB::the()
-{
-  assert (bdb);
-  return bdb;
 }
 
 DataBuffer::DataBuffer (const char *ptr, size_t size) :
@@ -401,7 +390,7 @@ BDB::delete_inodes (const INodeVersionList& inodes)
   Dbt idata;
 
 
-  DbcPtr dbc; /* Acquire a cursor for the database. */
+  DbcPtr dbc (this); /* Acquire a cursor for the database. */
 
   // iterate over key elements and delete records which are in INodeVersionList
   int ret = dbc->get (&ikey, &idata, DB_SET);
@@ -439,7 +428,7 @@ BDB::load_inode (const ID& id, int version, INode *inode)
   Dbt ikey (kbuf.begin(), kbuf.size());
   Dbt idata;
 
-  DbcPtr dbc; /* Acquire a cursor for the database. */
+  DbcPtr dbc (this); /* Acquire a cursor for the database. */
 
   int ret = dbc->get (&ikey, &idata, DB_SET);
   while (ret == 0)
@@ -604,7 +593,7 @@ BDB::delete_history_entry (int version)
   Dbt hkey (kbuf.begin(), kbuf.size());
   Dbt hdata;
 
-  DbcPtr dbc;
+  DbcPtr dbc (this);
 
   // iterate over key elements and delete records which are in LinkVersionList
   int ret = dbc->get (&hkey, &hdata, DB_SET);

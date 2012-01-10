@@ -38,7 +38,8 @@ namespace BFSync {
 
 static INodeRepo *inode_repo = 0;
 
-INodeRepo::INodeRepo()
+INodeRepo::INodeRepo (BDB *bdb) :
+  bdb (bdb)
 {
   assert (!inode_repo);
 
@@ -91,7 +92,7 @@ INodeRepo::save_changes (SaveChangesMode sc)
           // can be made for an inode entry:
           //  - just change some fields
           //  - split into two inodes (copy-on-write)
-          BDB::the()->delete_inodes (ivlist);
+          bdb->delete_inodes (ivlist);
         }
 
       INodeLinksPtr links = INodeLinksPtr::null();
@@ -364,7 +365,7 @@ bool
 INode::save()
 {
   if (nlink != 0) // nlink == 0 means that the inode is not referenced anymore and can be deleted
-    BDB::the()->store_inode (this);
+    INodeRepo::the()->bdb->store_inode (this);
 
   return true;
 }
@@ -372,7 +373,7 @@ INode::save()
 bool
 INode::load (const Context& ctx, const ID& id)
 {
-  bool found = BDB::the()->load_inode (id, ctx.version, this);
+  bool found = INodeRepo::the()->bdb->load_inode (id, ctx.version, this);
 
   if (!found)
     return false;
@@ -388,7 +389,7 @@ INode::load (const Context& ctx, const ID& id)
   links = cache_links;
 
   vector<Link*> load_links;
-  BDB::the()->load_links (load_links, id, ctx.version);
+  INodeRepo::the()->bdb->load_links (load_links, id, ctx.version);
 
   for (vector<Link*>::const_iterator li = load_links.begin(); li != load_links.end(); li++)
     links.update()->link_map[(*li)->name].add (LinkPtr (*li));
@@ -403,7 +404,7 @@ INode::load_or_alloc_ino()
 {
   // load inode number
   ino = 0;
-  if (BDB::the()->load_ino (id, ino))
+  if (INodeRepo::the()->bdb->load_ino (id, ino))
     return;
 
   // need to create new entry
@@ -420,7 +421,7 @@ INode::alloc_ino()
    * improvements when storing inodes (better locality); if sequential allocation fails
    * we try to restart at some random point in inode space
    */
-  while (!BDB::the()->try_store_id2ino (id, next_ino))
+  while (!INodeRepo::the()->bdb->try_store_id2ino (id, next_ino))
     {
       /* low inode numbers are reserved for .bfsync inodes */
       next_ino = g_random_int_range (100 * 1000, 2 * 1000 * 1000 * 1000);  // 100000 .. ~ 2^31
@@ -664,7 +665,7 @@ bool
 INodeLinks::save()
 {
   // delete links that were (possibly) modified
-  BDB::the()->delete_links (link_map);
+  INodeRepo::the()->bdb->delete_links (link_map);
 
   // re-write links
   for (map<string, LinkVersionList>::const_iterator li = link_map.begin(); li != link_map.end(); li++)
@@ -675,7 +676,7 @@ INodeLinks::save()
           const LinkPtr& lp = lvlist[i];
 
           if (!lp->deleted)
-            BDB::the()->store_link (lp);
+            INodeRepo::the()->bdb->store_link (lp);
 
           Link *link = lp.get_ptr_without_update();
           link->updated = false;
