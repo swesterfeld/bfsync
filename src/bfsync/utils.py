@@ -134,13 +134,15 @@ class Repo:
 
     inode_callback (inode)
 
+    if inode.type != 3: # FIXME: constants
+      return # not a directory, no links
+
     links = self.bdb.load_links (inode.id, 1)
     for link in links:
       link_callback (link)
 
       child = self.bdb.load_inode (link.inode_id, version)
-      if child and child.type == 3: # FIXME: constants
-        self.foreach_crawl (child, version, inode_callback, link_callback)
+      self.foreach_crawl (child, version, inode_callback, link_callback)
 
   def foreach_inode_link (self, version, inode_callback, link_callback):
     root = self.bdb.load_inode (bfsyncdb.id_root(), version)
