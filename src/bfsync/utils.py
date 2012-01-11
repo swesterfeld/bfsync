@@ -127,6 +127,25 @@ class Repo:
     # => return the first version not present in history
     return version
 
+  # foreach_crawl / foreach_inode_link recursively walk the filesystem tree for a one version
+  def foreach_crawl (self, inode, version, inode_callback, link_callback):
+    if not inode:
+      raise Exception ("missing inode in Repo.foreach_crawl")
+
+    inode_callback (inode)
+
+    links = self.bdb.load_links (inode.id, 1)
+    for link in links:
+      link_callback (link)
+
+      child = self.bdb.load_inode (link.inode_id, version)
+      if child and child.type == 3: # FIXME: constants
+        self.foreach_crawl (child, version, inode_callback, link_callback)
+
+  def foreach_inode_link (self, version, inode_callback, link_callback):
+    root = self.bdb.load_inode (bfsyncdb.id_root(), version)
+    self.foreach_crawl (root, version, inode_callback, link_callback)
+
 def cd_repo_connect_db():
   repo_path = find_repo_dir()
   bfsync_info = parse_config (repo_path + "/config")
