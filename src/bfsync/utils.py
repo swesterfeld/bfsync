@@ -129,7 +129,7 @@ class Repo:
 
   # foreach_crawl / foreach_inode_link recursively walk the filesystem tree for a one version
   def foreach_crawl (self, inode, version, inode_callback, link_callback):
-    if not inode:
+    if not inode.valid:
       raise Exception ("missing inode in Repo.foreach_crawl")
 
     inode_callback (inode)
