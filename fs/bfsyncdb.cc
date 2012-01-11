@@ -40,6 +40,7 @@ using std::map;
 static BFSync::LeakDebugger inode_leak_debugger ("(Python)BFSync::INode");
 
 INode::INode() :
+  valid (false),
   vmin (0), vmax (0),
   uid (0), gid (0),
   mode (0), type (0),
@@ -50,6 +51,7 @@ INode::INode() :
 }
 
 INode::INode (const INode& inode) :
+  valid (inode.valid),
   vmin (inode.vmin), vmax (inode.vmax),
   id (inode.id),
   uid (inode.uid), gid (inode.gid),
@@ -157,10 +159,10 @@ id_load (ID *id, DataBuffer& dbuf)
   id->e = dbuf.read_uint32();
 }
 
-INode*
+INode
 BDBPtr::load_inode (const ID *id, int version)
 {
-  INode *inode = new INode();
+  INode inode;
   DataOutBuffer kbuf;
 
   id_store (id, kbuf);
@@ -176,32 +178,37 @@ BDBPtr::load_inode (const ID *id, int version)
     {
       DataBuffer dbuffer ((char *) idata.get_data(), idata.get_size());
 
-      inode->vmin = dbuffer.read_uint32();
-      inode->vmax = dbuffer.read_uint32();
+      inode.vmin = dbuffer.read_uint32();
+      inode.vmax = dbuffer.read_uint32();
 
-      if (version >= inode->vmin && version <= inode->vmax)
+      if (version >= inode.vmin && version <= inode.vmax)
         {
-          inode->id   = *id;
-          inode->uid  = dbuffer.read_uint32();
-          inode->gid  = dbuffer.read_uint32();
-          inode->mode = dbuffer.read_uint32();
-          inode->type = BFSync::FileType (dbuffer.read_uint32());
-          inode->hash = dbuffer.read_string();
-          inode->link = dbuffer.read_string();
-          inode->size = dbuffer.read_uint32();
-          inode->major = dbuffer.read_uint32();
-          inode->minor = dbuffer.read_uint32();
-          inode->nlink = dbuffer.read_uint32();
-          inode->ctime = dbuffer.read_uint32();
-          inode->ctime_ns = dbuffer.read_uint32();
-          inode->mtime = dbuffer.read_uint32();
-          inode->mtime_ns = dbuffer.read_uint32();
+          inode.id   = *id;
+          inode.uid  = dbuffer.read_uint32();
+          inode.gid  = dbuffer.read_uint32();
+          inode.mode = dbuffer.read_uint32();
+          inode.type = BFSync::FileType (dbuffer.read_uint32());
+          inode.hash = dbuffer.read_string();
+          inode.link = dbuffer.read_string();
+          inode.size = dbuffer.read_uint32();
+          inode.major = dbuffer.read_uint32();
+          inode.minor = dbuffer.read_uint32();
+          inode.nlink = dbuffer.read_uint32();
+          inode.ctime = dbuffer.read_uint32();
+          inode.ctime_ns = dbuffer.read_uint32();
+          inode.mtime = dbuffer.read_uint32();
+          inode.mtime_ns = dbuffer.read_uint32();
+
+          inode.valid = true; // found
           return inode;
         }
       ret = dbc->get (&ikey, &idata, DB_NEXT_DUP);
     }
-  delete inode;
-  return NULL;
+
+  // not found -> return INode with valid == false
+  inode = INode();
+  g_assert (inode.valid == false);
+  return inode;
 }
 
 void
@@ -288,10 +295,10 @@ BDBPtr::load_links (const ID *id, int version)
 void
 do_walk (BDBPtr bdb, const ID& id, const string& prefix = "")
 {
-  INode *inode = bdb.load_inode (&id, 1);
-  if (inode)
+  INode inode = bdb.load_inode (&id, 1);
+  if (inode.valid)
     {
-      if (inode->type == BFSync::FILE_DIR)
+      if (inode.type == BFSync::FILE_DIR)
         {
           vector<Link> links = bdb.load_links (&id, 1);
           for (vector<Link>::iterator li = links.begin(); li != links.end(); li++)
@@ -300,7 +307,6 @@ do_walk (BDBPtr bdb, const ID& id, const string& prefix = "")
               do_walk (bdb, li->inode_id, prefix + "/" + li->name);
             }
         }
-      delete inode;
     }
 }
 
@@ -345,25 +351,25 @@ print_id (const ID& id)
 }
 
 vector<string>
-gen_iplus (INode *inode)
+gen_iplus (const INode& inode)
 {
   vector<string> result;
   result.push_back ("i+");
-  result.push_back (print_id (inode->id));
-  result.push_back (string_printf ("%u", inode->uid));
-  result.push_back (string_printf ("%u", inode->gid));
-  result.push_back (string_printf ("%u", inode->mode));
-  result.push_back (string_printf ("%u", inode->type));
-  result.push_back (inode->hash);
-  result.push_back (inode->link);
-  result.push_back (string_printf ("%u", inode->size));
-  result.push_back (string_printf ("%u", inode->major));
-  result.push_back (string_printf ("%u", inode->minor));
-  result.push_back (string_printf ("%u", inode->nlink));
-  result.push_back (string_printf ("%u", inode->ctime));
-  result.push_back (string_printf ("%u", inode->ctime_ns));
-  result.push_back (string_printf ("%u", inode->mtime));
-  result.push_back (string_printf ("%u", inode->mtime_ns));
+  result.push_back (print_id (inode.id));
+  result.push_back (string_printf ("%u", inode.uid));
+  result.push_back (string_printf ("%u", inode.gid));
+  result.push_back (string_printf ("%u", inode.mode));
+  result.push_back (string_printf ("%u", inode.type));
+  result.push_back (inode.hash);
+  result.push_back (inode.link);
+  result.push_back (string_printf ("%u", inode.size));
+  result.push_back (string_printf ("%u", inode.major));
+  result.push_back (string_printf ("%u", inode.minor));
+  result.push_back (string_printf ("%u", inode.nlink));
+  result.push_back (string_printf ("%u", inode.ctime));
+  result.push_back (string_printf ("%u", inode.ctime_ns));
+  result.push_back (string_printf ("%u", inode.mtime));
+  result.push_back (string_printf ("%u", inode.mtime_ns));
   return result;
 }
 
@@ -391,17 +397,17 @@ DiffGenerator::get_next()
           ID id;
 
           id_load (&id, kbuffer);
-          INode *i_old = bdb_ptr.load_inode (&id, v_old);
-          INode *i_new = bdb_ptr.load_inode (&id, v_new);
+          INode i_old = bdb_ptr.load_inode (&id, v_old);
+          INode i_new = bdb_ptr.load_inode (&id, v_new);
 
-          if (i_old && i_new)
+          if (i_old.valid && i_new.valid)
             {
             }
-          else if (!i_old && i_new)
+          else if (!i_old.valid && i_new.valid)
             {
               diffs.push_back (gen_iplus (i_new));
             }
-          else if (i_old && !i_new)
+          else if (i_old.valid && !i_new.valid)
             {
             }
         }

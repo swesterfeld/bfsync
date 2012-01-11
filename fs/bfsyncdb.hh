@@ -32,6 +32,8 @@ struct INode {
   INode (const INode& inode);
   ~INode();
 
+  bool         valid;
+
   unsigned int vmin, vmax;
   ID           id;
   unsigned int uid, gid;
@@ -120,7 +122,7 @@ public:
 
   ~BDBPtr();
 
-  INode             *load_inode (const ID *id, int version);
+  INode              load_inode (const ID *id, int version);
   void               store_inode (const INode *inode);
   std::vector<Link>  load_links (const ID *id, int version);
   void               walk();
