@@ -28,9 +28,13 @@ struct ID {
 };
 
 struct INode {
+  INode();
+  INode (const INode& inode);
+  ~INode();
+
   unsigned int vmin, vmax;
   ID           id;
-  unsigned int gid, uid;
+  unsigned int uid, gid;
   unsigned int mode, type;
 
   std::string hash;
@@ -44,6 +48,10 @@ struct INode {
 };
 
 struct Link {
+  Link();
+  Link (const Link& link);
+  ~Link();
+
   unsigned int vmin, vmax;
   ID dir_id;
   ID inode_id;
@@ -52,6 +60,10 @@ struct Link {
 
 struct HistoryEntry
 {
+  HistoryEntry();
+  HistoryEntry (const HistoryEntry& he);
+  ~HistoryEntry();
+
   bool          valid;
 
   unsigned int  version;

@@ -19,6 +19,7 @@
 
 #include "bfsyncdb.hh"
 #include "bfbdb.hh"
+#include "bfleakdebugger.hh"
 
 using BFSync::DataOutBuffer;
 using BFSync::DataBuffer;
@@ -30,6 +31,91 @@ using BFSync::string_printf;
 using std::string;
 using std::vector;
 using std::map;
+
+#undef major
+#undef minor
+
+//---------------------------- INode -----------------------------
+
+static BFSync::LeakDebugger inode_leak_debugger ("(Python)BFSync::INode");
+
+INode::INode() :
+  vmin (0), vmax (0),
+  uid (0), gid (0),
+  mode (0), type (0),
+  size (0), major (0), minor (0), nlink (0),
+  mtime (0), mtime_ns (0), ctime (0), ctime_ns (0)
+{
+  inode_leak_debugger.add (this);
+}
+
+INode::INode (const INode& inode) :
+  vmin (inode.vmin), vmax (inode.vmax),
+  id (inode.id),
+  uid (inode.uid), gid (inode.gid),
+  mode (inode.mode), type (inode.type),
+  hash (inode.hash), link (inode.link),
+  size (inode.size), major (inode.major), minor (inode.minor), nlink (inode.nlink),
+  mtime (inode.mtime), mtime_ns (inode.mtime_ns), ctime (inode.ctime), ctime_ns (inode.ctime_ns)
+{
+  inode_leak_debugger.add (this);
+}
+
+INode::~INode()
+{
+  inode_leak_debugger.del (this);
+}
+
+//---------------------------- Link -----------------------------
+
+static BFSync::LeakDebugger link_leak_debugger ("(Python)BFSync::Link");
+
+Link::Link() :
+  vmin (0), vmax (0)
+{
+  link_leak_debugger.add (this);
+}
+
+Link::Link (const Link& link) :
+  vmin (link.vmin), vmax (link.vmax),
+  dir_id (link.dir_id), inode_id (link.inode_id),
+  name (link.name)
+{
+  link_leak_debugger.add (this);
+}
+
+Link::~Link()
+{
+  link_leak_debugger.del (this);
+}
+
+//----------------------- HistoryEntry --------------------------
+
+static BFSync::LeakDebugger history_entry_leak_debugger ("(Python)BFSync::HistoryEntry");
+
+HistoryEntry::HistoryEntry() :
+  valid (false),
+  version (0),
+  time (0)
+{
+  history_entry_leak_debugger.add (this);
+}
+
+HistoryEntry::HistoryEntry (const HistoryEntry& he) :
+  valid (he.valid),
+  version (he.version),
+  hash (he.hash), author (he.author), message (he.message),
+  time (he.time)
+{
+  history_entry_leak_debugger.add (this);
+}
+
+HistoryEntry::~HistoryEntry()
+{
+  history_entry_leak_debugger.del (this);
+}
+
+//---------------------------------------------------------------
 
 BDBPtr
 open_db (const string& db)
