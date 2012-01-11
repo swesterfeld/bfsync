@@ -244,10 +244,10 @@ id_root()
   return id;
 }
 
-std::vector<Link>*
+std::vector<Link>
 BDBPtr::load_links (const ID *id, int version)
 {
-  vector<Link>* result = new vector<Link>;
+  vector<Link> result;
 
   DataOutBuffer kbuf;
 
@@ -278,7 +278,7 @@ BDBPtr::load_links (const ID *id, int version)
           id_load (&l.inode_id, dbuffer);
           l.name = dbuffer.read_string();
 
-          result->push_back (l);
+          result.push_back (l);
         }
       ret = dbc->get (&lkey, &ldata, DB_NEXT_DUP);
     }
@@ -293,13 +293,12 @@ do_walk (BDBPtr bdb, const ID& id, const string& prefix = "")
     {
       if (inode->type == BFSync::FILE_DIR)
         {
-          vector<Link> *links = bdb.load_links (&id, 1);
-          for (vector<Link>::iterator li = links->begin(); li != links->end(); li++)
+          vector<Link> links = bdb.load_links (&id, 1);
+          for (vector<Link>::iterator li = links.begin(); li != links.end(); li++)
             {
               printf ("%s/%s\n", prefix.c_str(), li->name.c_str());
               do_walk (bdb, li->inode_id, prefix + "/" + li->name);
             }
-          delete links;
         }
       delete inode;
     }
@@ -411,14 +410,14 @@ DiffGenerator::get_next()
           ID id;
           id_load (&id, kbuffer);
 
-          vector<Link> *lvec_old = bdb_ptr.load_links (&id, v_old);
-          vector<Link> *lvec_new = bdb_ptr.load_links (&id, v_new);
+          vector<Link> lvec_old = bdb_ptr.load_links (&id, v_old);
+          vector<Link> lvec_new = bdb_ptr.load_links (&id, v_new);
 
           map<string, const Link*> lmap_old;
           map<string, const Link*> lmap_new;
 
-          make_lmap (lmap_old, *lvec_old);
-          make_lmap (lmap_new, *lvec_new);
+          make_lmap (lmap_old, lvec_old);
+          make_lmap (lmap_new, lvec_new);
 
           for (map<string, const Link*>::iterator mi = lmap_new.begin(); mi != lmap_new.end(); mi++)
             {
