@@ -1534,6 +1534,7 @@ bfsyncfs_main (int argc, char **argv)
       printf ("bfsyncfs: error opening bdb\n");
       return 1;
     }
+  History::the()->set_bdb (bdb);
   History::the()->read();
 
   INodeRepo inode_repo (bdb);

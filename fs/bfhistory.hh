@@ -21,6 +21,7 @@
 #define BFSYNC_HISTORY_HH
 
 #include <vector>
+#include "bfbdb.hh"
 
 namespace BFSync {
 
@@ -28,12 +29,14 @@ class History
 {
   int                     m_current_version;
   std::vector<int>        m_all_versions;
+  BDB                    *bdb;
 public:
   static History         *the();
 
   int                     current_version();
   const std::vector<int>& all_versions();
 
+  void                    set_bdb (BDB *bdb);
   void                    read();
 };
 

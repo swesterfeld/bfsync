@@ -52,30 +52,29 @@ void
 History::read()
 {
   m_all_versions.clear();
-  m_all_versions.push_back (1);
-  m_current_version = 1;
 
-#if 0 // FIXME: move history table to BDB
-  SQLStatement stmt ("SELECT * FROM history");
+  HistoryEntry history_entry;
 
   m_current_version = -1;
-  m_all_versions.clear();
-  for (;;)
+  for (int version = 1; bdb->load_history_entry (version, history_entry); version++)
     {
-      int rc = stmt.step();
-      if (rc != SQLITE_ROW)
-        break;
-      int version = stmt.column_int (0);
-      m_current_version = max (version, m_current_version);
+      m_current_version = max (version + 1, m_current_version);
       m_all_versions.push_back (version);
     }
+  m_all_versions.push_back (m_current_version);
+
   if (m_current_version == -1)
     {
       printf ("bfsyncfs: find current version in history table failed\n");
       exit (1);
     }
   debug ("current version is %d\n", m_current_version);
-#endif
+}
+
+void
+History::set_bdb (BDB *bdb)
+{
+  this->bdb = bdb;
 }
 
 }
