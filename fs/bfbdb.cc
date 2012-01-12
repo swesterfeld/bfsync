@@ -72,6 +72,13 @@ BDB::open (const string& path)
     }
 }
 
+void
+BDB::sync()
+{
+  int ret = db->sync (0);
+  assert (ret == 0);
+}
+
 bool
 BDB::close()
 {

@@ -107,6 +107,7 @@ public:
   Db*   get_db();
 
   bool  open (const std::string& path);
+  void  sync();
   bool  close();
 
   void  store_link (const LinkPtr& link);
