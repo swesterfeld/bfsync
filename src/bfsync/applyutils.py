@@ -85,6 +85,7 @@ class ApplyTool:
     inode = bfsyncdb.INode()
     inode.vmin = self.VERSION
     inode.vmax = self.VERSION
+    inode.id   = bfsyncdb.ID (row[0])
     inode.uid  = int (row[1])
     inode.gid  = int (row[2])
     inode.mode  = int (row[3])
