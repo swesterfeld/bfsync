@@ -1,3 +1,6 @@
+* ID str() -> noprefix...
+* apply i+ => ID from string
+* auto-push/pull
 * properly handle copy-on-write() errors (disk full, ...)
 * check for open files before allowing readonly mode
 * better cache expiring for INodeLinks
@@ -24,8 +27,6 @@ MERGE:
 
 RELEASE:
 ========
-* remove bfsync1 stuff from repo
-* add man page(s)
 
 NEXT RELEASE:
 =============
