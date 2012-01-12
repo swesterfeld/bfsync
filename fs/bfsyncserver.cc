@@ -412,9 +412,6 @@ Server::handle_client (int client_fd)
 bool
 Server::add_file (const string& id, const string& hash, string& error)
 {
-  error = "FIXME: port to new IDs";
-  return false;
-#if 0 // FIXME: port to new ids
   Context  ctx;
   INodePtr inode (ctx, id);
   if (!inode)
@@ -460,5 +457,4 @@ Server::add_file (const string& id, const string& hash, string& error)
       return false;
     }
   return true;
-#endif
 }
