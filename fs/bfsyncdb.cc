@@ -259,6 +259,37 @@ BDBPtr::store_inode (const INode* inode)
   assert (ret == 0);
 }
 
+void
+BDBPtr::delete_inode (const INode& inode)
+{
+  DataOutBuffer kbuf;
+
+  id_store (&inode.id, kbuf);
+  kbuf.write_table (BDB_TABLE_INODES);
+
+  Dbt ikey (kbuf.begin(), kbuf.size());
+  Dbt idata;
+
+  DbcPtr dbc (ptr->my_bdb); /* Acquire a cursor for the database. */
+
+  // iterate over key elements to find inode to delete
+  int ret = dbc->get (&ikey, &idata, DB_SET);
+  while (ret == 0)
+    {
+      DataBuffer dbuffer ((char *) idata.get_data(), idata.get_size());
+
+      int vmin = dbuffer.read_uint32();
+      int vmax = dbuffer.read_uint32();
+
+      if (inode.vmin == vmin && inode.vmax == vmax)
+        {
+          ret = dbc->del (0);
+          assert (ret == 0);
+        }
+      ret = dbc->get (&ikey, &idata, DB_NEXT_DUP);
+    }
+}
+
 ID*
 id_root()
 {
@@ -306,6 +337,57 @@ BDBPtr::load_links (const ID *id, int version)
       ret = dbc->get (&lkey, &ldata, DB_NEXT_DUP);
     }
   return result;
+}
+
+void
+BDBPtr::store_link (const Link& link)
+{
+  DataOutBuffer kbuf, dbuf;
+
+  id_store (&link.dir_id, kbuf);
+  kbuf.write_table (BDB_TABLE_LINKS);
+
+  dbuf.write_uint32 (link.vmin);
+  dbuf.write_uint32 (link.vmax);
+  id_store (&link.inode_id, dbuf);
+  dbuf.write_string (link.name);
+
+  Dbt lkey (kbuf.begin(), kbuf.size());
+  Dbt ldata (dbuf.begin(), dbuf.size());
+
+  int ret = ptr->my_bdb->get_db()->put (NULL, &lkey, &ldata, 0);
+  assert (ret == 0);
+}
+
+void
+BDBPtr::delete_link (const Link& link)
+{
+  DataOutBuffer kbuf;
+
+  id_store (&link.dir_id, kbuf);
+  kbuf.write_table (BDB_TABLE_LINKS);
+
+  Dbt lkey (kbuf.begin(), kbuf.size());
+  Dbt ldata;
+
+  DbcPtr dbc (ptr->my_bdb); /* Acquire a cursor for the database. */
+
+  // iterate over key elements to find link to delete
+  int ret = dbc->get (&lkey, &ldata, DB_SET);
+  while (ret == 0)
+    {
+      DataBuffer dbuffer ((char *) ldata.get_data(), ldata.get_size());
+
+      int vmin = dbuffer.read_uint32();
+      int vmax = dbuffer.read_uint32();
+
+      if (link.vmin == vmin && link.vmax == vmax)
+        {
+          ret = dbc->del (0);
+          assert (ret == 0);
+        }
+      ret = dbc->get (&lkey, &ldata, DB_NEXT_DUP);
+    }
 }
 
 void
