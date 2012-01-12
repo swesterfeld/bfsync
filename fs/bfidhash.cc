@@ -22,6 +22,7 @@
 #include <stdio.h>
 
 using std::string;
+using std::vector;
 
 namespace BFSync {
 
@@ -52,7 +53,11 @@ ID::str() const
   uint32_hex (e, buffer + 32);
   buffer[40] = 0;
 
-  return buffer;
+  string prefix;
+  for (size_t i = 0; i < path_prefix.size(); i++)
+    prefix += string_printf ("%02x", (unsigned char) path_prefix[i]);
+
+  return prefix + "/" + buffer;
 }
 
 string
@@ -136,6 +141,77 @@ ID::ID (DataBuffer& data_buf)
   c = data_buf.read_uint32();
   d = data_buf.read_uint32();
   e = data_buf.read_uint32();
+}
+
+static unsigned char
+from_hex_nibble (char c)
+{
+  int uc = (unsigned char)c;
+
+  if (uc >= '0' && uc <= '9') return uc - (unsigned char)'0';
+  if (uc >= 'a' && uc <= 'f') return uc + 10 - (unsigned char)'a';
+  if (uc >= 'A' && uc <= 'F') return uc + 10 - (unsigned char)'A';
+
+  return 16;    // error
+}
+
+static void
+hex_decode (string::const_iterator si, string::const_iterator end, vector<unsigned char>& out)
+{
+  while (si != end)
+    {
+      unsigned char h = from_hex_nibble (*si++);        // high nibble
+      assert (si != end);
+
+      unsigned char l = from_hex_nibble (*si++);        // low nibble
+      assert (h < 16 && l < 16);
+
+      out.push_back((h << 4) + l);
+    }
+}
+
+static guint32
+uint32_decode (unsigned char *bytes)
+{
+  // [ 0x12, 0x34, 0x56, 0x78 ] => 0x12345678
+  guint32 result;
+
+  result = bytes[0];
+  result <<= 8;
+  result += bytes[1];
+  result <<= 8;
+  result += bytes[2];
+  result <<= 8;
+  result += bytes[3];
+
+  return result;
+}
+
+ID::ID (const string& str)
+{
+  vector<unsigned char> abcde, pprefix;
+
+  size_t end_pos = str.find ('/');
+  assert (end_pos != string::npos);
+
+  string::const_iterator prefix_end = str.begin() + end_pos;
+
+  // decode prefix
+  hex_decode (str.begin(), prefix_end, pprefix);
+
+  for (size_t i = 0; i < pprefix.size(); i++)
+    path_prefix.push_back (pprefix[i]);
+
+  // decode a, b, c, d and e
+  hex_decode (prefix_end + 1, str.end(), abcde);
+
+  assert (abcde.size() == 20);
+
+  a = uint32_decode (&abcde[0]);
+  b = uint32_decode (&abcde[4]);
+  c = uint32_decode (&abcde[8]);
+  d = uint32_decode (&abcde[12]);
+  e = uint32_decode (&abcde[16]);
 }
 
 }

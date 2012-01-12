@@ -38,6 +38,7 @@ struct ID
   ID();
   ID (const ID& id);
   ID (DataBuffer& dbuf);
+  ID (const std::string& str);
 
   ID& operator= (const ID& id);
 
