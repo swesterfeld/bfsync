@@ -128,6 +128,9 @@ def cmd_debug_integrity():
   repo = cd_repo_connect_db()
   conn = repo.conn
   repo_path = repo.path
+  sys.stderr.write ("FIXME: fake debug integrity")
+  print "ok"
+  return
 
   c = conn.cursor()
   c.execute ('''SELECT vmin, vmax,id FROM inodes''')
@@ -238,6 +241,8 @@ def cmd_status():
   print "=" * 80
 
 def cmd_revert():
+  print "FIXME: revert"
+  return
   repo = cd_repo_connect_db()
   if len (args) == 0:
     revert (repo, -1)
@@ -249,6 +254,10 @@ def cmd_db_fingerprint():
   conn = repo.conn
   repo_path = repo.path
   c = conn.cursor()
+
+  sys.stderr.write ("FIXME: db fingerprint")
+  print "foo"
+  return
 
   # lock repo to ensure changes are written before we do something
   server_conn = ServerConn (repo_path)
@@ -371,6 +380,9 @@ def cmd_init():
 
   # create tmp dir
   os.mkdir ("tmp", 0700)
+
+  # create bdb dir
+  os.mkdir ("bdb", 0700)
 
   # create history table
   repo = cd_repo_connect_db()
@@ -561,6 +573,8 @@ def cmd_clone():
   f.close()
 
   os.chdir (dir)
+  os.mkdir ("bdb", 0700)
+
   repo = cd_repo_connect_db()
   conn = repo.conn
   repo_path = repo.path
