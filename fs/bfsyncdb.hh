@@ -30,7 +30,16 @@ struct ID {
   ID (const std::string& id);
   ~ID();
 
-  std::string str() const { return id.str(); }
+  std::string
+  no_prefix_str() const
+  {
+    return id.no_prefix_str();
+  }
+  std::string
+  str() const
+  {
+    return id.str();
+  }
   bool
   operator== (const ID& other) const;
 };
