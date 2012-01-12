@@ -132,14 +132,16 @@ class Repo:
     if not inode.valid:
       raise Exception ("missing inode in Repo.foreach_crawl")
 
-    inode_callback (inode)
+    if inode_callback:
+      inode_callback (inode)
 
     if inode.type != 3: # FIXME: constants
       return # not a directory, no links
 
     links = self.bdb.load_links (inode.id, version)
     for link in links:
-      link_callback (link)
+      if link_callback:
+        link_callback (link)
 
       child = self.bdb.load_inode (link.inode_id, version)
       self.foreach_crawl (child, version, inode_callback, link_callback)
