@@ -143,6 +143,12 @@ ID::~ID()
   id_leak_debugger.del (this);
 }
 
+bool
+ID::operator== (const ID& other) const
+{
+  return id == other.id;
+}
+
 //---------------------------------------------------------------
 
 BDBPtr
@@ -381,7 +387,12 @@ BDBPtr::delete_link (const Link& link)
       int vmin = dbuffer.read_uint32();
       int vmax = dbuffer.read_uint32();
 
-      if (link.vmin == vmin && link.vmax == vmax)
+      ID  inode_id;
+      id_load (&inode_id, dbuffer);
+
+      string name = dbuffer.read_string();
+
+      if (link.vmin == vmin && link.vmax == vmax && link.inode_id == inode_id && link.name == name)
         {
           ret = dbc->del (0);
           assert (ret == 0);

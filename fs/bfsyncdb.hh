@@ -31,6 +31,8 @@ struct ID {
   ~ID();
 
   std::string str() const { return id.str(); }
+  bool
+  operator== (const ID& other) const;
 };
 
 struct INode {
