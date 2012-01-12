@@ -262,7 +262,7 @@ BDBPtr::store_inode (const INode* inode)
   Dbt idata (dbuf.begin(), dbuf.size());
 
   int ret = ptr->my_bdb->get_db()->put (NULL, &ikey, &idata, 0);
-  assert (ret == 0);
+  g_assert (ret == 0);
 }
 
 void
@@ -276,7 +276,7 @@ BDBPtr::delete_inode (const INode& inode)
   Dbt ikey (kbuf.begin(), kbuf.size());
   Dbt idata;
 
-  DbcPtr dbc (ptr->my_bdb); /* Acquire a cursor for the database. */
+  DbcPtr dbc (ptr->my_bdb, DbcPtr::WRITE); /* Acquire a cursor for the database. */
 
   // iterate over key elements to find inode to delete
   int ret = dbc->get (&ikey, &idata, DB_SET);
@@ -290,7 +290,7 @@ BDBPtr::delete_inode (const INode& inode)
       if (inode.vmin == vmin && inode.vmax == vmax)
         {
           ret = dbc->del (0);
-          assert (ret == 0);
+          g_assert (ret == 0);
         }
       ret = dbc->get (&ikey, &idata, DB_NEXT_DUP);
     }
@@ -362,7 +362,7 @@ BDBPtr::store_link (const Link& link)
   Dbt ldata (dbuf.begin(), dbuf.size());
 
   int ret = ptr->my_bdb->get_db()->put (NULL, &lkey, &ldata, 0);
-  assert (ret == 0);
+  g_assert (ret == 0);
 }
 
 void
@@ -376,7 +376,7 @@ BDBPtr::delete_link (const Link& link)
   Dbt lkey (kbuf.begin(), kbuf.size());
   Dbt ldata;
 
-  DbcPtr dbc (ptr->my_bdb); /* Acquire a cursor for the database. */
+  DbcPtr dbc (ptr->my_bdb, DbcPtr::WRITE); /* Acquire a cursor for the database. */
 
   // iterate over key elements to find link to delete
   int ret = dbc->get (&lkey, &ldata, DB_SET);
@@ -395,7 +395,7 @@ BDBPtr::delete_link (const Link& link)
       if (link.vmin == vmin && link.vmax == vmax && link.inode_id == inode_id && link.name == name)
         {
           ret = dbc->del (0);
-          assert (ret == 0);
+          g_assert (ret == 0);
         }
       ret = dbc->get (&lkey, &ldata, DB_NEXT_DUP);
     }

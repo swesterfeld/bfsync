@@ -51,15 +51,18 @@ BDB::open (const string& path)
 
   try
     {
-      db = new Db (NULL, 0);
-      db->set_cachesize (1, 0, 0);  // 1 GB cache size
+      db_env = new DbEnv (DB_CXX_NO_EXCEPTIONS);
+      db_env->set_cachesize (1, 0, 0);  // 1 Gb cache size
+      db_env->open (path.c_str(), DB_INIT_MPOOL | DB_INIT_CDB | DB_CREATE, 0);
+
+      db = new Db (db_env, 0);
       db->set_flags (DB_DUP);       // allow duplicate keys
 
       // Open the database
       u_int32_t oFlags = DB_CREATE; // Open flags;
 
       db->open (NULL,               // Transaction pointer
-                path.c_str(),       // Database file name
+                "db",               // Database name
                 NULL,               // Optional logical database name
                 DB_BTREE,           // Database access method
                 oFlags,             // Open flags
@@ -82,11 +85,18 @@ BDB::sync()
 bool
 BDB::close()
 {
+  assert (db_env != 0);
   assert (db != 0);
 
   int ret = db->close (0);
   delete db;
   db = NULL;
+
+  assert (ret == 0);
+
+  ret = db_env->close (0);
+  delete db_env;
+  db_env = NULL;
 
   return (ret == 0);
 }
@@ -196,7 +206,7 @@ BDB::delete_links (const map<string, LinkVersionList>& link_map)
   Dbt ldata;
 
 
-  DbcPtr dbc (this); /* Acquire a cursor for the database. */
+  DbcPtr dbc (this, DbcPtr::WRITE); /* Acquire a cursor for the database. */
 
   // iterate over key elements and delete records which are in LinkVersionList
   int ret = dbc->get (&lkey, &ldata, DB_SET);
@@ -394,7 +404,7 @@ BDB::delete_inodes (const INodeVersionList& inodes)
   Dbt idata;
 
 
-  DbcPtr dbc (this); /* Acquire a cursor for the database. */
+  DbcPtr dbc (this, DbcPtr::WRITE); /* Acquire a cursor for the database. */
 
   // iterate over key elements and delete records which are in INodeVersionList
   int ret = dbc->get (&ikey, &idata, DB_SET);

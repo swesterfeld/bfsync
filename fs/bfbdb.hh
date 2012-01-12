@@ -100,7 +100,8 @@ struct HistoryEntry
 
 class BDB
 {
-  Db   *db;
+  DbEnv *db_env;
+  Db    *db;
 public:
   Mutex mutex;
 
@@ -130,12 +131,14 @@ class DbcPtr // cursor smart-wrapper: automatically closes cursor in destructor
 {
   Dbc *dbc;
 public:
-  DbcPtr (BDB *bdb)
+  enum Mode { READ, WRITE };
+
+  DbcPtr (BDB *bdb, Mode mode = READ)
   {
     assert (bdb);
 
     int ret;
-    ret = bdb->get_db()->cursor (NULL, &dbc, 0);
+    ret = bdb->get_db()->cursor (NULL, &dbc, mode == WRITE ? DB_WRITECURSOR : 0);
     assert (ret == 0);
   }
   ~DbcPtr()
