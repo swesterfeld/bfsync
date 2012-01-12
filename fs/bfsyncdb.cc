@@ -117,6 +117,32 @@ HistoryEntry::~HistoryEntry()
   history_entry_leak_debugger.del (this);
 }
 
+//----------------------------- ID ------------------------------
+
+static BFSync::LeakDebugger id_leak_debugger ("(Python)BFSync::ID");
+
+ID::ID()
+{
+  id_leak_debugger.add (this);
+}
+
+ID::ID (const ID& id) :
+  id (id.id)
+{
+  id_leak_debugger.add (this);
+}
+
+ID::ID (const string& str) :
+  id (str)
+{
+  id_leak_debugger.add (this);
+}
+
+ID::~ID()
+{
+  id_leak_debugger.del (this);
+}
+
 //---------------------------------------------------------------
 
 BDBPtr
@@ -140,23 +166,13 @@ BDBPtr::close()
 void
 id_store (const ID *id, DataOutBuffer& data_buf)
 {
-  data_buf.write_string (id->path_prefix);
-  data_buf.write_uint32 (id->a);
-  data_buf.write_uint32 (id->b);
-  data_buf.write_uint32 (id->c);
-  data_buf.write_uint32 (id->d);
-  data_buf.write_uint32 (id->e);
+  id->id.store (data_buf);
 }
 
 void
 id_load (ID *id, DataBuffer& dbuf)
 {
-  id->path_prefix = dbuf.read_string();
-  id->a = dbuf.read_uint32();
-  id->b = dbuf.read_uint32();
-  id->c = dbuf.read_uint32();
-  id->d = dbuf.read_uint32();
-  id->e = dbuf.read_uint32();
+  id->id = BFSync::ID (dbuf);
 }
 
 INode
@@ -247,7 +263,7 @@ ID*
 id_root()
 {
   ID *id = new ID();
-  id->a = id->b = id->c = id->d = id->e = 0;
+  id->id = BFSync::ID::root();
   return id;
 }
 
@@ -341,13 +357,7 @@ make_lmap (map<string, const Link*>& lmap, const vector<Link>& links)
 string
 print_id (const ID& id)
 {
-  string result;
-
-  for (size_t i = 0; i < id.path_prefix.size(); i++)
-    result += string_printf ("%02x", (unsigned char) id.path_prefix[i]);
-
-  result += string_printf ("/%08x%08x%08x%08x%08x", id.a, id.b, id.c, id.d, id.e);
-  return result;
+  return id.id.str();
 }
 
 vector<string>

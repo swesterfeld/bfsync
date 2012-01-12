@@ -23,8 +23,14 @@
 #include <vector>
 
 struct ID {
-  std::string path_prefix;
-  unsigned int a, b, c, d, e; // guint32
+  BFSync::ID id;
+
+  ID();
+  ID (const ID& id);
+  ID (const std::string& id);
+  ~ID();
+
+  std::string str() const { return id.str(); }
 };
 
 struct INode {
@@ -143,6 +149,7 @@ public:
 
 extern BDBPtr             open_db (const std::string& db);
 extern ID*                id_root();
+
 class DiffGenerator
 {
   BFSync::DbcPtr dbc;
