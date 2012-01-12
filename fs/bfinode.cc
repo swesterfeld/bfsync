@@ -122,6 +122,7 @@ INodeRepo::save_changes (SaveChangesMode sc)
       cache.clear();
       links_cache.clear();
     }
+  bdb->sync();
 }
 
 void
@@ -433,7 +434,7 @@ INode::alloc_ino()
 string
 INode::new_file_path() const
 {
-  string id_str = id.str();
+  string id_str = id.no_prefix_str();
   return Options::the()->repo_path + "/new/" + id_str.substr (0, 2) + "/" + id_str.substr (2);
 }
 
