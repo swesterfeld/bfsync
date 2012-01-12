@@ -83,6 +83,22 @@ ID::pretty_str() const
   return prefix + "/" + buffer;
 }
 
+string
+ID::no_prefix_str() const
+{
+  char buffer[41];
+
+  uint32_hex (a, buffer);
+  uint32_hex (b, buffer + 8);
+  uint32_hex (c, buffer + 16);
+  uint32_hex (d, buffer + 24);
+  uint32_hex (e, buffer + 32);
+  buffer[40] = 0;
+
+  return buffer;
+}
+
+
 ID::ID()
 {
 }

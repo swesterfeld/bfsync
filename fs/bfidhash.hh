@@ -42,6 +42,7 @@ struct ID
 
   ID& operator= (const ID& id);
 
+  std::string no_prefix_str() const;
   std::string str() const;
   std::string pretty_str() const;
 
