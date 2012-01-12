@@ -222,18 +222,20 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
     server_conn = NoServerConn()
   server_conn.get_lock()
 
-  hash_list = []
-  file_list = []
-
   c = conn.cursor()
 
-  print "FIXME: commit new!!"
-  # c.execute ('''SELECT id FROM inodes WHERE hash = "new"''')
-  # for row in c:
-  #   id = row[0]
-  #   filename = os.path.join (repo_path, "new", id[0:2], id[2:])
-  #   hash_list += [ filename ]
-  #   file_list += [ (filename, id) ]
+  VERSION = repo.first_unused_version()
+
+  def add_new_inode (inode, hash_list, file_list):
+    if inode.hash == "new":
+      id = inode.id.no_prefix_str()
+      filename = os.path.join (repo_path, "new", id[0:2], id[2:])
+      hash_list += [ filename ]
+      file_list += [ (filename, inode.id.str()) ]
+
+  hash_list = []
+  file_list = []
+  repo.foreach_inode_link (VERSION, lambda inode: add_new_inode (inode, hash_list, file_list), None)
 
   have_message = False
   if commit_args:
