@@ -137,7 +137,7 @@ class Repo:
     if inode.type != 3: # FIXME: constants
       return # not a directory, no links
 
-    links = self.bdb.load_links (inode.id, 1)
+    links = self.bdb.load_links (inode.id, version)
     for link in links:
       link_callback (link)
 
