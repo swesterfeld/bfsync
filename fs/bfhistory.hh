@@ -27,14 +27,15 @@ namespace BFSync {
 
 class History
 {
-  int                     m_current_version;
-  std::vector<int>        m_all_versions;
-  BDB                    *bdb;
+  unsigned int                m_current_version;
+  std::vector<unsigned int>   m_all_versions;
+  BDB                        *bdb;
 public:
   static History         *the();
 
-  int                     current_version();
-  const std::vector<int>& all_versions();
+  unsigned int            current_version();
+  const std::vector<unsigned int>&
+                          all_versions();
 
   void                    set_bdb (BDB *bdb);
   void                    read();

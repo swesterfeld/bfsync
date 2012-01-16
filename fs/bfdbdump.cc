@@ -27,6 +27,8 @@ using namespace BFSync;
 using std::string;
 using std::vector;
 
+#define VMSTR(v) ((v == VERSION_INF) ? "INF" : string_printf ("%u", v).c_str())
+
 int
 main (int argc, char **argv)
 {
@@ -66,8 +68,8 @@ main (int argc, char **argv)
         {
           ID  id (kbuffer);
 
-          int vmin = dbuffer.read_uint32();
-          int vmax = dbuffer.read_uint32();
+          unsigned int vmin = dbuffer.read_uint32();
+          unsigned int vmax = dbuffer.read_uint32();
           int uid = dbuffer.read_uint32();
           int gid = dbuffer.read_uint32();
           int mode = dbuffer.read_uint32();
@@ -83,20 +85,20 @@ main (int argc, char **argv)
           int mtime = dbuffer.read_uint32();
           int mtime_ns = dbuffer.read_uint32();
 
-          inodes.push_back (g_strdup_printf ("%s=%d|%d|%d|%d|%o|%d|%s|%s|%d|%d|%d|%d|%d|%d|%d|%d",
-                                             id.pretty_str().c_str(), vmin, vmax, uid, gid, mode, type, hash.c_str(), link.c_str(),
+          inodes.push_back (g_strdup_printf ("%s=%u|%s|%d|%d|%o|%d|%s|%s|%d|%d|%d|%d|%d|%d|%d|%d",
+                                             id.pretty_str().c_str(), vmin, VMSTR (vmax), uid, gid, mode, type, hash.c_str(), link.c_str(),
                                              size, major, minor, nlink, ctime, ctime_ns, mtime, mtime_ns));
         }
       else if (table == BDB_TABLE_LINKS)
         {
           ID  id (kbuffer);
 
-          int vmin = dbuffer.read_uint32();
-          int vmax = dbuffer.read_uint32();
+          unsigned int vmin = dbuffer.read_uint32();
+          unsigned int vmax = dbuffer.read_uint32();
           ID  inode_id (dbuffer);
           string name = dbuffer.read_string();
 
-          links.push_back (g_strdup_printf ("%s=%d|%d|%s|%s", id.pretty_str().c_str(), vmin, vmax, inode_id.pretty_str().c_str(), name.c_str()));
+          links.push_back (g_strdup_printf ("%s=%u|%s|%s|%s", id.pretty_str().c_str(), vmin, VMSTR (vmax), inode_id.pretty_str().c_str(), name.c_str()));
         }
       else if (table == BDB_TABLE_LOCAL_ID2INO)
         {

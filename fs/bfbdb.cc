@@ -430,7 +430,7 @@ BDB::delete_inodes (const INodeVersionList& inodes)
 }
 
 bool
-BDB::load_inode (const ID& id, int version, INode *inode)
+BDB::load_inode (const ID& id, unsigned int version, INode *inode)
 {
   Lock lock (mutex);
 

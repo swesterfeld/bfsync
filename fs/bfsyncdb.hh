@@ -184,3 +184,5 @@ public:
 
   std::vector<std::string> get_next();
 };
+
+const unsigned int VERSION_INF = 0xffffffff;

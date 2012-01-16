@@ -36,13 +36,13 @@ History::the()
   return &instance;
 }
 
-int
+unsigned int
 History::current_version()
 {
   return m_current_version;
 }
 
-const vector<int>&
+const vector<unsigned int>&
 History::all_versions()
 {
   return m_all_versions;
@@ -55,15 +55,15 @@ History::read()
 
   HistoryEntry history_entry;
 
-  m_current_version = -1;
-  for (int version = 1; bdb->load_history_entry (version, history_entry); version++)
+  m_current_version = 0;
+  for (unsigned int version = 1; bdb->load_history_entry (version, history_entry); version++)
     {
       m_current_version = max (version + 1, m_current_version);
       m_all_versions.push_back (version);
     }
   m_all_versions.push_back (m_current_version);
 
-  if (m_current_version == -1)
+  if (m_current_version == 0)
     {
       printf ("bfsyncfs: find current version in history table failed\n");
       exit (1);

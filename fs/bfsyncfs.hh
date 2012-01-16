@@ -184,10 +184,12 @@ public:
   Context();
 
   const fuse_context *fc;
-  int                 version;
+  unsigned int        version;
 };
 
 std::string string_printf (const char *format, ...) __attribute__ ((__format__ (__printf__, 1, 2)));
+
+const unsigned int VERSION_INF = 0xffffffff;
 
 }
 

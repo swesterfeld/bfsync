@@ -32,7 +32,7 @@ class Link
   Mutex        ref_mutex;
 
 public:
-  int          vmin, vmax;
+  unsigned int vmin, vmax;
   ID           dir_id;
   ID           inode_id;
   std::string  name;

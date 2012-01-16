@@ -26,6 +26,7 @@
 #include "bfleakdebugger.hh"
 #include "bflink.hh"
 #include "bfbdb.hh"
+#include "bfhistory.hh"
 
 #include <set>
 
@@ -214,7 +215,7 @@ INodePtr::INodePtr (const Context& ctx, const char *path)
 {
   ptr = new INode();
   ptr->vmin = ctx.version;
-  ptr->vmax = ctx.version;
+  ptr->vmax = VERSION_INF;
   ptr->id = ID::gen_new (path);
   ptr->uid = ctx.fc->uid;
   ptr->gid = ctx.fc->gid;
@@ -266,15 +267,17 @@ INodePtr::update() const
 {
   g_return_val_if_fail (ptr, NULL);
 
-  if (!ptr->updated && ptr->vmin != ptr->vmax)
+  if (!ptr->updated && ptr->vmin != History::the()->current_version())
     {
+      g_assert (ptr->vmax == VERSION_INF);
+
       // INode copy-on-write
 
       INode *old_ptr = new INode (*ptr);
-      old_ptr->vmax--;
+      old_ptr->vmax = History::the()->current_version() - 1;
       old_ptr->updated = true;
 
-      ptr->vmin = ptr->vmax;
+      ptr->vmin = History::the()->current_version();
       ptr->updated = true;
 
       // add old version to cache
@@ -489,7 +492,7 @@ INode::add_link (const Context& ctx, INodePtr to, const string& name)
   Link *link = new Link();
 
   link->vmin = ctx.version;
-  link->vmax = ctx.version;
+  link->vmax = VERSION_INF;
   link->dir_id = id;
   link->inode_id = to->id;
   link->name = name;
@@ -712,7 +715,7 @@ LinkVersionList::operator[] (size_t pos) const
 }
 
 LinkPtr&
-LinkVersionList::find_version (int version)
+LinkVersionList::find_version (unsigned int version)
 {
   for (size_t i = 0; i < links.size(); i++)
     {
@@ -723,7 +726,7 @@ LinkVersionList::find_version (int version)
 }
 
 const LinkPtr&
-LinkVersionList::find_version (int version) const
+LinkVersionList::find_version (unsigned int version) const
 {
   for (size_t i = 0; i < links.size(); i++)
     {

@@ -321,11 +321,11 @@ version_map_path (string& path)
   // search version in history
   int version = -1;
 
-  const vector<int>& versions = History::the()->all_versions();
+  const vector<unsigned int>& versions = History::the()->all_versions();
   for (size_t i = 0; i < versions.size(); i++)
     {
       char buffer[64];
-      sprintf (buffer, "%d", versions[i]);
+      sprintf (buffer, "%u", versions[i]);
       if (buffer == p_vec[2])
         version = versions[i];
     }
@@ -566,14 +566,14 @@ read_dir_contents (const Context& ctx, const string& path, vector<string>& entri
     }
   else if (path == "/.bfsync/commits")
     {
-      const vector<int>& all_versions = History::the()->all_versions();
+      const vector<unsigned int>& all_versions = History::the()->all_versions();
 
-      for (vector<int>::const_iterator vi = all_versions.begin(); vi != all_versions.end(); vi++)
+      for (vector<unsigned int>::const_iterator vi = all_versions.begin(); vi != all_versions.end(); vi++)
         {
-          int v = *vi;
+          unsigned int v = *vi;
           if (v != History::the()->current_version())
             {
-              string v_str = string_printf ("%d", v);
+              string v_str = string_printf ("%u", v);
               entries.push_back (v_str);
             }
         }

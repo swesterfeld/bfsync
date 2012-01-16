@@ -129,8 +129,8 @@ class INode
   Mutex                     ref_mutex;
 
 public:
-  int           vmin;
-  int           vmax;
+  unsigned int  vmin;
+  unsigned int  vmax;
 
   ID            id;
   uid_t         uid;
@@ -225,8 +225,8 @@ public:
   LinkPtr& operator[] (size_t pos);
   const LinkPtr& operator[] (size_t pos) const;
   void add (const LinkPtr& link);
-  LinkPtr& find_version (int version);
-  const LinkPtr& find_version (int version) const;
+  LinkPtr& find_version (unsigned int version);
+  const LinkPtr& find_version (unsigned int version) const;
 };
 
 class INodeLinks
