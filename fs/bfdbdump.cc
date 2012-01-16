@@ -28,60 +28,8 @@ using std::string;
 using std::vector;
 
 int
-init (const string& filename)
-{
-  BDB *bdb = bdb_open (filename);
-  if (!bdb)
-    {
-      printf ("error opening db %s\n", filename.c_str());
-      return 1;
-    }
-
-  DataOutBuffer kbuf, dbuf;
-
-  ID root = ID::root();
-  root.store (kbuf);
-  kbuf.write_table (BDB_TABLE_INODES);
-
-  dbuf.write_uint32 (1); // vmin
-  dbuf.write_uint32 (1); // vmax
-  dbuf.write_uint32 (getuid());
-  dbuf.write_uint32 (getgid());
-  dbuf.write_uint32 (0775);
-  dbuf.write_uint32 (FILE_DIR);
-  dbuf.write_string ("");
-  dbuf.write_string ("");
-  dbuf.write_uint32 (0); // size
-  dbuf.write_uint32 (0); // major
-  dbuf.write_uint32 (0); // minor
-  dbuf.write_uint32 (1); // nlink
-
-  time_t now = time (NULL);
-  dbuf.write_uint32 (now); // ctime
-  dbuf.write_uint32 (0);
-  dbuf.write_uint32 (now); // mtime
-  dbuf.write_uint32 (0);
-
-  Dbt ikey (kbuf.begin(), kbuf.size());
-  Dbt idata (dbuf.begin(), dbuf.size());
-
-  int ret = bdb->get_db()->put (NULL, &ikey, &idata, 0);
-  assert (ret == 0);
-
-  if (!bdb->close())
-    {
-      printf ("error closing db\n");
-      return 1;
-    }
-  return 0;
-}
-
-int
 main (int argc, char **argv)
 {
-  if (argc == 3 && strcmp (argv[1], "init") == 0)
-    return init (argv[2]);
-
   assert (argc == 2);
 
   BDB *bdb = bdb_open (argv[1]);
