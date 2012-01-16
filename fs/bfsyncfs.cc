@@ -1451,18 +1451,6 @@ bfsyncfs_main (int argc, char **argv)
       exit (1);
     }
   map<string, vector<string> > cfg_values = repo_cfg_parser.values();
-  const vector<string>& sqlite_sync = cfg_values["sqlite-sync"];
-  if (sqlite_sync.size() == 1)
-    {
-      if (sqlite_sync[0] == "1")
-        options.sqlite_sync = true;
-      else
-        options.sqlite_sync = false;
-    }
-  else
-    {
-      options.sqlite_sync = true;
-    }
   const vector<string>& use_uid_gid = cfg_values["use-uid-gid"];
   options.use_uid_gid = false;
   if (use_uid_gid.size() == 1)
@@ -1474,7 +1462,6 @@ bfsyncfs_main (int argc, char **argv)
   special_files.info  = "repo-type mount;\n";
   special_files.info += "repo-path \"" + repo_path + "\";\n";
   special_files.info += "mount-point \"" + mount_point + "\";\n";
-  special_files.info += "sqlite-sync " + string (options.sqlite_sync ? "1" : "0") + ";\n";
   special_files.info += "use-uid-gid " + string (options.use_uid_gid ? "1" : "0") + ";\n";
 
   debug ("starting bfsyncfs; info = \n{\n%s}\n", special_files.info.c_str());

@@ -25,7 +25,6 @@
 #include <fuse.h>
 #include <stdio.h>
 #include <stdarg.h>
-#include <sqlite3.h>
 #include <pthread.h>
 #include <glib.h>
 #include <sys/stat.h>
@@ -169,7 +168,6 @@ struct Options {
   bool         mount_debug;
   bool         mount_all;
   bool         mount_fg;
-  bool         sqlite_sync;
   bool         use_uid_gid;
 
   static Options *the();

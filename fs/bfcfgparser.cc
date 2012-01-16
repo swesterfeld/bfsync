@@ -266,10 +266,10 @@ main (int argc, char **argv)
       for (map<string, vector<string> >::iterator vi = values.begin(); vi != values.end(); vi++)
         {
           printf ("KEY %s:\n", vi->first.c_str());
-          vector<string> sqlite_sync = vi->second;
-          for (vector<string>::iterator si = sqlite_sync.begin(); si != sqlite_sync.end(); si++)
+          vector<string> values = vi->second;
+          for (vector<string>::iterator vi = values.begin(); vi != values.end(); vi++)
             {
-              printf (" - %s\n", si->c_str());
+              printf (" - %s\n", vi->c_str());
             }
         }
     }
