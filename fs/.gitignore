@@ -7,7 +7,6 @@ Makefile.in
 *.lo
 *.la
 bfperf
-sqlperf
 bfsyncfs
 bfsyncstat
 bftesthelper
