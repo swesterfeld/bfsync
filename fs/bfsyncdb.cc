@@ -368,35 +368,28 @@ BDBPtr::store_link (const Link& link)
 void
 BDBPtr::delete_link (const Link& link)
 {
-  DataOutBuffer kbuf;
+  DataOutBuffer kbuf, dbuf;
 
   id_store (&link.dir_id, kbuf);
   kbuf.write_table (BDB_TABLE_LINKS);
 
+  dbuf.write_uint32 (link.vmin);
+  dbuf.write_uint32 (link.vmax);
+  id_store (&link.inode_id, dbuf);
+  dbuf.write_string (link.name);
+
   Dbt lkey (kbuf.begin(), kbuf.size());
-  Dbt ldata;
+  Dbt ldata (dbuf.begin(), dbuf.size());
 
   DbcPtr dbc (ptr->my_bdb, DbcPtr::WRITE); /* Acquire a cursor for the database. */
 
   // iterate over key elements to find link to delete
-  int ret = dbc->get (&lkey, &ldata, DB_SET);
+  int ret = dbc->get (&lkey, &ldata, DB_GET_BOTH);
   while (ret == 0)
     {
-      DataBuffer dbuffer ((char *) ldata.get_data(), ldata.get_size());
+      ret = dbc->del (0);
+      g_assert (ret == 0);
 
-      int vmin = dbuffer.read_uint32();
-      int vmax = dbuffer.read_uint32();
-
-      ID  inode_id;
-      id_load (&inode_id, dbuffer);
-
-      string name = dbuffer.read_string();
-
-      if (link.vmin == vmin && link.vmax == vmax && link.inode_id == inode_id && link.name == name)
-        {
-          ret = dbc->del (0);
-          g_assert (ret == 0);
-        }
       ret = dbc->get (&lkey, &ldata, DB_NEXT_DUP);
     }
 }
