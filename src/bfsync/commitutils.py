@@ -332,21 +332,6 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
     status_line.cleanup()
 
   if commit_size_ok:
-    def bump_inode_version (inode):
-      if inode.vmax != VERSION:
-        raise Exception ("error bumping inode version, expected version %d, got version %d" % (VERSION, inode.vmax))
-      repo.bdb.delete_inode (inode)
-      inode.vmax += 1
-      repo.bdb.store_inode (inode)
-
-    def bump_link_version (link):
-      if link.vmax != VERSION:
-        raise Exception ("error bumping link version, expected version %d, got version %d" % (VERSION, link.vmax))
-      repo.bdb.delete_link (link)
-      link.vmax += 1
-      repo.bdb.store_link (link)
-
-    repo.foreach_inode_link (VERSION, bump_inode_version, bump_link_version)
     repo.bdb.store_history_entry (VERSION, hash, commit_author, commit_msg, commit_time)
   else:
     print "Nothing to commit."
