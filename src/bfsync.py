@@ -19,4 +19,8 @@
 
 from bfsync.main import main
 
-main()
+if False:
+  import cProfile
+  cProfile.run ("main()", "/tmp/bfsync-profile")
+else:
+  main()
