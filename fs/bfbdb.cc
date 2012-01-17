@@ -614,4 +614,41 @@ BDB::delete_history_entry (int version)
     }
 }
 
+void
+BDB::add_changed_inode (const ID& id)
+{
+  Lock lock (mutex);
+
+  // reverse lookup: inode already in changed set?
+  int ret;
+  DataOutBuffer kbuf, dbuf;
+
+  id.store (kbuf);
+  kbuf.write_table (BDB_TABLE_CHANGED_INODES_REV);
+
+  Dbt rev_cikey (kbuf.begin(), kbuf.size());
+  Dbt rev_cidata;
+
+  ret = db->get (NULL, &rev_cikey, &rev_cidata, 0);
+  if (ret == 0)
+    return;       // => inode already in changed set
+
+  // add reverse entry
+  ret = db->put (NULL, &rev_cikey, &rev_cidata, 0);
+  assert (ret == 0);
+
+  // add to changed inodes table
+  kbuf.clear();
+  dbuf.clear();
+
+  kbuf.write_table (BDB_TABLE_CHANGED_INODES);
+  id.store (dbuf);
+
+  Dbt cikey (kbuf.begin(), kbuf.size());
+  Dbt cidata (dbuf.begin(), dbuf.size());
+
+  ret = db->put (NULL, &cikey, &cidata, 0);
+  assert (ret == 0);
+}
+
 }

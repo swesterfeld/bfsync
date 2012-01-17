@@ -24,6 +24,7 @@
 using BFSync::DataOutBuffer;
 using BFSync::DataBuffer;
 using BFSync::DbcPtr;
+using BFSync::BDB_TABLE_CHANGED_INODES;
 using BFSync::BDB_TABLE_INODES;
 using BFSync::BDB_TABLE_LINKS;
 using BFSync::string_printf;
@@ -121,19 +122,22 @@ HistoryEntry::~HistoryEntry()
 
 static BFSync::LeakDebugger id_leak_debugger ("(Python)BFSync::ID");
 
-ID::ID()
+ID::ID() :
+  valid (false)
 {
   id_leak_debugger.add (this);
 }
 
 ID::ID (const ID& id) :
-  id (id.id)
+  id (id.id),
+  valid (id.valid)
 {
   id_leak_debugger.add (this);
 }
 
 ID::ID (const string& str) :
-  id (str)
+  id (str),
+  valid (true)
 {
   id_leak_debugger.add (this);
 }
@@ -146,7 +150,7 @@ ID::~ID()
 bool
 ID::operator== (const ID& other) const
 {
-  return id == other.id;
+  return id == other.id && valid == other.valid;
 }
 
 //---------------------------------------------------------------
@@ -179,6 +183,7 @@ void
 id_load (ID *id, DataBuffer& dbuf)
 {
   id->id = BFSync::ID (dbuf);
+  id->valid = true;
 }
 
 INode
@@ -646,4 +651,38 @@ BDBWrapper::~BDBWrapper()
 
       my_bdb = NULL;
     }
+}
+
+ChangedINodesIterator::ChangedINodesIterator (BDBPtr bdb_ptr) :
+  dbc (bdb_ptr.get_bdb()),
+  bdb_ptr (bdb_ptr)
+{
+  kbuf.write_table (BDB_TABLE_CHANGED_INODES);
+
+  key = Dbt (kbuf.begin(), kbuf.size());
+  dbc_ret = dbc->get (&key, &data, DB_SET);
+}
+
+ID
+ChangedINodesIterator::get_next()
+{
+  if (dbc_ret == 0)
+    {
+      DataBuffer dbuffer ((char *) data.get_data(), data.get_size());
+
+      ID id;
+      id_load (&id, dbuffer);
+
+      /* goto next record */
+      dbc_ret = dbc->get (&key, &data, DB_NEXT_DUP);
+
+      return id;
+    }
+  ID xid;
+  xid.valid = false;
+  return xid;
+}
+
+ChangedINodesIterator::~ChangedINodesIterator()
+{
 }

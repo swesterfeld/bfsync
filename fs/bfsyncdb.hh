@@ -25,6 +25,8 @@
 struct ID {
   BFSync::ID id;
 
+  bool       valid;
+
   ID();
   ID (const ID& id);
   ID (const std::string& id);
@@ -183,6 +185,21 @@ public:
   ~DiffGenerator();
 
   std::vector<std::string> get_next();
+};
+
+class ChangedINodesIterator
+{
+  BFSync::DbcPtr dbc;
+  int dbc_ret;
+  BDBPtr bdb_ptr;
+
+  BFSync::DataOutBuffer kbuf;
+  Dbt key, data;
+public:
+  ChangedINodesIterator (BDBPtr bdb_ptr);
+  ~ChangedINodesIterator();
+
+  ID get_next();
 };
 
 const unsigned int VERSION_INF = 0xffffffff;

@@ -95,6 +95,9 @@ INodeRepo::save_changes (SaveChangesMode sc)
           //  - split into two inodes (copy-on-write)
           bdb->delete_inodes (ivlist);
 
+          // build changed inode list
+          bdb->add_changed_inode (ci->first);
+
           INodeLinksPtr links = INodeLinksPtr::null();
           for (size_t i = 0; i < ivlist.size(); i++)
             {

@@ -52,7 +52,7 @@ main (int argc, char **argv)
       return 1;
     }
 
-  vector<char *> links, inodes, id2ino, ino2id, history;
+  vector<char *> links, inodes, id2ino, ino2id, history, changed_inodes, changed_inodes_rev;
 
   Dbt key;
   Dbt data;
@@ -125,6 +125,22 @@ main (int argc, char **argv)
           history.push_back (g_strdup_printf ("%d=%s|%s|%s|%d", version,
                                               he.hash.c_str(), he.author.c_str(), he.message.c_str(), he.time));
         }
+      else if (table == BDB_TABLE_CHANGED_INODES)
+        {
+          DataBuffer kbuffer ((char *) key.get_data(), key.get_size());
+
+          ID  id (dbuffer);
+
+          changed_inodes.push_back (g_strdup_printf ("%s", id.pretty_str().c_str()));
+         }
+      else if (table == BDB_TABLE_CHANGED_INODES_REV)
+        {
+          DataBuffer kbuffer ((char *) key.get_data(), key.get_size());
+
+          ID  id (kbuffer);
+
+          changed_inodes_rev.push_back (g_strdup_printf ("%s", id.pretty_str().c_str()));
+         }
       else
         {
           printf ("unknown record type\n");
@@ -166,6 +182,21 @@ main (int argc, char **argv)
 
   for (size_t i = 0; i < history.size(); i++)
     printf ("%s\n", history[i]);
+
+  printf ("\n");
+  printf ("Changed INodes:\n");
+  printf ("===============\n\n");
+
+  for (size_t i = 0; i < changed_inodes.size(); i++)
+    printf ("%s\n", changed_inodes[i]);
+
+  printf ("\n");
+
+  printf ("Changed INodes (reverse):\n");
+  printf ("=========================\n\n");
+
+  for (size_t i = 0; i < changed_inodes_rev.size(); i++)
+    printf ("%s\n", changed_inodes_rev[i]);
 
   printf ("\n");
 

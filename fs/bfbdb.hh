@@ -31,11 +31,13 @@ namespace BFSync
 
 enum BDBTables
 {
-  BDB_TABLE_INODES        = 1,
-  BDB_TABLE_LINKS         = 2,
-  BDB_TABLE_LOCAL_ID2INO  = 3,
-  BDB_TABLE_LOCAL_INO2ID  = 4,
-  BDB_TABLE_HISTORY       = 5
+  BDB_TABLE_INODES              = 1,
+  BDB_TABLE_LINKS               = 2,
+  BDB_TABLE_LOCAL_ID2INO        = 3,
+  BDB_TABLE_LOCAL_INO2ID        = 4,
+  BDB_TABLE_HISTORY             = 5,
+  BDB_TABLE_CHANGED_INODES      = 6,
+  BDB_TABLE_CHANGED_INODES_REV  = 7,
 };
 
 BDB *bdb_open (const std::string& path);
@@ -118,6 +120,7 @@ public:
   void  store_inode (const INode *inode);
   void  delete_inodes (const INodeVersionList& inodes);
   bool  load_inode (const ID& id, unsigned int version, INode *inode);
+  void  add_changed_inode (const ID& id);
 
   bool  try_store_id2ino (const ID& id, int ino);
   bool  load_ino (const ID& id, ino_t& ino);
@@ -139,7 +142,7 @@ public:
 
     int ret;
     ret = bdb->get_db()->cursor (NULL, &dbc, mode == WRITE ? DB_WRITECURSOR : 0);
-    assert (ret == 0);
+    g_assert (ret == 0);
   }
   ~DbcPtr()
   {
