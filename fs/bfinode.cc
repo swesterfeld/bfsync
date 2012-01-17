@@ -94,28 +94,28 @@ INodeRepo::save_changes (SaveChangesMode sc)
           //  - just change some fields
           //  - split into two inodes (copy-on-write)
           bdb->delete_inodes (ivlist);
-        }
 
-      INodeLinksPtr links = INodeLinksPtr::null();
-      for (size_t i = 0; i < ivlist.size(); i++)
-        {
-          INodePtr inode_ptr = ivlist[i];
-
-          if (inode_ptr && need_save)
+          INodeLinksPtr links = INodeLinksPtr::null();
+          for (size_t i = 0; i < ivlist.size(); i++)
             {
-              inodes_saved++;
+              INodePtr inode_ptr = ivlist[i];
 
-              INode *inode = inode_ptr.get_ptr_without_update();
-              inode->save();
-              inode->updated = false;
-              if (!links)
-                links = inode->links;
+              if (inode_ptr)
+                {
+                  inodes_saved++;
+
+                  INode *inode = inode_ptr.get_ptr_without_update();
+                  inode->save();
+                  inode->updated = false;
+                  if (!links)
+                    links = inode->links;
+                }
             }
-        }
-      if (need_save && links)
-        {
-          INodeLinks *inode_links = links.get_ptr_without_update();
-          inode_links->save();
+          if (links)
+            {
+              INodeLinks *inode_links = links.get_ptr_without_update();
+              inode_links->save();
+            }
         }
     }
   if (sc == SC_CLEAR_CACHE)
