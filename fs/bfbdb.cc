@@ -174,9 +174,7 @@ BDB::delete_links (const map<string, LinkVersionList>& link_map)
 {
   Lock lock (mutex);
 
-  set< vector<char> > del_links;
   vector<char> all_key;
-
   for (map<string, LinkVersionList>::const_iterator mapi = link_map.begin(); mapi != link_map.end(); mapi++)
     {
       const LinkVersionList& links = mapi->second;
@@ -186,7 +184,7 @@ BDB::delete_links (const map<string, LinkVersionList>& link_map)
 
           links[i]->dir_id.store (kbuf);
           kbuf.write_table (BDB_TABLE_LINKS);
-          if (i == 0)
+          if (all_key.empty())
             {
               all_key = kbuf.data();
             }
@@ -194,17 +192,14 @@ BDB::delete_links (const map<string, LinkVersionList>& link_map)
             {
               assert (all_key == kbuf.data()); // all links should share the same key
             }
-          write_link_data (dbuf, links[i]);
-          del_links.insert (dbuf.data());
         }
     }
 
-  if (del_links.size() == 0)
+  if (all_key.empty())
     return;
 
   Dbt lkey (&all_key[0], all_key.size());
   Dbt ldata;
-
 
   DbcPtr dbc (this, DbcPtr::WRITE); /* Acquire a cursor for the database. */
 
@@ -212,9 +207,27 @@ BDB::delete_links (const map<string, LinkVersionList>& link_map)
   int ret = dbc->get (&lkey, &ldata, DB_SET);
   while (ret == 0)
     {
-      vector<char> cursor_data ((char *) ldata.get_data(), (char *) ldata.get_data() + ldata.get_size());
+      DataBuffer dbuffer ((char *) ldata.get_data(), ldata.get_size());
 
-      if (del_links.find (cursor_data) != del_links.end())
+      guint32 vmin = dbuffer.read_uint32();
+      guint32 vmax = dbuffer.read_uint32();
+      ID inode_id (dbuffer);
+      string name = dbuffer.read_string();
+
+      bool del = false;
+
+      map<string, LinkVersionList>::const_iterator mapi = link_map.find (name);
+      if (mapi != link_map.end())
+        {
+          const LinkVersionList& links = mapi->second;
+          for (size_t i = 0; i < links.size(); i++)
+            {
+              if (links[i]->vmin == vmin || links[i]->vmax == vmax)
+                del = true;
+            }
+        }
+
+      if (del)
         {
           ret = dbc->del (0);
           assert (ret == 0);
