@@ -170,35 +170,16 @@ BDB::store_link (const LinkPtr& lp)
 }
 
 void
-BDB::delete_links (const map<string, LinkVersionList>& link_map)
+BDB::delete_links (const ID& dir_id, const map<string, LinkVersionList>& link_map)
 {
   Lock lock (mutex);
 
-  vector<char> all_key;
-  for (map<string, LinkVersionList>::const_iterator mapi = link_map.begin(); mapi != link_map.end(); mapi++)
-    {
-      const LinkVersionList& links = mapi->second;
-      for (size_t i = 0; i < links.size(); i++)
-        {
-          DataOutBuffer dbuf, kbuf;
+  DataOutBuffer kbuf;
 
-          links[i]->dir_id.store (kbuf);
-          kbuf.write_table (BDB_TABLE_LINKS);
-          if (all_key.empty())
-            {
-              all_key = kbuf.data();
-            }
-          else
-            {
-              assert (all_key == kbuf.data()); // all links should share the same key
-            }
-        }
-    }
+  dir_id.store (kbuf);
+  kbuf.write_table (BDB_TABLE_LINKS);
 
-  if (all_key.empty())
-    return;
-
-  Dbt lkey (&all_key[0], all_key.size());
+  Dbt lkey (kbuf.begin(), kbuf.size());
   Dbt ldata;
 
   DbcPtr dbc (this, DbcPtr::WRITE); /* Acquire a cursor for the database. */

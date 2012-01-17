@@ -239,7 +239,7 @@ public:
   INodeLinks();
   ~INodeLinks();
 
-  bool save();
+  bool save (const ID& id);
 
   void
   ref()

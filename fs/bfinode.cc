@@ -114,7 +114,7 @@ INodeRepo::save_changes (SaveChangesMode sc)
           if (links)
             {
               INodeLinks *inode_links = links.get_ptr_without_update();
-              inode_links->save();
+              inode_links->save (ci->first);
             }
         }
     }
@@ -666,10 +666,10 @@ INodeLinks::~INodeLinks()
 }
 
 bool
-INodeLinks::save()
+INodeLinks::save (const ID& dir_id)
 {
   // delete links that were (possibly) modified
-  INodeRepo::the()->bdb->delete_links (link_map);
+  INodeRepo::the()->bdb->delete_links (dir_id, link_map);
 
   // re-write links
   for (map<string, LinkVersionList>::const_iterator li = link_map.begin(); li != link_map.end(); li++)

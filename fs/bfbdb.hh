@@ -112,7 +112,7 @@ public:
   bool  close();
 
   void  store_link (const LinkPtr& link);
-  void  delete_links (const std::map<std::string, LinkVersionList>& links);
+  void  delete_links (const ID& dir_id, const std::map<std::string, LinkVersionList>& links);
   void  load_links (std::vector<Link*>& links, const ID& id, guint32 version);
 
   void  store_inode (const INode *inode);
