@@ -145,6 +145,8 @@ public:
   void               store_inode (const INode *inode);
   void               delete_inode (const INode& inode);
 
+  void               clear_changed_inodes();
+
   std::vector<Link>  load_links (const ID *id, int version);
   void               store_link (const Link& link);
   void               delete_link (const Link& link);

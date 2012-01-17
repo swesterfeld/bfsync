@@ -301,6 +301,12 @@ BDBPtr::delete_inode (const INode& inode)
     }
 }
 
+void
+BDBPtr::clear_changed_inodes()
+{
+  ptr->my_bdb->clear_changed_inodes();
+}
+
 ID*
 id_root()
 {

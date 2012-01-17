@@ -121,6 +121,7 @@ public:
   void  delete_inodes (const INodeVersionList& inodes);
   bool  load_inode (const ID& id, unsigned int version, INode *inode);
   void  add_changed_inode (const ID& id);
+  void  clear_changed_inodes();
 
   bool  try_store_id2ino (const ID& id, int ino);
   bool  load_ino (const ID& id, ino_t& ino);

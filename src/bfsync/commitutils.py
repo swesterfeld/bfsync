@@ -235,7 +235,7 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
 
   hash_list = []
   file_list = []
-  repo.foreach_inode_link (VERSION, lambda inode: add_new_inode (inode, hash_list, file_list), None)
+  repo.foreach_changed_inode (VERSION, lambda inode: add_new_inode (inode, hash_list, file_list))
 
   have_message = False
   if commit_args:
@@ -333,6 +333,7 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
 
   if commit_size_ok:
     repo.bdb.store_history_entry (VERSION, hash, commit_author, commit_msg, commit_time)
+    repo.bdb.clear_changed_inodes()
   else:
     print "Nothing to commit."
   conn.commit()

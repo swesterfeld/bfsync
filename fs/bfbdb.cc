@@ -651,4 +651,39 @@ BDB::add_changed_inode (const ID& id)
   assert (ret == 0);
 }
 
+void
+BDB::clear_changed_inodes()
+{
+  DataOutBuffer kbuf;
+  kbuf.write_table (BDB_TABLE_CHANGED_INODES);
+
+  Dbt key (kbuf.begin(), kbuf.size());
+  Dbt data;
+
+  DbcPtr dbc (this, DbcPtr::WRITE);  /* get write cursor */
+
+  int ret = dbc->get (&key, &data, DB_SET);
+  while (ret == 0)
+    {
+      DataBuffer dbuffer ((char *) data.get_data(), data.get_size());
+      ID id (dbuffer);
+
+      // delete normal entry
+      dbc->del (0);
+
+      // delete reverse entry
+      DataOutBuffer rev_kbuf;
+
+      id.store (rev_kbuf);
+      rev_kbuf.write_table (BDB_TABLE_CHANGED_INODES_REV);
+
+      Dbt rev_key (rev_kbuf.begin(), rev_kbuf.size());
+      ret = db->del (NULL, &rev_key, 0);
+      g_assert (ret == 0);
+
+      /* goto next record */
+      ret = dbc->get (&key, &data, DB_NEXT_DUP);
+    }
+}
+
 }

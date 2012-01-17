@@ -150,6 +150,20 @@ class Repo:
     root = self.bdb.load_inode (bfsyncdb.id_root(), version)
     self.foreach_crawl (root, version, inode_callback, link_callback)
 
+  def foreach_changed_inode (self, version, inode_callback):
+    changed_it = bfsyncdb.ChangedINodesIterator (self.bdb)
+
+    while True:
+      id = changed_it.get_next()
+      if not id.valid:
+        return
+
+      inode = self.bdb.load_inode (id, version)
+      if not inode.valid:
+        raise Exception ("missing inode in Repo.foreach_changed_inode")
+
+      inode_callback (inode)
+
 def cd_repo_connect_db():
   repo_path = find_repo_dir()
   bfsync_info = parse_config (repo_path + "/config")
