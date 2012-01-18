@@ -21,6 +21,7 @@
 #include "bflink.hh"
 #include "bfleakdebugger.hh"
 #include "bfhistory.hh"
+#include "bfbdb.hh"
 #include <glib.h>
 #include <string>
 
@@ -59,16 +60,16 @@ LinkPtr::update() const
 {
   g_return_val_if_fail (ptr, NULL);
 
-  if (!ptr->updated && ptr->vmin != History::the()->current_version())
+  if (!ptr->updated && ptr->vmin != INodeRepo::the()->bdb->history()->current_version())
     {
       g_assert (ptr->vmax == VERSION_INF);
 
       // Link copy-on-write
       Link *old_ptr = new Link (*ptr);
-      old_ptr->vmax = History::the()->current_version() - 1;
+      old_ptr->vmax = INodeRepo::the()->bdb->history()->current_version() - 1;
       old_ptr->updated = true;
 
-      ptr->vmin = History::the()->current_version();
+      ptr->vmin = INodeRepo::the()->bdb->history()->current_version();
       ptr->updated = true;
 
       // add old version to cache

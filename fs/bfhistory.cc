@@ -19,6 +19,7 @@
 
 #include "bfhistory.hh"
 #include "bfsyncfs.hh"
+#include "bfbdb.hh"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -28,12 +29,9 @@ using std::vector;
 namespace BFSync
 {
 
-History instance;
-
-History*
-History::the()
+History::History (BDB *bdb) :
+  bdb (bdb)
 {
-  return &instance;
 }
 
 unsigned int
@@ -55,7 +53,7 @@ History::read()
 
   HistoryEntry history_entry;
 
-  m_current_version = 0;
+  m_current_version = 1;
   for (unsigned int version = 1; bdb->load_history_entry (version, history_entry); version++)
     {
       m_current_version = max (version + 1, m_current_version);
@@ -63,18 +61,7 @@ History::read()
     }
   m_all_versions.push_back (m_current_version);
 
-  if (m_current_version == 0)
-    {
-      printf ("bfsyncfs: find current version in history table failed\n");
-      exit (1);
-    }
   debug ("current version is %d\n", m_current_version);
-}
-
-void
-History::set_bdb (BDB *bdb)
-{
-  this->bdb = bdb;
 }
 
 }

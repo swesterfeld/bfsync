@@ -295,7 +295,7 @@ FSLock::~FSLock()
 
 Context::Context () :
   fc (fuse_get_context()),
-  version (History::the()->current_version())
+  version (INodeRepo::the()->bdb->history()->current_version())
 {
 }
 
@@ -321,7 +321,7 @@ version_map_path (string& path)
   // search version in history
   int version = -1;
 
-  const vector<unsigned int>& versions = History::the()->all_versions();
+  const vector<unsigned int>& versions = INodeRepo::the()->bdb->history()->all_versions();
   for (size_t i = 0; i < versions.size(); i++)
     {
       char buffer[64];
@@ -552,7 +552,7 @@ read_dir_contents (const Context& ctx, const string& path, vector<string>& entri
     }
 
   // bfsync directory (not in .bfsync/commits/N)
-  if (ctx.version != History::the()->current_version())
+  if (ctx.version != INodeRepo::the()->bdb->history()->current_version())
     return dir_ok;
 
   if (path == "/")
@@ -566,12 +566,12 @@ read_dir_contents (const Context& ctx, const string& path, vector<string>& entri
     }
   else if (path == "/.bfsync/commits")
     {
-      const vector<unsigned int>& all_versions = History::the()->all_versions();
+      const vector<unsigned int>& all_versions = INodeRepo::the()->bdb->history()->all_versions();
 
       for (vector<unsigned int>::const_iterator vi = all_versions.begin(); vi != all_versions.end(); vi++)
         {
           unsigned int v = *vi;
-          if (v != History::the()->current_version())
+          if (v != INodeRepo::the()->bdb->history()->current_version())
             {
               string v_str = string_printf ("%u", v);
               entries.push_back (v_str);
@@ -1521,10 +1521,10 @@ bfsyncfs_main (int argc, char **argv)
       printf ("bfsyncfs: error opening bdb\n");
       return 1;
     }
-  History::the()->set_bdb (bdb);
-  History::the()->read();
 
   INodeRepo inode_repo (bdb);
+
+  inode_repo.bdb->history()->read();
 
   int fuse_rc = fuse_main (my_argc, my_argv, &bfsync_oper, NULL);
 

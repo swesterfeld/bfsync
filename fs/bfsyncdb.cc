@@ -162,8 +162,6 @@ open_db (const string& db)
 {
   BFSync::BDB *bdb = BFSync::bdb_open (db);
 
-  History::the()->set_bdb (bdb);
-
   BDBWrapper *wrapper = new BDBWrapper;
   wrapper->my_bdb = bdb;
 
@@ -446,10 +444,9 @@ DiffGenerator::DiffGenerator (BDBPtr bdb_ptr) :
   key = Dbt (kbuf.begin(), kbuf.size());
   dbc_ret = dbc->get (&key, &data, DB_SET);
 
-  History::the()->read();
-  v_old = History::the()->current_version() - 2;
-  v_new = History::the()->current_version() - 1;
-  printf ("%d => %d\n", v_old, v_new);
+  bdb_ptr.get_bdb()->history()->read();
+  v_old = bdb_ptr.get_bdb()->history()->current_version() - 1;
+  v_new = bdb_ptr.get_bdb()->history()->current_version();
 }
 
 DiffGenerator::~DiffGenerator()

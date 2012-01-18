@@ -25,6 +25,7 @@
 #include <db_cxx.h>
 #include <assert.h>
 #include "bfinode.hh"
+#include "bfhistory.hh"
 
 namespace BFSync
 {
@@ -102,12 +103,16 @@ struct HistoryEntry
 
 class BDB
 {
-  DbEnv *db_env;
-  Db    *db;
+  DbEnv   *db_env;
+  Db      *db;
+  History m_history;
 public:
   Mutex mutex;
 
-  Db*   get_db();
+  Db*       get_db();
+  History*  history();
+
+  BDB();
 
   bool  open (const std::string& path);
   void  sync();

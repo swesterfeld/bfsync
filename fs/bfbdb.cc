@@ -44,6 +44,11 @@ bdb_open (const string& path)
     return NULL;
 }
 
+BDB::BDB() :
+  m_history (this)
+{
+}
+
 bool
 BDB::open (const string& path)
 {
@@ -264,6 +269,12 @@ Db*
 BDB::get_db()
 {
   return db;
+}
+
+History*
+BDB::history()
+{
+  return &m_history;
 }
 
 DataBuffer::DataBuffer (const char *ptr, size_t size) :

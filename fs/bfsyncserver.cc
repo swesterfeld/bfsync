@@ -22,6 +22,7 @@
 #include "bfinode.hh"
 #include "bfsyncfs.hh"
 #include "bfhistory.hh"
+#include "bfbdb.hh"
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -406,7 +407,7 @@ Server::handle_client (int client_fd)
       lock = NULL;
     }
   // update history (relevant after commits)
-  History::the()->read();
+  INodeRepo::the()->bdb->history()->read();
 }
 
 bool
