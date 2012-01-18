@@ -21,9 +21,9 @@ def write1change (change_list, outfile):
   for s in change_list:
     outfile.write (s + "\0")
 
-def diff (repo, version_a, version_b, outfile):
+def diff (repo, outfile):
   # write changes to outfile
-  dg = bfsyncdb.DiffGenerator (repo.bdb, version_a, version_b)
+  dg = bfsyncdb.DiffGenerator (repo.bdb)
 
   while True:
     change = dg.get_next()

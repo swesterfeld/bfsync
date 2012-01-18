@@ -174,16 +174,19 @@ class DiffGenerator
 {
   BFSync::DbcPtr dbc;
 
+  BFSync::DataOutBuffer kbuf;
+
   Dbt key;
   Dbt data;
 
   int dbc_ret;
 
-  BDBPtr bdb_ptr;
   unsigned int v_old, v_new;
+
+  BDBPtr bdb_ptr;
   std::vector< std::vector<std::string> > diffs;
 public:
-  DiffGenerator (BDBPtr bdb_ptr, unsigned int v_old, unsigned int v_new);
+  DiffGenerator (BDBPtr bdb_ptr);
   ~DiffGenerator();
 
   std::vector<std::string> get_next();

@@ -306,7 +306,7 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
 
   diff_filename = repo.make_temp_name()
   diff_file = open (diff_filename, "w")
-  diff (repo, VERSION - 1, VERSION, diff_file)
+  diff (repo, diff_file)
   diff_file.close()
 
   commit_size_ok = True

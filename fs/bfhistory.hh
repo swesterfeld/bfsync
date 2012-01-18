@@ -32,7 +32,6 @@ class History
   BDB                        *bdb;
 public:
   static History         *the();
-
   unsigned int            current_version();
   const std::vector<unsigned int>&
                           all_versions();

@@ -20,6 +20,7 @@
 #include "bfsyncdb.hh"
 #include "bfbdb.hh"
 #include "bfleakdebugger.hh"
+#include "bfhistory.hh"
 
 using BFSync::DataOutBuffer;
 using BFSync::DataBuffer;
@@ -28,6 +29,7 @@ using BFSync::BDB_TABLE_CHANGED_INODES;
 using BFSync::BDB_TABLE_INODES;
 using BFSync::BDB_TABLE_LINKS;
 using BFSync::string_printf;
+using BFSync::History;
 
 using std::string;
 using std::vector;
@@ -160,6 +162,8 @@ open_db (const string& db)
 {
   BFSync::BDB *bdb = BFSync::bdb_open (db);
 
+  History::the()->set_bdb (bdb);
+
   BDBWrapper *wrapper = new BDBWrapper;
   wrapper->my_bdb = bdb;
 
@@ -268,6 +272,8 @@ BDBPtr::store_inode (const INode* inode)
 
   int ret = ptr->my_bdb->get_db()->put (NULL, &ikey, &idata, 0);
   g_assert (ret == 0);
+
+  ptr->my_bdb->add_changed_inode (inode->id.id);
 }
 
 void
@@ -431,10 +437,19 @@ BDBPtr::walk()
   delete root;
 }
 
-DiffGenerator::DiffGenerator (BDBPtr bdb_ptr, unsigned int v_old, unsigned int v_new) :
-  dbc (bdb_ptr.get_bdb()), bdb_ptr (bdb_ptr), v_old (v_old), v_new (v_new)
+DiffGenerator::DiffGenerator (BDBPtr bdb_ptr) :
+  dbc (bdb_ptr.get_bdb()),
+  bdb_ptr (bdb_ptr)
 {
-  dbc_ret = dbc->get (&key, &data, DB_FIRST);
+  kbuf.write_table (BDB_TABLE_CHANGED_INODES);
+
+  key = Dbt (kbuf.begin(), kbuf.size());
+  dbc_ret = dbc->get (&key, &data, DB_SET);
+
+  History::the()->read();
+  v_old = History::the()->current_version() - 2;
+  v_new = History::the()->current_version() - 1;
+  printf ("%d => %d\n", v_old, v_new);
 }
 
 DiffGenerator::~DiffGenerator()
@@ -496,54 +511,47 @@ DiffGenerator::get_next()
 {
   while (dbc_ret == 0 && diffs.empty())
     {
-      DataBuffer kbuffer ((char *) key.get_data(), key.get_size());
+      DataBuffer dbuffer ((char *) data.get_data(), data.get_size());
 
-      char table = ((char *) key.get_data()) [key.get_size() - 1];
-      if (table == BDB_TABLE_INODES)
+      ID id;
+      id_load (&id, dbuffer);  // id is one changed id
+
+      // generate i+ / i- and i! entries for id
+      INode i_old = bdb_ptr.load_inode (&id, v_old);
+      INode i_new = bdb_ptr.load_inode (&id, v_new);
+
+      if (i_old.valid && i_new.valid)
         {
-          ID id;
-
-          id_load (&id, kbuffer);
-          INode i_old = bdb_ptr.load_inode (&id, v_old);
-          INode i_new = bdb_ptr.load_inode (&id, v_new);
-
-          if (i_old.valid && i_new.valid)
-            {
-            }
-          else if (!i_old.valid && i_new.valid)
-            {
-              diffs.push_back (gen_iplus (i_new));
-            }
-          else if (i_old.valid && !i_new.valid)
-            {
-            }
         }
-      else if (table == BDB_TABLE_LINKS)
+      else if (!i_old.valid && i_new.valid)
         {
-          ID id;
-          id_load (&id, kbuffer);
+          diffs.push_back (gen_iplus (i_new));
+        }
+      else if (i_old.valid && !i_new.valid)
+        {
+        }
 
-          vector<Link> lvec_old = bdb_ptr.load_links (&id, v_old);
-          vector<Link> lvec_new = bdb_ptr.load_links (&id, v_new);
+      // generate l+ / l- and l! entries for dir_id = id
+      vector<Link> lvec_old = bdb_ptr.load_links (&id, v_old);
+      vector<Link> lvec_new = bdb_ptr.load_links (&id, v_new);
 
-          map<string, const Link*> lmap_old;
-          map<string, const Link*> lmap_new;
+      map<string, const Link*> lmap_old;
+      map<string, const Link*> lmap_new;
 
-          make_lmap (lmap_old, lvec_old);
-          make_lmap (lmap_new, lvec_new);
+      make_lmap (lmap_old, lvec_old);
+      make_lmap (lmap_new, lvec_new);
 
-          for (map<string, const Link*>::iterator mi = lmap_new.begin(); mi != lmap_new.end(); mi++)
-            {
-              const Link *l_old = lmap_old[mi->first];
-              const Link *l_new = lmap_new[mi->first];
+      for (map<string, const Link*>::iterator mi = lmap_new.begin(); mi != lmap_new.end(); mi++)
+        {
+          const Link *l_old = lmap_old[mi->first];
+          const Link *l_new = lmap_new[mi->first];
 
-              if (!l_old && l_new)
-                diffs.push_back (gen_lplus (l_new));
-            }
+          if (!l_old && l_new)
+            diffs.push_back (gen_lplus (l_new));
         }
 
       /* goto next record */
-      dbc_ret = dbc->get (&key, &data, DB_NEXT_NODUP);
+      dbc_ret = dbc->get (&key, &data, DB_NEXT_DUP);
     }
   if (!diffs.empty())
     {
