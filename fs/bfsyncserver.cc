@@ -23,6 +23,7 @@
 #include "bfsyncfs.hh"
 #include "bfhistory.hh"
 #include "bfbdb.hh"
+#include "bftimeprof.hh"
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -357,6 +358,16 @@ Server::handle_client (int client_fd)
                       FSLock sc_lock (FSLock::REORG);
                       INodeRepo::the()->save_changes();
                     }
+                }
+              else if (request[0] == "get-prof")
+                {
+                  result.push_back (TimeProf::the()->result());
+                }
+              else if (request[0] == "reset-prof")
+                {
+                  TimeProf::the()->reset();
+
+                  result.push_back ("ok");
                 }
               else if (request[0] == "clear-cache")
                 {

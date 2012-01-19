@@ -24,6 +24,7 @@
 #include "bfhistory.hh"
 #include "bfcfgparser.hh"
 #include "bfbdb.hh"
+#include "bftimeprof.hh"
 
 #include <sys/time.h>
 #include <fuse.h>
@@ -1535,5 +1536,6 @@ bfsyncfs_main (int argc, char **argv)
     {
       printf ("bfsyncfs: can't close bdb\n");
     }
+  printf ("%s\n", TimeProf::the()->result().c_str());
   return fuse_rc;
 }

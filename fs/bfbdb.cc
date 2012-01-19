@@ -18,6 +18,7 @@
 */
 
 #include "bfbdb.hh"
+#include "bftimeprof.hh"
 #include <db_cxx.h>
 #include <assert.h>
 #include <string.h>
@@ -155,10 +156,14 @@ write_link_data (DataOutBuffer& db_out, const LinkPtr& lp)
   db_out.write_string (lp->name);
 }
 
+TimeProfSection tp_store_link ("BDB::store_link");
+
 void
 BDB::store_link (const LinkPtr& lp)
 {
   Lock lock (mutex);
+
+  TimeProfHandle h (tp_store_link);
 
   DataOutBuffer kbuf, dbuf;
 
@@ -174,10 +179,14 @@ BDB::store_link (const LinkPtr& lp)
   assert (ret == 0);
 }
 
+TimeProfSection tp_delete_links ("BDB::delete_links");
+
 void
 BDB::delete_links (const ID& dir_id, const map<string, LinkVersionList>& link_map)
 {
   Lock lock (mutex);
+
+  TimeProfHandle h (tp_delete_links);
 
   DataOutBuffer kbuf;
 
@@ -222,10 +231,14 @@ BDB::delete_links (const ID& dir_id, const map<string, LinkVersionList>& link_ma
     }
 }
 
+TimeProfSection tp_load_links ("BDB::load_links");
+
 void
 BDB::load_links (std::vector<Link*>& links, const ID& id, guint32 version)
 {
   Lock lock (mutex);
+
+  TimeProfHandle h (tp_load_links);
 
   DataOutBuffer kbuf;
 
@@ -336,10 +349,14 @@ DataBuffer::read_vec_zero (vector<char>& vec)
   assert (false);
 }
 
+TimeProfSection tp_store_inode ("BDB::store_inode");
+
 void
 BDB::store_inode (const INode *inode)
 {
   Lock lock (mutex);
+
+  TimeProfHandle h (tp_store_inode);
 
   DataOutBuffer kbuf, dbuf;
 
@@ -370,6 +387,8 @@ BDB::store_inode (const INode *inode)
   assert (ret == 0);
 }
 
+TimeProfSection tp_delete_inodes ("BDB::delete_inodes");
+
 /**
  * delete INodes records which have
  *  - the right INode ID
@@ -379,6 +398,8 @@ void
 BDB::delete_inodes (const INodeVersionList& inodes)
 {
   Lock lock (mutex);
+
+  TimeProfHandle h (tp_delete_inodes);
 
   if (inodes.size() == 0) /* nothing to do? */
     return;
@@ -434,10 +455,14 @@ BDB::delete_inodes (const INodeVersionList& inodes)
     }
 }
 
+TimeProfSection tp_load_inode ("BDB::load_inode");
+
 bool
 BDB::load_inode (const ID& id, unsigned int version, INode *inode)
 {
   Lock lock (mutex);
+
+  TimeProfHandle h (tp_load_inode);
 
   DataOutBuffer kbuf;
 
@@ -481,10 +506,14 @@ BDB::load_inode (const ID& id, unsigned int version, INode *inode)
   return false;
 }
 
+TimeProfSection tp_try_store_id2ino ("BDB::try_store_id2ino");
+
 bool
 BDB::try_store_id2ino (const ID& id, int ino)
 {
   Lock lock (mutex);
+
+  TimeProfHandle h (tp_try_store_id2ino);
 
   DataOutBuffer kbuf, dbuf;
 
@@ -524,10 +553,14 @@ BDB::try_store_id2ino (const ID& id, int ino)
   return true;
 }
 
+TimeProfSection tp_load_ino ("BDB::load_ino");
+
 bool
 BDB::load_ino (const ID& id, ino_t& ino)
 {
   Lock lock (mutex);
+
+  TimeProfHandle h (tp_load_ino);
 
   DataOutBuffer kbuf;
 
@@ -625,10 +658,14 @@ BDB::delete_history_entry (int version)
     }
 }
 
+TimeProfSection tp_add_changed_inode ("BDB::add_changed_inode");
+
 void
 BDB::add_changed_inode (const ID& id)
 {
   Lock lock (mutex);
+
+  TimeProfHandle h (tp_add_changed_inode);
 
   // reverse lookup: inode already in changed set?
   int ret;

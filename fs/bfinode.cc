@@ -126,7 +126,7 @@ INodeRepo::save_changes (SaveChangesMode sc)
       cache.clear();
       links_cache.clear();
     }
-  bdb->sync();
+  // bdb->sync();
 }
 
 void
