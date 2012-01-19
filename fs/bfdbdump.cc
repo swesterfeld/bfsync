@@ -29,15 +29,60 @@ using std::vector;
 
 #define VMSTR(v) ((v == VERSION_INF) ? "INF" : string_printf ("%u", v).c_str())
 
+bool use_db_order = false;
+
+void
+add (const string& table, vector<string>& table_vec, const string& entry)
+{
+  if (use_db_order)
+    {
+      printf ("<%s> %s\n", table.c_str(), entry.c_str());
+    }
+  else
+    {
+      table_vec.push_back (entry);
+    }
+}
+
+void
+print (const string& label, const vector<string>& table_vec)
+{
+  if (!use_db_order)
+    {
+      printf ("\n%s:\n", label.c_str());
+      for (size_t i = 0; i < label.size() + 1; i++)
+        printf ("=");
+      printf ("=:\n");
+
+      for (size_t i = 0; i < table_vec.size(); i++)
+        printf ("%s\n", table_vec[i].c_str());
+      printf ("\n");
+    }
+}
+
 int
 main (int argc, char **argv)
 {
-  assert (argc == 2);
+  int opt;
+  while ((opt = getopt (argc, argv, "x")) != -1)
+    {
+      switch (opt)
+        {
+          case 'x': use_db_order = true;
+                    break;
+          default:  assert (false);
+        }
+    }
+  if (argc - optind != 1)
+    {
+      printf ("usage: bfdbdump [ -x ] <db>\n");
+      exit (1);
+    }
 
-  BDB *bdb = bdb_open (argv[1]);
+  BDB *bdb = bdb_open (argv[optind]);
   if (!bdb)
     {
-      printf ("error opening db %s\n", argv[1]);
+      printf ("error opening db %s\n", argv[optind]);
       exit (1);
     }
 
@@ -52,7 +97,7 @@ main (int argc, char **argv)
       return 1;
     }
 
-  vector<char *> links, inodes, id2ino, ino2id, history, changed_inodes, changed_inodes_rev;
+  vector<string> links, inodes, id2ino, ino2id, history, changed_inodes, changed_inodes_rev;
 
   Dbt key;
   Dbt data;
@@ -85,9 +130,9 @@ main (int argc, char **argv)
           int mtime = dbuffer.read_uint32();
           int mtime_ns = dbuffer.read_uint32();
 
-          inodes.push_back (g_strdup_printf ("%s=%u|%s|%d|%d|%o|%d|%s|%s|%d|%d|%d|%d|%d|%d|%d|%d",
-                                             id.pretty_str().c_str(), vmin, VMSTR (vmax), uid, gid, mode, type, hash.c_str(), link.c_str(),
-                                             size, major, minor, nlink, ctime, ctime_ns, mtime, mtime_ns));
+          add ("inode", inodes, string_printf ("%s=%u|%s|%d|%d|%o|%d|%s|%s|%d|%d|%d|%d|%d|%d|%d|%d",
+                 id.pretty_str().c_str(), vmin, VMSTR (vmax), uid, gid, mode, type, hash.c_str(), link.c_str(),
+                 size, major, minor, nlink, ctime, ctime_ns, mtime, mtime_ns));
         }
       else if (table == BDB_TABLE_LINKS)
         {
@@ -98,14 +143,15 @@ main (int argc, char **argv)
           ID  inode_id (dbuffer);
           string name = dbuffer.read_string();
 
-          links.push_back (g_strdup_printf ("%s=%u|%s|%s|%s", id.pretty_str().c_str(), vmin, VMSTR (vmax), inode_id.pretty_str().c_str(), name.c_str()));
+          add ("link", links, string_printf ("%s=%u|%s|%s|%s",
+                 id.pretty_str().c_str(), vmin, VMSTR (vmax), inode_id.pretty_str().c_str(), name.c_str()));
         }
       else if (table == BDB_TABLE_LOCAL_ID2INO)
         {
           ID  id (kbuffer);
           int ino = dbuffer.read_uint32();
 
-          id2ino.push_back (g_strdup_printf ("%s=%d", id.pretty_str().c_str(), ino));
+          add ("id2ino", id2ino, string_printf ("%s=%d", id.pretty_str().c_str(), ino));
         }
       else if (table == BDB_TABLE_LOCAL_INO2ID)
         {
@@ -114,7 +160,7 @@ main (int argc, char **argv)
           int ino = kbuffer.read_uint32_be();
           ID  id (dbuffer);
 
-          ino2id.push_back (g_strdup_printf ("%d=%s", ino, id.pretty_str().c_str()));
+          add ("ino2id", ino2id, string_printf ("%d=%s", ino, id.pretty_str().c_str()));
         }
       else if (table == BDB_TABLE_HISTORY)
         {
@@ -122,8 +168,8 @@ main (int argc, char **argv)
           int version = kbuffer.read_uint32_be();
           HistoryEntry he;
           bdb->load_history_entry (version, he);
-          history.push_back (g_strdup_printf ("%d=%s|%s|%s|%d", version,
-                                              he.hash.c_str(), he.author.c_str(), he.message.c_str(), he.time));
+          add ("history", history, string_printf ("%d=%s|%s|%s|%d", version,
+                 he.hash.c_str(), he.author.c_str(), he.message.c_str(), he.time));
         }
       else if (table == BDB_TABLE_CHANGED_INODES)
         {
@@ -131,7 +177,7 @@ main (int argc, char **argv)
 
           ID  id (dbuffer);
 
-          changed_inodes.push_back (g_strdup_printf ("%s", id.pretty_str().c_str()));
+          add ("changed_inode", changed_inodes, string_printf ("%s", id.pretty_str().c_str()));
          }
       else if (table == BDB_TABLE_CHANGED_INODES_REV)
         {
@@ -139,7 +185,7 @@ main (int argc, char **argv)
 
           ID  id (kbuffer);
 
-          changed_inodes_rev.push_back (g_strdup_printf ("%s", id.pretty_str().c_str()));
+          add ("changed_inode_rev", changed_inodes_rev, string_printf ("%s", id.pretty_str().c_str()));
          }
       else
         {
@@ -148,57 +194,13 @@ main (int argc, char **argv)
 
       ret = dbcp->get (&key, &data, DB_NEXT);
     }
-  printf ("\n");
-  printf ("INodes:\n");
-  printf ("=======\n\n");
-
-  for (size_t i = 0; i < inodes.size(); i++)
-    printf ("%s\n", inodes[i]);
-
-  printf ("\n");
-  printf ("Links:\n");
-  printf ("======\n\n");
-
-  for (size_t i = 0; i < links.size(); i++)
-    printf ("%s\n", links[i]);
-
-  printf ("\n");
-  printf ("ID2ino:\n");
-  printf ("======\n\n");
-
-  for (size_t i = 0; i < id2ino.size(); i++)
-    printf ("%s\n", id2ino[i]);
-
-  printf ("\n");
-  printf ("ino2ID:\n");
-  printf ("======\n\n");
-
-  for (size_t i = 0; i < ino2id.size(); i++)
-    printf ("%s\n", ino2id[i]);
-
-  printf ("\n");
-  printf ("History:\n");
-  printf ("=======\n\n");
-
-  for (size_t i = 0; i < history.size(); i++)
-    printf ("%s\n", history[i]);
-
-  printf ("\n");
-  printf ("Changed INodes:\n");
-  printf ("===============\n\n");
-
-  for (size_t i = 0; i < changed_inodes.size(); i++)
-    printf ("%s\n", changed_inodes[i]);
-
-  printf ("\n");
-
-  printf ("Changed INodes (reverse):\n");
-  printf ("=========================\n\n");
-
-  for (size_t i = 0; i < changed_inodes_rev.size(); i++)
-    printf ("%s\n", changed_inodes_rev[i]);
-
-  printf ("\n");
+  print ("INodes", inodes);
+  print ("Links", links);
+  print ("ID2ino", id2ino);
+  print ("ino2ID", ino2id);
+  print ("History", history);
+  print ("Changed INodes", changed_inodes);
+  print ("Changed INodes (reverse)", changed_inodes_rev);
 
   if (!bdb->close())
     {
