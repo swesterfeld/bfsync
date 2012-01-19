@@ -109,6 +109,34 @@ def cmd_debug_perf_getattr():
   server_conn = ServerConn (repo_path)
   print server_conn.process_call (["perf-getattr", args[0], args[1]])[0]
 
+def cmd_debug_get_prof():
+  bfsync_dir = find_bfsync_dir()
+
+  bfsync_info = parse_config (bfsync_dir + "/info")
+
+  repo_path = bfsync_info.get ("repo-path")
+  if len (repo_path) != 1:
+    raise Exception ("bad repo path")
+  repo_path = repo_path[0]
+
+  os.chdir (repo_path)
+  server_conn = ServerConn (repo_path)
+  print server_conn.process_call (["get-prof"])[0]
+
+def cmd_debug_reset_prof():
+  bfsync_dir = find_bfsync_dir()
+
+  bfsync_info = parse_config (bfsync_dir + "/info")
+
+  repo_path = bfsync_info.get ("repo-path")
+  if len (repo_path) != 1:
+    raise Exception ("bad repo path")
+  repo_path = repo_path[0]
+
+  os.chdir (repo_path)
+  server_conn = ServerConn (repo_path)
+  print server_conn.process_call (["reset-prof"])[0]
+
 def cmd_debug_clear_cache():
   bfsync_dir = find_bfsync_dir()
 
@@ -666,6 +694,8 @@ def main():
       ( "debug-perf-getattr",     cmd_debug_perf_getattr, 1),
       ( "debug-clear-cache",      cmd_debug_clear_cache, 1),
       ( "debug-integrity",        cmd_debug_integrity, 0),
+      ( "debug-get-prof",         cmd_debug_get_prof, 0),
+      ( "debug-reset-prof",       cmd_debug_reset_prof, 0),
     ]
     parse_ok = False
     if command == None:

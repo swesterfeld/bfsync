@@ -22,6 +22,8 @@ do
   cd run$run
   /usr/bin/time -f "$run mkfiles-time %e" $MKFILES 2>&1
   /usr/bin/time -f "$run commit-time  %e" $BFSYNC commit -m "test run $run" 2>&1
+  $BFSYNC debug-get-prof
+  $BFSYNC debug-reset-prof
   cd ..
 done
 
