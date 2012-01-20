@@ -52,7 +52,7 @@ print (const string& label, const vector<string>& table_vec)
       printf ("\n%s:\n", label.c_str());
       for (size_t i = 0; i < label.size() + 1; i++)
         printf ("=");
-      printf ("=:\n");
+      printf ("\n");
 
       for (size_t i = 0; i < table_vec.size(); i++)
         printf ("%s\n", table_vec[i].c_str());
