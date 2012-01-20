@@ -168,7 +168,7 @@ public:
 };
 
 extern BDBPtr             open_db (const std::string& db);
-extern ID*                id_root();
+extern ID                 id_root();
 
 class DiffGenerator
 {

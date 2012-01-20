@@ -311,11 +311,12 @@ BDBPtr::clear_changed_inodes()
   ptr->my_bdb->clear_changed_inodes();
 }
 
-ID*
+ID
 id_root()
 {
-  ID *id = new ID();
-  id->id = BFSync::ID::root();
+  ID id;
+  id.id = BFSync::ID::root();
+  id.valid = true;
   return id;
 }
 
@@ -430,9 +431,8 @@ do_walk (BDBPtr bdb, const ID& id, const string& prefix = "")
 void
 BDBPtr::walk()
 {
-  ID *root = id_root();
-  do_walk (*this, *root);
-  delete root;
+  ID root = id_root();
+  do_walk (*this, root);
 }
 
 DiffGenerator::DiffGenerator (BDBPtr bdb_ptr) :
