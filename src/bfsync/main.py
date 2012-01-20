@@ -399,6 +399,7 @@ def cmd_init():
   # config file
   f = open ("config", "w")
   f.write ("sqlite-sync 1;\n")
+  f.write ("cache-size 16;\n")
   f.close()
 
   # create objects directory
@@ -546,10 +547,10 @@ def cmd_gc():
 def cmd_clone():
   parser = argparse.ArgumentParser (prog='bfsync clone')
   parser.add_argument ("-u", action="store_true", dest="use_uid_gid", default=False)
+  parser.add_argument ('-c', help='set cache size')
   parser.add_argument ("repo")
   parser.add_argument ("dest_dir", nargs = "?")
   parsed_args = parser.parse_args (args)
-
 
   url = parsed_args.repo
   if parsed_args.dest_dir:
@@ -559,6 +560,10 @@ def cmd_clone():
   if os.path.exists (dir):
     print "fatal: destination path '" + dir + "' already exists"
     sys.exit (1)
+
+  cache_size = 16
+  if parsed_args.c:
+    cache_size = int (parsed_args.c)
 
   status_line.set_op ("CLONE")
 
@@ -592,6 +597,10 @@ def cmd_clone():
     f.write ("use-uid-gid 1;\n")
   else:
     f.write ("use-uid-gid 0;\n")
+
+  ## cache size
+  print " - cache size: %d Mb" % cache_size
+  f.write ("cache-size %d;\n" % cache_size)
 
   ## default push/pull
   f.write ("default {\n")

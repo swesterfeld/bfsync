@@ -169,6 +169,7 @@ struct Options {
   bool         mount_all;
   bool         mount_fg;
   bool         use_uid_gid;
+  int          cache_size_mb;
 
   static Options *the();
 };

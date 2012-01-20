@@ -177,11 +177,16 @@ def cd_repo_connect_db():
   else:
     sqlite_sync = True
 
+  cache_size = bfsync_info.get ("cache-size")
+  if len (cache_size) != 1:
+    raise Exception ("bad cache-size setting")
+  cache_size = int (cache_size[0])
+
   os.chdir (repo_path)
 
   repo = Repo()
   repo.conn = sqlite3.connect (os.path.join (repo_path, 'db'))
-  repo.bdb = bfsyncdb.open_db (os.path.join (repo_path, 'bdb'))
+  repo.bdb = bfsyncdb.open_db (os.path.join (repo_path, 'bdb'), cache_size)
   repo.conn.text_factory = str;
   repo.path = repo_path
   repo.config = bfsync_info
@@ -237,7 +242,8 @@ def parse_config (filename):
     "default/put",
     "get-rate-limit",
     "put-rate-limit",
-    "use-uid-gid"
+    "use-uid-gid",
+    "cache-size"
   ])
   return bfsync_info
 

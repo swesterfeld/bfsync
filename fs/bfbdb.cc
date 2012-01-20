@@ -35,11 +35,11 @@ namespace BFSync
 {
 
 BDB*
-bdb_open (const string& path)
+bdb_open (const string& path, int cache_size_mb)
 {
   BDB *bdb = new BDB();
 
-  if (bdb->open (path))
+  if (bdb->open (path, cache_size_mb))
     return bdb;
   else
     return NULL;
@@ -51,14 +51,17 @@ BDB::BDB() :
 }
 
 bool
-BDB::open (const string& path)
+BDB::open (const string& path, int cache_size_mb)
 {
   Lock lock (mutex);
 
   try
     {
+      int cache_size_gb = cache_size_mb / 1024;
+      cache_size_mb %= 1024;
+
       db_env = new DbEnv (DB_CXX_NO_EXCEPTIONS);
-      db_env->set_cachesize (1, 0, 0);  // 1 Gb cache size
+      db_env->set_cachesize (cache_size_gb, cache_size_mb * 1024 * 1024, 0); // set cache sizeA
       db_env->open (path.c_str(), DB_INIT_MPOOL | DB_INIT_CDB | DB_CREATE, 0);
 
       db = new Db (db_env, 0);

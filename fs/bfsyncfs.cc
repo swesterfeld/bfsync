@@ -1460,6 +1460,18 @@ bfsyncfs_main (int argc, char **argv)
         options.use_uid_gid = true;
     }
 
+  const vector<string>& cache_size = cfg_values["cache-size"];
+  options.cache_size_mb = 0;
+  if (use_uid_gid.size() == 1)
+    {
+      options.cache_size_mb = atoi (cache_size[0].c_str());
+    }
+  if (options.cache_size_mb == 0)
+    {
+      printf ("bfsyncfs: bad cache-size setting in config file");
+      exit (1);
+    }
+
   special_files.info  = "repo-type mount;\n";
   special_files.info += "repo-path \"" + repo_path + "\";\n";
   special_files.info += "mount-point \"" + mount_point + "\";\n";
@@ -1516,7 +1528,7 @@ bfsyncfs_main (int argc, char **argv)
 
 
   string bdb_path = options.repo_path + "/bdb";
-  BDB *bdb = bdb_open (bdb_path);
+  BDB *bdb = bdb_open (bdb_path, options.cache_size_mb);
   if (!bdb)
     {
       printf ("bfsyncfs: error opening bdb\n");

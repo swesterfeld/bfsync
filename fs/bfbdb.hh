@@ -41,7 +41,7 @@ enum BDBTables
   BDB_TABLE_CHANGED_INODES_REV  = 7,
 };
 
-BDB *bdb_open (const std::string& path);
+BDB *bdb_open (const std::string& path, int cache_size_mb);
 
 class DataBuffer
 {
@@ -114,7 +114,7 @@ public:
 
   BDB();
 
-  bool  open (const std::string& path);
+  bool  open (const std::string& path, int cache_size_mb);
   void  sync();
   bool  close();
 
