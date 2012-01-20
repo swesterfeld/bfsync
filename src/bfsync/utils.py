@@ -159,10 +159,8 @@ class Repo:
         return
 
       inode = self.bdb.load_inode (id, version)
-      if not inode.valid:
-        raise Exception ("missing inode in Repo.foreach_changed_inode")
-
-      inode_callback (inode)
+      if inode.valid:
+        inode_callback (inode)
 
 def cd_repo_connect_db():
   repo_path = find_repo_dir()
