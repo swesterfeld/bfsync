@@ -52,19 +52,13 @@ class ApplyTool:
 
   def detach_inode (self, description, id):
     error_str = description + " (inode_id = %s): " % id
-    self.c.execute ("""SELECT * FROM inodes WHERE id = ? AND ? >= vmin AND ? <= vmax""", (id, self.VERSION, self.VERSION))
-    count = 0
-    for r in self.c:
-      if (count == 0):
-        old_row = r
-      else:
-        raise Exception (error_str + "got more than one entry")
-      count += 1
-    if count == 0:
+    inode = self.bdb.load_inode (bfsyncdb.ID (id), self.VERSION)
+    if not inode.valid:
       raise Exception (error_str + "missing inode entry")
-    self.c.execute ("""UPDATE inodes SET vmax = ? WHERE id = ? AND ? >= vmin AND ? <= vmax""",
-                    (self.VERSION - 1, id, self.VERSION, self.VERSION))
-    return old_row
+    self.bdb.delete_inode (inode)
+    inode.vmax = self.VERSION - 1
+    self.bdb.store_inode (inode)
+    return inode
 
   def apply_link_plus (self, row):
     link = bfsyncdb.Link()
@@ -119,21 +113,39 @@ class ApplyTool:
   def apply_inode_change (self, row):
     # read old values
     id = row[0]
-    old_row = self.detach_inode ("change inode", id)
-
-    # modify only the fields contained in the change entry
-    row = [ self.VERSION, self.VERSION ] + row
-    if len (old_row) != len (row):
-      raise Exception ("apply inode: id=%s record length mismatch" % id)
-
-    for i in range (2, len (row)):
-      if row[i] == "":
-        row[i] = old_row[i]
-    self.c.execute ("""INSERT INTO inodes VALUES (?, ?, ?, ?, ?,
-                                                  ?, ?, ?, ?, ?,
-                                                  ?, ?, ?, ?, ?,
-                                                  ?, ?)""", tuple (row))
-
+    inode = self.detach_inode ("change inode", id)
+    inode.vmin = self.VERSION
+    inode.vmax = bfsyncdb.VERSION_INF
+    # keep inode.id
+    if row[1] != "":
+      inode.uid  = int (row[1])
+    if row[2] != "":
+      inode.gid  = int (row[2])
+    if row[3] != "":
+      inode.mode  = int (row[3])
+    if row[4] != "":
+      inode.type  = int (row[4])
+    if row[5] != "":
+      inode.hash  = row[5]
+    if row[6] != "":
+      inode.link  = row[6]
+    if row[7] != "":
+      inode.size  = int (row[7])
+    if row[8] != "":
+      inode.major  = int (row[8])
+    if row[9] != "":
+      inode.minor  = int (row[9])
+    if row[10] != "":
+      inode.nlink  = int (row[10])
+    if row[11] != "":
+      inode.ctime  = int (row[11])
+    if row[12] != "":
+      inode.ctime_ns  = int (row[12])
+    if row[13] != "":
+      inode.mtime  = int (row[13])
+    if row[14] != "":
+      inode.mtime_ns  = int (row[14])
+    self.bdb.store_inode (inode)
 
 def apply (repo, diff, expected_hash = None, server = True, verbose = True, commit_args = None):
   changes = parse_diff (diff)
