@@ -220,7 +220,7 @@ BDB::delete_links (const ID& dir_id, const map<string, LinkVersionList>& link_ma
           const LinkVersionList& links = mapi->second;
           for (size_t i = 0; i < links.size(); i++)
             {
-              if (links[i]->vmin == vmin || links[i]->vmax == vmax)
+              if (links[i]->inode_id == inode_id && (links[i]->vmin == vmin || links[i]->vmax == vmax))
                 del = true;
             }
         }
