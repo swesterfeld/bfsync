@@ -493,6 +493,26 @@ gen_iplus (const INode& inode)
 }
 
 vector<string>
+gen_ibang (const INode& i_old, const INode& i_new)
+{
+  vector<string> result;
+  vector<string> old_str = gen_iplus (i_old);
+  vector<string> new_str = gen_iplus (i_new);
+  g_assert (old_str.size() > 2 && old_str.size() == new_str.size());
+
+  result.push_back ("i!");
+  result.push_back (old_str[1]);
+  for (size_t i = 2; i < old_str.size(); i++)
+    {
+      if (old_str[i] != new_str[i])
+        result.push_back (new_str[i]);
+      else
+        result.push_back ("");    // attribute not changed
+    }
+  return result;
+}
+
+vector<string>
 gen_lplus (const Link *link)
 {
   vector<string> result;
@@ -519,6 +539,7 @@ DiffGenerator::get_next()
 
       if (i_old.valid && i_new.valid)
         {
+          diffs.push_back (gen_ibang (i_old, i_new));
         }
       else if (!i_old.valid && i_new.valid)
         {
