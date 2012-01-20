@@ -131,12 +131,17 @@ def push (repo, urls):
   remote_repo = RemoteRepo (url)
   remote_history = remote_repo.get_history()
 
-  c = conn.cursor()
-  c.execute ('''SELECT * FROM history WHERE hash != '' ORDER BY version''')
-
   local_history = []
-  for row in c:
-    local_history += [ row ]
+
+  VERSION = 1
+  while True:
+    hentry = repo.bdb.load_history_entry (VERSION)
+    VERSION += 1
+
+    if not hentry.valid:
+      break
+
+    local_history += [ (hentry.version, hentry.hash, hentry.author, hentry.message, hentry.time) ]
 
   common_version = 0
   for v in range (min (len (local_history), len (remote_history))):

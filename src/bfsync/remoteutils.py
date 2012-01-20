@@ -54,21 +54,19 @@ def remote_receive (repo):
   tl.receive_files (repo, sys.stdin, False)
 
 def remote_update_history (repo, delta_history):
-  conn = repo.conn
   repo_path = repo.path
-  c = conn.cursor()
   fail = False
   for dh in delta_history:
     version = dh[0]
-    for row in c.execute ("""SELECT * FROM history WHERE version=?""", (version,)):
-      fail = True
-    c.execute ("""INSERT INTO history VALUES (?,?,?,?,?)""", dh)
-  if fail:
-    conn.rollback()
-    return "fail"
-  else:
-    conn.commit()
-    return "ok"
+    hentry = repo.bdb.load_history_entry (version)
+    if hentry.valid:
+      return "fail"
+
+  for dh in delta_history:
+    version = dh[0]
+    repo.bdb.store_history_entry (dh[0], dh[1], dh[2], dh[3], dh[4])
+
+  return "ok"
 
 def remote_history (repo):
   hlist = []
@@ -87,9 +85,27 @@ def remote_history (repo):
   return hlist
 
 def remote_need_objects (repo, table):
-  conn = repo.conn
   repo_path = repo.path
-  c = conn.cursor()
+
+  if table == "history":
+    need_hash = dict()
+    objs = []
+
+    VERSION = 1
+    while True:
+      hentry = repo.bdb.load_history_entry (VERSION)
+      VERSION += 1
+
+      if not hentry.valid:
+        break
+
+      if not need_hash.has_key (hentry.hash):
+        dest_file = os.path.join (repo_path, "objects", make_object_filename (hentry.hash))
+        if not validate_object (dest_file, hentry.hash):
+          need_hash[hentry.hash] = True
+          objs += [ hentry.hash ]
+
+    return objs
 
   # MERGE ME WITH get
   objs = []
