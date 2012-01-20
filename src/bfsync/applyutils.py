@@ -67,7 +67,14 @@ class ApplyTool:
     return old_row
 
   def apply_link_plus (self, row):
-    self.c.execute ("INSERT INTO links VALUES (?,?,?,?,?)", (self.VERSION, self.VERSION, row[0], row[2], row[1]))
+    link = bfsyncdb.Link()
+    link.vmin = self.VERSION
+    link.vmax = bfsyncdb.VERSION_INF
+    link.dir_id = bfsyncdb.ID (row[0])
+    link.name = row[1]
+    link.inode_id = bfsyncdb.ID (row[2])
+    self.bdb.store_link (link)
+    # self.c.execute ("INSERT INTO links VALUES (?,?,?,?,?)", (self.VERSION, self.VERSION, row[0], row[2], row[1]))
 
   def apply_link_minus (self, row):
     dir_id = row[0]
@@ -81,7 +88,6 @@ class ApplyTool:
     self.apply_link_plus (row)
 
   def apply_inode_plus (self, row):
-    print "create inode FIXME: %s" % row
     inode = bfsyncdb.INode()
     inode.vmin = self.VERSION
     inode.vmax = bfsyncdb.VERSION_INF
