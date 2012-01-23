@@ -184,7 +184,7 @@ def cd_repo_connect_db():
 
   repo = Repo()
   repo.conn = sqlite3.connect (os.path.join (repo_path, 'db'))
-  repo.bdb = bfsyncdb.open_db (os.path.join (repo_path, 'bdb'), cache_size)
+  repo.bdb = bfsyncdb.open_db (repo_path, cache_size)
   repo.conn.text_factory = str;
   repo.path = repo_path
   repo.config = bfsync_info
@@ -241,7 +241,8 @@ def parse_config (filename):
     "get-rate-limit",
     "put-rate-limit",
     "use-uid-gid",
-    "cache-size"
+    "cache-size",
+    "repo-id"
   ])
   return bfsync_info
 

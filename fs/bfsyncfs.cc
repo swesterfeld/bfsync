@@ -1527,8 +1527,8 @@ bfsyncfs_main (int argc, char **argv)
   my_argv[my_argc] = NULL;
 
 
-  string bdb_path = options.repo_path + "/bdb";
-  BDB *bdb = bdb_open (bdb_path, options.cache_size_mb);
+  string bdb_path = options.repo_path;
+  BDB *bdb = bdb_open (options.repo_path, options.cache_size_mb);
   if (!bdb)
     {
       printf ("bfsyncfs: error opening bdb\n");

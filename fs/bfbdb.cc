@@ -19,9 +19,11 @@
 
 #include "bfbdb.hh"
 #include "bftimeprof.hh"
+#include "bfcfgparser.hh"
 #include <db_cxx.h>
 #include <assert.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include <set>
 
@@ -60,9 +62,12 @@ BDB::open (const string& path, int cache_size_mb)
       int cache_size_gb = cache_size_mb / 1024;
       cache_size_mb %= 1024;
 
+      string bdb_dir = path + "/bdb";
+
       db_env = new DbEnv (DB_CXX_NO_EXCEPTIONS);
-      db_env->set_cachesize (cache_size_gb, cache_size_mb * 1024 * 1024, 0); // set cache sizeA
-      db_env->open (path.c_str(), DB_INIT_MPOOL | DB_INIT_CDB | DB_CREATE, 0);
+      db_env->set_shm_key (shm_id (path));
+      db_env->set_cachesize (cache_size_gb, cache_size_mb * 1024 * 1024, 0); // set cache size
+      db_env->open (bdb_dir.c_str(), DB_INIT_MPOOL | DB_INIT_CDB | DB_CREATE |  DB_SYSTEM_MEM, 0);
 
       db = new Db (db_env, 0);
       db->set_flags (DB_DUP);       // allow duplicate keys
@@ -735,6 +740,67 @@ BDB::clear_changed_inodes()
       /* goto next record */
       ret = dbc->get (&key, &data, DB_NEXT_DUP);
     }
+}
+
+static inline int
+make_shm_key (int n)
+{
+  return n * 256 | 0xbfbdb000;
+}
+
+int
+BDB::shm_id (const string& path)
+{
+  CfgParser repo_cfg_parser;
+  if (!repo_cfg_parser.parse (path + "/config"))
+    {
+      printf ("parse error in repo config:\n%s\n", repo_cfg_parser.error().c_str());
+      exit (1);
+    }
+
+  int new_key = 1;
+
+  map<string, vector<string> > cfg_values = repo_cfg_parser.values();
+  const vector<string>& repo_id = cfg_values["repo-id"];
+  if (repo_id.size() == 1)
+    {
+      string keys_filename = string_printf ("%s/%s", g_get_home_dir(), ".bfsync_keys");
+      if (g_file_test (keys_filename.c_str(), GFileTest (G_FILE_TEST_IS_REGULAR | G_FILE_TEST_EXISTS)))
+        {
+          CfgParser keys_parser;
+          if (keys_parser.parse (keys_filename))
+            {
+              map<string, vector<string> > keys_values = keys_parser.values();
+              for (map<string, vector<string> >::iterator i = keys_values.begin(); i != keys_values.end(); i++)
+                {
+                  for (size_t k = 0; k < i->second.size(); k++)
+                    new_key = std::max (atoi (i->second[k].c_str()) + 1, new_key);
+                }
+
+              vector<string>& v = keys_values["key-" + repo_id[0]];
+              if (v.size() == 1)
+                {
+                  return make_shm_key (atoi (v[0].c_str()));
+                }
+            }
+          else
+            {
+              printf ("parse error in %s:\n%s\n", keys_filename.c_str(), keys_parser.error().c_str());
+            }
+        }
+      string apath;
+
+      if (!g_path_is_absolute (path.c_str()))
+        apath = g_get_current_dir() + string (G_DIR_SEPARATOR + path);
+      else
+        apath = path;
+
+      FILE *keys_file = fopen (keys_filename.c_str(), "a");
+      assert (keys_file);
+      fprintf (keys_file, "key-%s %d; # path \"%s\"\n", repo_id[0].c_str(), new_key, apath.c_str());
+      fclose (keys_file);
+    }
+  return make_shm_key (new_key);
 }
 
 }

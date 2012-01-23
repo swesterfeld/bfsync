@@ -105,7 +105,10 @@ class BDB
 {
   DbEnv   *db_env;
   Db      *db;
-  History m_history;
+  History  m_history;
+
+  int      shm_id (const std::string& path);
+
 public:
   Mutex mutex;
 

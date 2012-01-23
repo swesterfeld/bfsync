@@ -33,6 +33,7 @@ import argparse
 import sqlite3
 import shutil
 import datetime
+import random
 
 from utils import *
 from dbutils import *
@@ -381,6 +382,12 @@ def cmd_put():
   status_line.set_op ("PUT")
   put (repo, args)
 
+def gen_repo_id():
+  l = []
+  for i in range (5):
+    l.append ("%08x" % random.randint (0, 2**32 - 1))
+  return "-".join (l)
+
 def cmd_init():
   dir = args[0]
   try:
@@ -398,6 +405,8 @@ def cmd_init():
 
   # config file
   f = open ("config", "w")
+  f.write ("# Repository ID (auto-generated, do not edit)\n");
+  f.write ("""repo-id "%s";\n\n""" % gen_repo_id());
   f.write ("sqlite-sync 1;\n")
   f.write ("cache-size 16;\n")
   f.close()
@@ -588,6 +597,9 @@ def cmd_clone():
 
   # default config
   f = open (os.path.join (dir, "config"), "w")
+
+  f.write ("# Repository ID (auto-generated, do not edit)\n");
+  f.write ("""repo-id "%s";\n\n""" % gen_repo_id());
 
   ## sqlite sync
   f.write ("sqlite-sync 1;\n")
