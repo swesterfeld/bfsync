@@ -149,7 +149,7 @@ class HashCache:
         self.insert (stat_hash, result)
       else:
         bytes_done += os.path.getsize (filename)
-    if need_final_status:
+    if verbose and need_final_status:
       update_status()
     return
 

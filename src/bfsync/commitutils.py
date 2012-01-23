@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from ServerConn import ServerConn
-from StatusLine import status_line
+from StatusLine import status_line, OutputSubsampler
 from diffutils import diff
 from utils import *
 from xzutils import xz
@@ -283,15 +283,20 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
     hash = hash_cache.compute_hash (filename)
     add_new_list += [id, hash]
 
+  outss = OutputSubsampler()
   files_added = 0
   files_total = len (add_new_list) / 2
+  def update_add_status():
+    status_line.update ("adding file %d/%d" % (files_added, files_total))
   while len (add_new_list) > 0:
     items = min (len (add_new_list), 200)
     server_conn.add_new (add_new_list[0:items])
     add_new_list = add_new_list[items:]
     files_added += items / 2
-    if verbose:
-      status_line.update ("adding file %d/%d" % (files_added, files_total))
+    if verbose and outss.need_update():
+      update_add_status()
+  if verbose:
+    update_add_status()
 
   if verbose:
     status_line.cleanup()
