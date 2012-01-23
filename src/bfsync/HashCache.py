@@ -21,7 +21,7 @@ import os
 import hashlib
 import cPickle
 from utils import format_size, format_rate, format_time
-from StatusLine import status_line
+from StatusLine import status_line, OutputSubsampler
 
 class HashCacheEntry:
   def __init__ (self, stat_hash, file_hash, expire_time):
@@ -112,7 +112,17 @@ class HashCache:
     # hash data
     bytes_done = 0
     file_number = 0
+    need_final_status = False
     start_time = time.time()
+    outss = OutputSubsampler()
+    def update_status():
+      status_line.update ("hashing file %d/%d    %s    %.1f%%   %s   ETA: %s" % (
+        file_number, len (filenames),
+        format_size (bytes_done, bytes_total),
+        bytes_done * 100.0 / max (bytes_total, 1),
+        format_rate (bytes_per_sec),
+        format_time (eta)
+      ))
     for filename in filenames:
       file = open (filename, "r")
       file_number += 1
@@ -131,19 +141,16 @@ class HashCache:
             elapsed_time = max (time.time() - start_time, 1)
             bytes_per_sec = max (bytes_done / elapsed_time, 1)
             eta = int ((bytes_total - bytes_done) / bytes_per_sec)
-            if verbose:
-              status_line.update ("hashing file %d/%d    %s    %.1f%%   %s   ETA: %s" % (
-                file_number, len (filenames),
-                format_size (bytes_done, bytes_total),
-                bytes_done * 100.0 / max (bytes_total, 1),
-                format_rate (bytes_per_sec),
-                format_time (eta)
-              ))
+            need_final_status = True
+            if verbose and outss.need_update():
+              update_status()
         file.close()
         result = hash.hexdigest()
         self.insert (stat_hash, result)
       else:
         bytes_done += os.path.getsize (filename)
+    if need_final_status:
+      update_status()
     return
 
   def save (self):
