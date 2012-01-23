@@ -21,6 +21,7 @@
 #include "bfbdb.hh"
 #include <string>
 #include <vector>
+#include <set>
 
 struct ID {
   BFSync::ID id;
@@ -205,6 +206,22 @@ public:
   ~ChangedINodesIterator();
 
   ID get_next();
+};
+
+class INodeHashIterator
+{
+  BFSync::DbcPtr dbc;
+  int dbc_ret;
+  BDBPtr bdb_ptr;
+
+  std::set<std::string> all_hashes;
+
+  Dbt key, data;
+public:
+  INodeHashIterator (BDBPtr bdb_ptr);
+  ~INodeHashIterator();
+
+  std::string get_next();
 };
 
 const unsigned int VERSION_INF = 0xffffffff;

@@ -718,3 +718,48 @@ ChangedINodesIterator::get_next()
 ChangedINodesIterator::~ChangedINodesIterator()
 {
 }
+
+INodeHashIterator::INodeHashIterator (BDBPtr bdb_ptr) :
+  dbc (bdb_ptr.get_bdb()),
+  bdb_ptr (bdb_ptr)
+{
+  dbc_ret = dbc->get (&key, &data, DB_FIRST);
+}
+
+INodeHashIterator::~INodeHashIterator()
+{
+}
+
+string
+INodeHashIterator::get_next()
+{
+  while (dbc_ret == 0)
+    {
+      string hash;
+      char table = ((char *) key.get_data()) [key.get_size() - 1];
+
+      if (table == BDB_TABLE_INODES)
+        {
+          DataBuffer dbuffer ((char *) data.get_data(), data.get_size());
+
+          dbuffer.read_uint32();
+          dbuffer.read_uint32();
+          dbuffer.read_uint32();
+          dbuffer.read_uint32();
+          dbuffer.read_uint32();
+          dbuffer.read_uint32();
+          hash = dbuffer.read_string();
+        }
+      dbc_ret = dbc->get (&key, &data, DB_NEXT);
+
+      if (hash.size() == 40)  /* skip empty hash (for instance symlink) and "new" hash (newly changed inode) */
+        {
+          if (all_hashes.count (hash) == 0) // deduplication: never return the same hash twice
+            {
+              all_hashes.insert (hash);
+              return hash;
+            }
+        }
+    }
+  return "";
+}
