@@ -102,6 +102,14 @@ main (int argc, char **argv)
   Dbt key;
   Dbt data;
 
+  size_t inode_total = 0;
+  size_t inode_total_keysize = 0;
+  size_t inode_total_datasize = 0;
+
+  size_t link_total = 0;
+  size_t link_total_keysize = 0;
+  size_t link_total_datasize = 0;
+
   ret = dbcp->get (&key, &data, DB_FIRST);
   while (ret == 0)
     {
@@ -130,6 +138,10 @@ main (int argc, char **argv)
           int mtime = dbuffer.read_uint32();
           int mtime_ns = dbuffer.read_uint32();
 
+          inode_total_keysize += key.get_size();
+          inode_total_datasize += data.get_size();
+          inode_total++;
+
           add ("inode", inodes, string_printf ("%s=%u|%s|%d|%d|%o|%d|%s|%s|%d|%d|%d|%d|%d|%d|%d|%d",
                  id.pretty_str().c_str(), vmin, VMSTR (vmax), uid, gid, mode, type, hash.c_str(), link.c_str(),
                  size, major, minor, nlink, ctime, ctime_ns, mtime, mtime_ns));
@@ -142,6 +154,10 @@ main (int argc, char **argv)
           unsigned int vmax = dbuffer.read_uint32();
           ID  inode_id (dbuffer);
           string name = dbuffer.read_string();
+
+          link_total_keysize += key.get_size();
+          link_total_datasize += data.get_size();
+          link_total++;
 
           add ("link", links, string_printf ("%s=%u|%s|%s|%s",
                  id.pretty_str().c_str(), vmin, VMSTR (vmax), inode_id.pretty_str().c_str(), name.c_str()));
@@ -201,6 +217,16 @@ main (int argc, char **argv)
   print ("History", history);
   print ("Changed INodes", changed_inodes);
   print ("Changed INodes (reverse)", changed_inodes_rev);
+
+  printf ("\n\n");
+  printf ("INode Count:    %zd\n", inode_total);
+  printf ("Avg INode Key:  %.2f\n", inode_total_keysize / double (inode_total));
+  printf ("Avg INode Data: %.2f\n", inode_total_datasize / double (inode_total));
+  printf ("\n\n");
+  printf ("Link Count:     %zd\n", link_total);
+  printf ("Avg Link Key:   %.2f\n", link_total_keysize / double (link_total));
+  printf ("Avg Link Data:  %.2f\n", link_total_datasize / double (link_total));
+
 
   if (!bdb->close())
     {
