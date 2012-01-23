@@ -71,11 +71,12 @@ def get (repo, urls):
   # create list of required objects
   status_line.update ("preparing transfer list...")
   objs = []
-  c.execute ('''SELECT DISTINCT hash FROM inodes''')
-  for row in c:
-    s = "%s" % row[0]
-    if len (s) == 40:
-      objs += [ s ]
+  hi = bfsyncdb.INodeHashIterator (repo.bdb)
+  while True:
+    hash = hi.get_next()
+    if hash == "":
+      break           # done
+    objs.append (hash)
 
   # setup rate limit
   cfg_limit = repo.config.get ("get-rate-limit")
