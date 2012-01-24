@@ -1,7 +1,7 @@
 /*
   bfsync: Big File synchronization tool - FUSE filesystem
 
-  Copyright (C) 2011 Stefan Westerfeld
+  Copyright (C) 2011-2012 Stefan Westerfeld
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -37,6 +37,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <glib.h>
+#include <math.h>
 
 #include <string>
 #include <vector>
@@ -252,6 +253,8 @@ Server::handle_client (int client_fd)
 
   vector<char> client_req;
 
+  double last_inode_cache_save_time = gettime();
+
   while (client_fd > 0)
     {
       cpoll_fds[0].fd = client_fd;
@@ -328,6 +331,18 @@ Server::handle_client (int client_fd)
                     }
                   if (ok)
                     result.push_back ("ok");
+
+                  /* to allow committing lots of files, we need to save/expire the INodeCache every
+                   * once in a while, because otherwise otherwise the memory of the filesystem
+                   * process will use more and more main memory
+                   */
+                  double time_now = gettime();
+                  if (fabs (time_now - last_inode_cache_save_time) > 5)
+                    {
+                      INodeRepo::the()->save_changes();
+                      INodeRepo::the()->delete_unused_inodes (INodeRepo::DM_SOME);
+                      last_inode_cache_save_time = time_now;
+                    }
                 }
               else if (request[0] == "load-all-inodes")
                 {
