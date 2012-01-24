@@ -11,7 +11,7 @@
 * detect protocol version
 * check permissions for touch
 * rename bfsync.transferutils => bfsync.transfer (and other fooutils => foo)
-* remove unused new/ files during revert or gc
+* remove unused new/ files during revert or gc or commit
 
 Performance:
 ============
