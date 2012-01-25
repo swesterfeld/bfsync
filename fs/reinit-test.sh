@@ -5,6 +5,5 @@ if test -f mnt/.bfsync/info; then
   exit 1
 fi
 rm -rf test
-bfsync clone master test
-bfdbdump init test/bdb
+bfsync.py clone master test
 bfsyncfs test mnt
