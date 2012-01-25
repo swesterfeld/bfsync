@@ -291,11 +291,13 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
   files_total = len (add_new_list) / 2
   def update_add_status():
     status_line.update ("adding file %d/%d" % (files_added, files_total))
-  while len (add_new_list) > 0:
-    items = min (len (add_new_list), 200)
-    server_conn.add_new (add_new_list[0:items])
-    add_new_list = add_new_list[items:]
-    files_added += items / 2
+
+  add_start = 0
+  while len (add_new_list) > add_start:
+    items = add_new_list[add_start : add_start + 200]
+    server_conn.add_new (items)
+    add_start += len (items)
+    files_added += len (items) / 2
     if verbose and outss.need_update():
       update_add_status()
   if verbose:
