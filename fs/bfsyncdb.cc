@@ -189,7 +189,7 @@ id_load (ID *id, DataBuffer& dbuf)
 }
 
 INode
-BDBPtr::load_inode (const ID *id, int version)
+BDBPtr::load_inode (const ID *id, unsigned int version)
 {
   INode inode;
   DataOutBuffer kbuf;
@@ -293,8 +293,8 @@ BDBPtr::delete_inode (const INode& inode)
     {
       DataBuffer dbuffer ((char *) idata.get_data(), idata.get_size());
 
-      int vmin = dbuffer.read_uint32();
-      int vmax = dbuffer.read_uint32();
+      unsigned int vmin = dbuffer.read_uint32();
+      unsigned int vmax = dbuffer.read_uint32();
 
       if (inode.vmin == vmin && inode.vmax == vmax)
         {
@@ -321,7 +321,7 @@ id_root()
 }
 
 std::vector<Link>
-BDBPtr::load_links (const ID *id, int version)
+BDBPtr::load_links (const ID *id, unsigned int version)
 {
   vector<Link> result;
 
