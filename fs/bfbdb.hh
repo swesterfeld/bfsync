@@ -39,6 +39,7 @@ enum BDBTables
   BDB_TABLE_HISTORY             = 5,
   BDB_TABLE_CHANGED_INODES      = 6,
   BDB_TABLE_CHANGED_INODES_REV  = 7,
+  BDB_TABLE_NEW_FILE_NUMBER     = 8,
 };
 
 BDB *bdb_open (const std::string& path, int cache_size_mb);
@@ -133,6 +134,9 @@ public:
 
   bool  try_store_id2ino (const ID& id, int ino);
   bool  load_ino (const ID& id, ino_t& ino);
+
+  unsigned int gen_new_file_number();
+  void  reset_new_file_number();
 
   bool  load_history_entry (int version, HistoryEntry& entry);
   void  store_history_entry (int version, const HistoryEntry& entry);

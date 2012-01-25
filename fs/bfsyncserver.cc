@@ -457,6 +457,7 @@ Server::add_file (const string& id, const string& hash, string& error)
       return false;
     }
 
+  inode.update()->new_file_number = 0;
   inode.update()->hash = hash;
   inode.update()->size = stat.st_size;
 

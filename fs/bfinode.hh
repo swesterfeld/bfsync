@@ -147,6 +147,7 @@ public:
   dev_t         major;
   dev_t         minor;
   int           nlink;
+  unsigned int  new_file_number;
   ino_t         ino;       /* inode number */
 
   INodeLinksPtr links;
@@ -165,6 +166,7 @@ public:
 
   FileStatus    file_status() const;
   std::string   new_file_path() const;
+  std::string   gen_new_file_path();
   std::string   file_path() const;
   void          copy_on_write();
   void          add_link (const Context& ctx, INodePtr to, const std::string& name);

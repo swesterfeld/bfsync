@@ -830,7 +830,7 @@ bfsync_mknod (const char *path_arg, mode_t mode, dev_t dev)
 
   if (S_ISREG (mode))
     {
-      string filename = inode->new_file_path();
+      string filename = inode.update()->gen_new_file_path();
       int rc = mknod (filename.c_str(), 0600, dev);
       if (rc == 0)
         {

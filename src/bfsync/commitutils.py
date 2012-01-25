@@ -228,14 +228,17 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
 
   def add_new_inode (inode, hash_list, file_list):
     if inode.hash == "new":
-      id = inode.id.no_prefix_str()
-      filename = os.path.join (repo_path, "new", id[0:2], id[2:])
+      n = inode.new_file_number
+      dn = n / 4096
+      fn = n % 4096
+      filename = os.path.join (repo_path, "new/%x/%03x" % (dn, fn))
       hash_list += [ filename ]
       file_list += [ (filename, inode.id.str()) ]
 
   hash_list = []
   file_list = []
   repo.foreach_changed_inode (VERSION, lambda inode: add_new_inode (inode, hash_list, file_list))
+  hash_list.sort()
 
   have_message = False
   if commit_args:
@@ -339,6 +342,7 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
   if commit_size_ok:
     repo.bdb.store_history_entry (VERSION, hash, commit_author, commit_msg, commit_time)
     repo.bdb.clear_changed_inodes()
+    repo.bdb.reset_new_file_number()
   else:
     print "Nothing to commit."
   conn.commit()

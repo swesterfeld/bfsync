@@ -387,6 +387,7 @@ BDB::store_inode (const INode *inode)
   dbuf.write_uint32 (inode->ctime_ns);
   dbuf.write_uint32 (inode->mtime);
   dbuf.write_uint32 (inode->mtime_ns);
+  dbuf.write_uint32 (inode->new_file_number);
 
   Dbt ikey (kbuf.begin(), kbuf.size());
   Dbt idata (dbuf.begin(), dbuf.size());
@@ -507,6 +508,7 @@ BDB::load_inode (const ID& id, unsigned int version, INode *inode)
           inode->ctime_ns = dbuffer.read_uint32();
           inode->mtime = dbuffer.read_uint32();
           inode->mtime_ns = dbuffer.read_uint32();
+          inode->new_file_number = dbuffer.read_uint32();
           return true;
         }
       ret = dbc->get (&ikey, &idata, DB_NEXT_DUP);
@@ -739,6 +741,59 @@ BDB::clear_changed_inodes()
 
       /* goto next record */
       ret = dbc->get (&key, &data, DB_NEXT_DUP);
+    }
+}
+
+unsigned int
+BDB::gen_new_file_number()
+{
+  DataOutBuffer kbuf;
+  DataOutBuffer dbuf;
+
+  kbuf.write_table (BDB_TABLE_NEW_FILE_NUMBER);
+  Dbt key (kbuf.begin(), kbuf.size());
+  Dbt data;
+
+  unsigned int new_file_number;
+
+  int ret = db->get (NULL, &key, &data, 0);
+  if (ret == 0)
+    {
+      DataBuffer dbuffer ((char *) data.get_data(), data.get_size());
+      new_file_number = dbuffer.read_uint32();
+
+      ret = db->del (NULL, &key, 0);
+      g_assert (ret == 0);
+    }
+  else
+    {
+      new_file_number = 1;
+    }
+
+  dbuf.write_uint32 (new_file_number + 1);
+
+  Dbt new_data (dbuf.begin(), dbuf.size());
+
+  ret = db->put (NULL, &key, &new_data, 0);
+  g_assert (ret == 0);
+
+  return new_file_number;
+}
+
+void
+BDB::reset_new_file_number()
+{
+  DataOutBuffer kbuf;
+  kbuf.write_table (BDB_TABLE_NEW_FILE_NUMBER);
+
+  Dbt key (kbuf.begin(), kbuf.size());
+  Dbt data;
+
+  int ret = db->get (NULL, &key, &data, 0);
+  if (ret == 0)
+    {
+      ret = db->del (NULL, &key, 0);
+      g_assert (ret == 0);
     }
 }
 

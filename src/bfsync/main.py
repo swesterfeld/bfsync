@@ -636,7 +636,6 @@ def cmd_clone():
   os.mkdir ("new", 0700)
   os.mkdir ("objects", 0700)
   for i in range (0, 256):
-    os.mkdir ("new/%02x" % i, 0700)
     os.mkdir ("objects/%02x" % i, 0700)
 
   # pull changes from master

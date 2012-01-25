@@ -67,6 +67,7 @@ struct INode {
   unsigned int nlink;
   unsigned int mtime, mtime_ns;
   unsigned int ctime, ctime_ns;
+  unsigned int new_file_number;
 };
 
 struct Link {
@@ -147,6 +148,7 @@ public:
   void               delete_inode (const INode& inode);
 
   void               clear_changed_inodes();
+  void               reset_new_file_number();
 
   std::vector<Link>  load_links (const ID *id, unsigned int version);
   void               store_link (const Link& link);

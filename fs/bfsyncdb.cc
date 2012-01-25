@@ -48,7 +48,8 @@ INode::INode() :
   uid (0), gid (0),
   mode (0), type (0),
   size (0), major (0), minor (0), nlink (0),
-  mtime (0), mtime_ns (0), ctime (0), ctime_ns (0)
+  mtime (0), mtime_ns (0), ctime (0), ctime_ns (0),
+  new_file_number (0)
 {
   inode_leak_debugger.add (this);
 }
@@ -61,7 +62,8 @@ INode::INode (const INode& inode) :
   mode (inode.mode), type (inode.type),
   hash (inode.hash), link (inode.link),
   size (inode.size), major (inode.major), minor (inode.minor), nlink (inode.nlink),
-  mtime (inode.mtime), mtime_ns (inode.mtime_ns), ctime (inode.ctime), ctime_ns (inode.ctime_ns)
+  mtime (inode.mtime), mtime_ns (inode.mtime_ns), ctime (inode.ctime), ctime_ns (inode.ctime_ns),
+  new_file_number (inode.new_file_number)
 {
   inode_leak_debugger.add (this);
 }
@@ -227,6 +229,7 @@ BDBPtr::load_inode (const ID *id, unsigned int version)
           inode.ctime_ns = dbuffer.read_uint32();
           inode.mtime = dbuffer.read_uint32();
           inode.mtime_ns = dbuffer.read_uint32();
+          inode.new_file_number = dbuffer.read_uint32();
 
           inode.valid = true; // found
           return inode;
@@ -264,6 +267,7 @@ BDBPtr::store_inode (const INode* inode)
   dbuf.write_uint32 (inode->ctime_ns);
   dbuf.write_uint32 (inode->mtime);
   dbuf.write_uint32 (inode->mtime_ns);
+  dbuf.write_uint32 (inode->new_file_number);
 
   Dbt ikey (kbuf.begin(), kbuf.size());
   Dbt idata (dbuf.begin(), dbuf.size());
@@ -309,6 +313,12 @@ void
 BDBPtr::clear_changed_inodes()
 {
   ptr->my_bdb->clear_changed_inodes();
+}
+
+void
+BDBPtr::reset_new_file_number()
+{
+  ptr->my_bdb->reset_new_file_number();
 }
 
 ID

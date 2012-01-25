@@ -228,6 +228,7 @@ INodePtr::INodePtr (const Context& ctx, const char *path)
   ptr->nlink = 0;
   ptr->set_mtime_ctime_now();
   ptr->alloc_ino();
+  ptr->new_file_number = 0;
   ptr->updated = true;
 
   Lock lock (INodeRepo::the()->mutex);
@@ -334,6 +335,7 @@ INode::INode (const INode& other) :
   nlink     = other.nlink;
   ino       = other.ino;
   links     = other.links;      /* FIXME: deep copy */
+  new_file_number = other.new_file_number;
   updated   = other.updated;
 }
 
@@ -437,11 +439,33 @@ INode::alloc_ino()
   next_ino++;
 }
 
+static string
+new_file_path_for_number (unsigned int new_file_number, bool create_dir)
+{
+  string dirname = Options::the()->repo_path + string_printf ("/new/%x", new_file_number / 4096);
+  string filename = string_printf ("%03x", new_file_number % 4096);
+
+  if (create_dir)
+    {
+      if (!g_file_test (dirname.c_str(), G_FILE_TEST_IS_DIR))
+        mkdir (dirname.c_str(), 0700);
+    }
+  return dirname + "/" + filename;
+}
+
 string
 INode::new_file_path() const
 {
-  string id_str = id.no_prefix_str();
-  return Options::the()->repo_path + "/new/" + id_str.substr (0, 2) + "/" + id_str.substr (2);
+  return new_file_path_for_number (new_file_number, false);
+}
+
+string
+INode::gen_new_file_path()
+{
+  if (new_file_number == 0)
+    new_file_number = INodeRepo::the()->bdb->gen_new_file_number();
+
+  return new_file_path_for_number (new_file_number, true);
 }
 
 string
@@ -471,7 +495,7 @@ INode::copy_on_write()
   if (file_status() == FS_RDONLY && type == FILE_REGULAR)
     {
       string old_name = file_path();
-      string new_name = new_file_path();
+      string new_name = gen_new_file_path();
 
       int old_fd = open (old_name.c_str(), O_RDONLY);
       int new_fd = open (new_name.c_str(), O_WRONLY | O_CREAT, 0644);

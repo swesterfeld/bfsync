@@ -97,7 +97,7 @@ main (int argc, char **argv)
       return 1;
     }
 
-  vector<string> links, inodes, id2ino, ino2id, history, changed_inodes, changed_inodes_rev;
+  vector<string> links, inodes, id2ino, ino2id, history, changed_inodes, changed_inodes_rev, new_file_number;
 
   Dbt key;
   Dbt data;
@@ -137,14 +137,15 @@ main (int argc, char **argv)
           int ctime_ns = dbuffer.read_uint32();
           int mtime = dbuffer.read_uint32();
           int mtime_ns = dbuffer.read_uint32();
+          unsigned int new_file_number = dbuffer.read_uint32();
 
           inode_total_keysize += key.get_size();
           inode_total_datasize += data.get_size();
           inode_total++;
 
-          add ("inode", inodes, string_printf ("%s=%u|%s|%d|%d|%o|%d|%s|%s|%d|%d|%d|%d|%d|%d|%d|%d",
+          add ("inode", inodes, string_printf ("%s=%u|%s|%d|%d|%o|%d|%s|%s|%d|%d|%d|%d|%d|%d|%d|%d|%u",
                  id.pretty_str().c_str(), vmin, VMSTR (vmax), uid, gid, mode, type, hash.c_str(), link.c_str(),
-                 size, major, minor, nlink, ctime, ctime_ns, mtime, mtime_ns));
+                 size, major, minor, nlink, ctime, ctime_ns, mtime, mtime_ns, new_file_number));
         }
       else if (table == BDB_TABLE_LINKS)
         {
@@ -203,6 +204,12 @@ main (int argc, char **argv)
 
           add ("changed_inode_rev", changed_inodes_rev, string_printf ("%s", id.pretty_str().c_str()));
          }
+      else if (table == BDB_TABLE_NEW_FILE_NUMBER)
+        {
+          unsigned int n = dbuffer.read_uint32();
+
+          add ("new_file_number", new_file_number, string_printf ("%u", n));
+         }
       else
         {
           printf ("unknown record type\n");
@@ -217,6 +224,7 @@ main (int argc, char **argv)
   print ("History", history);
   print ("Changed INodes", changed_inodes);
   print ("Changed INodes (reverse)", changed_inodes_rev);
+  print ("New File Number", new_file_number);
 
   printf ("\n\n");
   printf ("INode Count:    %zd\n", inode_total);
