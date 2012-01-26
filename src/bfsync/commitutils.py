@@ -215,6 +215,10 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
   conn = repo.conn
   repo_path = repo.path
 
+  DEBUG_MEM = False
+  if DEBUG_MEM:
+    print_mem_usage ("commit start")
+
   # lock repo to allow modifications
   if server:
     server_conn = ServerConn (repo_path)
@@ -226,19 +230,98 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
 
   VERSION = repo.first_unused_version()
 
-  def add_new_inode (inode, hash_list, file_list):
-    if inode.hash == "new":
+  class NewFileStats:
+    def __init__ (self):
+      self.total_file_size = 0
+      self.total_file_count = 0
+
+    def add_inode (self, inode):
+      if inode.hash == "new":
+        n = inode.new_file_number
+        dn = n / 4096
+        fn = n % 4096
+        filename = os.path.join (repo_path, "new/%x/%03x" % (dn, fn))
+        self.total_file_size += os.path.getsize (filename)
+        self.total_file_count += 1
+
+  new_file_stats = NewFileStats()
+  repo.foreach_changed_inode (VERSION, lambda inode: new_file_stats.add_inode (inode))
+  ### print "+++ stats +++", new_file_stats.total_file_count, new_file_stats.total_file_size
+
+  if DEBUG_MEM:
+    print_mem_usage ("after stats")
+
+  class WorkingSetGenerator:
+    def __init__ (self, work_function):
+      self.work_function = work_function
+      self.max_set_size = 5000
+      self.wset = []
+
+    def add_inode (self, inode):
+      self.wset += [ inode ]
+      if len (self.wset) == self.max_set_size:
+        self.work_function (self.wset)
+        self.wset = []
+
+    def finish (self):
+      if len (self.wset):
+        self.work_function (self.wset)
+      self.wset = []
+
+  class Status:
+    pass
+
+  status = Status()
+  status.files_total = new_file_stats.total_file_count
+  status.files_added = 0
+
+  outss = OutputSubsampler()
+
+  def update_status():
+    status_line.update ("adding file %d/%d (total: %s)" % (
+      status.files_added, status.files_total, format_size1 (new_file_stats.total_file_size)))
+
+  def print_it (wset):
+    wset_number_list = []
+    for inode in wset:
+      if inode.hash == "new":
+        wset_number_list.append (inode)
+    wset_number_list.sort (key = lambda inode: inode.new_file_number)
+    for inode in wset_number_list:
       n = inode.new_file_number
       dn = n / 4096
       fn = n % 4096
       filename = os.path.join (repo_path, "new/%x/%03x" % (dn, fn))
-      hash_list += [ filename ]
-      file_list += [ (filename, inode.id.str()) ]
+      hash = hash_cache.compute_hash (filename)
+      server_conn.add_new ([inode.id.str(), hash])
+      status.files_added += 1
+      if verbose and outss.need_update():
+        update_status()
 
-  hash_list = []
-  file_list = []
-  repo.foreach_changed_inode (VERSION, lambda inode: add_new_inode (inode, hash_list, file_list))
-  hash_list.sort()
+  # read list of ids
+  id_list = []
+  changed_it = bfsyncdb.ChangedINodesIterator (repo.bdb)
+  while True:
+    id = changed_it.get_next()
+    if not id.valid:
+      break
+    id_list.append (id)
+  del changed_it
+
+  # process files to add in small chunks
+  working_set_generator = WorkingSetGenerator (print_it)
+  for id in id_list:
+    inode = repo.bdb.load_inode (id, VERSION)
+    if inode.valid:
+      working_set_generator.add_inode (inode)
+  working_set_generator.finish()
+
+  if verbose:
+    update_status()
+    status_line.cleanup()
+
+  if DEBUG_MEM:
+    print_mem_usage ("with file_list/hash_list")
 
   have_message = False
   if commit_args:
@@ -276,35 +359,8 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
   if commit_time is None:
     commit_time = int (time.time())
 
-  hash_cache.hash_all (hash_list, verbose)
-  if verbose:
-    status_line.cleanup()
-
-  # add new files via BFSync::Server
-  add_new_list = []
-  for (filename, id) in file_list:
-    hash = hash_cache.compute_hash (filename)
-    add_new_list += [id, hash]
-
-  outss = OutputSubsampler()
-  files_added = 0
-  files_total = len (add_new_list) / 2
-  def update_add_status():
-    status_line.update ("adding file %d/%d" % (files_added, files_total))
-
-  add_start = 0
-  while len (add_new_list) > add_start:
-    items = add_new_list[add_start : add_start + 200]
-    server_conn.add_new (items)
-    add_start += len (items)
-    files_added += len (items) / 2
-    if verbose and outss.need_update():
-      update_add_status()
-  if verbose:
-    update_add_status()
-
-  if verbose:
-    status_line.cleanup()
+  if DEBUG_MEM:
+    print_mem_usage ("after add")
 
   server_conn.save_changes()
 
@@ -318,6 +374,9 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
   diff_file = open (diff_filename, "w")
   diff (repo, diff_file)
   diff_file.close()
+
+  if DEBUG_MEM:
+    print_mem_usage ("after diff")
 
   commit_size_ok = True
   if expected_diff:
@@ -341,6 +400,9 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
     status_line.update ("computing changes: done")
     status_line.cleanup()
 
+  if DEBUG_MEM:
+    print_mem_usage ("after xz")
+
   if commit_size_ok:
     repo.bdb.store_history_entry (VERSION, hash, commit_author, commit_msg, commit_time)
     repo.bdb.clear_changed_inodes()
@@ -349,6 +411,9 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
     print "Nothing to commit."
   conn.commit()
   c.close()
+
+  if DEBUG_MEM:
+    print_mem_usage ("commit end")
 
   # we modified the db, so the fs needs to reload everything
   # in-memory cached items will not be correct

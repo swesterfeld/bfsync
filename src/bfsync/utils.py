@@ -19,6 +19,7 @@ import os
 import sqlite3
 import CfgParser
 import bfsyncdb
+import resource
 from tempfile import NamedTemporaryFile
 
 def format_size (size, total_size):
@@ -315,3 +316,8 @@ def init_bfsync_file (dir):
   f = open (bfsync_file, "w")
   f.write ("# do not delete: this file allows bfsync recognizing this directory as repository\n")
   f.close()
+
+def print_mem_usage (comment):
+  print
+  print "** %s ** memory usage: %d K" % (comment, resource.getrusage (resource.RUSAGE_SELF).ru_maxrss)
+  print
