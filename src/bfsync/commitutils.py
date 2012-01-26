@@ -24,6 +24,7 @@ from HashCache import hash_cache
 
 import os
 import time
+import hashlib
 
 # in case the repo is not mounted, we don't need a ServerConn
 #
@@ -211,6 +212,19 @@ def get_author():
   hostname = os.uname()[1]
   return "%s@%s" % (username, hostname)
 
+def hash_one (filename):
+  file = open (filename, "r")
+  hash = hashlib.sha1()
+  eof = False
+  while not eof:
+    data = file.read (256 * 1024)
+    if data == "":
+      eof = True
+    else:
+      hash.update (data)
+  file.close()
+  return hash.hexdigest()
+
 def commit (repo, expected_diff = None, expected_diff_hash = None, server = True, verbose = True, commit_args = None):
   conn = repo.conn
   repo_path = repo.path
@@ -293,7 +307,7 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
       dn = n / 4096
       fn = n % 4096
       filename = os.path.join (repo_path, "new/%x/%03x" % (dn, fn))
-      hash = hash_cache.compute_hash (filename)
+      hash = hash_one (filename)
       add_new_list += [inode.id.str(), hash]
       status.files_added += 1
       if verbose and outss.need_update():
