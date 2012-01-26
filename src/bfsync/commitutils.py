@@ -287,16 +287,19 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
       if inode.hash == "new":
         wset_number_list.append (inode)
     wset_number_list.sort (key = lambda inode: inode.new_file_number)
+    add_new_list = []
     for inode in wset_number_list:
       n = inode.new_file_number
       dn = n / 4096
       fn = n % 4096
       filename = os.path.join (repo_path, "new/%x/%03x" % (dn, fn))
       hash = hash_cache.compute_hash (filename)
-      server_conn.add_new ([inode.id.str(), hash])
+      add_new_list += [inode.id.str(), hash]
       status.files_added += 1
       if verbose and outss.need_update():
         update_status()
+    if len (add_new_list) > 0:
+      server_conn.add_new (add_new_list)
 
   # read list of ids
   id_list = []
