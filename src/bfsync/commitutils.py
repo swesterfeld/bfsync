@@ -315,23 +315,34 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
     if len (add_new_list) > 0:
       server_conn.add_new (add_new_list)
 
-  # read list of ids
-  id_list = []
+  # read list of ids ; since this could be huge, we write the id strings
+  # to a file and reread the file later on
+  #
+  # we also need to do this before actually modifying the database, because
+  # the read cursor held by the ChangedINodesIterator will block writes
+  id_list_filename = repo.make_temp_name()
+  id_list_file = open (id_list_filename, "w")
   changed_it = bfsyncdb.ChangedINodesIterator (repo.bdb)
   while True:
     id = changed_it.get_next()
     if not id.valid:
       break
-    id_list.append (id)
-  del changed_it
+    id_list_file.write (id.str() + "\n")
+  del changed_it # close read cursor
+  id_list_file.close()
 
   # process files to add in small chunks
+  id_list_file = open (id_list_filename, "r")
   working_set_generator = WorkingSetGenerator (print_it)
-  for id in id_list:
+  for id_str in id_list_file:
+    id = bfsyncdb.ID (id_str.strip())
+    if not id.valid:
+      raise Exception ("found invalid id during commit")
     inode = repo.bdb.load_inode (id, VERSION)
     if inode.valid:
       working_set_generator.add_inode (inode)
   working_set_generator.finish()
+  id_list_file.close()
 
   if verbose:
     update_status()
