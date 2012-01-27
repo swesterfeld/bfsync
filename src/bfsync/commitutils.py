@@ -272,8 +272,16 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
   status = Status()
 
   def update_status():
-    status_line.update ("adding file %d/%d (total: %s)" % (
-      status.files_added, status.files_total, format_size (status.bytes_done, status.total_file_size)))
+    elapsed_time = max (time.time() - status.start_time, 1)
+    bytes_per_sec = max (status.bytes_done / elapsed_time, 1)
+    eta = int ((status.total_file_size - status.bytes_done) / bytes_per_sec)
+    status_line.update ("adding file %d/%d    %s    %.1f%%   %s   ETA: %s" % (
+        status.files_added, status.files_total,
+        format_size (status.bytes_done, status.total_file_size),
+        status.bytes_done * 100.0 / max (status.total_file_size, 1),
+        format_rate (bytes_per_sec),
+        format_time (eta)
+      ))
 
   def hash_one (filename):
     file = open (filename, "r")
@@ -332,6 +340,7 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
   status.files_total = status.total_file_count
   status.files_added = 0
   status.bytes_done = 0
+  status.start_time = time.time()
 
   # process files to add in small chunks
   id_list_file = open (id_list_filename, "r")
