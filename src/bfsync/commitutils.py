@@ -255,6 +255,7 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
     def __init__ (self):
       self.total_file_size = 0
       self.total_file_count = 0
+      self.outss = OutputSubsampler()
 
     def scan_inode (self, inode):
       if inode.hash == "new":
@@ -264,9 +265,11 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
         filename = os.path.join (repo_path, "new/%x/%03x" % (dn, fn))
         self.total_file_size += os.path.getsize (filename)
         self.total_file_count += 1
+        if verbose and self.outss.need_update():
+          status_line.update ("scanning file %d (total %s)" % (
+            self.total_file_count, format_size1 (self.total_file_size)))
 
   status = Status()
-  outss = OutputSubsampler()
 
   def update_status():
     status_line.update ("adding file %d/%d (total: %s)" % (
@@ -283,7 +286,7 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
       else:
         hash.update (data)
         status.bytes_done += len (data)
-        if verbose and outss.need_update():
+        if verbose and status.outss.need_update():
           update_status()
     file.close()
     return hash.hexdigest()
