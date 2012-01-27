@@ -212,19 +212,6 @@ def get_author():
   hostname = os.uname()[1]
   return "%s@%s" % (username, hostname)
 
-def hash_one (filename):
-  file = open (filename, "r")
-  hash = hashlib.sha1()
-  eof = False
-  while not eof:
-    data = file.read (256 * 1024)
-    if data == "":
-      eof = True
-    else:
-      hash.update (data)
-  file.close()
-  return hash.hexdigest()
-
 def commit (repo, expected_diff = None, expected_diff_hash = None, server = True, verbose = True, commit_args = None):
   conn = repo.conn
   repo_path = repo.path
@@ -288,7 +275,23 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
 
   def update_status():
     status_line.update ("adding file %d/%d (total: %s)" % (
-      status.files_added, status.files_total, format_size1 (new_file_stats.total_file_size)))
+      status.files_added, status.files_total, format_size (status.bytes_done, new_file_stats.total_file_size)))
+
+  def hash_one (filename):
+    file = open (filename, "r")
+    hash = hashlib.sha1()
+    eof = False
+    while not eof:
+      data = file.read (256 * 1024)
+      if data == "":
+        eof = True
+      else:
+        hash.update (data)
+        status.bytes_done += len (data)
+        if verbose and outss.need_update():
+          update_status()
+    file.close()
+    return hash.hexdigest()
 
   def print_it (wset):
     wset_number_list = []
@@ -298,15 +301,14 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
     wset_number_list.sort (key = lambda inode: inode.new_file_number)
     add_new_list = []
     for inode in wset_number_list:
+      status.files_added += 1
+
       n = inode.new_file_number
       dn = n / 4096
       fn = n % 4096
       filename = os.path.join (repo_path, "new/%x/%03x" % (dn, fn))
       hash = hash_one (filename)
       add_new_list += [inode.id.str(), hash]
-      status.files_added += 1
-      if verbose and outss.need_update():
-        update_status()
     if len (add_new_list) > 0:
       server_conn.add_new (add_new_list)
 
@@ -331,6 +333,7 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
 
   status.files_total = new_file_stats.total_file_count
   status.files_added = 0
+  status.bytes_done = 0
 
   # process files to add in small chunks
   id_list_file = open (id_list_filename, "r")
