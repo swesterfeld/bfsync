@@ -212,6 +212,23 @@ def get_author():
   hostname = os.uname()[1]
   return "%s@%s" % (username, hostname)
 
+class WorkingSetGenerator:
+  def __init__ (self, work_function):
+    self.work_function = work_function
+    self.max_set_size = 5000
+    self.wset = []
+
+  def add_item (self, item):
+    self.wset += [ item ]
+    if len (self.wset) == self.max_set_size:
+      self.work_function (self.wset)
+      self.wset = []
+
+  def finish (self):
+    if len (self.wset):
+      self.work_function (self.wset)
+    self.wset = []
+
 def commit (repo, expected_diff = None, expected_diff_hash = None, server = True, verbose = True, commit_args = None):
   conn = repo.conn
   repo_path = repo.path
@@ -233,23 +250,6 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
 
   if DEBUG_MEM:
     print_mem_usage ("after stats")
-
-  class WorkingSetGenerator:
-    def __init__ (self, work_function):
-      self.work_function = work_function
-      self.max_set_size = 5000
-      self.wset = []
-
-    def add_inode (self, inode):
-      self.wset += [ inode ]
-      if len (self.wset) == self.max_set_size:
-        self.work_function (self.wset)
-        self.wset = []
-
-    def finish (self):
-      if len (self.wset):
-        self.work_function (self.wset)
-      self.wset = []
 
   class Status:
     def __init__ (self):
@@ -339,7 +339,7 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
       raise Exception ("found invalid id during commit")
     inode = repo.bdb.load_inode (id, VERSION)
     if inode.valid:
-      working_set_generator.add_inode (inode)
+      working_set_generator.add_item (inode)
   working_set_generator.finish()
   id_list_file.close()
 
