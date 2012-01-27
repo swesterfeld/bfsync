@@ -259,8 +259,6 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
         self.total_file_count += 1
 
   new_file_stats = NewFileStats()
-  repo.foreach_changed_inode (VERSION, lambda inode: new_file_stats.add_inode (inode))
-  ### print "+++ stats +++", new_file_stats.total_file_count, new_file_stats.total_file_size
 
   if DEBUG_MEM:
     print_mem_usage ("after stats")
@@ -286,9 +284,6 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
     pass
 
   status = Status()
-  status.files_total = new_file_stats.total_file_count
-  status.files_added = 0
-
   outss = OutputSubsampler()
 
   def update_status():
@@ -328,8 +323,14 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
     if not id.valid:
       break
     id_list_file.write (id.str() + "\n")
+    inode = repo.bdb.load_inode (id, VERSION)
+    if inode.valid:
+      new_file_stats.add_inode (inode)
   del changed_it # close read cursor
   id_list_file.close()
+
+  status.files_total = new_file_stats.total_file_count
+  status.files_added = 0
 
   # process files to add in small chunks
   id_list_file = open (id_list_filename, "r")
