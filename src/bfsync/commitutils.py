@@ -231,22 +231,6 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
 
   VERSION = repo.first_unused_version()
 
-  class NewFileStats:
-    def __init__ (self):
-      self.total_file_size = 0
-      self.total_file_count = 0
-
-    def add_inode (self, inode):
-      if inode.hash == "new":
-        n = inode.new_file_number
-        dn = n / 4096
-        fn = n % 4096
-        filename = os.path.join (repo_path, "new/%x/%03x" % (dn, fn))
-        self.total_file_size += os.path.getsize (filename)
-        self.total_file_count += 1
-
-  new_file_stats = NewFileStats()
-
   if DEBUG_MEM:
     print_mem_usage ("after stats")
 
@@ -268,14 +252,25 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
       self.wset = []
 
   class Status:
-    pass
+    def __init__ (self):
+      self.total_file_size = 0
+      self.total_file_count = 0
+
+    def scan_inode (self, inode):
+      if inode.hash == "new":
+        n = inode.new_file_number
+        dn = n / 4096
+        fn = n % 4096
+        filename = os.path.join (repo_path, "new/%x/%03x" % (dn, fn))
+        self.total_file_size += os.path.getsize (filename)
+        self.total_file_count += 1
 
   status = Status()
   outss = OutputSubsampler()
 
   def update_status():
     status_line.update ("adding file %d/%d (total: %s)" % (
-      status.files_added, status.files_total, format_size (status.bytes_done, new_file_stats.total_file_size)))
+      status.files_added, status.files_total, format_size (status.bytes_done, status.total_file_size)))
 
   def hash_one (filename):
     file = open (filename, "r")
@@ -327,11 +322,11 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
     id_list_file.write (id.str() + "\n")
     inode = repo.bdb.load_inode (id, VERSION)
     if inode.valid:
-      new_file_stats.add_inode (inode)
+      status.scan_inode (inode)
   del changed_it # close read cursor
   id_list_file.close()
 
-  status.files_total = new_file_stats.total_file_count
+  status.files_total = status.total_file_count
   status.files_added = 0
   status.bytes_done = 0
 
