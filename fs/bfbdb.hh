@@ -104,13 +104,13 @@ struct HistoryEntry
 
 class BDB
 {
+public:
   DbEnv   *db_env;
   Db      *db;
   History  m_history;
 
   int      shm_id (const std::string& path);
 
-public:
   Mutex mutex;
 
   Db*       get_db();
@@ -145,8 +145,9 @@ public:
 
 class DbcPtr // cursor smart-wrapper: automatically closes cursor in destructor
 {
-  Dbc *dbc;
 public:
+  Dbc *dbc;
+  DbTxn *txn;
   enum Mode { READ, WRITE };
 
   DbcPtr (BDB *bdb, Mode mode = READ)
@@ -154,12 +155,17 @@ public:
     assert (bdb);
 
     int ret;
-    ret = bdb->get_db()->cursor (NULL, &dbc, mode == WRITE ? DB_WRITECURSOR : 0);
+    ret = bdb->db_env->txn_begin (NULL, &txn, 0);
+    g_assert (ret == 0);
+
+    ret = bdb->get_db()->cursor (txn, &dbc, 0); // CDB CODE: mode == WRITE ? DB_WRITECURSOR : 0);
     g_assert (ret == 0);
   }
   ~DbcPtr()
   {
-    dbc->close();
+    int ret = txn->commit (0);
+    g_assert (ret == 0);
+    // transaction will close cursor dbc->close();
   }
   Dbc*
   operator->()

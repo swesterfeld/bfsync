@@ -67,13 +67,21 @@ BDB::open (const string& path, int cache_size_mb)
       db_env = new DbEnv (DB_CXX_NO_EXCEPTIONS);
       db_env->set_shm_key (shm_id (path));
       db_env->set_cachesize (cache_size_gb, cache_size_mb * 1024 * 1024, 0); // set cache size
-      db_env->open (bdb_dir.c_str(), DB_INIT_MPOOL | DB_INIT_CDB | DB_CREATE |  DB_SYSTEM_MEM, 0);
+      db_env->open (bdb_dir.c_str(),
+        DB_CREATE |            /* on-demand create */
+        DB_INIT_MPOOL |        /* shared memory buffer subsystem */
+        DB_INIT_TXN |          /* transactions */
+        DB_INIT_LOG |          /* logging */
+        DB_INIT_LOCK |         /* locking */
+        //DB_RECOVER |           /* run recover */
+        DB_SYSTEM_MEM,         /* use shared memory (instead of mmap) */
+        0);
 
       db = new Db (db_env, 0);
       db->set_flags (DB_DUP);       // allow duplicate keys
 
       // Open the database
-      u_int32_t oFlags = DB_CREATE; // Open flags;
+      u_int32_t oFlags = DB_CREATE | DB_AUTO_COMMIT; // Open flags;
 
       db->open (NULL,               // Transaction pointer
                 "db",               // Database name
@@ -736,7 +744,7 @@ BDB::clear_changed_inodes()
       rev_kbuf.write_table (BDB_TABLE_CHANGED_INODES_REV);
 
       Dbt rev_key (rev_kbuf.begin(), rev_kbuf.size());
-      ret = db->del (NULL, &rev_key, 0);
+      ret = db->del (dbc.txn, &rev_key, 0);
       g_assert (ret == 0);
 
       /* goto next record */
