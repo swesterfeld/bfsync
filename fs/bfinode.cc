@@ -72,6 +72,8 @@ INodeRepo::save_changes (SaveChangesMode sc)
 {
   Lock lock (mutex);
 
+  bdb->begin_transaction();
+
   int inodes_saved = 0;
   for (map<ID, INodeVersionList>::iterator ci = cache.begin(); ci != cache.end(); ci++)
     {
@@ -126,6 +128,8 @@ INodeRepo::save_changes (SaveChangesMode sc)
       cache.clear();
       links_cache.clear();
     }
+
+  bdb->commit_transaction();
   // bdb->sync();
 }
 

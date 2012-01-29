@@ -143,6 +143,9 @@ public:
 
   ~BDBPtr();
 
+  void               begin_transaction();
+  void               commit_transaction();
+
   INode              load_inode (const ID *id, unsigned int version);
   void               store_inode (const INode *inode);
   void               delete_inode (const INode& inode);

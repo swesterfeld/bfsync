@@ -48,6 +48,7 @@ bdb_open (const string& path, int cache_size_mb)
 }
 
 BDB::BDB() :
+  transaction (NULL),
   m_history (this)
 {
 }
@@ -123,6 +124,46 @@ BDB::close()
   return (ret == 0);
 }
 
+void
+BDB::begin_transaction()
+{
+  Lock lock (mutex);
+
+  assert (transaction == NULL);
+
+  int ret = db_env->txn_begin (NULL, &transaction, 0);
+  g_assert (ret == 0);
+  g_assert (transaction);
+}
+
+void
+BDB::commit_transaction()
+{
+  Lock lock (mutex);
+
+  int ret = transaction->commit (0);
+  g_assert (ret == 0);
+
+  transaction = NULL;
+}
+
+void
+BDB::abort_transaction()
+{
+  Lock lock (mutex);
+
+  int ret = transaction->abort();
+  g_assert (ret == 0);
+
+  transaction = NULL;
+}
+
+DbTxn*
+BDB::get_transaction()
+{
+  return transaction;
+}
+
 DataOutBuffer::DataOutBuffer()
 {
   out.reserve (256);   // should be enough for most cases (avoids reallocs)
@@ -181,6 +222,8 @@ BDB::store_link (const LinkPtr& lp)
 
   TimeProfHandle h (tp_store_link);
 
+  g_assert (transaction != NULL);
+
   DataOutBuffer kbuf, dbuf;
 
   lp->dir_id.store (kbuf);
@@ -191,7 +234,7 @@ BDB::store_link (const LinkPtr& lp)
   Dbt lkey (kbuf.begin(), kbuf.size());
   Dbt ldata (dbuf.begin(), dbuf.size());
 
-  int ret = db->put (NULL, &lkey, &ldata, 0);
+  int ret = db->put (transaction, &lkey, &ldata, 0);
   assert (ret == 0);
 }
 
@@ -374,6 +417,8 @@ BDB::store_inode (const INode *inode)
 
   TimeProfHandle h (tp_store_inode);
 
+  g_assert (transaction != NULL);
+
   DataOutBuffer kbuf, dbuf;
 
   inode->id.store (kbuf);
@@ -400,7 +445,7 @@ BDB::store_inode (const INode *inode)
   Dbt ikey (kbuf.begin(), kbuf.size());
   Dbt idata (dbuf.begin(), dbuf.size());
 
-  int ret = db->put (NULL, &ikey, &idata, 0);
+  int ret = db->put (transaction, &ikey, &idata, 0);
   assert (ret == 0);
 }
 
@@ -602,6 +647,8 @@ BDB::store_history_entry (int version, const HistoryEntry& he)
 {
   assert (version == he.version);
 
+  g_assert (transaction != NULL);
+
   delete_history_entry (version);
 
   Lock lock (mutex);
@@ -619,7 +666,7 @@ BDB::store_history_entry (int version, const HistoryEntry& he)
   Dbt hkey (kbuf.begin(), kbuf.size());
   Dbt hdata (dbuf.begin(), dbuf.size());
 
-  int ret = db->put (NULL, &hkey, &hdata, 0);
+  int ret = db->put (transaction, &hkey, &hdata, 0);
   assert (ret == 0);
 }
 
@@ -636,7 +683,7 @@ BDB::load_history_entry (int version, HistoryEntry& he)
   Dbt hkey (kbuf.begin(), kbuf.size());
   Dbt hdata;
 
-  if (db->get (NULL, &hkey, &hdata, 0) != 0)
+  if (db->get (transaction, &hkey, &hdata, 0) != 0)
     return false;
 
   DataBuffer dbuffer ((char *) hdata.get_data(), hdata.get_size());
@@ -663,7 +710,7 @@ BDB::delete_history_entry (int version)
   Dbt hkey (kbuf.begin(), kbuf.size());
   Dbt hdata;
 
-  DbcPtr dbc (this);
+  DbcPtr dbc (this, DbcPtr::WRITE);
 
   // iterate over key elements and delete records which are in LinkVersionList
   int ret = dbc->get (&hkey, &hdata, DB_SET);
@@ -685,6 +732,8 @@ BDB::add_changed_inode (const ID& id)
 
   TimeProfHandle h (tp_add_changed_inode);
 
+  g_assert (transaction != NULL);
+
   // reverse lookup: inode already in changed set?
   int ret;
   DataOutBuffer kbuf, dbuf;
@@ -695,12 +744,12 @@ BDB::add_changed_inode (const ID& id)
   Dbt rev_cikey (kbuf.begin(), kbuf.size());
   Dbt rev_cidata;
 
-  ret = db->get (NULL, &rev_cikey, &rev_cidata, 0);
+  ret = db->get (transaction, &rev_cikey, &rev_cidata, 0);
   if (ret == 0)
     return;       // => inode already in changed set
 
   // add reverse entry
-  ret = db->put (NULL, &rev_cikey, &rev_cidata, 0);
+  ret = db->put (transaction, &rev_cikey, &rev_cidata, 0);
   assert (ret == 0);
 
   // add to changed inodes table
@@ -713,13 +762,17 @@ BDB::add_changed_inode (const ID& id)
   Dbt cikey (kbuf.begin(), kbuf.size());
   Dbt cidata (dbuf.begin(), dbuf.size());
 
-  ret = db->put (NULL, &cikey, &cidata, 0);
+  ret = db->put (transaction, &cikey, &cidata, 0);
   assert (ret == 0);
 }
 
 void
 BDB::clear_changed_inodes()
 {
+  Lock lock (mutex);
+
+  g_assert (transaction != NULL);
+
   DataOutBuffer kbuf;
   kbuf.write_table (BDB_TABLE_CHANGED_INODES);
 
@@ -744,7 +797,7 @@ BDB::clear_changed_inodes()
       rev_kbuf.write_table (BDB_TABLE_CHANGED_INODES_REV);
 
       Dbt rev_key (rev_kbuf.begin(), rev_kbuf.size());
-      ret = db->del (dbc.txn, &rev_key, 0);
+      ret = db->del (transaction, &rev_key, 0);
       g_assert (ret == 0);
 
       /* goto next record */
@@ -755,6 +808,8 @@ BDB::clear_changed_inodes()
 unsigned int
 BDB::gen_new_file_number()
 {
+  Lock lock (mutex);
+
   DataOutBuffer kbuf;
   DataOutBuffer dbuf;
 
@@ -791,16 +846,20 @@ BDB::gen_new_file_number()
 void
 BDB::reset_new_file_number()
 {
+  Lock lock (mutex);
+
+  g_assert (transaction);
+
   DataOutBuffer kbuf;
   kbuf.write_table (BDB_TABLE_NEW_FILE_NUMBER);
 
   Dbt key (kbuf.begin(), kbuf.size());
   Dbt data;
 
-  int ret = db->get (NULL, &key, &data, 0);
+  int ret = db->get (transaction, &key, &data, 0);
   if (ret == 0)
     {
-      ret = db->del (NULL, &key, 0);
+      ret = db->del (transaction, &key, 0);
       g_assert (ret == 0);
     }
 }

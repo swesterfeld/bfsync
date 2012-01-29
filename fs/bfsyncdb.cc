@@ -178,6 +178,18 @@ BDBPtr::close()
 }
 
 void
+BDBPtr::begin_transaction()
+{
+  ptr->my_bdb->begin_transaction();
+}
+
+void
+BDBPtr::commit_transaction()
+{
+  ptr->my_bdb->commit_transaction();
+}
+
+void
 id_store (const ID *id, DataOutBuffer& data_buf)
 {
   id->id.store (data_buf);
@@ -272,7 +284,10 @@ BDBPtr::store_inode (const INode* inode)
   Dbt ikey (kbuf.begin(), kbuf.size());
   Dbt idata (dbuf.begin(), dbuf.size());
 
-  int ret = ptr->my_bdb->get_db()->put (NULL, &ikey, &idata, 0);
+  DbTxn *txn = ptr->my_bdb->get_transaction();
+  g_assert (txn);
+
+  int ret = ptr->my_bdb->get_db()->put (txn, &ikey, &idata, 0);
   g_assert (ret == 0);
 
   ptr->my_bdb->add_changed_inode (inode->id.id);

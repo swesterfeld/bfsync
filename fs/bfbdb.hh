@@ -104,9 +104,10 @@ struct HistoryEntry
 
 class BDB
 {
-public:
+  DbTxn   *transaction;
   DbEnv   *db_env;
   Db      *db;
+public:
   History  m_history;
 
   int      shm_id (const std::string& path);
@@ -121,6 +122,11 @@ public:
   bool  open (const std::string& path, int cache_size_mb);
   void  sync();
   bool  close();
+
+  void  begin_transaction();
+  void  commit_transaction();
+  void  abort_transaction();
+  DbTxn*get_transaction();
 
   void  store_link (const LinkPtr& link);
   void  delete_links (const ID& dir_id, const std::map<std::string, LinkVersionList>& links);
@@ -147,25 +153,24 @@ class DbcPtr // cursor smart-wrapper: automatically closes cursor in destructor
 {
 public:
   Dbc *dbc;
-  DbTxn *txn;
   enum Mode { READ, WRITE };
 
   DbcPtr (BDB *bdb, Mode mode = READ)
   {
     assert (bdb);
 
-    int ret;
-    ret = bdb->db_env->txn_begin (NULL, &txn, 0);
-    g_assert (ret == 0);
+    DbTxn *txn = bdb->get_transaction();
+    if (mode == WRITE)
+      {
+        g_assert (txn != NULL); // writing without transaction is a bad idea
+      }
 
-    ret = bdb->get_db()->cursor (txn, &dbc, 0); // CDB CODE: mode == WRITE ? DB_WRITECURSOR : 0);
+    int ret = bdb->get_db()->cursor (txn, &dbc, 0);
     g_assert (ret == 0);
   }
   ~DbcPtr()
   {
-    int ret = txn->commit (0);
-    g_assert (ret == 0);
-    // transaction will close cursor dbc->close();
+    dbc->close();
   }
   Dbc*
   operator->()
