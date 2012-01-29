@@ -90,6 +90,8 @@ BDB::open (const string& path, int cache_size_mb)
                 DB_BTREE,           // Database access method
                 oFlags,             // Open flags
                 0);                 // File mode (using defaults)
+
+      new_file_number = 0;
       return true;
     }
   catch (...)
@@ -846,36 +848,60 @@ BDB::gen_new_file_number()
   TimeProfHandle h (tp_gen_new_file_number);
 
   DataOutBuffer kbuf;
+
+  kbuf.write_table (BDB_TABLE_NEW_FILE_NUMBER);
+  Dbt key (kbuf.begin(), kbuf.size());
+  Dbt data;
+
+  if (new_file_number == 0)
+    {
+      int ret = db->get (NULL, &key, &data, 0);
+      if (ret == 0)
+        {
+          DataBuffer dbuffer ((char *) data.get_data(), data.get_size());
+          new_file_number = dbuffer.read_uint32();
+
+          assert (new_file_number != 0);
+        }
+      else
+        {
+          new_file_number = 1;
+        }
+    }
+  return new_file_number++;
+}
+
+
+void
+BDB::store_new_file_number()
+{
+  Lock lock (mutex);
+
+  g_assert (transaction);
+
+  if (!new_file_number)
+    return;
+
+  DataOutBuffer kbuf;
   DataOutBuffer dbuf;
 
   kbuf.write_table (BDB_TABLE_NEW_FILE_NUMBER);
   Dbt key (kbuf.begin(), kbuf.size());
   Dbt data;
 
-  unsigned int new_file_number;
-
-  int ret = db->get (NULL, &key, &data, 0);
+  int ret = db->get (transaction, &key, &data, 0);
   if (ret == 0)
     {
-      DataBuffer dbuffer ((char *) data.get_data(), data.get_size());
-      new_file_number = dbuffer.read_uint32();
-
-      ret = db->del (NULL, &key, 0);
+      ret = db->del (transaction, &key, 0);
       g_assert (ret == 0);
     }
-  else
-    {
-      new_file_number = 1;
-    }
 
-  dbuf.write_uint32 (new_file_number + 1);
+  dbuf.write_uint32 (new_file_number);
 
   Dbt new_data (dbuf.begin(), dbuf.size());
 
-  ret = db->put (NULL, &key, &new_data, 0);
+  ret = db->put (transaction, &key, &new_data, 0);
   g_assert (ret == 0);
-
-  return new_file_number;
 }
 
 void

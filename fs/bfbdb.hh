@@ -109,13 +109,14 @@ class BDB
   Db      *db;
 
   std::map<ino_t, ID> new_id2ino_entries;
-public:
+  unsigned int new_file_number;
   History  m_history;
 
   int      shm_id (const std::string& path);
 
   Mutex mutex;
 
+public:
   Db*       get_db();
   History*  history();
 
@@ -146,6 +147,7 @@ public:
 
   unsigned int gen_new_file_number();
   void  reset_new_file_number();
+  void  store_new_file_number();
 
   bool  load_history_entry (int version, HistoryEntry& entry);
   void  store_history_entry (int version, const HistoryEntry& entry);
