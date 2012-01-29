@@ -246,6 +246,9 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
 
   c = conn.cursor()
 
+  if need_transaction:
+    repo.bdb.begin_transaction()
+
   VERSION = repo.first_unused_version()
 
   if DEBUG_MEM:
@@ -305,7 +308,6 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
       if inode.hash == "new":
         wset_number_list.append (inode)
     wset_number_list.sort (key = lambda inode: inode.new_file_number)
-    add_new_list = []
     for inode in wset_number_list:
       status.files_added += 1
 
@@ -314,9 +316,17 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
       fn = n % 4096
       filename = os.path.join (repo_path, "new/%x/%03x" % (dn, fn))
       hash = hash_one (filename)
-      add_new_list += [inode.id.str(), hash]
-    if len (add_new_list) > 0:
-      server_conn.add_new (add_new_list)
+      size = os.path.getsize (filename)
+      repo.bdb.delete_inode (inode)
+      inode.hash = hash
+      inode.size = size
+      inode.new_file_number = 0
+      dest_filename = os.path.join (repo_path, "objects", make_object_filename (hash))
+      if validate_object (dest_filename, hash):
+        os.remove (filename)
+      else:
+        os.rename (filename, dest_filename)
+      repo.bdb.store_inode (inode)
 
   # read list of ids ; since this could be huge, we write the id strings
   # to a file and reread the file later on
@@ -401,8 +411,6 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
   if DEBUG_MEM:
     print_mem_usage ("after add")
 
-  server_conn.save_changes()
-
   VERSION = repo.first_unused_version()
 
   # compute commit diff
@@ -443,9 +451,6 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
     print_mem_usage ("after xz")
 
   if commit_size_ok:
-    if need_transaction:
-      repo.bdb.begin_transaction()
-
     repo.bdb.store_history_entry (VERSION, hash, commit_author, commit_msg, commit_time)
     repo.bdb.clear_changed_inodes()
     repo.bdb.reset_new_file_number()
