@@ -107,6 +107,8 @@ class BDB
   DbTxn   *transaction;
   DbEnv   *db_env;
   Db      *db;
+
+  std::map<ino_t, ID> new_id2ino_entries;
 public:
   History  m_history;
 
@@ -140,6 +142,7 @@ public:
 
   bool  try_store_id2ino (const ID& id, int ino);
   bool  load_ino (const ID& id, ino_t& ino);
+  void  store_new_id2ino_entries();
 
   unsigned int gen_new_file_number();
   void  reset_new_file_number();

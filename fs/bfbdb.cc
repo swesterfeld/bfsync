@@ -578,7 +578,11 @@ BDB::try_store_id2ino (const ID& id, int ino)
 
   TimeProfHandle h (tp_try_store_id2ino);
 
-  DataOutBuffer kbuf, dbuf;
+  map<ino_t, ID>::const_iterator ni = new_id2ino_entries.find (ino);
+  if (ni != new_id2ino_entries.end())  // recently allocated?
+    return false;
+
+  DataOutBuffer kbuf;
 
   // lookup ino to check whether it is already used:
   kbuf.write_uint32_be (ino);                  /* use big endian storage to make Berkeley DB sort entries properly */
@@ -591,29 +595,56 @@ BDB::try_store_id2ino (const ID& id, int ino)
   if (ret == 0)
     return false;
 
-  // add ino->id entry
-  id.store (dbuf);
-  Dbt rev_idata (dbuf.begin(), dbuf.size());
-
-  ret = db->put (NULL, &rev_ikey, &rev_idata, 0);
-  assert (ret == 0);
-
-  kbuf.clear();
-  dbuf.clear();
-
-  // add id->ino entry
-  id.store (kbuf);
-  kbuf.write_table (BDB_TABLE_LOCAL_ID2INO);
-
-  dbuf.write_uint32 (ino);
-
-  Dbt ikey (kbuf.begin(), kbuf.size());
-  Dbt idata (dbuf.begin(), dbuf.size());
-
-  ret = db->put (NULL, &ikey, &idata, 0);
-  assert (ret == 0);
-
+  new_id2ino_entries[ino] = id;
   return true;
+}
+
+TimeProfSection tp_store_new_id2ino_entries ("BDB::store_new_id2ino_entries");
+
+void
+BDB::store_new_id2ino_entries()
+{
+  Lock lock (mutex);
+
+  TimeProfHandle h (tp_store_new_id2ino_entries);
+
+  g_assert (transaction != NULL);
+
+   for (map<ino_t, ID>::const_iterator ni = new_id2ino_entries.begin(); ni != new_id2ino_entries.end(); ni++)
+    {
+      const ino_t& ino = ni->first;
+      const ID&    id = ni->second;
+
+      DataOutBuffer kbuf, dbuf;
+
+      // add ino->id entry
+      kbuf.write_uint32_be (ino);                  /* use big endian storage to make Berkeley DB sort entries properly */
+      kbuf.write_table (BDB_TABLE_LOCAL_INO2ID);
+
+      id.store (dbuf);
+      Dbt rev_idata (dbuf.begin(), dbuf.size());
+      Dbt rev_ikey (kbuf.begin(), kbuf.size());
+
+      int ret = db->put (transaction, &rev_ikey, &rev_idata, 0);
+      assert (ret == 0);
+
+      kbuf.clear();
+      dbuf.clear();
+
+      // add id->ino entry
+      id.store (kbuf);
+      kbuf.write_table (BDB_TABLE_LOCAL_ID2INO);
+
+      dbuf.write_uint32 (ino);
+
+      Dbt ikey (kbuf.begin(), kbuf.size());
+      Dbt idata (dbuf.begin(), dbuf.size());
+
+      ret = db->put (transaction, &ikey, &idata, 0);
+      assert (ret == 0);
+    }
+  // clear new entries
+  new_id2ino_entries.clear();
 }
 
 TimeProfSection tp_load_ino ("BDB::load_ino");

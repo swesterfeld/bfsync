@@ -128,7 +128,7 @@ INodeRepo::save_changes (SaveChangesMode sc)
       cache.clear();
       links_cache.clear();
     }
-
+  bdb->store_new_id2ino_entries();
   bdb->commit_transaction();
   // bdb->sync();
 }
