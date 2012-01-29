@@ -68,6 +68,7 @@ BDB::open (const string& path, int cache_size_mb)
       db_env = new DbEnv (DB_CXX_NO_EXCEPTIONS);
       db_env->set_shm_key (shm_id (path));
       db_env->set_cachesize (cache_size_gb, cache_size_mb * 1024 * 1024, 0); // set cache size
+      db_env->set_lk_max_locks (100000);
       db_env->open (bdb_dir.c_str(),
         DB_CREATE |            /* on-demand create */
         DB_INIT_MPOOL |        /* shared memory buffer subsystem */
@@ -612,7 +613,7 @@ BDB::store_new_id2ino_entries()
 
   g_assert (transaction != NULL);
 
-   for (map<ino_t, ID>::const_iterator ni = new_id2ino_entries.begin(); ni != new_id2ino_entries.end(); ni++)
+  for (map<ino_t, ID>::const_iterator ni = new_id2ino_entries.begin(); ni != new_id2ino_entries.end(); ni++)
     {
       const ino_t& ino = ni->first;
       const ID&    id = ni->second;
