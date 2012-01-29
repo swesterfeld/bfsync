@@ -229,7 +229,7 @@ class WorkingSetGenerator:
       self.work_function (self.wset)
     self.wset = []
 
-def commit (repo, expected_diff = None, expected_diff_hash = None, server = True, verbose = True, commit_args = None):
+def commit (repo, expected_diff = None, expected_diff_hash = None, server = True, verbose = True, commit_args = None, need_transaction = True):
   conn = repo.conn
   repo_path = repo.path
 
@@ -443,9 +443,15 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
     print_mem_usage ("after xz")
 
   if commit_size_ok:
+    if need_transaction:
+      repo.bdb.begin_transaction()
+
     repo.bdb.store_history_entry (VERSION, hash, commit_author, commit_msg, commit_time)
     repo.bdb.clear_changed_inodes()
     repo.bdb.reset_new_file_number()
+
+    if need_transaction:
+      repo.bdb.commit_transaction()
   else:
     print "Nothing to commit."
   conn.commit()

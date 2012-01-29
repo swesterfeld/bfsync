@@ -173,6 +173,6 @@ def apply (repo, diff, expected_hash = None, server = True, verbose = True, comm
 
   conn.commit()
   if expected_hash:
-    commit (repo, diff, expected_hash, server = server, verbose = verbose, commit_args = commit_args)
+    commit (repo, diff, expected_hash, server = server, verbose = verbose, commit_args = commit_args, need_transaction = False)
   else:
-    commit (repo, server = server, verbose = verbose, commit_args = commit_args)
+    commit (repo, server = server, verbose = verbose, commit_args = commit_args, need_transaction = False)

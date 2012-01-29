@@ -961,6 +961,8 @@ def pull (repo, args, server = True):
   parser.add_argument ('repo', nargs = '?')
   pull_args = parser.parse_args (args)
 
+  repo.bdb.begin_transaction()
+
   conn = repo.conn
   repo_path = repo.path
 
@@ -1043,6 +1045,7 @@ def pull (repo, args, server = True):
       count += 1
   else:
     history_merge (c, repo, local_history, remote_history, pull_args)
+  repo.bdb.commit_transaction()
 
 def collect (repo, args, old_cwd):
   conn = repo.conn
