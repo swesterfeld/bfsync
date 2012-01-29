@@ -95,6 +95,12 @@ TimeProf::add_section (TimeProfSection *section)
 TimeProfHandle::TimeProfHandle (TimeProfSection& section) :
   m_section (&section)
 {
+  begin_profile();
+}
+
+void
+TimeProfHandle::begin_profile()
+{
   timespec time_now;
 
   int r = clock_gettime (CLOCK_REALTIME, &time_now);
@@ -104,6 +110,12 @@ TimeProfHandle::TimeProfHandle (TimeProfSection& section) :
 }
 
 TimeProfHandle::~TimeProfHandle()
+{
+  end_profile();
+}
+
+void
+TimeProfHandle::end_profile()
 {
   timespec time_now;
 

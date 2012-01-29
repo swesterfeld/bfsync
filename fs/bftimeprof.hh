@@ -47,6 +47,9 @@ class TimeProfHandle
   TimeProfSection *m_section;
   double           start_t;
 
+  void begin_profile();
+  void end_profile();
+
 public:
   TimeProfHandle (TimeProfSection& section);
   ~TimeProfHandle();

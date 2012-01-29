@@ -805,10 +805,14 @@ BDB::clear_changed_inodes()
     }
 }
 
+TimeProfSection tp_gen_new_file_number ("BDB::gen_new_file_number");
+
 unsigned int
 BDB::gen_new_file_number()
 {
   Lock lock (mutex);
+
+  TimeProfHandle h (tp_gen_new_file_number);
 
   DataOutBuffer kbuf;
   DataOutBuffer dbuf;
