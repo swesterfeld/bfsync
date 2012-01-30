@@ -389,6 +389,9 @@ BDBPtr::load_links (const ID *id, unsigned int version)
 void
 BDBPtr::store_link (const Link& link)
 {
+  DbTxn *transaction = ptr->my_bdb->get_transaction();
+  g_assert (transaction);
+
   DataOutBuffer kbuf, dbuf;
 
   id_store (&link.dir_id, kbuf);
@@ -402,7 +405,7 @@ BDBPtr::store_link (const Link& link)
   Dbt lkey (kbuf.begin(), kbuf.size());
   Dbt ldata (dbuf.begin(), dbuf.size());
 
-  int ret = ptr->my_bdb->get_db()->put (NULL, &lkey, &ldata, 0);
+  int ret = ptr->my_bdb->get_db()->put (transaction, &lkey, &ldata, 0);
   g_assert (ret == 0);
 }
 
