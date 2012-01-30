@@ -69,6 +69,7 @@ BDB::open (const string& path, int cache_size_mb)
       db_env->set_shm_key (shm_id (path));
       db_env->set_cachesize (cache_size_gb, cache_size_mb * 1024 * 1024, 0); // set cache size
       db_env->set_lk_max_locks (100000);
+      db_env->set_lk_max_objects (100000);
       db_env->open (bdb_dir.c_str(),
         DB_CREATE |            /* on-demand create */
         DB_INIT_MPOOL |        /* shared memory buffer subsystem */
