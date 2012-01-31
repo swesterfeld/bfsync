@@ -148,6 +148,13 @@ BDB::commit_transaction()
   int ret = transaction->commit (0);
   g_assert (ret == 0);
 
+  /* checkpoint database every minute (min = 1) */
+  ret = db_env->txn_checkpoint (0, 1, 0);
+  g_assert (ret == 0);
+
+  ret = db_env->log_archive (NULL, DB_ARCH_REMOVE);
+  g_assert (ret == 0);
+
   transaction = NULL;
 }
 
