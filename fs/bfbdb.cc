@@ -70,6 +70,7 @@ BDB::open (const string& path, int cache_size_mb)
       db_env->set_cachesize (cache_size_gb, cache_size_mb * 1024 * 1024, 0); // set cache size
       db_env->set_lk_max_locks (100000);
       db_env->set_lk_max_objects (100000);
+      db_env->log_set_config (DB_LOG_AUTO_REMOVE, 1);     // automatically remove old log files
       db_env->open (bdb_dir.c_str(),
         DB_CREATE |            /* on-demand create */
         DB_INIT_MPOOL |        /* shared memory buffer subsystem */
@@ -150,9 +151,6 @@ BDB::commit_transaction()
 
   /* checkpoint database every minute (min = 1) */
   ret = db_env->txn_checkpoint (0, 1, 0);
-  g_assert (ret == 0);
-
-  ret = db_env->log_archive (NULL, DB_ARCH_REMOVE);
   g_assert (ret == 0);
 
   transaction = NULL;
