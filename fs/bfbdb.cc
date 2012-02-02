@@ -60,6 +60,9 @@ BDB::open (const string& path, int cache_size_mb, bool recover)
 
   try
     {
+      bool result = true;
+      int ret;
+
       int cache_size_gb = cache_size_mb / 1024;
       cache_size_mb %= 1024;
 
@@ -71,7 +74,7 @@ BDB::open (const string& path, int cache_size_mb, bool recover)
       db_env->set_lk_max_locks (100000);
       db_env->set_lk_max_objects (100000);
       db_env->log_set_config (DB_LOG_AUTO_REMOVE, 1);     // automatically remove old log files
-      db_env->open (bdb_dir.c_str(),
+      ret = db_env->open (bdb_dir.c_str(),
         DB_CREATE |            /* on-demand create */
         DB_INIT_MPOOL |        /* shared memory buffer subsystem */
         DB_INIT_TXN |          /* transactions */
@@ -80,30 +83,71 @@ BDB::open (const string& path, int cache_size_mb, bool recover)
         (recover ? DB_RECOVER : 0) |           /* run recover */
         DB_SYSTEM_MEM,         /* use shared memory (instead of mmap) */
         0);
+      if (ret == 0)
+        {
+          db = new Db (db_env, 0);
+          db->set_flags (DB_DUP);       // allow duplicate keys
 
-      db = new Db (db_env, 0);
-      db->set_flags (DB_DUP);       // allow duplicate keys
+          // Open the database
+          u_int32_t oFlags = DB_CREATE | DB_AUTO_COMMIT; // Open flags;
 
-      // Open the database
-      u_int32_t oFlags = DB_CREATE | DB_AUTO_COMMIT; // Open flags;
+          ret = db->open (NULL,               // Transaction pointer
+                          "db",               // Database name
+                          NULL,               // Optional logical database name
+                          DB_BTREE,           // Database access method
+                          oFlags,             // Open flags
+                          0);                 // File mode (using defaults)
+          if (ret != 0)
+            {
+              db->err (ret, "open database 'db' failed");
+              result = false;
+            }
 
-      db->open (NULL,               // Transaction pointer
-                "db",               // Database name
-                NULL,               // Optional logical database name
-                DB_BTREE,           // Database access method
-                oFlags,             // Open flags
-                0);                 // File mode (using defaults)
 
-      db_hash2file = new Db (db_env, 0);
-      db_hash2file->open (NULL,
-                          "db_hash2file",
-                          NULL,
-                          DB_BTREE,
-                          oFlags,
-                          0);
-
+          db_hash2file = new Db (db_env, 0);
+          ret = db_hash2file->open (NULL,
+                                    "db_hash2file",
+                                    NULL,
+                                    DB_BTREE,
+                                    oFlags,
+                                    0);
+          if (ret != 0)
+            {
+              db_hash2file->err (ret, "open database 'db_hash2file' failed");
+              result = false;
+            }
+        }
+      else
+        {
+          db_env->err (ret, "open database env failed");
+          db = NULL;
+          db_hash2file = NULL;
+          result = false;
+        }
       new_file_number = 0;
-      return true;
+
+      if (!result)
+        {
+          if (db)
+            {
+              db->close (0);
+              delete db;
+              db = NULL;
+            }
+          if (db_hash2file)
+            {
+              db_hash2file->close (0);
+              delete db_hash2file;
+              db_hash2file = NULL;
+            }
+          if (db_env)
+            {
+              db_env->close (0);
+              delete db_env;
+              db_env = NULL;
+            }
+        }
+      return result;
     }
   catch (...)
     {

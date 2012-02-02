@@ -79,7 +79,7 @@ main (int argc, char **argv)
       exit (1);
     }
 
-  BDB *bdb = bdb_open (argv[optind], 16);
+  BDB *bdb = bdb_open (argv[optind], 16, false);
   if (!bdb)
     {
       printf ("error opening db %s\n", argv[optind]);
