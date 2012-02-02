@@ -246,9 +246,6 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
 
   c = conn.cursor()
 
-  if need_transaction:
-    repo.bdb.begin_transaction()
-
   VERSION = repo.first_unused_version()
 
   if DEBUG_MEM:
@@ -308,6 +305,9 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
       if inode.hash == "new":
         wset_number_list.append (inode)
     wset_number_list.sort (key = lambda inode: inode.new_file_number)
+    if need_transaction:
+      repo.bdb.begin_transaction()
+
     for inode in wset_number_list:
       status.files_added += 1
 
@@ -328,6 +328,8 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
       inode.size = size
       inode.new_file_number = 0
       repo.bdb.store_inode (inode)
+    if need_transaction:
+      repo.bdb.commit_transaction()
 
   # read list of ids ; since this could be huge, we write the id strings
   # to a file and reread the file later on
@@ -452,6 +454,9 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
     print_mem_usage ("after xz")
 
   if commit_size_ok:
+    if need_transaction:
+      repo.bdb.begin_transaction()
+
     repo.bdb.store_history_entry (VERSION, hash, commit_author, commit_msg, commit_time)
     repo.bdb.clear_changed_inodes()
     repo.bdb.reset_new_file_number()
