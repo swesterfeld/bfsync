@@ -318,14 +318,15 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
       hash = hash_one (filename)
       size = os.path.getsize (filename)
       repo.bdb.delete_inode (inode)
+      dest_filename = os.path.join (repo_path, "objects", make_object_filename (hash))
+      #if validate_object (dest_filename, hash): => gc
+      #  os.remove (filename)
+      #else:
+      if repo.bdb.load_hash2file (hash) == 0:
+        repo.bdb.store_hash2file (hash, inode.new_file_number)
       inode.hash = hash
       inode.size = size
       inode.new_file_number = 0
-      dest_filename = os.path.join (repo_path, "objects", make_object_filename (hash))
-      if validate_object (dest_filename, hash):
-        os.remove (filename)
-      else:
-        os.rename (filename, dest_filename)
       repo.bdb.store_inode (inode)
 
   # read list of ids ; since this could be huge, we write the id strings
