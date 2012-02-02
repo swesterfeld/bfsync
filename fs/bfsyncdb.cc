@@ -160,9 +160,9 @@ ID::operator== (const ID& other) const
 //---------------------------------------------------------------
 
 BDBPtr
-open_db (const string& db, int cache_size_mb)
+open_db (const string& db, int cache_size_mb, bool recover)
 {
-  BFSync::BDB *bdb = BFSync::bdb_open (db, cache_size_mb);
+  BFSync::BDB *bdb = BFSync::bdb_open (db, cache_size_mb, recover);
 
   BDBWrapper *wrapper = new BDBWrapper;
   wrapper->my_bdb = bdb;

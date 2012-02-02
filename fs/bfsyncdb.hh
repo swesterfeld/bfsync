@@ -177,7 +177,7 @@ public:
   }
 };
 
-extern BDBPtr             open_db (const std::string& db, int cache_size_mb);
+extern BDBPtr             open_db (const std::string& db, int cache_size_mb, bool recover);
 extern ID                 id_root();
 
 class DiffGenerator

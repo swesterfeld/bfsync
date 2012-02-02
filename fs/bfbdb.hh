@@ -42,7 +42,7 @@ enum BDBTables
   BDB_TABLE_NEW_FILE_NUMBER     = 8,
 };
 
-BDB *bdb_open (const std::string& path, int cache_size_mb);
+BDB *bdb_open (const std::string& path, int cache_size_mb, bool recover);
 
 class DataBuffer
 {
@@ -124,7 +124,7 @@ public:
 
   BDB();
 
-  bool  open (const std::string& path, int cache_size_mb);
+  bool  open (const std::string& path, int cache_size_mb, bool recover);
   void  sync();
   bool  close();
 

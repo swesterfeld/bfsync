@@ -686,6 +686,20 @@ def cmd_collect():
   repo = cd_repo_connect_db()
   collect (repo, args, old_cwd)
 
+def cmd_recover():
+  repo_path = find_repo_dir()
+  bfsync_info = parse_config (repo_path + "/config")
+
+  cache_size = bfsync_info.get ("cache-size")
+  if len (cache_size) != 1:
+    raise Exception ("bad cache-size setting")
+  cache_size = int (cache_size[0])
+
+  status_line.set_op ("RECOVER")
+  status_line.update ("running recover on %s" % repo_path)
+  bdb = bfsyncdb.open_db (repo_path, cache_size, True)
+  status_line.update ("running recover on %s: done" % repo_path)
+
 args = []
 
 def main():
@@ -712,6 +726,7 @@ def main():
       ( "repo-files",             cmd_repo_files, 1),
       ( "db-fingerprint",         cmd_db_fingerprint, 0),
       ( "remote",                 cmd_remote, 1),
+      ( "recover",                cmd_recover, 0),
       ( "debug-load-all-inodes",  cmd_debug_load_all_inodes, 0),
       ( "debug-perf-getattr",     cmd_debug_perf_getattr, 1),
       ( "debug-clear-cache",      cmd_debug_clear_cache, 1),

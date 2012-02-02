@@ -37,11 +37,11 @@ namespace BFSync
 {
 
 BDB*
-bdb_open (const string& path, int cache_size_mb)
+bdb_open (const string& path, int cache_size_mb, bool recover)
 {
   BDB *bdb = new BDB();
 
-  if (bdb->open (path, cache_size_mb))
+  if (bdb->open (path, cache_size_mb, recover))
     return bdb;
   else
     return NULL;
@@ -54,7 +54,7 @@ BDB::BDB() :
 }
 
 bool
-BDB::open (const string& path, int cache_size_mb)
+BDB::open (const string& path, int cache_size_mb, bool recover)
 {
   Lock lock (mutex);
 
@@ -77,7 +77,7 @@ BDB::open (const string& path, int cache_size_mb)
         DB_INIT_TXN |          /* transactions */
         DB_INIT_LOG |          /* logging */
         DB_INIT_LOCK |         /* locking */
-        //DB_RECOVER |           /* run recover */
+        (recover ? DB_RECOVER : 0) |           /* run recover */
         DB_SYSTEM_MEM,         /* use shared memory (instead of mmap) */
         0);
 
