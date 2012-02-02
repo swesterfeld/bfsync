@@ -164,6 +164,10 @@ public:
                                           const std::string& msg,
                                           int time);
   HistoryEntry       load_history_entry (int version);
+
+  void               store_hash2file (const std::string& hash, unsigned int file_number);
+  unsigned int       load_hash2file (const std::string& hash);
+
   void               close();
 
   BFSync::BDB*

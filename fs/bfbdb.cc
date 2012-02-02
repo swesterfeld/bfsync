@@ -94,6 +94,14 @@ BDB::open (const string& path, int cache_size_mb)
                 oFlags,             // Open flags
                 0);                 // File mode (using defaults)
 
+      db_hash2file = new Db (db_env, 0);
+      db_hash2file->open (NULL,
+                          "db_hash2file",
+                          NULL,
+                          DB_BTREE,
+                          oFlags,
+                          0);
+
       new_file_number = 0;
       return true;
     }
@@ -103,22 +111,22 @@ BDB::open (const string& path, int cache_size_mb)
     }
 }
 
-void
-BDB::sync()
-{
-  int ret = db->sync (0);
-  assert (ret == 0);
-}
-
 bool
 BDB::close()
 {
   assert (db_env != 0);
   assert (db != 0);
+  assert (db_hash2file != 0);
 
   int ret = db->close (0);
   delete db;
   db = NULL;
+
+  assert (ret == 0);
+
+  ret = db_hash2file->close (0);
+  delete db_hash2file;
+  db_hash2file = NULL;
 
   assert (ret == 0);
 
@@ -350,6 +358,12 @@ Db*
 BDB::get_db()
 {
   return db;
+}
+
+Db*
+BDB::get_db_hash2file()
+{
+  return db_hash2file;
 }
 
 History*
@@ -930,6 +944,48 @@ BDB::reset_new_file_number()
       ret = db->del (transaction, &key, 0);
       g_assert (ret == 0);
     }
+}
+
+unsigned int
+BDB::load_hash2file (const string& hash)
+{
+  DataOutBuffer kbuf;
+  kbuf.write_string (hash); // FIXME
+
+  Dbt key (kbuf.begin(), kbuf.size());
+  Dbt data;
+
+  int ret = db_hash2file->get (transaction, &key, &data, 0);
+  if (ret == 0)
+    {
+      DataBuffer dbuffer ((char *) data.get_data(), data.get_size());
+      unsigned int file_number = dbuffer.read_uint32();
+      return file_number;
+    }
+
+  return 0; // not found
+}
+
+TimeProfSection tp_store_hash2file ("BDB::store_hash2file");
+
+void
+BDB::store_hash2file (const string& hash, unsigned int file_number)
+{
+  Lock lock (mutex);
+
+  TimeProfHandle h (tp_store_hash2file);
+
+  g_assert (transaction);
+
+  DataOutBuffer kbuf, dbuf;
+  kbuf.write_string (hash); // FIXME
+  dbuf.write_uint32 (file_number);
+
+  Dbt key (kbuf.begin(), kbuf.size());
+  Dbt data (dbuf.begin(), dbuf.size());
+
+  int ret = db_hash2file->put (transaction, &key, &data, 0);
+  assert (ret == 0);
 }
 
 static inline int

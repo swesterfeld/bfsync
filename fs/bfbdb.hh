@@ -107,6 +107,7 @@ class BDB
   DbTxn   *transaction;
   DbEnv   *db_env;
   Db      *db;
+  Db      *db_hash2file;
 
   std::map<ino_t, ID> new_id2ino_entries;
   unsigned int new_file_number;
@@ -118,6 +119,7 @@ class BDB
 
 public:
   Db*       get_db();
+  Db*       get_db_hash2file();
   History*  history();
 
   BDB();
@@ -152,6 +154,9 @@ public:
   bool  load_history_entry (int version, HistoryEntry& entry);
   void  store_history_entry (int version, const HistoryEntry& entry);
   void  delete_history_entry (int version);
+
+  unsigned int load_hash2file (const std::string& hash);
+  void  store_hash2file (const std::string& hash, unsigned int file_number);
 };
 
 class DbcPtr // cursor smart-wrapper: automatically closes cursor in destructor

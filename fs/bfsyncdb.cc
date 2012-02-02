@@ -650,6 +650,18 @@ BDBPtr::load_history_entry (int version)
   return result;
 }
 
+unsigned int
+BDBPtr::load_hash2file (const string& hash)
+{
+  return ptr->my_bdb->load_hash2file (hash);
+}
+
+void
+BDBPtr::store_hash2file (const string& hash, unsigned int file_number)
+{
+  return ptr->my_bdb->store_hash2file (hash, file_number);
+}
+
 /* refcounting BDB wrapper */
 
 BDBPtr::BDBPtr (BDBWrapper *wrapper) :

@@ -236,6 +236,27 @@ main (int argc, char **argv)
   printf ("Avg Link Data:  %.2f\n", link_total_datasize / double (link_total));
 
 
+  Db *db_hash2file = bdb->get_db_hash2file();
+
+  /* Acquire a cursor for the database. */
+  if ((ret = db_hash2file->cursor (NULL, &dbcp, 0)) != 0)
+    {
+      db_hash2file->err (ret, "DB->cursor");
+      return 1;
+    }
+
+  ret = dbcp->get (&key, &data, DB_FIRST);
+  while (ret == 0)
+    {
+      DataBuffer kbuffer ((char *) key.get_data(), key.get_size());
+      DataBuffer dbuffer ((char *) data.get_data(), data.get_size());
+
+      string hash = kbuffer.read_string();
+      unsigned int file_number = dbuffer.read_uint32();
+      printf ("hash %s => %u\n", hash.c_str(), file_number);
+      ret = dbcp->get (&key, &data, DB_NEXT);
+    }
+
   if (!bdb->close())
     {
       printf ("error closing db %s\n", argv[1]);

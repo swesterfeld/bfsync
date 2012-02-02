@@ -480,8 +480,11 @@ INode::file_path() const
   if (fs == FS_CHANGED)
     return new_file_path();
   if (fs == FS_RDONLY)
-    return make_object_filename (hash);
-
+    {
+      unsigned int file_number = INodeRepo::the()->bdb->load_hash2file (hash);
+      if (file_number)
+        return new_file_path_for_number (file_number, false);
+    }
   return "";
 }
 
