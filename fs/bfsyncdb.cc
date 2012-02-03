@@ -659,7 +659,25 @@ BDBPtr::load_hash2file (const string& hash)
 void
 BDBPtr::store_hash2file (const string& hash, unsigned int file_number)
 {
-  return ptr->my_bdb->store_hash2file (hash, file_number);
+  ptr->my_bdb->store_hash2file (hash, file_number);
+}
+
+void
+BDBPtr::add_deleted_file (unsigned int file_number)
+{
+  ptr->my_bdb->add_deleted_file (file_number);
+}
+
+vector<unsigned int>
+BDBPtr::load_deleted_files()
+{
+  return ptr->my_bdb->load_deleted_files();
+}
+
+void
+BDBPtr::clear_deleted_files()
+{
+  return ptr->my_bdb->clear_deleted_files();
 }
 
 /* refcounting BDB wrapper */

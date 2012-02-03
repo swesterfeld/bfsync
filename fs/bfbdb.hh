@@ -40,6 +40,7 @@ enum BDBTables
   BDB_TABLE_CHANGED_INODES      = 6,
   BDB_TABLE_CHANGED_INODES_REV  = 7,
   BDB_TABLE_NEW_FILE_NUMBER     = 8,
+  BDB_TABLE_DELETED_FILES       = 9,
 };
 
 BDB *bdb_open (const std::string& path, int cache_size_mb, bool recover);
@@ -157,6 +158,10 @@ public:
 
   unsigned int load_hash2file (const std::string& hash);
   void  store_hash2file (const std::string& hash, unsigned int file_number);
+
+  void  add_deleted_file (unsigned int file_number);
+  std::vector<unsigned int>  load_deleted_files();
+  void  clear_deleted_files();
 };
 
 class DbcPtr // cursor smart-wrapper: automatically closes cursor in destructor

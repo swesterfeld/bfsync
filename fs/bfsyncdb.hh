@@ -168,6 +168,11 @@ public:
   void               store_hash2file (const std::string& hash, unsigned int file_number);
   unsigned int       load_hash2file (const std::string& hash);
 
+  void               add_deleted_file (unsigned int file_number);
+  std::vector<unsigned int>
+                     load_deleted_files();
+  void               clear_deleted_files();
+
   void               close();
 
   BFSync::BDB*

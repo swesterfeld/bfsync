@@ -1032,6 +1032,70 @@ BDB::store_hash2file (const string& hash, unsigned int file_number)
   assert (ret == 0);
 }
 
+void
+BDB::add_deleted_file (unsigned int file_number)
+{
+  Lock lock (mutex);
+
+  g_assert (transaction);
+
+  DataOutBuffer kbuf, dbuf;
+  kbuf.write_table (BDB_TABLE_DELETED_FILES);
+  dbuf.write_uint32 (file_number);
+
+  Dbt key (kbuf.begin(), kbuf.size());
+  Dbt data (dbuf.begin(), dbuf.size());
+
+  int ret = db->put (transaction, &key, &data, 0);
+  assert (ret == 0);
+}
+
+vector<unsigned int>
+BDB::load_deleted_files()
+{
+  Lock lock (mutex);
+
+  vector<unsigned int> files;
+
+  DataOutBuffer kbuf;
+  kbuf.write_table (BDB_TABLE_DELETED_FILES);
+
+  Dbt key (kbuf.begin(), kbuf.size());
+  Dbt data;
+
+  DbcPtr dbc (this); /* Acquire a cursor for the database. */
+
+  // iterate over all deleted files
+  int ret = dbc->get (&key, &data, DB_SET);
+  while (ret == 0)
+    {
+      DataBuffer dbuffer ((char *) data.get_data(), data.get_size());
+
+      guint32 file_number = dbuffer.read_uint32();
+      files.push_back (file_number);
+
+      ret = dbc->get (&key, &data, DB_NEXT_DUP);
+    }
+  return files;
+}
+
+void
+BDB::clear_deleted_files()
+{
+  Lock lock (mutex);
+
+  g_assert (transaction != NULL);
+
+  DataOutBuffer kbuf;
+  kbuf.write_table (BDB_TABLE_DELETED_FILES);
+
+  Dbt key (kbuf.begin(), kbuf.size());
+
+  int ret = db->del (transaction, &key, 0);
+  g_assert (ret == 0);
+}
+
+
 static inline int
 make_shm_key (int n)
 {

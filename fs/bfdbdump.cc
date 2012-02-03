@@ -97,7 +97,8 @@ main (int argc, char **argv)
       return 1;
     }
 
-  vector<string> links, inodes, id2ino, ino2id, history, changed_inodes, changed_inodes_rev, new_file_number;
+  vector<string> links, inodes, id2ino, ino2id, history, changed_inodes, changed_inodes_rev,
+                 new_file_number, deleted_files;
 
   Dbt key;
   Dbt data;
@@ -210,6 +211,12 @@ main (int argc, char **argv)
 
           add ("new_file_number", new_file_number, string_printf ("%u", n));
          }
+      else if (table == BDB_TABLE_DELETED_FILES)
+        {
+          unsigned int n = dbuffer.read_uint32();
+
+          add ("deleted_files", deleted_files, string_printf ("%u", n));
+         }
       else
         {
           printf ("unknown record type\n");
@@ -225,6 +232,7 @@ main (int argc, char **argv)
   print ("Changed INodes", changed_inodes);
   print ("Changed INodes (reverse)", changed_inodes_rev);
   print ("New File Number", new_file_number);
+  print ("Deleted Files", deleted_files);
 
   printf ("\n\n");
   printf ("INode Count:    %zd\n", inode_total);
