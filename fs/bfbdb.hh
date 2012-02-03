@@ -68,6 +68,7 @@ public:
 
   void write_vec_zero (const std::vector<char>& data);
   void write_string (const std::string& s);
+  void write_hash (const std::string& hash);
   void write_uint32 (guint32 i);
   void write_uint32_be (guint32 i);
   void write_table (char table);

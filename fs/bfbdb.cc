@@ -238,6 +238,24 @@ DataOutBuffer::write_string (const string& s)
 }
 
 void
+DataOutBuffer::write_hash (const string& hash)
+{
+  unsigned char bin_hash[20];
+
+  assert (hash.size() == 40);
+
+  for (size_t i = 0; i < 20; i++)
+    {
+      unsigned char h = from_hex_nibble (hash[i * 2]);
+      unsigned char l = from_hex_nibble (hash[i * 2 + 1]);
+      assert (h < 16 && l < 16);
+
+      bin_hash[i] = (h << 4) + l;
+    }
+  out.insert (out.end(), bin_hash, bin_hash + 20);
+}
+
+void
 DataOutBuffer::write_vec_zero (const std::vector<char>& data)
 {
   out.insert (out.end(), data.begin(), data.end());
@@ -973,7 +991,7 @@ unsigned int
 BDB::load_hash2file (const string& hash)
 {
   DataOutBuffer kbuf;
-  kbuf.write_string (hash); // FIXME
+  kbuf.write_hash (hash);
 
   Dbt key (kbuf.begin(), kbuf.size());
   Dbt data;
@@ -1001,7 +1019,7 @@ BDB::store_hash2file (const string& hash, unsigned int file_number)
   g_assert (transaction);
 
   DataOutBuffer kbuf, dbuf;
-  kbuf.write_string (hash); // FIXME
+  kbuf.write_hash (hash);
   dbuf.write_uint32 (file_number);
 
   Dbt key (kbuf.begin(), kbuf.size());

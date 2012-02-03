@@ -256,10 +256,13 @@ main (int argc, char **argv)
   ret = dbcp->get (&key, &data, DB_FIRST);
   while (ret == 0)
     {
-      DataBuffer kbuffer ((char *) key.get_data(), key.get_size());
+      const unsigned char *kptr = (unsigned char *) key.get_data();
       DataBuffer dbuffer ((char *) data.get_data(), data.get_size());
 
-      string hash = kbuffer.read_string();
+      string hash;
+      for (size_t i = 0; i < key.get_size(); i++)
+        hash += string_printf ("%02x", kptr[i]); // slow!
+
       unsigned int file_number = dbuffer.read_uint32();
       printf ("hash %s => %u\n", hash.c_str(), file_number);
       ret = dbcp->get (&key, &data, DB_NEXT);

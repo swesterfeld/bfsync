@@ -159,18 +159,6 @@ ID::ID (DataBuffer& data_buf)
   e = data_buf.read_uint32();
 }
 
-static unsigned char
-from_hex_nibble (char c)
-{
-  int uc = (unsigned char)c;
-
-  if (uc >= '0' && uc <= '9') return uc - (unsigned char)'0';
-  if (uc >= 'a' && uc <= 'f') return uc + 10 - (unsigned char)'a';
-  if (uc >= 'A' && uc <= 'F') return uc + 10 - (unsigned char)'A';
-
-  return 16;    // error
-}
-
 static void
 hex_decode (string::const_iterator si, string::const_iterator end, vector<unsigned char>& out)
 {

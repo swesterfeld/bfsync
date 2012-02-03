@@ -104,6 +104,18 @@ ID::operator= (const ID& id)
   return *this;
 }
 
+inline unsigned char
+from_hex_nibble (char c)
+{
+  int uc = (unsigned char)c;
+
+  if (uc >= '0' && uc <= '9') return uc - (unsigned char)'0';
+  if (uc >= 'a' && uc <= 'f') return uc + 10 - (unsigned char)'a';
+  if (uc >= 'A' && uc <= 'F') return uc + 10 - (unsigned char)'A';
+
+  return 16;    // error
+}
+
 }
 
 #endif
