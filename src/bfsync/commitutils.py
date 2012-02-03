@@ -215,7 +215,7 @@ def get_author():
 class WorkingSetGenerator:
   def __init__ (self, work_function):
     self.work_function = work_function
-    self.max_set_size = 5000
+    self.max_set_size = 20000
     self.wset = []
 
   def add_item (self, item):
