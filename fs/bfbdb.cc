@@ -969,27 +969,6 @@ BDB::store_new_file_number()
   g_assert (ret == 0);
 }
 
-void
-BDB::reset_new_file_number()
-{
-  Lock lock (mutex);
-
-  g_assert (transaction);
-
-  DataOutBuffer kbuf;
-  kbuf.write_table (BDB_TABLE_NEW_FILE_NUMBER);
-
-  Dbt key (kbuf.begin(), kbuf.size());
-  Dbt data;
-
-  int ret = db->get (transaction, &key, &data, 0);
-  if (ret == 0)
-    {
-      ret = db->del (transaction, &key, 0);
-      g_assert (ret == 0);
-    }
-}
-
 unsigned int
 BDB::load_hash2file (const string& hash)
 {

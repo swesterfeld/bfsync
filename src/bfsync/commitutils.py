@@ -468,7 +468,6 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
 
     repo.bdb.store_history_entry (VERSION, hash, commit_author, commit_msg, commit_time)
     repo.bdb.clear_changed_inodes()
-    repo.bdb.reset_new_file_number()
 
     if need_transaction:
       repo.bdb.commit_transaction()

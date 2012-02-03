@@ -330,12 +330,6 @@ BDBPtr::clear_changed_inodes()
   ptr->my_bdb->clear_changed_inodes();
 }
 
-void
-BDBPtr::reset_new_file_number()
-{
-  ptr->my_bdb->reset_new_file_number();
-}
-
 ID
 id_root()
 {

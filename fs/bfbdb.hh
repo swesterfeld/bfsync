@@ -149,7 +149,6 @@ public:
   void  store_new_id2ino_entries();
 
   unsigned int gen_new_file_number();
-  void  reset_new_file_number();
   void  store_new_file_number();
 
   bool  load_history_entry (int version, HistoryEntry& entry);
