@@ -445,10 +445,10 @@ INode::alloc_ino()
 }
 
 static string
-new_file_path_for_number (unsigned int new_file_number, bool create_dir)
+file_path_for_number (unsigned int file_number, bool create_dir)
 {
-  string dirname = Options::the()->repo_path + string_printf ("/new/%x", new_file_number / 4096);
-  string filename = string_printf ("%03x", new_file_number % 4096);
+  string dirname = Options::the()->repo_path + string_printf ("/objects/%x", file_number / 4096);
+  string filename = string_printf ("%03x", file_number % 4096);
 
   if (create_dir)
     {
@@ -461,7 +461,7 @@ new_file_path_for_number (unsigned int new_file_number, bool create_dir)
 string
 INode::new_file_path() const
 {
-  return new_file_path_for_number (new_file_number, false);
+  return file_path_for_number (new_file_number, false);
 }
 
 string
@@ -470,7 +470,7 @@ INode::gen_new_file_path()
   if (new_file_number == 0)
     new_file_number = INodeRepo::the()->bdb->gen_new_file_number();
 
-  return new_file_path_for_number (new_file_number, true);
+  return file_path_for_number (new_file_number, true);
 }
 
 string
@@ -483,7 +483,7 @@ INode::file_path() const
     {
       unsigned int file_number = INodeRepo::the()->bdb->load_hash2file (hash);
       if (file_number)
-        return new_file_path_for_number (file_number, false);
+        return file_path_for_number (file_number, false);
     }
   return "";
 }

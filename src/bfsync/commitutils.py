@@ -259,10 +259,7 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
 
     def scan_inode (self, inode):
       if inode.hash == "new":
-        n = inode.new_file_number
-        dn = n / 4096
-        fn = n % 4096
-        filename = os.path.join (repo_path, "new/%x/%03x" % (dn, fn))
+        filename = repo.make_number_filename (inode.new_file_number)
         self.total_file_size += os.path.getsize (filename)
         self.total_file_count += 1
         if verbose and self.outss.need_update():
@@ -311,23 +308,35 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
     for inode in wset_number_list:
       status.files_added += 1
 
-      n = inode.new_file_number
-      dn = n / 4096
-      fn = n % 4096
-      filename = os.path.join (repo_path, "new/%x/%03x" % (dn, fn))
+      filename = repo.make_number_filename (inode.new_file_number)
       hash = hash_one (filename)
       size = os.path.getsize (filename)
       repo.bdb.delete_inode (inode)
-      dest_filename = os.path.join (repo_path, "objects", make_object_filename (hash))
-      #if validate_object (dest_filename, hash): => gc
-      #  os.remove (filename)
-      #else:
+
       if repo.bdb.load_hash2file (hash) == 0:
         repo.bdb.store_hash2file (hash, inode.new_file_number)
+      else:
+        repo.bdb.add_deleted_file (inode.new_file_number)
+
       inode.hash = hash
       inode.size = size
       inode.new_file_number = 0
       repo.bdb.store_inode (inode)
+    if need_transaction:
+      repo.bdb.commit_transaction()
+
+    # we can delete the files only if the transaction before this one succeeded,
+    # since otherwise we'll still need them to rerun the last transaction
+    if need_transaction:
+      repo.bdb.begin_transaction()
+
+    files = repo.bdb.load_deleted_files()
+    for file_number in files:
+      file_name = repo.make_number_filename (file_number)
+      if os.path.exists (file_name):
+        os.remove (file_name)
+
+    repo.bdb.clear_deleted_files()
     if need_transaction:
       repo.bdb.commit_transaction()
 

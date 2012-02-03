@@ -117,6 +117,11 @@ class Repo:
     self.conn.commit()
     return tmp_file.name
 
+  def make_number_filename (self, file_number):
+    dn = file_number / 4096
+    fn = file_number % 4096
+    return os.path.join (self.path, "objects/%x/%03x" % (dn, fn))
+
   def first_unused_version (self):
     version = 1
     while True:

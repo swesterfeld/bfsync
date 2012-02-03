@@ -1092,7 +1092,7 @@ BDB::clear_deleted_files()
   Dbt key (kbuf.begin(), kbuf.size());
 
   int ret = db->del (transaction, &key, 0);
-  g_assert (ret == 0);
+  g_assert (ret == 0 || ret == DB_NOTFOUND);
 }
 
 
