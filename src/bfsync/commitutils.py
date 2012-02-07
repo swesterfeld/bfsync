@@ -445,8 +445,7 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
     if new_diff != expected_diff:
       raise Exception ("commit called with expected diff argument, but diffs didn't match")
     hash = expected_diff_hash
-    object_name = os.path.join (repo_path, "objects", make_object_filename (hash))
-    if not validate_object (object_name, hash):
+    if not repo.validate_object (hash):
       raise Exception ("commit called with expected_diff argument, but object with hash %s doesn't validate" % hash)
   else:
     if os.path.getsize (diff_filename) != 0:

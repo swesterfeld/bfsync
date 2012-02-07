@@ -674,6 +674,12 @@ BDBPtr::clear_deleted_files()
   return ptr->my_bdb->clear_deleted_files();
 }
 
+unsigned int
+BDBPtr::gen_new_file_number()
+{
+  return ptr->my_bdb->gen_new_file_number();
+}
+
 /* refcounting BDB wrapper */
 
 BDBPtr::BDBPtr (BDBWrapper *wrapper) :

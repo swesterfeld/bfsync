@@ -413,8 +413,6 @@ def cmd_init():
 
   # create objects directory
   os.mkdir ("objects", 0700)
-  for i in range (0, 256):
-    os.mkdir ("objects/%02x" % i, 0700)
 
   # create tmp dir
   os.mkdir ("tmp", 0700)
@@ -637,8 +635,6 @@ def cmd_clone():
   os.mkdir ("tmp", 0700)
   os.mkdir ("new", 0700)
   os.mkdir ("objects", 0700)
-  for i in range (0, 256):
-    os.mkdir ("objects/%02x" % i, 0700)
 
   # pull changes from master
   pull (repo, [ url ], server = False)

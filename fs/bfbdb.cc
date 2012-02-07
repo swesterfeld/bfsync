@@ -982,7 +982,7 @@ BDB::gen_new_file_number()
   Dbt key (kbuf.begin(), kbuf.size());
 
   db_seq_t value;
-  int ret = new_file_number_seq->get (transaction, 1, &value, 0);
+  int ret = new_file_number_seq->get (NULL, 1, &value, 0);
   g_assert (ret == 0);
 
   return value;

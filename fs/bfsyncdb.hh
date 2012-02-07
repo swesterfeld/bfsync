@@ -172,6 +172,8 @@ public:
                      load_deleted_files();
   void               clear_deleted_files();
 
+  unsigned int       gen_new_file_number();
+
   void               close();
 
   BFSync::BDB*

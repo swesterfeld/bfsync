@@ -117,10 +117,32 @@ class Repo:
     self.conn.commit()
     return tmp_file.name
 
-  def make_number_filename (self, file_number):
+  def make_number_filename (self, file_number, create_dir = False):
     dn = file_number / 4096
     fn = file_number % 4096
-    return os.path.join (self.path, "objects/%x/%03x" % (dn, fn))
+    dirname = os.path.join (self.path, "objects/%x" % dn)
+    filename = "%03x" % fn
+    if create_dir and not os.path.exists (dirname):
+      os.mkdir (dirname)
+    return os.path.join (dirname, filename)
+
+  def make_object_filename (self, hash):
+    file_number = self.bdb.load_hash2file (hash)
+    if file_number == 0:
+      raise Exception ("object %s not found" % hash)
+    objectname = self.make_number_filename (file_number)
+    return objectname
+
+  def validate_object (self, hash):
+    try:
+      object_name = self.make_object_filename (hash)
+      import HashCache
+      my_hash = HashCache.hash_cache.compute_hash (object_name)
+      if my_hash == hash:
+        return True
+    except:
+      pass
+    return False
 
   def first_unused_version (self):
     version = 1
@@ -258,6 +280,7 @@ def make_object_filename (hash):
   return hash[0:2] + "/" + hash[2:]
 
 def validate_object (object_file, hash):
+  raise Exception ("unsupported API")
   try:
     import HashCache
     os.stat (object_file)
@@ -267,17 +290,25 @@ def validate_object (object_file, hash):
     pass
   return False
 
-def move_file_to_objects (repo, filename):
+def move_file_to_objects (repo, filename, need_transaction = True):
   import HashCache
   hash = HashCache.hash_cache.compute_hash (filename)
-  object_name = os.path.join (repo.path, "objects", make_object_filename (hash))
-  if os.path.exists (object_name):
+
+  if need_transaction:
+    repo.bdb.begin_transaction()
+
+  if repo.bdb.load_hash2file (hash) == 0:
+    new_file_number = repo.bdb.gen_new_file_number()
+    objectname = repo.make_number_filename (new_file_number, True)
+    os.rename (filename, repo.make_number_filename (new_file_number))
+    os.chmod (objectname, 0400)
+    repo.bdb.store_hash2file (hash, new_file_number)
+  else:
     # already known
     os.unlink (filename)
-  else:
-    # add new object
-    os.rename (filename, object_name)
-    os.chmod (object_name, 0400)
+
+  if need_transaction:
+    repo.bdb.commit_transaction()
   return hash
 
 def parse_diff (diff):

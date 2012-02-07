@@ -24,9 +24,10 @@ from utils import *
 from StatusLine import status_line
 
 class TransferFile:
-  def __init__ (self, hash, size):
+  def __init__ (self, hash, size, number):
     self.hash = hash
     self.size = size
+    self.number = number
 
 class TransferParams:
   def __init__ (self, rate_limit):
@@ -151,10 +152,10 @@ class TransferList:
     dest_path = dest_repo.make_temp_name()
     for tfile in self.tlist:
       self.file_number += 1
-      src_path = os.path.join (src_repo.path, "objects", make_object_filename (tfile.hash))
+      src_path = os.path.join (src_repo.path, "objects", src_repo.make_number_filename (tfile.number))
       try:
         shutil.copyfile (src_path, dest_path)
-        move_file_to_objects (dest_repo, dest_path)
+        move_file_to_objects (dest_repo, dest_path, False)
       except Exception, ex:
         sys.stderr.write ("can't copy file %s to %s: %s\n" % (src_path, dest_path, ex))
         sys.exit (1)

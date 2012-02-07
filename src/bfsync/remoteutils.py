@@ -28,18 +28,21 @@ def remote_ls (repo, hashes):
   file_list = []
   object_dir = os.path.join (repo.path, "objects")
   for hash in hashes:
-    full_name = os.path.join (object_dir, make_object_filename (hash))
-    try:
-      st = os.stat (full_name)
-    except:
-      st = False   # file not there
-    if st and S_ISREG (st.st_mode):
-      real_hash = hash_cache.compute_hash (full_name)
-      if (hash == real_hash):
-        remote_file = RemoteFile()
-        remote_file.hash = real_hash
-        remote_file.size = st.st_size
-        file_list += [ remote_file ]
+    file_number = repo.bdb.load_hash2file (hash)
+    if file_number != 0:
+      full_name = repo.make_number_filename (file_number)
+      try:
+        st = os.stat (full_name)
+      except:
+        st = False   # file not there
+      if st and S_ISREG (st.st_mode):
+        real_hash = hash_cache.compute_hash (full_name)
+        if (hash == real_hash):
+          remote_file = RemoteFile()
+          remote_file.hash = real_hash
+          remote_file.size = st.st_size
+          remote_file.number = file_number
+          file_list += [ remote_file ]
   return file_list
 
 def remote_send (repo, params):

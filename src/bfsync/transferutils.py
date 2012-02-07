@@ -37,8 +37,7 @@ def get_remote_objects (repo, remote_repo, transfer_objs, tparams):
   need_hash_list = []
   for thash in transfer_objs:
     if not need_hash.has_key (thash):
-      dest_file = os.path.join ("objects", make_object_filename (thash))
-      if not validate_object (dest_file, thash):
+      if not repo.validate_object (thash):
         need_hash[thash] = True
         need_hash_list.append (thash)
 
@@ -47,7 +46,7 @@ def get_remote_objects (repo, remote_repo, transfer_objs, tparams):
   tlist = TransferList()
   for rfile in remote_list:
     if need_hash.has_key (rfile.hash):
-      tlist.add (TransferFile (rfile.hash, rfile.size))
+      tlist.add (TransferFile (rfile.hash, rfile.size, rfile.number))
 
   # do the actual copying
   remote_repo.get_objects (repo, tlist, tparams)
@@ -1039,7 +1038,7 @@ def pull (repo, args, server = True):
   if can_fast_forward:
     count = 1
     for diff, commit_args in ff_apply:
-      diff_file = os.path.join ("objects", make_object_filename (diff))
+      diff_file = repo.make_object_filename (diff)
       status_line.update ("patch %d/%d - fast forward" % (count, len (ff_apply)))
       apply (repo, xzcat (diff_file), diff, server = server, verbose = False, commit_args = commit_args)
       count += 1
