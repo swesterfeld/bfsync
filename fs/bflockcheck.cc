@@ -32,7 +32,7 @@ main (int argc, char **argv)
 {
   if (argc != 2)
     {
-      printf ("usage: bfdbdump [ -x ] <db>\n");
+      printf ("usage: bflockcheck <db>\n");
       exit (1);
     }
 
@@ -43,49 +43,21 @@ main (int argc, char **argv)
       exit (1);
     }
 
-  Db *db = bdb->get_db();
-  Dbc *dbcp;
-
-  /* Acquire a cursor for the database. */
-  int ret;
-  if ((ret = db->cursor (NULL, &dbcp, 0)) != 0)
+  DbEnv *db_env = bdb->get_db_env();
+  int status = 0, aborted = 0;
+  while (1)
     {
-      db->err (ret, "DB->cursor");
-      return 1;
+      usleep (20000);
+
+      int ret = db_env->lock_detect (0, DB_LOCK_DEFAULT, &aborted);
+      g_assert (ret == 0);
+      if (aborted)
+        printf ("aborted %d\n", aborted);
+
+      status = (status + 1) & 3;
+      printf ("%c\r", "/-\\|"[status]);
+      fflush (stdout);
     }
-
-  Dbt key;
-  Dbt data;
-
-  vector< vector<char> > all_keys;
-  ret = dbcp->get (&key, &data, DB_FIRST);
-  while (ret == 0)
-    {
-      vector<char> key_raw ((char *) key.get_data(), (char *) key.get_data() + key.get_size());
-      all_keys.push_back (key_raw);
-
-      ret = dbcp->get (&key, &data, DB_NEXT);
-    }
-  dbcp->close();
-
-  bdb->begin_transaction();
-  DbTxn *txn = bdb->get_transaction();
-  for (size_t i = 0; i < all_keys.size(); i++)
-    {
-      vector<char>& key_raw = all_keys [g_random_int_range (0, all_keys.size())];
-
-      if (key_raw.size())
-        {
-          Dbt xkey (&key_raw[0], key_raw.size());
-          Dbt xdata;
-
-          ret = bdb->get_db()->get (txn, &xkey, &xdata, DB_RMW);
-          g_assert (ret == 0);
-          key_raw.clear();
-        }
-    }
-  bdb->abort_transaction();
-
   if (!bdb->close())
     {
       printf ("error closing db %s\n", argv[1]);

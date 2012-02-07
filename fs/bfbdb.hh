@@ -123,6 +123,7 @@ class BDB
 public:
   Db*       get_db();
   Db*       get_db_hash2file();
+  DbEnv*    get_db_env();
   History*  history();
 
   BDB();

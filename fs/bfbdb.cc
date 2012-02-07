@@ -462,6 +462,12 @@ BDB::load_links (std::vector<Link*>& links, const ID& id, guint32 version)
     }
 }
 
+DbEnv*
+BDB::get_db_env()
+{
+  return db_env;
+}
+
 Db*
 BDB::get_db()
 {
