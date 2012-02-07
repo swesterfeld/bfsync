@@ -190,6 +190,12 @@ BDBPtr::commit_transaction()
 }
 
 void
+BDBPtr::abort_transaction()
+{
+  ptr->my_bdb->abort_transaction();
+}
+
+void
 id_store (const ID *id, DataOutBuffer& data_buf)
 {
   id->id.store (data_buf);
