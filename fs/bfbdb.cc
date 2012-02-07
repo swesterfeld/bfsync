@@ -116,15 +116,45 @@ BDB::open (const string& path, int cache_size_mb, bool recover)
               db_hash2file->err (ret, "open database 'db_hash2file' failed");
               result = false;
             }
+
+          db_seq = new Db (db_env, 0);
+          ret = db_seq->open (NULL,
+                              "db_seq",
+                              NULL,
+                              DB_BTREE,
+                              oFlags,
+                              0);
+          if (ret != 0)
+            {
+              db_seq->err (ret, "open database 'db_seq' failed");
+              result = false;
+            }
+          if (db_seq)
+            {
+              DataOutBuffer kbuf;
+
+              kbuf.write_table (BDB_TABLE_NEW_FILE_NUMBER);
+              Dbt key (kbuf.begin(), kbuf.size());
+
+              new_file_number_seq = new DbSequence (db_seq, 0);
+              ret = new_file_number_seq->set_cachesize (1024);
+              g_assert (ret == 0);
+
+              ret = new_file_number_seq->initial_value (1);
+              g_assert (ret == 0);
+
+              ret = new_file_number_seq->open (NULL, &key, DB_CREATE);
+              g_assert (ret == 0);
+            }
         }
       else
         {
           db_env->err (ret, "open database env failed");
           db = NULL;
           db_hash2file = NULL;
+          db_seq = NULL;
           result = false;
         }
-      new_file_number = 0;
 
       if (!result)
         {
@@ -139,6 +169,12 @@ BDB::open (const string& path, int cache_size_mb, bool recover)
               db_hash2file->close (0);
               delete db_hash2file;
               db_hash2file = NULL;
+            }
+          if (db_seq)
+            {
+              db_seq->close (0);
+              delete db_seq;
+              db_seq = NULL;
             }
           if (db_env)
             {
@@ -174,6 +210,12 @@ BDB::close()
 
   assert (ret == 0);
 
+  ret = db_seq->close (0);
+  delete db_seq;
+  db_seq = NULL;
+
+  assert (ret == 0);
+
   ret = db_env->close (0);
   delete db_env;
   db_env = NULL;
@@ -193,10 +235,14 @@ BDB::begin_transaction()
   g_assert (transaction);
 }
 
+TimeProfSection tp_commit_transaction ("BDB::commit_transaction");
+
 void
 BDB::commit_transaction()
 {
   Lock lock (mutex);
+
+  TimeProfHandle h (tp_commit_transaction);
 
   int ret = transaction->commit (0);
   g_assert (ret == 0);
@@ -934,57 +980,12 @@ BDB::gen_new_file_number()
 
   kbuf.write_table (BDB_TABLE_NEW_FILE_NUMBER);
   Dbt key (kbuf.begin(), kbuf.size());
-  Dbt data;
 
-  if (new_file_number == 0)
-    {
-      int ret = db->get (NULL, &key, &data, 0);
-      if (ret == 0)
-        {
-          DataBuffer dbuffer ((char *) data.get_data(), data.get_size());
-          new_file_number = dbuffer.read_uint32();
-
-          assert (new_file_number != 0);
-        }
-      else
-        {
-          new_file_number = 1;
-        }
-    }
-  return new_file_number++;
-}
-
-
-void
-BDB::store_new_file_number()
-{
-  Lock lock (mutex);
-
-  g_assert (transaction);
-
-  if (!new_file_number)
-    return;
-
-  DataOutBuffer kbuf;
-  DataOutBuffer dbuf;
-
-  kbuf.write_table (BDB_TABLE_NEW_FILE_NUMBER);
-  Dbt key (kbuf.begin(), kbuf.size());
-  Dbt data;
-
-  int ret = db->get (transaction, &key, &data, 0);
-  if (ret == 0)
-    {
-      ret = db->del (transaction, &key, 0);
-      g_assert (ret == 0);
-    }
-
-  dbuf.write_uint32 (new_file_number);
-
-  Dbt new_data (dbuf.begin(), dbuf.size());
-
-  ret = db->put (transaction, &key, &new_data, 0);
+  db_seq_t value;
+  int ret = new_file_number_seq->get (transaction, 1, &value, 0);
   g_assert (ret == 0);
+
+  return value;
 }
 
 unsigned int

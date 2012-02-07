@@ -110,9 +110,10 @@ class BDB
   DbEnv   *db_env;
   Db      *db;
   Db      *db_hash2file;
+  Db      *db_seq;
+  DbSequence *new_file_number_seq;
 
   std::map<ino_t, ID> new_id2ino_entries;
-  unsigned int new_file_number;
   History  m_history;
 
   int      shm_id (const std::string& path);
@@ -150,7 +151,6 @@ public:
   void  store_new_id2ino_entries();
 
   unsigned int gen_new_file_number();
-  void  store_new_file_number();
 
   bool  load_history_entry (int version, HistoryEntry& entry);
   void  store_history_entry (int version, const HistoryEntry& entry);
