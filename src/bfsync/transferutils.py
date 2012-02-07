@@ -172,9 +172,11 @@ def push (repo, urls):
 
   tl = TransferList()
   for hash in need_objs:
-    src_file = os.path.join ("objects", make_object_filename (hash))
-    if validate_object (src_file, hash):
-      tl.add (TransferFile (hash, os.path.getsize (src_file)))
+    if repo.validate_object (hash):
+      file_number = repo.bdb.load_hash2file (hash)
+      if file_number == 0:
+        raise Exception ("object %s has file_number == 0" % hash)
+      tl.add (TransferFile (hash, os.path.getsize (repo.make_number_filename (file_number)), file_number))
 
   remote_repo.put_objects (repo, tl, TransferParams (0))
 
@@ -1030,6 +1032,7 @@ def pull (repo, args, server = True):
   # Already up-to-date?
   if can_fast_forward and len (ff_apply) == 0:
     print "Already up-to-date."
+    repo.bdb.abort_transaction()
     return
 
   # transfer required history objects

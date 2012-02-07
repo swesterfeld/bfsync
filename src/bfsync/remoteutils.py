@@ -65,9 +65,11 @@ def remote_update_history (repo, delta_history):
     if hentry.valid:
       return "fail"
 
+  repo.bdb.begin_transaction()
   for dh in delta_history:
     version = dh[0]
     repo.bdb.store_history_entry (dh[0], dh[1], dh[2], dh[3], dh[4])
+  repo.bdb.commit_transaction()
 
   return "ok"
 
@@ -103,8 +105,7 @@ def remote_need_objects (repo, table):
         break
 
       if not need_hash.has_key (hentry.hash):
-        dest_file = os.path.join (repo_path, "objects", make_object_filename (hentry.hash))
-        if not validate_object (dest_file, hentry.hash):
+        if not repo.validate_object (hentry.hash):
           need_hash[hentry.hash] = True
           objs += [ hentry.hash ]
 

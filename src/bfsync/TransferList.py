@@ -148,6 +148,7 @@ class TransferList:
       self.update_status_line()
       status_line.cleanup()
   def copy_files (self, dest_repo, src_repo):
+    #dest_repo.bdb.begin_transaction()
     self.start_time = time.time()
     dest_path = dest_repo.make_temp_name()
     for tfile in self.tlist:
@@ -164,5 +165,6 @@ class TransferList:
         self.update_status_line()
     self.update_status_line()
     status_line.cleanup()
+    #dest_repo.bdb.commit_transaction()
 
 
