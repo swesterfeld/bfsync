@@ -119,6 +119,7 @@ class BDB
   int      shm_id (const std::string& path);
 
   std::string  pid_filename;
+  std::string  repo_path;
 
   Mutex mutex;
 
@@ -135,6 +136,7 @@ public:
   BDB();
 
   bool  open (const std::string& path, int cache_size_mb, bool recover);
+  void  register_pid();
   void  sync();
   bool  close();
 

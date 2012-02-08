@@ -79,7 +79,7 @@ BDB::open (const string& path, int cache_size_mb, bool recover)
 
       string bdb_dir = path + "/bdb";
 
-      add_pid (path);
+      repo_path = path;
 
       db_env = new DbEnv (DB_CXX_NO_EXCEPTIONS);
       db_env->set_shm_key (shm_id (path));
@@ -195,7 +195,6 @@ BDB::open (const string& path, int cache_size_mb, bool recover)
               delete db_env;
               db_env = NULL;
             }
-          del_pid();
         }
       return result;
     }
@@ -1217,7 +1216,14 @@ BDB::add_pid (const string& repo_path)
 void
 BDB::del_pid()
 {
-  unlink (pid_filename.c_str());
+  if (!pid_filename.empty())
+    unlink (pid_filename.c_str());
+}
+
+void
+BDB::register_pid()
+{
+  add_pid (repo_path);
 }
 
 }

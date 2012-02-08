@@ -1381,6 +1381,8 @@ Server server;
 static void*
 bfsync_init (struct fuse_conn_info *conn)
 {
+  INodeRepo::the()->bdb->register_pid();
+
   conn->max_readahead = 10 * 128 * 1024;
   conn->max_write = 128 * 1024;
 

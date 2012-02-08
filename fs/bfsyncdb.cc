@@ -167,6 +167,9 @@ open_db (const string& db, int cache_size_mb, bool recover)
   BDBWrapper *wrapper = new BDBWrapper;
   wrapper->my_bdb = bdb;
 
+  if (bdb)
+    bdb->register_pid();
+
   return BDBPtr (wrapper);
 }
 
