@@ -1194,7 +1194,6 @@ BDB::need_recover (const string& repo_path)
 
           if (kill (pid, 0) != 0)
             {
-              printf (" * pid %d died\n", pid);
               dead_count++;
             }
         }
@@ -1207,7 +1206,6 @@ void
 BDB::add_pid (const string& repo_path)
 {
   pid_filename = string_printf ("%s/processes/%d", repo_path.c_str(), getpid());
-  printf ("%s\n", pid_filename.c_str());
   FILE *pid_file = fopen (pid_filename.c_str(), "w");
   g_assert (pid_file);
   fclose (pid_file);
