@@ -3,6 +3,7 @@
 * register pids, to be able to detect when to recover
 * automatic deadlock detection
 * retry transactions on deadlock
+* use operation journal to recover after partial op
 * apply (i-, ...)
 * auto-push/pull
 * properly handle copy-on-write() errors (disk full, ...)
