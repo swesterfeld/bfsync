@@ -12,6 +12,8 @@ bfsyncstat
 bftesthelper
 bfdbdump
 bfproftest
+bflockcheck
+bflocktest
 mnt
 test
 fs.log
