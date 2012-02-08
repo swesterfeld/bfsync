@@ -1462,13 +1462,13 @@ bfsyncfs_main (int argc, char **argv)
 
   const vector<string>& cache_size = cfg_values["cache-size"];
   options.cache_size_mb = 0;
-  if (use_uid_gid.size() == 1)
+  if (cache_size.size() == 1)
     {
       options.cache_size_mb = atoi (cache_size[0].c_str());
     }
   if (options.cache_size_mb == 0)
     {
-      printf ("bfsyncfs: bad cache-size setting in config file");
+      printf ("bfsyncfs: bad cache-size setting in config file\n");
       exit (1);
     }
 
