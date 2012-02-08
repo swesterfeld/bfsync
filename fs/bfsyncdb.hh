@@ -143,6 +143,8 @@ public:
 
   ~BDBPtr();
 
+  bool               open_ok();
+
   void               begin_transaction();
   void               commit_transaction();
   void               abort_transaction();

@@ -213,6 +213,9 @@ def cd_repo_connect_db():
   repo = Repo()
   repo.conn = sqlite3.connect (os.path.join (repo_path, 'db'))
   repo.bdb = bfsyncdb.open_db (repo_path, cache_size, False)
+  if not repo.bdb.open_ok():
+    raise BFSyncError ("database of repository %s can't be opened" % repo_path)
+
   repo.conn.text_factory = str;
   repo.path = repo_path
   repo.config = bfsync_info

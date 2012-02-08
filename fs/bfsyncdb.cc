@@ -173,8 +173,15 @@ open_db (const string& db, int cache_size_mb, bool recover)
 void
 BDBPtr::close()
 {
-  ptr->my_bdb->close();
+  if (ptr->my_bdb)
+    ptr->my_bdb->close();
   ptr->my_bdb = NULL;
+}
+
+bool
+BDBPtr::open_ok()
+{
+  return ptr->my_bdb != NULL;
 }
 
 void

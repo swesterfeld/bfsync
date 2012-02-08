@@ -420,6 +420,9 @@ def cmd_init():
   # create bdb dir
   os.mkdir ("bdb", 0700)
 
+  # create process registration dir
+  os.mkdir ("processes", 0700)
+
   # create history table
   repo = cd_repo_connect_db()
   conn = repo.conn
@@ -623,6 +626,10 @@ def cmd_clone():
 
   os.chdir (dir)
   os.mkdir ("bdb", 0700)
+  os.mkdir ("tmp", 0700)
+  os.mkdir ("new", 0700)
+  os.mkdir ("objects", 0700)
+  os.mkdir ("processes", 0700)
 
   repo = cd_repo_connect_db()
   conn = repo.conn
@@ -631,10 +638,6 @@ def cmd_clone():
   create_tables (c)
   init_tables (c)
   conn.commit()
-
-  os.mkdir ("tmp", 0700)
-  os.mkdir ("new", 0700)
-  os.mkdir ("objects", 0700)
 
   # pull changes from master
   pull (repo, [ url ], server = False)
@@ -683,6 +686,18 @@ def cmd_collect():
   collect (repo, args, old_cwd)
 
 def cmd_recover():
+  parser = argparse.ArgumentParser (prog='bfsync recover')
+  parser.add_argument ("dest_dir", nargs = "?")
+  parsed_args = parser.parse_args (args)
+
+  if parsed_args.dest_dir:
+    dir = parsed_args.dest_dir
+    try:
+      os.chdir (dir)
+    except:
+      print "fatal: path '" + dir + "' does not exist"
+      sys.exit (1)
+
   repo_path = find_repo_dir()
   bfsync_info = parse_config (repo_path + "/config")
 
@@ -722,7 +737,7 @@ def main():
       ( "repo-files",             cmd_repo_files, 1),
       ( "db-fingerprint",         cmd_db_fingerprint, 0),
       ( "remote",                 cmd_remote, 1),
-      ( "recover",                cmd_recover, 0),
+      ( "recover",                cmd_recover, 1),
       ( "debug-load-all-inodes",  cmd_debug_load_all_inodes, 0),
       ( "debug-perf-getattr",     cmd_debug_perf_getattr, 1),
       ( "debug-clear-cache",      cmd_debug_clear_cache, 1),

@@ -58,6 +58,17 @@ BDB::open (const string& path, int cache_size_mb, bool recover)
 {
   Lock lock (mutex);
 
+  if (need_recover (path) && !recover)
+    {
+      printf ("============================================================================\n");
+      printf ("%s: need to recover repository\n", path.c_str());
+      printf ("============================================================================\n");
+      printf (" - some processes did not shut down properly\n");
+      printf (" - use bfsync.py recover %s to fix this\n", path.c_str());
+      printf ("============================================================================\n");
+      return false;
+    }
+
   try
     {
       bool result = true;
@@ -67,6 +78,8 @@ BDB::open (const string& path, int cache_size_mb, bool recover)
       cache_size_mb %= 1024;
 
       string bdb_dir = path + "/bdb";
+
+      add_pid (path);
 
       db_env = new DbEnv (DB_CXX_NO_EXCEPTIONS);
       db_env->set_shm_key (shm_id (path));
@@ -182,6 +195,7 @@ BDB::open (const string& path, int cache_size_mb, bool recover)
               delete db_env;
               db_env = NULL;
             }
+          del_pid();
         }
       return result;
     }
@@ -219,6 +233,8 @@ BDB::close()
   ret = db_env->close (0);
   delete db_env;
   db_env = NULL;
+
+  del_pid();
 
   return (ret == 0);
 }
@@ -1159,6 +1175,49 @@ BDB::shm_id (const string& path)
       fclose (keys_file);
     }
   return make_shm_key (new_key);
+}
+
+
+bool
+BDB::need_recover (const string& repo_path)
+{
+  int dead_count = 0;
+
+  GDir *dir = g_dir_open ((repo_path + "/processes").c_str(), 0, NULL);
+  if (dir)
+    {
+      const char *name;
+
+      while ((name = g_dir_read_name (dir)))
+        {
+          int pid = atoi (name);
+          g_assert (pid > 0);
+
+          if (kill (pid, 0) != 0)
+            {
+              printf (" * pid %d died\n", pid);
+              dead_count++;
+            }
+        }
+      g_dir_close (dir);
+    }
+  return dead_count > 0;
+}
+
+void
+BDB::add_pid (const string& repo_path)
+{
+  pid_filename = string_printf ("%s/processes/%d", repo_path.c_str(), getpid());
+  printf ("%s\n", pid_filename.c_str());
+  FILE *pid_file = fopen (pid_filename.c_str(), "w");
+  g_assert (pid_file);
+  fclose (pid_file);
+}
+
+void
+BDB::del_pid()
+{
+  unlink (pid_filename.c_str());
 }
 
 }

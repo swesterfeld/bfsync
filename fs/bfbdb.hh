@@ -118,7 +118,13 @@ class BDB
 
   int      shm_id (const std::string& path);
 
+  std::string  pid_filename;
+
   Mutex mutex;
+
+  bool need_recover (const std::string& path);
+  void add_pid (const std::string& path);
+  void del_pid();
 
 public:
   Db*       get_db();
