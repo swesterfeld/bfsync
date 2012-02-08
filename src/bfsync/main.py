@@ -706,10 +706,27 @@ def cmd_recover():
     raise Exception ("bad cache-size setting")
   cache_size = int (cache_size[0])
 
+  pid_files = os.listdir (repo_path + "/processes")
+  alive = 0
+  del_after_recover = []
+  for pid in pid_files:
+    try:
+      ipid = int (pid)
+      os.kill (ipid, 0)
+      print " - process %d is still running" % ipid
+      alive += 1
+    except:
+      del_after_recover.append (os.path.join (repo_path, "processes", pid))
+  if alive > 0:
+    print "can't recover, %d processes are still running <=> terminate them to recover"
+    sys.exit (1)
+
   status_line.set_op ("RECOVER")
   status_line.update ("running recover on %s" % repo_path)
   bdb = bfsyncdb.open_db (repo_path, cache_size, True)
   status_line.update ("running recover on %s: done" % repo_path)
+  for filename in del_after_recover:
+    os.remove (filename)
 
 args = []
 
