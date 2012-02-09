@@ -97,6 +97,15 @@ struct HistoryEntry
   unsigned int  time;
 };
 
+struct TempFile {
+  TempFile();
+  TempFile (const TempFile& tf);
+  ~TempFile();
+
+  std::string   filename;
+  unsigned int  pid;
+};
+
 class BDBWrapper
 {
   unsigned int ref_count;
@@ -175,6 +184,10 @@ public:
   std::vector<unsigned int>
                      load_deleted_files();
   void               clear_deleted_files();
+
+  void               add_temp_file (const std::string& filename, unsigned int pid);
+  std::vector<TempFile> load_temp_files();
+  void               delete_temp_file (const std::string& filename);
 
   unsigned int       gen_new_file_number();
 

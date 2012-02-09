@@ -1,4 +1,3 @@
-* get rid of remaining sqlite table
 * properly use transactions during pull,...
 * register pids, to be able to detect when to recover
 * automatic deadlock detection

@@ -98,7 +98,7 @@ main (int argc, char **argv)
     }
 
   vector<string> links, inodes, id2ino, ino2id, history, changed_inodes, changed_inodes_rev,
-                 new_file_number, deleted_files;
+                 new_file_number, deleted_files, temp_files;
 
   Dbt key;
   Dbt data;
@@ -217,6 +217,13 @@ main (int argc, char **argv)
 
           add ("deleted_files", deleted_files, string_printf ("%u", n));
          }
+      else if (table == BDB_TABLE_TEMP_FILES)
+        {
+          string name = dbuffer.read_string();
+          unsigned int pid = dbuffer.read_uint32();
+
+          add ("temp_files", temp_files, string_printf ("%s|%u", name.c_str(), pid));
+        }
       else
         {
           printf ("unknown record type\n");
@@ -233,6 +240,7 @@ main (int argc, char **argv)
   print ("Changed INodes (reverse)", changed_inodes_rev);
   print ("New File Number", new_file_number);
   print ("Deleted Files", deleted_files);
+  print ("Temp Files", temp_files);
 
   Db *db_hash2file = bdb->get_db_hash2file();
 

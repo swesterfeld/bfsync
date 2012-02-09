@@ -14,6 +14,7 @@ namespace std {
   %template(LinkVector) vector<Link>;
   %template(INodeVector) vector<INode>;
   %template(UIntVector) vector<unsigned int>;
+  %template(TempFileVector) vector<TempFile>;
 }
 
 %include "bfsyncdb.hh"

@@ -113,8 +113,7 @@ class Repo:
     tmp_file = NamedTemporaryFile (dir = os.path.join (self.path, "tmp"), delete = False)
     tmp_file.close()
     c = self.conn.cursor()
-    c.execute ('''INSERT INTO temp_files VALUES (?, ?)''', (os.path.basename (tmp_file.name), os.getpid()))
-    self.conn.commit()
+    self.bdb.add_temp_file (os.path.basename (tmp_file.name), os.getpid())
     return tmp_file.name
 
   def make_number_filename (self, file_number, create_dir = False):
@@ -225,21 +224,21 @@ def cd_repo_connect_db():
     c.execute ('''PRAGMA synchronous=off''')
 
   # wipe old temp files
-  try:
-    c.execute ('''SELECT * FROM temp_files''')
-    for row in c:
-      filename = os.path.join (repo_path, "tmp", row[0])
-      pid = row[1]
+  repo.bdb.begin_transaction()
+  temp_files = repo.bdb.load_temp_files()
+  for temp_file in temp_files:
+    filename = os.path.join (repo_path, "tmp", temp_file.filename)
+    pid = temp_file.pid
+    try:
+      os.kill (pid, 0)
+      # pid still running
+    except:
       try:
-        os.kill (pid, 0)
-        # pid still running
+        os.remove (filename)
       except:
-        try:
-          os.remove (filename)
-        except:
-          pass
-  except:
-    pass # no temp_files table => no temp files
+        pass
+      repo.bdb.delete_temp_file (temp_file.filename)
+  repo.bdb.commit_transaction()
 
   return repo
 

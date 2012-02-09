@@ -157,6 +157,28 @@ ID::operator== (const ID& other) const
   return id == other.id && valid == other.valid;
 }
 
+//---------------------------- TempFile -----------------------------
+
+static BFSync::LeakDebugger temp_file_leak_debugger ("(Python)BFSync::TempFile");
+
+TempFile::TempFile() :
+  pid (0)
+{
+  temp_file_leak_debugger.add (this);
+}
+
+TempFile::TempFile (const TempFile& tf) :
+  filename (tf.filename),
+  pid (tf.pid)
+{
+  temp_file_leak_debugger.add (this);
+}
+
+TempFile::~TempFile()
+{
+  temp_file_leak_debugger.del (this);
+}
+
 //---------------------------------------------------------------
 
 BDBPtr
@@ -446,6 +468,40 @@ BDBPtr::delete_link (const Link& link)
 
       ret = dbc->get (&lkey, &ldata, DB_NEXT_DUP);
     }
+}
+
+void
+BDBPtr::add_temp_file (const string& filename, unsigned int pid)
+{
+  BFSync::TempFile f;
+
+  f.filename = filename;
+  f.pid = pid;
+
+  ptr->my_bdb->add_temp_file (f);
+}
+
+std::vector<TempFile>
+BDBPtr::load_temp_files()
+{
+  std::vector<TempFile> result;
+
+  std::vector<BFSync::TempFile> temp_files = ptr->my_bdb->load_temp_files();
+  for (vector<BFSync::TempFile>::const_iterator ti = temp_files.begin(); ti != temp_files.end(); ti++)
+    {
+      TempFile tf;
+      tf.filename = ti->filename;
+      tf.pid = ti->pid;
+      result.push_back (tf);
+    }
+
+  return result;
+}
+
+void
+BDBPtr::delete_temp_file (const string& name)
+{
+  ptr->my_bdb->delete_temp_file (name);
 }
 
 void

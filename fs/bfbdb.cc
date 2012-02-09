@@ -1136,6 +1136,87 @@ BDB::clear_deleted_files()
   g_assert (ret == 0 || ret == DB_NOTFOUND);
 }
 
+void
+BDB::add_temp_file (const TempFile& temp_file)
+{
+  Lock lock (mutex);
+
+  g_assert (transaction);
+
+  DataOutBuffer kbuf, dbuf;
+  kbuf.write_table (BDB_TABLE_TEMP_FILES);
+  dbuf.write_string (temp_file.filename);
+  dbuf.write_uint32 (temp_file.pid);
+
+  Dbt key (kbuf.begin(), kbuf.size());
+  Dbt data (dbuf.begin(), dbuf.size());
+
+  int ret = db->put (transaction, &key, &data, 0);
+  assert (ret == 0);
+}
+
+vector<TempFile>
+BDB::load_temp_files()
+{
+  Lock lock (mutex);
+
+  vector<TempFile> files;
+
+  DataOutBuffer kbuf;
+  kbuf.write_table (BDB_TABLE_TEMP_FILES);
+
+  Dbt key (kbuf.begin(), kbuf.size());
+  Dbt data;
+
+  DbcPtr dbc (this); /* Acquire a cursor for the database. */
+
+  // iterate over all temp files
+  int ret = dbc->get (&key, &data, DB_SET);
+  while (ret == 0)
+    {
+      DataBuffer dbuffer ((char *) data.get_data(), data.get_size());
+
+      TempFile tf;
+      tf.filename = dbuffer.read_string();
+      tf.pid = dbuffer.read_uint32();
+
+      files.push_back (tf);
+
+      ret = dbc->get (&key, &data, DB_NEXT_DUP);
+    }
+  return files;
+}
+
+void
+BDB::delete_temp_file (const string& name)
+{
+  Lock lock (mutex);
+
+  g_assert (transaction);
+
+  DataOutBuffer kbuf;
+
+  kbuf.write_table (BDB_TABLE_TEMP_FILES);
+
+  Dbt tkey (kbuf.begin(), kbuf.size());
+  Dbt tdata;
+
+  DbcPtr dbc (this, DbcPtr::WRITE);
+
+  // iterate over all temp files
+  int ret = dbc->get (&tkey, &tdata, DB_SET);
+  while (ret == 0)
+    {
+      DataBuffer dbuffer ((char *) tdata.get_data(), tdata.get_size());
+      if (dbuffer.read_string() == name)
+        {
+          ret = dbc->del (0);
+          assert (ret == 0);
+        }
+
+      ret = dbc->get (&tkey, &tdata, DB_NEXT_DUP);
+    }
+}
 
 static inline int
 make_shm_key (int n)

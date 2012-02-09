@@ -718,7 +718,7 @@ def cmd_recover():
     except:
       del_after_recover.append (os.path.join (repo_path, "processes", pid))
   if alive > 0:
-    print "can't recover, %d processes are still running <=> terminate them to recover"
+    print "can't recover, %d processes are still running <=> terminate them to recover" % alive
     sys.exit (1)
 
   status_line.set_op ("RECOVER")

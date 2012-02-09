@@ -41,6 +41,7 @@ enum BDBTables
   BDB_TABLE_CHANGED_INODES_REV  = 7,
   BDB_TABLE_NEW_FILE_NUMBER     = 8,
   BDB_TABLE_DELETED_FILES       = 9,
+  BDB_TABLE_TEMP_FILES          = 10,
 };
 
 BDB *bdb_open (const std::string& path, int cache_size_mb, bool recover);
@@ -104,6 +105,12 @@ struct HistoryEntry
   std::string author;
   std::string message;
   int         time;
+};
+
+struct TempFile
+{
+  std::string   filename;
+  unsigned int  pid;
 };
 
 class BDB
@@ -173,6 +180,10 @@ public:
   void  add_deleted_file (unsigned int file_number);
   std::vector<unsigned int>  load_deleted_files();
   void  clear_deleted_files();
+
+  std::vector<TempFile> load_temp_files();
+  void  add_temp_file (const TempFile& temp_file);
+  void  delete_temp_file (const std::string& filename);
 };
 
 class DbcPtr // cursor smart-wrapper: automatically closes cursor in destructor

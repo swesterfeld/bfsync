@@ -16,11 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 def create_tables (c):
-  c.execute ('''CREATE TABLE temp_files
-                 (
-                   name    text,
-                   pid     integer
-                 )''')
+  pass
 
 def init_tables (c):
   pass
