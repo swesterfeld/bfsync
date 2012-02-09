@@ -234,16 +234,6 @@ main (int argc, char **argv)
   print ("New File Number", new_file_number);
   print ("Deleted Files", deleted_files);
 
-  printf ("\n\n");
-  printf ("INode Count:    %zd\n", inode_total);
-  printf ("Avg INode Key:  %.2f\n", inode_total_keysize / double (inode_total));
-  printf ("Avg INode Data: %.2f\n", inode_total_datasize / double (inode_total));
-  printf ("\n\n");
-  printf ("Link Count:     %zd\n", link_total);
-  printf ("Avg Link Key:   %.2f\n", link_total_keysize / double (link_total));
-  printf ("Avg Link Data:  %.2f\n", link_total_datasize / double (link_total));
-
-
   Db *db_hash2file = bdb->get_db_hash2file();
 
   /* Acquire a cursor for the database. */
@@ -253,6 +243,8 @@ main (int argc, char **argv)
       return 1;
     }
 
+  printf ("\nHash DB:\n");
+  printf (  "========\n");
   ret = dbcp->get (&key, &data, DB_FIRST);
   while (ret == 0)
     {
@@ -264,9 +256,18 @@ main (int argc, char **argv)
         hash += string_printf ("%02x", kptr[i]); // slow!
 
       unsigned int file_number = dbuffer.read_uint32();
-      printf ("hash %s => %u\n", hash.c_str(), file_number);
+      printf ("%s|%x/%03x\n", hash.c_str(), file_number / 0x1000, file_number & 0xfff);
       ret = dbcp->get (&key, &data, DB_NEXT);
     }
+
+  printf ("\n\n");
+  printf ("INode Count:    %zd\n", inode_total);
+  printf ("Avg INode Key:  %.2f\n", inode_total_keysize / double (inode_total));
+  printf ("Avg INode Data: %.2f\n", inode_total_datasize / double (inode_total));
+  printf ("\n\n");
+  printf ("Link Count:     %zd\n", link_total);
+  printf ("Avg Link Key:   %.2f\n", link_total_keysize / double (link_total));
+  printf ("Avg Link Data:  %.2f\n", link_total_datasize / double (link_total));
 
   if (!bdb->close())
     {
