@@ -25,6 +25,18 @@ revert
  - unlock ServerLock
 
 commit
+ - scan for new files
+ loop (ChangedINodes):
+  - integrate new files via hash in inode table
+ - generate diff
+ - expected hash cmp
+ - xz diff
+ - store history entry
+ - clear changed inodes
+
 clone
+ - setup empty repository
+ => pull
+
 merge
 status
