@@ -153,6 +153,7 @@ def apply (repo, diff, expected_hash = None, server = True, verbose = True, comm
 
   apply_tool = ApplyTool (repo.bdb, VERSION)
 
+  repo.bdb.begin_transaction() # FIXME: need transaction splitting
   for change in changes:
     if change[0] == "l+":
       apply_tool.apply_link_plus (change[1:])
@@ -166,8 +167,9 @@ def apply (repo, diff, expected_hash = None, server = True, verbose = True, comm
       apply_tool.apply_link_minus (change[1:])
     if change[0] == "i-":
       apply_tool.apply_inode_minus (change[1:])
+  repo.bdb.commit_transaction()
 
   if expected_hash:
-    commit (repo, diff, expected_hash, server = server, verbose = verbose, commit_args = commit_args, need_transaction = False)
+    commit (repo, diff, expected_hash, server = server, verbose = verbose, commit_args = commit_args)
   else:
-    commit (repo, server = server, verbose = verbose, commit_args = commit_args, need_transaction = False)
+    commit (repo, server = server, verbose = verbose, commit_args = commit_args)

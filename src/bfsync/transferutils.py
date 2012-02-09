@@ -961,8 +961,6 @@ def pull (repo, args, server = True):
   parser.add_argument ('repo', nargs = '?')
   pull_args = parser.parse_args (args)
 
-  repo.bdb.begin_transaction()
-
   repo_path = repo.path
 
   # Uncommitted changes?
@@ -1028,7 +1026,6 @@ def pull (repo, args, server = True):
   # Already up-to-date?
   if can_fast_forward and len (ff_apply) == 0:
     print "Already up-to-date."
-    repo.bdb.abort_transaction()
     return
 
   # transfer required history objects
@@ -1043,7 +1040,6 @@ def pull (repo, args, server = True):
       count += 1
   else:
     history_merge (c, repo, local_history, remote_history, pull_args)
-  repo.bdb.commit_transaction()
 
 def collect (repo, args, old_cwd):
   conn = repo.conn
