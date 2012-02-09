@@ -36,7 +36,6 @@ import datetime
 import random
 
 from utils import *
-from dbutils import *
 from diffutils import diff
 from commitutils import commit, revert, gen_status
 from remoteutils import *
