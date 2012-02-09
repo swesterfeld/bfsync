@@ -1,0 +1,30 @@
+Transaction Design:
+===================
+init
+ - move initial diff into objects/ dir
+ - create initial history entry
+
+push
+ - get remote history
+ - get local history
+ - find common version
+ - update remote history
+ - get list of required remote history objects
+ - transfer objects from local to remote
+
+pull
+ - check uncommitted changes
+ - get remote history
+ - get local history
+ - transfer history objects
+
+revert
+ - ServerLock
+ - delete new links / inodes vmin > new_vmax
+ - delete history entries > new_vmax
+ - unlock ServerLock
+
+commit
+clone
+merge
+status
