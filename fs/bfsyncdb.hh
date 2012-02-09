@@ -17,8 +17,9 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "glib.h"
 #include "bfbdb.hh"
+#include <glib.h>
+#include <stdint.h>
 #include <string>
 #include <vector>
 #include <set>
@@ -62,7 +63,7 @@ struct INode {
   std::string hash;
   std::string link;
 
-  unsigned int size; // FIXME
+  uint64_t     size;
   unsigned int major, minor;
   unsigned int nlink;
   unsigned int mtime, mtime_ns;

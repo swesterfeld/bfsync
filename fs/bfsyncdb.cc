@@ -249,7 +249,7 @@ BDBPtr::load_inode (const ID *id, unsigned int version)
           inode.type = BFSync::FileType (dbuffer.read_uint32());
           inode.hash = dbuffer.read_string();
           inode.link = dbuffer.read_string();
-          inode.size = dbuffer.read_uint32();
+          inode.size = dbuffer.read_uint64();
           inode.major = dbuffer.read_uint32();
           inode.minor = dbuffer.read_uint32();
           inode.nlink = dbuffer.read_uint32();
@@ -287,7 +287,7 @@ BDBPtr::store_inode (const INode* inode)
   dbuf.write_uint32 (inode->type);
   dbuf.write_string (inode->hash);
   dbuf.write_string (inode->link);
-  dbuf.write_uint32 (inode->size);
+  dbuf.write_uint64 (inode->size);
   dbuf.write_uint32 (inode->major);
   dbuf.write_uint32 (inode->minor);
   dbuf.write_uint32 (inode->nlink);
@@ -519,7 +519,7 @@ gen_iplus (const INode& inode)
   result.push_back (string_printf ("%u", inode.type));
   result.push_back (inode.hash);
   result.push_back (inode.link);
-  result.push_back (string_printf ("%u", inode.size));
+  result.push_back (string_printf ("%" G_GUINT64_FORMAT, inode.size));
   result.push_back (string_printf ("%u", inode.major));
   result.push_back (string_printf ("%u", inode.minor));
   result.push_back (string_printf ("%u", inode.nlink));

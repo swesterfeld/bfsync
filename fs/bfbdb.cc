@@ -324,6 +324,15 @@ DataOutBuffer::write_vec_zero (const std::vector<char>& data)
 }
 
 void
+DataOutBuffer::write_uint64 (guint64 i)
+{
+  char *s = reinterpret_cast <char *> (&i);
+  assert (sizeof (guint64) == 8);
+
+  out.insert (out.end(), s, s + 8);
+}
+
+void
 DataOutBuffer::write_uint32 (guint32 i)
 {
   char *s = reinterpret_cast <char *> (&i);
@@ -507,6 +516,19 @@ DataBuffer::DataBuffer (const char *ptr, size_t size) :
 {
 }
 
+guint64
+DataBuffer::read_uint64()
+{
+  assert (remaining >= 8);
+
+  guint64 result;
+  memcpy (&result, ptr, 8);
+  remaining -= 8;
+  ptr += 8;
+
+  return result;
+}
+
 guint32
 DataBuffer::read_uint32()
 {
@@ -584,7 +606,7 @@ BDB::store_inode (const INode *inode)
   dbuf.write_uint32 (inode->type);
   dbuf.write_string (inode->hash);
   dbuf.write_string (inode->link);
-  dbuf.write_uint32 (inode->size);
+  dbuf.write_uint64 (inode->size);
   dbuf.write_uint32 (inode->major);
   dbuf.write_uint32 (inode->minor);
   dbuf.write_uint32 (inode->nlink);
@@ -705,7 +727,7 @@ BDB::load_inode (const ID& id, unsigned int version, INode *inode)
           inode->type = BFSync::FileType (dbuffer.read_uint32());
           inode->hash = dbuffer.read_string();
           inode->link = dbuffer.read_string();
-          inode->size = dbuffer.read_uint32();
+          inode->size = dbuffer.read_uint64();
           inode->major = dbuffer.read_uint32();
           inode->minor = dbuffer.read_uint32();
           inode->nlink = dbuffer.read_uint32();

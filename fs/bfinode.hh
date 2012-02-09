@@ -135,7 +135,7 @@ public:
   ID            id;
   uid_t         uid;
   gid_t         gid;
-  size_t        size;
+  guint64       size;
   std::string   hash;
   time_t        mtime;
   int           mtime_ns;

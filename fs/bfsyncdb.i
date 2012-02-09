@@ -6,6 +6,7 @@
 
 %include "std_string.i"
 %include "std_vector.i"
+%include "stdint.i"
 
 // Instantiate templates used
 namespace std {

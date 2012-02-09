@@ -130,7 +130,7 @@ main (int argc, char **argv)
           int type = dbuffer.read_uint32();
           string hash = dbuffer.read_string();
           string link = dbuffer.read_string();
-          int size = dbuffer.read_uint32(); // FIXME
+          guint64 size = dbuffer.read_uint64();
           int major = dbuffer.read_uint32();
           int minor = dbuffer.read_uint32();
           int nlink = dbuffer.read_uint32();
@@ -144,7 +144,7 @@ main (int argc, char **argv)
           inode_total_datasize += data.get_size();
           inode_total++;
 
-          add ("inode", inodes, string_printf ("%s=%u|%s|%d|%d|%o|%d|%s|%s|%d|%d|%d|%d|%d|%d|%d|%d|%u",
+          add ("inode", inodes, string_printf ("%s=%u|%s|%d|%d|%o|%d|%s|%s|%" G_GUINT64_FORMAT "|%d|%d|%d|%d|%d|%d|%d|%u",
                  id.pretty_str().c_str(), vmin, VMSTR (vmax), uid, gid, mode, type, hash.c_str(), link.c_str(),
                  size, major, minor, nlink, ctime, ctime_ns, mtime, mtime_ns, new_file_number));
         }
