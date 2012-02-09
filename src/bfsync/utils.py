@@ -16,7 +16,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
-import sqlite3
 import CfgParser
 import bfsyncdb
 import resource
@@ -247,7 +246,6 @@ def parse_config (filename):
     "mount-point",
     "cached-inodes",
     "cached-dirs",
-    "sqlite-sync",
     "default/pull",
     "default/push",
     "default/get",

@@ -117,7 +117,6 @@ def put (repo, urls):
   remote_repo.put_objects (repo, tl, tparams)
 
 def push (repo, urls):
-  conn = repo.conn
   repo_path = repo.path
 
   if len (urls) == 0:

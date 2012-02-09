@@ -30,7 +30,6 @@ import HashCache
 import StatusLine
 import shutil
 import argparse
-import sqlite3
 import shutil
 import datetime
 import random
@@ -590,9 +589,6 @@ def cmd_clone():
 
   f.write ("# Repository ID (auto-generated, do not edit)\n");
   f.write ("""repo-id "%s";\n\n""" % gen_repo_id());
-
-  ## sqlite sync
-  f.write ("sqlite-sync 1;\n")
 
   ## use-uid-gid
   if parsed_args.use_uid_gid:
