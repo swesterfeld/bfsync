@@ -52,7 +52,6 @@ def get_remote_objects (repo, remote_repo, transfer_objs, tparams):
   remote_repo.get_objects (repo, tlist, tparams)
 
 def get (repo, urls):
-  conn = repo.conn
   repo_path = repo.path
 
   if len (urls) == 0:
@@ -65,8 +64,6 @@ def get (repo, urls):
 
   remote_repo = RemoteRepo (url)
 
-  c = conn.cursor()
-
   # create list of required objects
   status_line.update ("preparing transfer list...")
   objs = []
@@ -76,6 +73,7 @@ def get (repo, urls):
     if hash == "":
       break           # done
     objs.append (hash)
+  del hi # free locks the iterator might hold
 
   # setup rate limit
   cfg_limit = repo.config.get ("get-rate-limit")
@@ -87,7 +85,6 @@ def get (repo, urls):
   get_remote_objects (repo, remote_repo, objs, tparams)
 
 def put (repo, urls):
-  conn = repo.conn
   repo_path = repo.path
 
   if len (urls) == 0:
@@ -103,9 +100,11 @@ def put (repo, urls):
 
   tl = TransferList()
   for hash in need_objs:
-    src_file = os.path.join ("objects", make_object_filename (hash))
-    if validate_object (src_file, hash):
-      tl.add (TransferFile (hash, os.path.getsize (src_file)))
+    if repo.validate_object (hash):
+      file_number = repo.bdb.load_hash2file (hash)
+      if file_number != 0:
+        full_name = repo.make_number_filename (file_number)
+        tl.add (TransferFile (hash, os.path.getsize (full_name), file_number))
 
   # setup rate limit
   cfg_limit = repo.config.get ("put-rate-limit")

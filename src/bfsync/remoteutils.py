@@ -113,12 +113,13 @@ def remote_need_objects (repo, table):
 
   # MERGE ME WITH get
   objs = []
-  c.execute ('''SELECT DISTINCT hash FROM %s''' % table)
-  for row in c:
-    hash = "%s" % row[0]
-    if len (hash) == 40:
-      dest_file = os.path.join (repo_path, "objects", make_object_filename (hash))
-      if not validate_object (dest_file, hash):
-        objs += [ hash ]
+  hi = bfsyncdb.INodeHashIterator (repo.bdb)
+  while True:
+    hash = hi.get_next()
+    if hash == "":
+      break           # done
+    if not repo.validate_object (hash):
+      objs.append (hash)
+  del hi # free locks iterator may have held
   # end MERGE ME
   return objs
