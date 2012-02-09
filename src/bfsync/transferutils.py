@@ -964,7 +964,6 @@ def pull (repo, args, server = True):
 
   repo.bdb.begin_transaction()
 
-  conn = repo.conn
   repo_path = repo.path
 
   # Uncommitted changes?
@@ -999,8 +998,6 @@ def pull (repo, args, server = True):
 
     row = (hentry.version, hentry.hash, hentry.author, hentry.message, hentry.time)
     local_history += [ row ]
-
-  c = conn.cursor()
 
   l_dict = dict()     # dict: version number -> diff hash
   for lh in local_history:

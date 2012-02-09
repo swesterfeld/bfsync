@@ -21,8 +21,7 @@ import os
 import bfsyncdb
 
 class ApplyTool:
-  def __init__ (self, c, bdb, VERSION):
-    self.c = c
+  def __init__ (self, bdb, VERSION):
     self.bdb = bdb
     self.VERSION = VERSION
 
@@ -149,13 +148,10 @@ class ApplyTool:
 
 def apply (repo, diff, expected_hash = None, server = True, verbose = True, commit_args = None):
   changes = parse_diff (diff)
-  conn = repo.conn
-
-  c = conn.cursor()
 
   VERSION = repo.first_unused_version()
 
-  apply_tool = ApplyTool (c, repo.bdb, VERSION)
+  apply_tool = ApplyTool (repo.bdb, VERSION)
 
   for change in changes:
     if change[0] == "l+":
@@ -171,7 +167,6 @@ def apply (repo, diff, expected_hash = None, server = True, verbose = True, comm
     if change[0] == "i-":
       apply_tool.apply_inode_minus (change[1:])
 
-  conn.commit()
   if expected_hash:
     commit (repo, diff, expected_hash, server = server, verbose = verbose, commit_args = commit_args, need_transaction = False)
   else:

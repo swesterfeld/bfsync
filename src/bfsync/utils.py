@@ -112,7 +112,6 @@ class Repo:
   def make_temp_name (self):
     tmp_file = NamedTemporaryFile (dir = os.path.join (self.path, "tmp"), delete = False)
     tmp_file.close()
-    c = self.conn.cursor()
     self.bdb.add_temp_file (os.path.basename (tmp_file.name), os.getpid())
     return tmp_file.name
 
@@ -193,15 +192,6 @@ def cd_repo_connect_db():
   repo_path = find_repo_dir()
   bfsync_info = parse_config (repo_path + "/config")
 
-  sqlite_sync = bfsync_info.get ("sqlite-sync")
-  if len (sqlite_sync) != 1:
-    raise Exception ("bad sqlite-sync setting")
-
-  if sqlite_sync[0] == "0":
-    sqlite_sync = False
-  else:
-    sqlite_sync = True
-
   cache_size = bfsync_info.get ("cache-size")
   if len (cache_size) != 1:
     raise Exception ("bad cache-size setting")
@@ -210,18 +200,12 @@ def cd_repo_connect_db():
   os.chdir (repo_path)
 
   repo = Repo()
-  repo.conn = sqlite3.connect (os.path.join (repo_path, 'db'))
   repo.bdb = bfsyncdb.open_db (repo_path, cache_size, False)
   if not repo.bdb.open_ok():
     raise BFSyncError ("database of repository %s can't be opened" % repo_path)
 
-  repo.conn.text_factory = str;
   repo.path = repo_path
   repo.config = bfsync_info
-
-  if not sqlite_sync:
-    c = repo.conn.cursor()
-    c.execute ('''PRAGMA synchronous=off''')
 
   # wipe old temp files
   repo.bdb.begin_transaction()

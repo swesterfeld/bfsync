@@ -112,9 +112,6 @@ class INodeInfo:
     return size
 
 def gen_status (repo):
-  conn = repo.conn
-  c = conn.cursor()
-
   return [ "FIXME" ]
 
   VERSION = 1
@@ -195,9 +192,6 @@ def gen_status (repo):
   return status
 
 def init_commit_msg (repo, filename):
-  conn = repo.conn
-  c = conn.cursor()
-
   VERSION = repo.first_unused_version()
 
   msg_file = open (filename, "w")
@@ -230,7 +224,6 @@ class WorkingSetGenerator:
     self.wset = []
 
 def commit (repo, expected_diff = None, expected_diff_hash = None, server = True, verbose = True, commit_args = None, need_transaction = True):
-  conn = repo.conn
   repo_path = repo.path
 
   DEBUG_MEM = False
@@ -243,8 +236,6 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
   else:
     server_conn = NoServerConn()
   server_conn.get_lock()
-
-  c = conn.cursor()
 
   VERSION = repo.first_unused_version()
 
@@ -345,7 +336,15 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
   #
   # we also need to do this before actually modifying the database, because
   # the read cursor held by the ChangedINodesIterator will block writes
+
+  if need_transaction:
+    repo.bdb.begin_transaction()
+
   id_list_filename = repo.make_temp_name()
+
+  if need_transaction:
+    repo.bdb.commit_transaction()
+
   id_list_file = open (id_list_filename, "w")
   changed_it = bfsyncdb.ChangedINodesIterator (repo.bdb)
   while True:
@@ -390,7 +389,14 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
       have_message = True
 
   if verbose and not have_message:
+    if need_transaction:
+      repo.bdb.begin_transaction()
+
     commit_msg_filename = repo.make_temp_name()
+
+    if need_transaction:
+      repo.bdb.commit_transaction()
+
     init_commit_msg (repo, commit_msg_filename)
     launch_editor (commit_msg_filename)
     if not commit_msg_ok (commit_msg_filename):
@@ -429,7 +435,14 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
   if verbose:
     status_line.update ("computing changes")
 
+  if need_transaction:
+    repo.bdb.begin_transaction()
+
   diff_filename = repo.make_temp_name()
+
+  if need_transaction:
+    repo.bdb.commit_transaction()
+
   diff_file = open (diff_filename, "w")
   diff (repo, diff_file)
   diff_file.close()
@@ -472,8 +485,6 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
       repo.bdb.commit_transaction()
   else:
     print "Nothing to commit."
-  conn.commit()
-  c.close()
 
   if DEBUG_MEM:
     print_mem_usage ("commit end")

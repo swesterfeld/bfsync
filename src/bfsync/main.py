@@ -233,7 +233,6 @@ def cmd_debug_integrity():
 
 def cmd_log():
   repo = cd_repo_connect_db()
-  conn = repo.conn
   repo_path = repo.path
 
   VERSION = 1
@@ -407,7 +406,6 @@ def cmd_init():
   f = open ("config", "w")
   f.write ("# Repository ID (auto-generated, do not edit)\n");
   f.write ("""repo-id "%s";\n\n""" % gen_repo_id());
-  f.write ("sqlite-sync 1;\n")
   f.write ("cache-size 16;\n")
   f.close()
 
@@ -425,15 +423,6 @@ def cmd_init():
 
   # create history table
   repo = cd_repo_connect_db()
-  conn = repo.conn
-  c = conn.cursor()
-  # and temp_files table
-  c.execute ('''CREATE TABLE temp_files
-                 (
-                   name    text,
-                   pid     integer
-                 )''')
-  conn.commit()
 
   # create initial commit diff
   time_now = int (time.time())
@@ -460,7 +449,6 @@ def cmd_init():
   repo.bdb.begin_transaction()
   repo.bdb.store_history_entry (1, hash, "no author", "initial commit", time_now)
   repo.bdb.commit_transaction()
-  conn.commit()
 
 def guess_dir_name (url):
   dir_name = ""
@@ -632,12 +620,7 @@ def cmd_clone():
   os.mkdir ("processes", 0700)
 
   repo = cd_repo_connect_db()
-  conn = repo.conn
   repo_path = repo.path
-  c = conn.cursor()
-  create_tables (c)
-  init_tables (c)
-  conn.commit()
 
   # pull changes from master
   pull (repo, [ url ], server = False)
