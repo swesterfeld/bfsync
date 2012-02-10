@@ -256,4 +256,15 @@ public:
   std::string get_next();
 };
 
+class BDBException
+{
+private:
+  BFSync::BDBError error;
+
+public:
+  BDBException (BFSync::BDBError error);
+
+  std::string error_string();
+};
+
 const unsigned int VERSION_INF = 0xffffffff;

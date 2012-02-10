@@ -44,6 +44,12 @@ enum BDBTables
   BDB_TABLE_TEMP_FILES          = 10,
 };
 
+enum BDBError
+{
+  BDB_ERROR_NONE         = 0,
+  BDB_ERROR_TRANS_ACTIVE = 1,
+};
+
 BDB *bdb_open (const std::string& path, int cache_size_mb, bool recover);
 
 class DataBuffer
@@ -149,7 +155,7 @@ public:
   void  sync();
   bool  close();
 
-  void  begin_transaction();
+  BDBError  begin_transaction();
   void  commit_transaction();
   void  abort_transaction();
   DbTxn*get_transaction();

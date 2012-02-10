@@ -212,7 +212,9 @@ BDBPtr::open_ok()
 void
 BDBPtr::begin_transaction()
 {
-  ptr->my_bdb->begin_transaction();
+  BFSync::BDBError err = ptr->my_bdb->begin_transaction();
+  if (err)
+    throw BDBException (err);
 }
 
 void
@@ -892,4 +894,23 @@ INodeHashIterator::get_next()
         }
     }
   return "";
+}
+
+BDBException::BDBException (BFSync::BDBError error) :
+  error (error)
+{
+}
+
+string
+BDBException::error_string()
+{
+  switch (error)
+    {
+      case BFSync::BDB_ERROR_NONE:
+        return "no error";
+
+      case BFSync::BDB_ERROR_TRANS_ACTIVE:
+        return "transaction started, but another transaction is still active";
+    }
+  return "unknown error";
 }

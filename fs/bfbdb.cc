@@ -238,16 +238,19 @@ BDB::close()
   return (ret == 0);
 }
 
-void
+BDBError
 BDB::begin_transaction()
 {
   Lock lock (mutex);
 
-  assert (transaction == NULL);
+  if (transaction != NULL)
+    return BDB_ERROR_TRANS_ACTIVE;
 
   int ret = db_env->txn_begin (NULL, &transaction, 0);
   g_assert (ret == 0);
   g_assert (transaction);
+
+  return BDB_ERROR_NONE;
 }
 
 TimeProfSection tp_commit_transaction ("BDB::commit_transaction");

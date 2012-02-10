@@ -17,4 +17,14 @@ namespace std {
   %template(TempFileVector) vector<TempFile>;
 }
 
+%exception {
+  try {
+    $action
+  }
+  catch (BDBException& e) {
+    PyErr_SetString (PyExc_Exception, ("BDB Exception: " + e.error_string()).c_str());
+    return NULL;
+  }
+}
+
 %include "bfsyncdb.hh"
