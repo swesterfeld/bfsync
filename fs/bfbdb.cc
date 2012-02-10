@@ -247,7 +247,9 @@ BDB::begin_transaction()
     return BDB_ERROR_TRANS_ACTIVE;
 
   int ret = db_env->txn_begin (NULL, &transaction, 0);
-  g_assert (ret == 0);
+  if (ret)
+    return ret2error (ret);
+
   g_assert (transaction);
 
   return BDB_ERROR_NONE;
@@ -255,32 +257,45 @@ BDB::begin_transaction()
 
 TimeProfSection tp_commit_transaction ("BDB::commit_transaction");
 
-void
+BDBError
 BDB::commit_transaction()
 {
   Lock lock (mutex);
 
   TimeProfHandle h (tp_commit_transaction);
 
+  if (!transaction)
+    return BDB_ERROR_NO_TRANS;
+
   int ret = transaction->commit (0);
-  g_assert (ret == 0);
+  transaction = NULL;
+
+  if (ret)
+    return ret2error (ret);
 
   /* checkpoint database every minute (min = 1) */
   ret = db_env->txn_checkpoint (0, 1, 0);
-  g_assert (ret == 0);
+  if (ret)
+    return ret2error (ret);
 
-  transaction = NULL;
+  return BDB_ERROR_NONE;
 }
 
-void
+BDBError
 BDB::abort_transaction()
 {
   Lock lock (mutex);
 
-  int ret = transaction->abort();
-  g_assert (ret == 0);
+  if (!transaction)
+    return BDB_ERROR_NO_TRANS;
 
+  int ret = transaction->abort();
   transaction = NULL;
+
+  if (ret)
+    return ret2error (ret);
+
+  return BDB_ERROR_NONE;
 }
 
 DbTxn*
@@ -974,12 +989,13 @@ BDB::add_changed_inode (const ID& id)
   assert (ret == 0);
 }
 
-void
+BDBError
 BDB::clear_changed_inodes()
 {
   Lock lock (mutex);
 
-  g_assert (transaction != NULL);
+  if (!transaction)
+    return BDB_ERROR_NO_TRANS;
 
   DataOutBuffer kbuf;
   kbuf.write_table (BDB_TABLE_CHANGED_INODES);
@@ -996,7 +1012,9 @@ BDB::clear_changed_inodes()
       ID id (dbuffer);
 
       // delete normal entry
-      dbc->del (0);
+      ret = dbc->del (0);
+      if (ret)
+        return ret2error (ret);
 
       // delete reverse entry
       DataOutBuffer rev_kbuf;
@@ -1006,11 +1024,13 @@ BDB::clear_changed_inodes()
 
       Dbt rev_key (rev_kbuf.begin(), rev_kbuf.size());
       ret = db->del (transaction, &rev_key, 0);
-      g_assert (ret == 0);
+      if (ret)
+        return ret2error (ret);
 
       /* goto next record */
       ret = dbc->get (&key, &data, DB_NEXT_DUP);
     }
+  return BDB_ERROR_NONE;
 }
 
 TimeProfSection tp_gen_new_file_number ("BDB::gen_new_file_number");
@@ -1328,6 +1348,16 @@ void
 BDB::register_pid()
 {
   add_pid (repo_path);
+}
+
+BDBError
+BDB::ret2error (int ret)
+{
+  switch (ret)
+    {
+      case 0: return BDB_ERROR_NONE;
+    }
+  return BDB_ERROR_UNKNOWN;
 }
 
 }

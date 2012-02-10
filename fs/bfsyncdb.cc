@@ -220,13 +220,17 @@ BDBPtr::begin_transaction()
 void
 BDBPtr::commit_transaction()
 {
-  ptr->my_bdb->commit_transaction();
+  BFSync::BDBError err = ptr->my_bdb->commit_transaction();
+  if (err)
+    throw BDBException (err);
 }
 
 void
 BDBPtr::abort_transaction()
 {
-  ptr->my_bdb->abort_transaction();
+  BFSync::BDBError err = ptr->my_bdb->abort_transaction();
+  if (err)
+    throw BDBException (err);
 }
 
 void
@@ -367,7 +371,9 @@ BDBPtr::delete_inode (const INode& inode)
 void
 BDBPtr::clear_changed_inodes()
 {
-  ptr->my_bdb->clear_changed_inodes();
+  BFSync::BDBError err = ptr->my_bdb->clear_changed_inodes();
+  if (err)
+    throw BDBException (err);
 }
 
 ID
@@ -909,8 +915,14 @@ BDBException::error_string()
       case BFSync::BDB_ERROR_NONE:
         return "no error";
 
+      case BFSync::BDB_ERROR_UNKNOWN:
+        return "unknown error";
+
       case BFSync::BDB_ERROR_TRANS_ACTIVE:
         return "transaction started, but another transaction is still active";
+
+      case BFSync::BDB_ERROR_NO_TRANS:
+        return "no transaction started";
     }
   return "unknown error";
 }

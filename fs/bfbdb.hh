@@ -46,8 +46,10 @@ enum BDBTables
 
 enum BDBError
 {
-  BDB_ERROR_NONE         = 0,
-  BDB_ERROR_TRANS_ACTIVE = 1,
+  BDB_ERROR_NONE = 0,
+  BDB_ERROR_UNKNOWN,
+  BDB_ERROR_TRANS_ACTIVE,
+  BDB_ERROR_NO_TRANS,
 };
 
 BDB *bdb_open (const std::string& path, int cache_size_mb, bool recover);
@@ -142,6 +144,8 @@ class BDB
   void add_pid (const std::string& path);
   void del_pid();
 
+  BDBError ret2error (int ret);
+
 public:
   Db*       get_db();
   Db*       get_db_hash2file();
@@ -156,8 +160,8 @@ public:
   bool  close();
 
   BDBError  begin_transaction();
-  void  commit_transaction();
-  void  abort_transaction();
+  BDBError  commit_transaction();
+  BDBError  abort_transaction();
   DbTxn*get_transaction();
 
   void  store_link (const LinkPtr& link);
@@ -168,7 +172,7 @@ public:
   void  delete_inodes (const INodeVersionList& inodes);
   bool  load_inode (const ID& id, unsigned int version, INode *inode);
   void  add_changed_inode (const ID& id);
-  void  clear_changed_inodes();
+  BDBError  clear_changed_inodes();
 
   bool  try_store_id2ino (const ID& id, int ino);
   bool  load_ino (const ID& id, ino_t& ino);
