@@ -17,14 +17,19 @@ class CommitCommand:
     self.state.arg = arg
     self.state.count = 0
 
+  def get_state (self):
+    return self.state
+
+  def set_state (self, state):
+    self.state = state
+
   def begin (self):
     print "begin... %s" % self.state.arg
     time.sleep (1)
     self.count2 = self.state.count * 2
     return True
 
-  def restart (self, state):
-    self.state = state
+  def restart (self):
     self.count2 = self.state.count * 2
 
   def execute (self):
@@ -40,7 +45,7 @@ class CommitCommand:
 
 def mk_journal_entry (cmd, run_state):
   f = open ("cmdtest-journal", "w")
-  f.write ("%s\n" % cPickle.dumps ((run_state, cmd.state)))
+  f.write ("%s\n" % cPickle.dumps ((run_state, cmd.get_state())))
   f.close()
 
 def rm_journal_entry (cmd):
@@ -58,7 +63,8 @@ RUN_FINISH  = 2
 
 def run_command (cmd, start_state = None, state = None):
   if state:
-    cmd.restart (state)
+    cmd.set_state (state)
+    cmd.restart()
   else:
     if not cmd.begin():
       print "cmd fail in begin"
