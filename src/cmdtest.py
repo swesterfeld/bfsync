@@ -22,6 +22,9 @@ class CommitCommand:
     time.sleep (1)
     return True
 
+  def restart (self, state):
+    self.state = state
+
   def execute (self):
     self.state.count += 1
     print "execute... %s/%d" % (self.state.arg, self.state.count)
@@ -32,9 +35,9 @@ class CommitCommand:
     print "finish... %s" % self.state.arg
     time.sleep (1)
 
-def mk_journal_entry (cmd):
+def mk_journal_entry (cmd, run_state):
   f = open ("cmdtest-journal", "w")
-  f.write ("%s\n" % cPickle.dumps (cmd.state))
+  f.write ("%s\n" % cPickle.dumps ((run_state, cmd.state)))
   f.close()
 
 def rm_journal_entry (cmd):
@@ -47,27 +50,36 @@ def chk_journal_entry ():
   except:
     pass
 
-def run_command (cmd):
-  if not cmd.begin():
-    print "cmd fail in begin"
-    sys.exit (1)
+RUN_EXECUTE = 1
+RUN_FINISH  = 2
 
-  mk_journal_entry (cmd)
+def run_command (cmd, start_state = None, state = None):
+  if state:
+    cmd.restart (state)
+  else:
+    if not cmd.begin():
+      print "cmd fail in begin"
+      sys.exit (1)
+    start_state = RUN_EXECUTE
 
-  while True:
-    ret = cmd.execute()
-    mk_journal_entry (cmd)
-    if ret == DONE:
-      break
+  if start_state == RUN_EXECUTE:
+    mk_journal_entry (cmd, RUN_EXECUTE)
 
-  rm_journal_entry (cmd)
+    while True:
+      ret = cmd.execute()
+      if ret == DONE:
+        mk_journal_entry (cmd, RUN_FINISH)
+        break
+      else:
+        mk_journal_entry (cmd, RUN_EXECUTE)
+
   cmd.finish()
+  rm_journal_entry (cmd)
 
 je = chk_journal_entry()
 if je:
   x = CommitCommand (None)
-  x.state = je
-  run_command (x)
+  run_command (x, je[0], je[1])
 else:
   x = CommitCommand (sys.argv[1])
   run_command (x)
