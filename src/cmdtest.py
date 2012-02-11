@@ -20,19 +20,22 @@ class CommitCommand:
   def begin (self):
     print "begin... %s" % self.state.arg
     time.sleep (1)
+    self.count2 = self.state.count * 2
     return True
 
   def restart (self, state):
     self.state = state
+    self.count2 = self.state.count * 2
 
   def execute (self):
     self.state.count += 1
-    print "execute... %s/%d" % (self.state.arg, self.state.count)
+    self.count2 += 2
+    print "execute... %s/%d (%d)" % (self.state.arg, self.state.count, self.count2)
     time.sleep (1)
     return CONTINUE if self.state.count < 10 else DONE
 
   def finish (self):
-    print "finish... %s" % self.state.arg
+    print "finish... %s (%d)" % (self.state.arg, self.count2)
     time.sleep (1)
 
 def mk_journal_entry (cmd, run_state):
