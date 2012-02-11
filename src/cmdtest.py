@@ -56,6 +56,7 @@ def run_command (cmd):
 
   while True:
     ret = cmd.execute()
+    mk_journal_entry (cmd)
     if ret == DONE:
       break
 
