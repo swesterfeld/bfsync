@@ -549,3 +549,11 @@ def revert (repo, VERSION, verbose = True):
   # we modified the db, so the fs needs to reload everything
   # in-memory cached items will not be correct
   server_conn.clear_cache()
+
+class CommitCommand:
+  def __init__ (self, commit_args):
+    self.commit_args = commit_args
+
+def new_commit (repo, commit_args):
+  cmd = CommitCommand (commit_args)
+  run_command (repo, cmd)

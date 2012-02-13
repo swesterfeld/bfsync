@@ -36,7 +36,7 @@ import random
 
 from utils import *
 from diffutils import diff
-from commitutils import commit, revert, gen_status
+from commitutils import commit, revert, gen_status, new_commit
 from remoteutils import *
 from TransferList import TransferList, TransferFile
 from StatusLine import status_line
@@ -78,7 +78,7 @@ def cmd_commit():
 
   repo = cd_repo_connect_db()
   status_line.set_op ("COMMIT")
-  commit (repo, commit_args = commit_args)
+  new_commit (repo, commit_args = commit_args)
 
 def cmd_debug_load_all_inodes():
   bfsync_dir = find_bfsync_dir()
