@@ -11,41 +11,9 @@ DONE=2
 class CommandState:
   pass
 
-class CommitCommand:
-  def __init__ (self, arg):
-    self.state = CommandState()
-    self.state.arg = arg
-    self.state.count = 0
-
-  def get_state (self):
-    return self.state
-
-  def set_state (self, state):
-    self.state = state
-
-  def begin (self):
-    print "begin... %s" % self.state.arg
-    time.sleep (1)
-    self.count2 = self.state.count * 2
-    return True
-
-  def restart (self):
-    self.count2 = self.state.count * 2
-
-  def execute (self):
-    self.state.count += 1
-    self.count2 += 2
-    print "execute... %s/%d (%d)" % (self.state.arg, self.state.count, self.count2)
-    time.sleep (1)
-    return CONTINUE if self.state.count < 10 else DONE
-
-  def finish (self):
-    print "finish... %s (%d)" % (self.state.arg, self.count2)
-    time.sleep (1)
-
-def mk_journal_entry (cmd, run_state):
+def mk_journal_entry (cmd):
   f = open ("cmdtest-journal", "w")
-  f.write ("%s\n" % cPickle.dumps ((run_state, cmd.get_state())))
+  f.write ("%s\n" % cPickle.dumps (cmd.get_state()))
   f.close()
 
 def rm_journal_entry (cmd):
@@ -58,37 +26,52 @@ def chk_journal_entry ():
   except:
     pass
 
-RUN_EXECUTE = 1
-RUN_FINISH  = 2
+class CommitCommand:
+  def __init__ (self, arg):
+    self.state = CommandState()
+    self.state.arg = arg
+    self.state.count = 0
 
-def run_command (cmd, start_state = None, state = None):
+  def get_state (self):
+    return self.state
+
+  def set_state (self, state):
+    self.state = state
+
+  def start (self):
+    print "start... %s" % self.state.arg
+    time.sleep (1)
+    self.count2 = self.state.count * 2
+    return True
+
+  def restart (self):
+    self.count2 = self.state.count * 2
+
+  def execute (self):
+    while self.state.count < 10:
+      self.state.count += 1
+      self.count2 += 2
+      print "execute... %s/%d (%d)" % (self.state.arg, self.state.count, self.count2)
+      time.sleep (1)
+      mk_journal_entry (self)
+
+def run_command (cmd, state = None):
   if state:
     cmd.set_state (state)
     cmd.restart()
   else:
-    if not cmd.begin():
+    if not cmd.start():
       print "cmd fail in begin"
       sys.exit (1)
-    start_state = RUN_EXECUTE
 
-  if start_state == RUN_EXECUTE:
-    mk_journal_entry (cmd, RUN_EXECUTE)
-
-    while True:
-      ret = cmd.execute()
-      if ret == DONE:
-        mk_journal_entry (cmd, RUN_FINISH)
-        break
-      else:
-        mk_journal_entry (cmd, RUN_EXECUTE)
-
-  cmd.finish()
+  mk_journal_entry (cmd)
+  cmd.execute()
   rm_journal_entry (cmd)
 
 je = chk_journal_entry()
 if je:
   x = CommitCommand (None)
-  run_command (x, je[0], je[1])
+  run_command (x, je)
 else:
   x = CommitCommand (sys.argv[1])
   run_command (x)
