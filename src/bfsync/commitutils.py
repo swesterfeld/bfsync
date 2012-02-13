@@ -667,6 +667,75 @@ class CommitCommand:
 
     id_list_file.close()
 
+    # commit message
+    commit_args = None # FIXME
+    verbose = True # FIXME
+    have_message = False
+    if commit_args:
+      if commit_args.get ("message"):
+        have_message = True
+
+    if verbose and not have_message:
+      self.repo.bdb.begin_transaction()
+      commit_msg_filename = self.repo.make_temp_name()
+      self.repo.bdb.commit_transaction()
+
+      init_commit_msg (self.repo, commit_msg_filename)
+      launch_editor (commit_msg_filename)
+      if not commit_msg_ok (commit_msg_filename):
+        raise BFSyncError ("commit: empty commit message - aborting commit")
+      commit_msg = ""
+      commit_msg_file = open (commit_msg_filename, "r")
+      for line in commit_msg_file:
+        if line[0] != "#":
+          commit_msg += line
+      commit_msg_file.close()
+    else:
+      commit_msg = "commit message"
+
+    commit_author = None
+    commit_time = None
+
+    if commit_args:
+      commit_author = commit_args.get ("author")
+      commit_time = commit_args.get ("time")
+      xcommit_msg = commit_args.get ("message")
+      if xcommit_msg is not None:
+        commit_msg = xcommit_msg
+
+    if commit_author is None:
+      commit_author = get_author()
+
+    if commit_time is None:
+      commit_time = int (time.time())
+
+    # compute commit diff
+    status_line.update ("computing changes")
+
+    self.repo.bdb.begin_transaction()
+    diff_filename = self.repo.make_temp_name()
+    self.repo.bdb.commit_transaction()
+
+    diff_file = open (diff_filename, "w")
+    diff (self.repo, diff_file)
+    diff_file.close()
+
+    if os.path.getsize (diff_filename) != 0:
+      xz (diff_filename)
+      hash = move_file_to_objects (self.repo, diff_filename + ".xz")
+      commit_size_ok = True
+    else:
+      commit_size_ok = False
+
+    if commit_size_ok:
+      self.repo.bdb.begin_transaction()
+      self.repo.bdb.store_history_entry (self.VERSION, hash, commit_author, commit_msg, commit_time)
+      self.repo.bdb.clear_changed_inodes()
+      self.repo.bdb.commit_transaction()
+    else:
+      print "Nothing to commit."
+
+
 def run_command (repo, cmd):
   if not cmd.start (repo):
     return False
