@@ -553,6 +553,125 @@ def revert (repo, VERSION, verbose = True):
 class CommitCommand:
   def __init__ (self, commit_args):
     self.commit_args = commit_args
+    self.total_file_size = 0
+    self.total_file_count = 0
+    self.outss = OutputSubsampler()
+
+  # update work to do
+  def scan_inode (self, inode):
+    if inode.hash == "new":
+      filename = self.repo.make_number_filename (inode.new_file_number)
+      self.total_file_size += os.path.getsize (filename)
+      self.total_file_count += 1
+      if self.outss.need_update():
+        status_line.update ("scanning file %d (total %s)" % (
+          self.total_file_count, format_size1 (self.total_file_size)))
+
+  # create file with changed IDs
+  def make_id_list (self):
+    self.repo.bdb.begin_transaction()
+    id_list_filename = self.repo.make_temp_name()
+    self.repo.bdb.commit_transaction()
+
+    id_list_file = open (id_list_filename, "w")
+    changed_it = bfsyncdb.ChangedINodesIterator (self.repo.bdb)
+    while True:
+      id = changed_it.get_next()
+      if not id.valid:
+        break
+      id_list_file.write (id.str() + "\n")
+      inode = self.repo.bdb.load_inode (id, self.VERSION)
+      if inode.valid:
+        self.scan_inode (inode)
+    del changed_it
+    id_list_file.close()
+    return id_list_filename
+
+  # compute SHA1 hash of one file
+  def hash_one (self, filename):
+    file = open (filename, "r")
+    hash = hashlib.sha1()
+    eof = False
+    while not eof:
+      data = file.read (256 * 1024)
+      if data == "":
+        eof = True
+      else:
+        hash.update (data)
+        self.bytes_done += len (data)
+        if self.outss.need_update():
+          self.update_status()
+    file.close()
+    return hash.hexdigest()
+
+  # update SHA1 hashing status
+  def update_status (self):
+    elapsed_time = max (time.time() - self.start_time, 1)
+    bytes_per_sec = max (self.bytes_done / elapsed_time, 1)
+    eta = int ((self.total_file_size - self.bytes_done) / bytes_per_sec)
+    status_line.update ("adding file %d/%d    %s    %.1f%%   %s   ETA: %s" % (
+        self.files_added, self.files_total,
+        format_size (self.bytes_done, self.total_file_size),
+        self.bytes_done * 100.0 / max (self.total_file_size, 1),
+        format_rate (bytes_per_sec),
+        format_time (eta)
+      ))
+
+  def start (self, repo):
+    self.repo = repo
+    self.VERSION = self.repo.first_unused_version()
+    self.server_conn = ServerConn (repo.path)
+    self.id_list_filename = self.make_id_list()
+    return True
+
+  def execute (self):
+    self.files_total = self.total_file_count
+    self.files_added = 0
+    self.bytes_done = 0
+    self.start_time = time.time()
+
+    # process files to add in small chunks
+    id_list_file = open (self.id_list_filename, "r")
+    TXN_OP_COUNT = 0
+    self.repo.bdb.begin_transaction()
+    for id_str in id_list_file:
+      id = bfsyncdb.ID (id_str.strip())
+      if not id.valid:
+        raise Exception ("found invalid id during commit")
+      inode = self.repo.bdb.load_inode (id, self.VERSION)
+      if inode.valid and inode.hash == "new":
+        self.files_added += 1
+        filename = self.repo.make_number_filename (inode.new_file_number)
+        hash = self.hash_one (filename)
+        size = os.path.getsize (filename)
+        self.repo.bdb.delete_inode (inode)
+
+        if self.repo.bdb.load_hash2file (hash) == 0:
+          self.repo.bdb.store_hash2file (hash, inode.new_file_number)
+        else:
+          self.repo.bdb.add_deleted_file (inode.new_file_number)
+
+        inode.hash = hash
+        inode.size = size
+        inode.new_file_number = 0
+        self.repo.bdb.store_inode (inode)
+
+        if TXN_OP_COUNT >= 20000:
+          TXN_OP_COUNT = 0
+          self.repo.bdb.commit_transaction()
+          print "commit"
+          self.repo.bdb.begin_transaction()
+        else:
+          TXN_OP_COUNT += 1
+    self.repo.bdb.commit_transaction()
+
+    id_list_file.close()
+
+def run_command (repo, cmd):
+  if not cmd.start (repo):
+    return False
+
+  cmd.execute()
 
 def new_commit (repo, commit_args):
   cmd = CommitCommand (commit_args)
