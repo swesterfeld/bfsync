@@ -340,6 +340,9 @@ BDBPtr::store_inode (const INode* inode)
 void
 BDBPtr::delete_inode (const INode& inode)
 {
+  if (!ptr->my_bdb->get_transaction())
+    throw BDBException (BFSync::BDB_ERROR_NO_TRANS);
+
   DataOutBuffer kbuf;
 
   id_store (&inode.id, kbuf);
