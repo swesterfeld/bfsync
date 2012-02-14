@@ -255,20 +255,20 @@ BDBPtr::abort_transaction()
 }
 
 void
-id_store (const ID *id, DataOutBuffer& data_buf)
+id_store (const ID& id, DataOutBuffer& data_buf)
 {
-  id->id.store (data_buf);
+  id.id.store (data_buf);
 }
 
 void
-id_load (ID *id, DataBuffer& dbuf)
+id_load (ID& id, DataBuffer& dbuf)
 {
-  id->id = BFSync::ID (dbuf);
-  id->valid = true;
+  id.id = BFSync::ID (dbuf);
+  id.valid = true;
 }
 
 INode
-BDBPtr::load_inode (const ID *id, unsigned int version)
+BDBPtr::load_inode (const ID& id, unsigned int version)
 {
   INode inode;
   DataOutBuffer kbuf;
@@ -291,7 +291,7 @@ BDBPtr::load_inode (const ID *id, unsigned int version)
 
       if (version >= inode.vmin && version <= inode.vmax)
         {
-          inode.id   = *id;
+          inode.id   = id;
           inode.uid  = dbuffer.read_uint32();
           inode.gid  = dbuffer.read_uint32();
           inode.mode = dbuffer.read_uint32();
@@ -321,30 +321,30 @@ BDBPtr::load_inode (const ID *id, unsigned int version)
 }
 
 void
-BDBPtr::store_inode (const INode* inode)
+BDBPtr::store_inode (const INode& inode)
 {
   DataOutBuffer kbuf, dbuf;
 
-  id_store (&inode->id, kbuf);
+  id_store (inode.id, kbuf);
   kbuf.write_table (BDB_TABLE_INODES);
 
-  dbuf.write_uint32 (inode->vmin);
-  dbuf.write_uint32 (inode->vmax);
-  dbuf.write_uint32 (inode->uid);
-  dbuf.write_uint32 (inode->gid);
-  dbuf.write_uint32 (inode->mode);
-  dbuf.write_uint32 (inode->type);
-  dbuf.write_string (inode->hash);
-  dbuf.write_string (inode->link);
-  dbuf.write_uint64 (inode->size);
-  dbuf.write_uint32 (inode->major);
-  dbuf.write_uint32 (inode->minor);
-  dbuf.write_uint32 (inode->nlink);
-  dbuf.write_uint32 (inode->ctime);
-  dbuf.write_uint32 (inode->ctime_ns);
-  dbuf.write_uint32 (inode->mtime);
-  dbuf.write_uint32 (inode->mtime_ns);
-  dbuf.write_uint32 (inode->new_file_number);
+  dbuf.write_uint32 (inode.vmin);
+  dbuf.write_uint32 (inode.vmax);
+  dbuf.write_uint32 (inode.uid);
+  dbuf.write_uint32 (inode.gid);
+  dbuf.write_uint32 (inode.mode);
+  dbuf.write_uint32 (inode.type);
+  dbuf.write_string (inode.hash);
+  dbuf.write_string (inode.link);
+  dbuf.write_uint64 (inode.size);
+  dbuf.write_uint32 (inode.major);
+  dbuf.write_uint32 (inode.minor);
+  dbuf.write_uint32 (inode.nlink);
+  dbuf.write_uint32 (inode.ctime);
+  dbuf.write_uint32 (inode.ctime_ns);
+  dbuf.write_uint32 (inode.mtime);
+  dbuf.write_uint32 (inode.mtime_ns);
+  dbuf.write_uint32 (inode.new_file_number);
 
   Dbt ikey (kbuf.begin(), kbuf.size());
   Dbt idata (dbuf.begin(), dbuf.size());
@@ -355,7 +355,7 @@ BDBPtr::store_inode (const INode* inode)
   int ret = ptr->my_bdb->get_db()->put (txn, &ikey, &idata, 0);
   g_assert (ret == 0);
 
-  ptr->my_bdb->add_changed_inode (inode->id.id);
+  ptr->my_bdb->add_changed_inode (inode.id.id);
 }
 
 void
@@ -366,7 +366,7 @@ BDBPtr::delete_inode (const INode& inode)
 
   DataOutBuffer kbuf;
 
-  id_store (&inode.id, kbuf);
+  id_store (inode.id, kbuf);
   kbuf.write_table (BDB_TABLE_INODES);
 
   Dbt ikey (kbuf.begin(), kbuf.size());
@@ -414,7 +414,7 @@ id_root()
 }
 
 std::vector<Link>
-BDBPtr::load_links (const ID *id, unsigned int version)
+BDBPtr::load_links (const ID& id, unsigned int version)
 {
   vector<Link> result;
 
@@ -443,8 +443,8 @@ BDBPtr::load_links (const ID *id, unsigned int version)
 
           l.vmin = vmin;
           l.vmax = vmax;
-          l.dir_id = *id;
-          id_load (&l.inode_id, dbuffer);
+          l.dir_id = id;
+          id_load (l.inode_id, dbuffer);
           l.name = dbuffer.read_string();
 
           result.push_back (l);
@@ -462,12 +462,12 @@ BDBPtr::store_link (const Link& link)
 
   DataOutBuffer kbuf, dbuf;
 
-  id_store (&link.dir_id, kbuf);
+  id_store (link.dir_id, kbuf);
   kbuf.write_table (BDB_TABLE_LINKS);
 
   dbuf.write_uint32 (link.vmin);
   dbuf.write_uint32 (link.vmax);
-  id_store (&link.inode_id, dbuf);
+  id_store (link.inode_id, dbuf);
   dbuf.write_string (link.name);
 
   Dbt lkey (kbuf.begin(), kbuf.size());
@@ -482,12 +482,12 @@ BDBPtr::delete_link (const Link& link)
 {
   DataOutBuffer kbuf, dbuf;
 
-  id_store (&link.dir_id, kbuf);
+  id_store (link.dir_id, kbuf);
   kbuf.write_table (BDB_TABLE_LINKS);
 
   dbuf.write_uint32 (link.vmin);
   dbuf.write_uint32 (link.vmax);
-  id_store (&link.inode_id, dbuf);
+  id_store (link.inode_id, dbuf);
   dbuf.write_string (link.name);
 
   Dbt lkey (kbuf.begin(), kbuf.size());
@@ -583,12 +583,12 @@ BDBPtr::clear_journal_entries()
 void
 do_walk (BDBPtr bdb, const ID& id, const string& prefix = "")
 {
-  INode inode = bdb.load_inode (&id, 1);
+  INode inode = bdb.load_inode (id, 1);
   if (inode.valid)
     {
       if (inode.type == BFSync::FILE_DIR)
         {
-          vector<Link> links = bdb.load_links (&id, 1);
+          vector<Link> links = bdb.load_links (id, 1);
           for (vector<Link>::iterator li = links.begin(); li != links.end(); li++)
             {
               printf ("%s/%s\n", prefix.c_str(), li->name.c_str());
@@ -701,11 +701,11 @@ DiffGenerator::get_next()
       DataBuffer dbuffer ((char *) data.get_data(), data.get_size());
 
       ID id;
-      id_load (&id, dbuffer);  // id is one changed id
+      id_load (id, dbuffer);  // id is one changed id
 
       // generate i+ / i- and i! entries for id
-      INode i_old = bdb_ptr.load_inode (&id, v_old);
-      INode i_new = bdb_ptr.load_inode (&id, v_new);
+      INode i_old = bdb_ptr.load_inode (id, v_old);
+      INode i_new = bdb_ptr.load_inode (id, v_new);
 
       if (i_old.valid && i_new.valid)
         {
@@ -720,8 +720,8 @@ DiffGenerator::get_next()
         }
 
       // generate l+ / l- and l! entries for dir_id = id
-      vector<Link> lvec_old = bdb_ptr.load_links (&id, v_old);
-      vector<Link> lvec_new = bdb_ptr.load_links (&id, v_new);
+      vector<Link> lvec_old = bdb_ptr.load_links (id, v_old);
+      vector<Link> lvec_new = bdb_ptr.load_links (id, v_new);
 
       map<string, const Link*> lmap_old;
       map<string, const Link*> lmap_new;
@@ -909,7 +909,7 @@ ChangedINodesIterator::get_next()
       DataBuffer dbuffer ((char *) data.get_data(), data.get_size());
 
       ID id;
-      id_load (&id, dbuffer);
+      id_load (id, dbuffer);
 
       /* goto next record */
       dbc_ret = dbc->get (&key, &data, DB_NEXT_DUP);

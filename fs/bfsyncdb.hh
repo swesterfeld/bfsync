@@ -168,13 +168,13 @@ public:
   void               commit_transaction();
   void               abort_transaction();
 
-  INode              load_inode (const ID *id, unsigned int version);
-  void               store_inode (const INode *inode);
+  INode              load_inode (const ID& id, unsigned int version);
+  void               store_inode (const INode& inode);
   void               delete_inode (const INode& inode);
 
   unsigned int       clear_changed_inodes (unsigned int max_inodes);
 
-  std::vector<Link>  load_links (const ID *id, unsigned int version);
+  std::vector<Link>  load_links (const ID& id, unsigned int version);
   void               store_link (const Link& link);
   void               delete_link (const Link& link);
 
