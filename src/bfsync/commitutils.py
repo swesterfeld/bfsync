@@ -113,7 +113,32 @@ class INodeInfo:
     return size
 
 def gen_status (repo):
-  return [ "FIXME" ]
+  change_list = []
+
+  VERSION = repo.first_unused_version()
+
+  changed_dict = dict()
+  changed_it = bfsyncdb.ChangedINodesIterator (repo.bdb)
+  while True:
+    id = changed_it.get_next()
+    if not id.valid:
+      break
+    changed_dict[id.str()] = True
+  del changed_it
+
+  def walk (id, prefix, result):
+    inode = repo.bdb.load_inode (id, VERSION)
+    if inode.valid and inode.type == bfsyncdb.FILE_DIR:
+      links = repo.bdb.load_links (id, VERSION)
+      for link in links:
+        inode_name = prefix + "/" + link.name
+        if changed_dict.has_key (id.str()):
+          result.append (inode_name)
+        walk (link.inode_id, inode_name, result)
+
+  walk (bfsyncdb.id_root(), "", change_list)
+
+  return change_list
 
   VERSION = 1
   c.execute ('''SELECT version FROM history''')
@@ -557,6 +582,9 @@ def mk_journal_entry (repo, cmd):
   jentry.state = cPickle.dumps (cmd.get_state())
   repo.bdb.store_journal_entry (jentry)
 
+class CommitState:
+  pass
+
 class CommitCommand:
   def __init__ (self, commit_args):
     self.commit_args = commit_args
@@ -625,6 +653,13 @@ class CommitCommand:
       ))
 
   def start (self, repo):
+    self.state = CommitState()
+    self.repo = repo
+    self.VERSION = self.repo.first_unused_version()
+    self.server_conn = ServerConn (repo.path)
+    return True
+
+  def restart (self, repo):
     self.repo = repo
     self.VERSION = self.repo.first_unused_version()
     self.server_conn = ServerConn (repo.path)
@@ -750,20 +785,35 @@ class CommitCommand:
       print "Nothing to commit."
 
   def get_state (self):
-    return None
+    return self.state
+
+  def set_state (self, state):
+    self.state = state
 
 def run_command (repo, cmd):
   if not cmd.start (repo):
     return False
 
+  # create journal entry
   repo.bdb.begin_transaction()
   mk_journal_entry (repo, cmd)
   repo.bdb.commit_transaction()
 
   cmd.execute()
 
+  # remove journal entry
+  repo.bdb.begin_transaction()
+  repo.bdb.clear_journal_entries()
+  repo.bdb.commit_transaction()
+
 def new_commit_continue (repo, state):
-  print "FOO=%s" % state
+  cmd = CommitCommand (None)
+
+  cmd.set_state (state)
+  cmd.restart (repo)
+  cmd.execute()
+
+  # remove journal entry
   repo.bdb.begin_transaction()
   repo.bdb.clear_journal_entries()
   repo.bdb.commit_transaction()
