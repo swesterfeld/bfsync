@@ -659,7 +659,6 @@ class CommitCommand:
         if TXN_OP_COUNT >= 20000:
           TXN_OP_COUNT = 0
           self.repo.bdb.commit_transaction()
-          print "commit"
           self.repo.bdb.begin_transaction()
         else:
           TXN_OP_COUNT += 1
