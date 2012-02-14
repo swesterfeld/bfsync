@@ -281,3 +281,11 @@ public:
 };
 
 const unsigned int VERSION_INF = 0xffffffff;
+
+const unsigned int FILE_REGULAR     = BFSync::FILE_REGULAR;
+const unsigned int FILE_SYMLINK     = BFSync::FILE_SYMLINK;
+const unsigned int FILE_DIR         = BFSync::FILE_DIR;
+const unsigned int FILE_FIFO        = BFSync::FILE_FIFO;
+const unsigned int FILE_SOCKET      = BFSync::FILE_SOCKET;
+const unsigned int FILE_BLOCK_DEV   = BFSync::FILE_BLOCK_DEV;
+const unsigned int FILE_CHAR_DEV    = BFSync::FILE_CHAR_DEV;
