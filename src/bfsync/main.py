@@ -36,7 +36,7 @@ import random
 
 from utils import *
 from diffutils import diff
-from commitutils import commit, revert, gen_status, new_commit
+from commitutils import commit, revert, gen_status, new_commit, new_commit_continue
 from remoteutils import *
 from TransferList import TransferList, TransferFile
 from StatusLine import status_line
@@ -706,6 +706,34 @@ def cmd_recover():
   for filename in del_after_recover:
     os.remove (filename)
 
+def cmd_continue():
+  parser = argparse.ArgumentParser (prog='bfsync recover')
+  parser.add_argument ("dest_dir", nargs = "?")
+  parsed_args = parser.parse_args (args)
+
+  if parsed_args.dest_dir:
+    dir = parsed_args.dest_dir
+    try:
+      os.chdir (dir)
+    except:
+      print "fatal: path '" + dir + "' does not exist"
+      sys.exit (1)
+
+  repo = cd_repo_connect_db (True)
+  journal = repo.bdb.load_journal_entries()
+  if len (journal) == 0:
+    raise BFSyncError ("journal is empty, cannot continue")
+
+  if len (journal) != 1:
+    raise BFSyncError ("journal contains more than one entry, cannot continue")
+
+  je = journal[0]
+
+  print "Journal:"
+  print "  -> operation %s, state %s" % (je.operation, je.state)
+  if je.operation == "commit":
+    new_commit_continue (repo, cPickle.loads (je.state))
+
 args = []
 
 def main():
@@ -719,6 +747,7 @@ def main():
       ( "check",                  cmd_check, 1),
       ( "collect",                cmd_collect, 1),
       ( "commit",                 cmd_commit, 1),
+      ( "continue",               cmd_continue, 1),
       ( "log",                    cmd_log, 0),
       ( "pull",                   cmd_pull, 1),
       ( "push",                   cmd_push, 1),

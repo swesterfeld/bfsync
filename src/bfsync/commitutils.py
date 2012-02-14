@@ -25,6 +25,7 @@ from HashCache import hash_cache
 import os
 import time
 import hashlib
+import cPickle
 
 # in case the repo is not mounted, we don't need a ServerConn
 #
@@ -550,6 +551,12 @@ def revert (repo, VERSION, verbose = True):
   # in-memory cached items will not be correct
   server_conn.clear_cache()
 
+def mk_journal_entry (repo, cmd):
+  jentry = bfsyncdb.JournalEntry()
+  jentry.operation = "commit"
+  jentry.state = cPickle.dumps (cmd.get_state())
+  repo.bdb.store_journal_entry (jentry)
+
 class CommitCommand:
   def __init__ (self, commit_args):
     self.commit_args = commit_args
@@ -621,7 +628,6 @@ class CommitCommand:
     self.repo = repo
     self.VERSION = self.repo.first_unused_version()
     self.server_conn = ServerConn (repo.path)
-    self.id_list_filename = self.make_id_list()
     return True
 
   def execute (self):
@@ -629,6 +635,8 @@ class CommitCommand:
     self.files_added = 0
     self.bytes_done = 0
     self.start_time = time.time()
+
+    self.id_list_filename = self.make_id_list()
 
     # process files to add in small chunks
     id_list_file = open (self.id_list_filename, "r")
@@ -741,12 +749,24 @@ class CommitCommand:
     else:
       print "Nothing to commit."
 
+  def get_state (self):
+    return None
 
 def run_command (repo, cmd):
   if not cmd.start (repo):
     return False
 
+  repo.bdb.begin_transaction()
+  mk_journal_entry (repo, cmd)
+  repo.bdb.commit_transaction()
+
   cmd.execute()
+
+def new_commit_continue (repo, state):
+  print "FOO=%s" % state
+  repo.bdb.begin_transaction()
+  repo.bdb.clear_journal_entries()
+  repo.bdb.commit_transaction()
 
 def new_commit (repo, commit_args):
   cmd = CommitCommand (commit_args)

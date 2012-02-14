@@ -187,7 +187,7 @@ class Repo:
       if inode.valid:
         inode_callback (inode)
 
-def cd_repo_connect_db():
+def cd_repo_connect_db (cont = False):
   repo_path = find_repo_dir()
   bfsync_info = parse_config (repo_path + "/config")
 
@@ -203,25 +203,30 @@ def cd_repo_connect_db():
   if not repo.bdb.open_ok():
     raise BFSyncError ("database of repository %s can't be opened" % repo_path)
 
+  jentries = repo.bdb.load_journal_entries()
+  if len (jentries) != 0 and not cont:
+    raise BFSyncError ("database operation was interrupted, run bfsync continue to fix this")
+
   repo.path = repo_path
   repo.config = bfsync_info
 
-  # wipe old temp files
-  repo.bdb.begin_transaction()
-  temp_files = repo.bdb.load_temp_files()
-  for temp_file in temp_files:
-    filename = os.path.join (repo_path, "tmp", temp_file.filename)
-    pid = temp_file.pid
-    try:
-      os.kill (pid, 0)
-      # pid still running
-    except:
+  if not cont:
+    # wipe old temp files (only if we're not starting in "continue" mode)
+    repo.bdb.begin_transaction()
+    temp_files = repo.bdb.load_temp_files()
+    for temp_file in temp_files:
+      filename = os.path.join (repo_path, "tmp", temp_file.filename)
+      pid = temp_file.pid
       try:
-        os.remove (filename)
+        os.kill (pid, 0)
+        # pid still running
       except:
-        pass
-      repo.bdb.delete_temp_file (temp_file.filename)
-  repo.bdb.commit_transaction()
+        try:
+          os.remove (filename)
+        except:
+          pass
+        repo.bdb.delete_temp_file (temp_file.filename)
+    repo.bdb.commit_transaction()
 
   return repo
 
