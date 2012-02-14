@@ -98,7 +98,7 @@ main (int argc, char **argv)
     }
 
   vector<string> links, inodes, id2ino, ino2id, history, changed_inodes, changed_inodes_rev,
-                 new_file_number, deleted_files, temp_files;
+                 new_file_number, deleted_files, temp_files, journal;
 
   Dbt key;
   Dbt data;
@@ -224,9 +224,16 @@ main (int argc, char **argv)
 
           add ("temp_files", temp_files, string_printf ("%s|%u", name.c_str(), pid));
         }
+      else if (table == BDB_TABLE_JOURNAL)
+        {
+          string operation = dbuffer.read_string();
+          string state = dbuffer.read_string();
+
+          add ("journal", journal, string_printf ("%s|%s", operation.c_str(), state.c_str()));
+        }
       else
         {
-          printf ("unknown record type\n");
+          printf ("unknown record type %d\n", table);
         }
 
       ret = dbcp->get (&key, &data, DB_NEXT);
@@ -241,6 +248,7 @@ main (int argc, char **argv)
   print ("New File Number", new_file_number);
   print ("Deleted Files", deleted_files);
   print ("Temp Files", temp_files);
+  print ("Journal", journal);
 
   Db *db_hash2file = bdb->get_db_hash2file();
 
