@@ -15,6 +15,7 @@ namespace std {
   %template(INodeVector) vector<INode>;
   %template(UIntVector) vector<unsigned int>;
   %template(TempFileVector) vector<TempFile>;
+  %template(JournalEntryVector) vector<JournalEntry>;
 }
 
 %exception {

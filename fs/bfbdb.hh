@@ -42,6 +42,7 @@ enum BDBTables
   BDB_TABLE_NEW_FILE_NUMBER     = 8,
   BDB_TABLE_DELETED_FILES       = 9,
   BDB_TABLE_TEMP_FILES          = 10,
+  BDB_TABLE_JOURNAL             = 11,
 };
 
 enum BDBError
@@ -121,6 +122,12 @@ struct TempFile
   unsigned int  pid;
 };
 
+struct JournalEntry
+{
+  std::string   operation;
+  std::string   state;
+};
+
 class BDB
 {
   DbTxn   *transaction;
@@ -194,6 +201,10 @@ public:
   std::vector<TempFile> load_temp_files();
   void  add_temp_file (const TempFile& temp_file);
   void  delete_temp_file (const std::string& filename);
+
+  BDBError  load_journal_entries (std::vector<JournalEntry>& entries);
+  BDBError  store_journal_entry (const JournalEntry& journal_entry);
+  BDBError  clear_journal_entries();
 };
 
 class DbcPtr // cursor smart-wrapper: automatically closes cursor in destructor

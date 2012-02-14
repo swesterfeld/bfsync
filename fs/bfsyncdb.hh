@@ -106,6 +106,15 @@ struct TempFile {
   unsigned int  pid;
 };
 
+struct JournalEntry {
+  JournalEntry();
+  JournalEntry (const JournalEntry& je);
+  ~JournalEntry();
+
+  std::string   operation;
+  std::string   state;
+};
+
 class BDBWrapper
 {
   unsigned int ref_count;
@@ -188,6 +197,10 @@ public:
   void               add_temp_file (const std::string& filename, unsigned int pid);
   std::vector<TempFile> load_temp_files();
   void               delete_temp_file (const std::string& filename);
+
+  std::vector<JournalEntry> load_journal_entries();
+  void                      store_journal_entry (const JournalEntry& journal_entry);
+  void                      clear_journal_entries();
 
   unsigned int       gen_new_file_number();
 

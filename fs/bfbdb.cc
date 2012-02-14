@@ -1247,6 +1247,73 @@ BDB::delete_temp_file (const string& name)
     }
 }
 
+BDBError
+BDB::load_journal_entries (std::vector<JournalEntry>& entries)
+{
+  Lock lock (mutex);
+
+  DataOutBuffer kbuf;
+  kbuf.write_table (BDB_TABLE_JOURNAL);
+
+  Dbt key (kbuf.begin(), kbuf.size());
+  Dbt data;
+
+  DbcPtr dbc (this); /* Acquire a cursor for the database. */
+
+  // iterate over all journal entries
+  int ret = dbc->get (&key, &data, DB_SET);
+  while (ret == 0)
+    {
+      DataBuffer dbuffer ((char *) data.get_data(), data.get_size());
+
+      JournalEntry je;
+      je.operation = dbuffer.read_string();
+      je.state = dbuffer.read_string();
+
+      entries.push_back (je);
+
+      ret = dbc->get (&key, &data, DB_NEXT_DUP);
+    }
+  return BDB_ERROR_NONE;
+}
+
+BDBError
+BDB::store_journal_entry (const JournalEntry& journal_entry)
+{
+  Lock lock (mutex);
+
+  if (!transaction)
+    return BDB_ERROR_NO_TRANS;
+
+  DataOutBuffer kbuf, dbuf;
+  kbuf.write_table (BDB_TABLE_JOURNAL);
+  dbuf.write_string (journal_entry.operation);
+  dbuf.write_string (journal_entry.state);
+
+  Dbt key (kbuf.begin(), kbuf.size());
+  Dbt data (dbuf.begin(), dbuf.size());
+
+  int ret = db->put (transaction, &key, &data, 0);
+  return ret2error (ret);
+}
+
+BDBError
+BDB::clear_journal_entries()
+{
+  Lock lock (mutex);
+
+  if (!transaction)
+    return BDB_ERROR_NO_TRANS;
+
+  DataOutBuffer kbuf;
+  kbuf.write_table (BDB_TABLE_JOURNAL);
+
+  Dbt key (kbuf.begin(), kbuf.size());
+
+  int ret = db->del (transaction, &key, 0);
+  return ret2error (ret);
+}
+
 static inline int
 make_shm_key (int n)
 {

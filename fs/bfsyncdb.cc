@@ -179,6 +179,27 @@ TempFile::~TempFile()
   temp_file_leak_debugger.del (this);
 }
 
+//---------------------------- JournalEntry -----------------------------
+
+static BFSync::LeakDebugger journal_entry_leak_debugger ("(Python)BFSync::JournalEntry");
+
+JournalEntry::JournalEntry()
+{
+  journal_entry_leak_debugger.add (this);
+}
+
+JournalEntry::JournalEntry (const JournalEntry& je) :
+  operation (je.operation),
+  state (je.state)
+{
+  journal_entry_leak_debugger.add (this);
+}
+
+JournalEntry::~JournalEntry()
+{
+  journal_entry_leak_debugger.del (this);
+}
+
 //---------------------------------------------------------------
 
 BDBPtr
@@ -517,6 +538,46 @@ void
 BDBPtr::delete_temp_file (const string& name)
 {
   ptr->my_bdb->delete_temp_file (name);
+}
+
+std::vector<JournalEntry>
+BDBPtr::load_journal_entries()
+{
+  std::vector<BFSync::JournalEntry> jentries;
+  BFSync::BDBError err = ptr->my_bdb->load_journal_entries (jentries);
+  if (err)
+    throw BDBException (err);
+
+  std::vector<JournalEntry> result;
+
+  for (vector<BFSync::JournalEntry>::const_iterator ji = jentries.begin(); ji != jentries.end(); ji++)
+    {
+      JournalEntry je;
+      je.operation = ji->operation;
+      je.state     = ji->state;
+      result.push_back (je);
+    }
+  return result;
+}
+
+void
+BDBPtr::store_journal_entry (const JournalEntry& journal_entry)
+{
+  BFSync::JournalEntry je;
+  je.operation = journal_entry.operation;
+  je.state     = journal_entry.state;
+
+  BFSync::BDBError err = ptr->my_bdb->store_journal_entry (je);
+  if (err)
+    throw BDBException (err);
+}
+
+void
+BDBPtr::clear_journal_entries()
+{
+  BFSync::BDBError err = ptr->my_bdb->clear_journal_entries();
+  if (err)
+    throw BDBException (err);
 }
 
 void
