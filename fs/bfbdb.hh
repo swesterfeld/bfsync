@@ -172,7 +172,7 @@ public:
   void  delete_inodes (const INodeVersionList& inodes);
   bool  load_inode (const ID& id, unsigned int version, INode *inode);
   void  add_changed_inode (const ID& id);
-  BDBError  clear_changed_inodes();
+  BDBError  clear_changed_inodes (unsigned int max_inodes, unsigned int& result);
 
   bool  try_store_id2ino (const ID& id, int ino);
   bool  load_ino (const ID& id, ino_t& ino);

@@ -371,12 +371,16 @@ BDBPtr::delete_inode (const INode& inode)
     }
 }
 
-void
-BDBPtr::clear_changed_inodes()
+unsigned int
+BDBPtr::clear_changed_inodes (unsigned int max_inodes)
 {
-  BFSync::BDBError err = ptr->my_bdb->clear_changed_inodes();
+  unsigned int result;
+
+  BFSync::BDBError err = ptr->my_bdb->clear_changed_inodes (max_inodes, result);
   if (err)
     throw BDBException (err);
+
+  return result;
 }
 
 ID

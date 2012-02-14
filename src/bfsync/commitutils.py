@@ -479,7 +479,7 @@ def commit (repo, expected_diff = None, expected_diff_hash = None, server = True
       repo.bdb.begin_transaction()
 
     repo.bdb.store_history_entry (VERSION, hash, commit_author, commit_msg, commit_time)
-    repo.bdb.clear_changed_inodes()
+    repo.bdb.clear_changed_inodes (1000000)
 
     if need_transaction:
       repo.bdb.commit_transaction()
@@ -730,8 +730,15 @@ class CommitCommand:
     if commit_size_ok:
       self.repo.bdb.begin_transaction()
       self.repo.bdb.store_history_entry (self.VERSION, hash, commit_author, commit_msg, commit_time)
-      self.repo.bdb.clear_changed_inodes()
       self.repo.bdb.commit_transaction()
+
+      while True:
+        self.repo.bdb.begin_transaction()
+        deleted = self.repo.bdb.clear_changed_inodes (20000)
+        self.repo.bdb.commit_transaction()
+
+        if deleted == 0: # changed inodes table empty
+          break
     else:
       print "Nothing to commit."
 

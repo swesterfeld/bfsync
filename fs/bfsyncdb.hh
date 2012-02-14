@@ -163,7 +163,7 @@ public:
   void               store_inode (const INode *inode);
   void               delete_inode (const INode& inode);
 
-  void               clear_changed_inodes();
+  unsigned int       clear_changed_inodes (unsigned int max_inodes);
 
   std::vector<Link>  load_links (const ID *id, unsigned int version);
   void               store_link (const Link& link);

@@ -990,12 +990,14 @@ BDB::add_changed_inode (const ID& id)
 }
 
 BDBError
-BDB::clear_changed_inodes()
+BDB::clear_changed_inodes (unsigned int max_inodes, unsigned int& result)
 {
   Lock lock (mutex);
 
   if (!transaction)
     return BDB_ERROR_NO_TRANS;
+
+  result = 0;
 
   DataOutBuffer kbuf;
   kbuf.write_table (BDB_TABLE_CHANGED_INODES);
@@ -1026,6 +1028,10 @@ BDB::clear_changed_inodes()
       ret = db->del (transaction, &rev_key, 0);
       if (ret)
         return ret2error (ret);
+
+      result++;                   /* delete at most max_inodes entries */
+      if (result >= max_inodes)
+        return BDB_ERROR_NONE;
 
       /* goto next record */
       ret = dbc->get (&key, &data, DB_NEXT_DUP);
