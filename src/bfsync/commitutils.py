@@ -629,7 +629,7 @@ class CommitCommand:
 
   def make_commit_msg (self):
     # commit message
-    commit_args = None # FIXME
+    commit_args = self.commit_args
     verbose = True # FIXME
     have_message = False
     if commit_args:
@@ -731,6 +731,9 @@ class CommitCommand:
     self.repo.bdb.commit_transaction()
 
     id_list_file.close()
+
+    self.update_status()
+    status_line.cleanup()
 
     # compute commit diff
     status_line.update ("computing changes")
