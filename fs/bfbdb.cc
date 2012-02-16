@@ -1311,6 +1311,10 @@ BDB::clear_journal_entries()
   Dbt key (kbuf.begin(), kbuf.size());
 
   int ret = db->del (transaction, &key, 0);
+
+  if (ret == 0 || ret == DB_NOTFOUND)
+    return BDB_ERROR_NONE;
+
   return ret2error (ret);
 }
 
@@ -1428,7 +1432,8 @@ BDB::ret2error (int ret)
 {
   switch (ret)
     {
-      case 0: return BDB_ERROR_NONE;
+      case 0:           return BDB_ERROR_NONE;
+      case DB_NOTFOUND: return BDB_ERROR_NOT_FOUND;
     }
   return BDB_ERROR_UNKNOWN;
 }

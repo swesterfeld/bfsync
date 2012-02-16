@@ -51,6 +51,7 @@ enum BDBError
   BDB_ERROR_UNKNOWN,
   BDB_ERROR_TRANS_ACTIVE,
   BDB_ERROR_NO_TRANS,
+  BDB_ERROR_NOT_FOUND,
 };
 
 BDB *bdb_open (const std::string& path, int cache_size_mb, bool recover);

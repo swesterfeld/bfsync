@@ -991,6 +991,9 @@ BDBException::error_string()
 
       case BFSync::BDB_ERROR_NO_TRANS:
         return "no transaction started";
+
+      case BFSync::BDB_ERROR_NOT_FOUND:
+        return "key not found";
     }
   return "unknown error";
 }
