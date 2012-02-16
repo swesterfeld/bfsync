@@ -16,6 +16,10 @@
 * remove unused new/ files during revert or gc or commit
 * node discovery
 
+new_commit:
+===========
+* use lock
+
 Performance:
 ============
 * fix redundant inserts (should be updates)
