@@ -64,29 +64,6 @@ def commit_msg_ok (filename):
   file.close()
   return result
 
-class INode2Name:
-  def __init__ (self, c, version):
-    self.link_dict = dict()
-    self.c = c
-    self.version = version
-
-    c.execute ("SELECT inode_id, dir_id, name FROM links WHERE ? >= vmin AND ? <= VMAX", (version, version))
-    for row in c:
-      self.link_dict[row[0]] = row[1:]
-
-  def lookup (self, id):
-    if id == "0" * 40:
-      return "/"
-    if not self.link_dict.has_key (id):
-      raise Exception ("INode2Name: id %s not found" % id)
-    (dir_id, name) = self.link_dict[id]
-    return os.path.join (self.lookup (dir_id), name)
-
-  def links (self, id):
-    if id == "0" * 40:
-      return "/"
-    return self.link_dict[id]
-
 class INodeInfo:
   def __init__ (self):
     self.names = []
