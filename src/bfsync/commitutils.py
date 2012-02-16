@@ -88,30 +88,43 @@ class INode2Name:
     return self.link_dict[id]
 
 class INodeInfo:
-  def __init__ (self, repo, c, version):
-    self.inode_dict = dict()
-    self.repo = repo
-    self.c = c
-    self.version = version
+  def __init__ (self):
+    self.names = []
+    self.size  = 0
 
-    c.execute ("SELECT id, type, size, hash FROM inodes WHERE ? >= vmin AND ? <= VMAX", (version, version))
-    for row in c:
-      self.inode_dict[row[0]] = row[1:]
+  def get_name (self):
+    if len (self.names) == 1:
+      return self.names[0]
+    else:
+      return "%s" % self.names
 
-  def get_type (self, id):
-    return self.inode_dict[id][0]
+def type2str (type):
+  if type == bfsyncdb.FILE_REGULAR:
+    return "file"
+  if type == bfsyncdb.FILE_SYMLINK:
+    return "symlink"
+  if type == bfsyncdb.FILE_DIR:
+    return "dir"
+  if type == bfsyncdb.FILE_FIFO:
+    return "fifo"
+  if type == bfsyncdb.FILE_SOCKET:
+    return "socket"
+  if type == bfsyncdb.FILE_BLOCK_DEV:
+    return "blockdev"
+  if type == bfsyncdb.FILE_CHAR_DEV:
+    return "chardev"
+  return "unknown"
 
-  def get_size (self, id):
-    r = self.inode_dict[id]
-    hash = r[2]
-    size = r[1]
-    if hash == "new":
-      try:
-        size = os.path.getsize (os.path.join (self.repo.path, "new", make_object_filename (id)))
-      except:
-        pass
-    return size
-
+# Status message generation
+#
+# Time complexity:
+# ================
+# - O(t) where t is the total number of inodes stored in the repository
+#
+# Memory usage:
+# =============
+# - O(c) where c is the number of changed inodes
+#
 def gen_status (repo):
   change_list = []
 
@@ -126,39 +139,37 @@ def gen_status (repo):
     changed_dict[id.str()] = True
   del changed_it
 
-  def walk (id, prefix, result):
-    inode = repo.bdb.load_inode (id, VERSION)
-    if inode.valid and inode.type == bfsyncdb.FILE_DIR:
-      links = repo.bdb.load_links (id, VERSION)
-      for link in links:
-        inode_name = prefix + "/" + link.name
-        if changed_dict.has_key (id.str()):
-          result.append (inode_name)
-        walk (link.inode_id, inode_name, result)
+  def walk (id, prefix, version, out_dict):
+    inode = repo.bdb.load_inode (id, version)
+    if inode.valid:
+      if changed_dict.has_key (id.str()):
+        if not out_dict.has_key (id.str()):
+          out_dict[id.str()] = INodeInfo()
+          if inode.hash == "new":
+            try:
+              filename = repo.make_number_filename (inode.new_file_number)
+              size = os.path.getsize (filename)
+            except:
+              size = 0
+          else:
+            size = inode.size
+          out_dict[id.str()].size = size
+          out_dict[id.str()].type = type2str (inode.type)
+        if prefix == "":
+          name = "/"
+        else:
+          name = prefix
+        out_dict[id.str()].names.append (name)
+      if inode.valid and inode.type == bfsyncdb.FILE_DIR:
+        links = repo.bdb.load_links (id, version)
+        for link in links:
+          inode_name = prefix + "/" + link.name
+          walk (link.inode_id, inode_name, version, out_dict)
 
-  walk (bfsyncdb.id_root(), "", change_list)
-
-  return change_list
-
-  VERSION = 1
-  c.execute ('''SELECT version FROM history''')
-  for row in c:
-    VERSION = max (row[0], VERSION)
-
-  touched_inodes = set()
-  c.execute ('''SELECT * FROM inodes WHERE vmin = ?''', (VERSION,))
-  for row in c:
-    touched_inodes.add (row[2])
-
-  old_inodes = set()
-  c.execute ('''SELECT * FROM inodes WHERE ? >= vmin AND ? <= vmax''', (VERSION - 1, VERSION - 1,))
-  for row in c:
-    old_inodes.add (row[2])
-
-  new_inodes = set()
-  c.execute ('''SELECT * FROM inodes WHERE ? >= vmin AND ? <= vmax''', (VERSION, VERSION,))
-  for row in c:
-    new_inodes.add (row[2])
+  new_dict = dict()
+  old_dict = dict()
+  walk (bfsyncdb.id_root(), "", VERSION, new_dict)
+  walk (bfsyncdb.id_root(), "", VERSION - 1, old_dict)
 
   n_changed = 0
   bytes_changed_old = 0
@@ -169,39 +180,25 @@ def gen_status (repo):
   bytes_deleted = 0
   n_renamed = 0
 
-  old_inode2name = INode2Name (c, VERSION - 1)
-  old_inode_info = INodeInfo (repo, c, VERSION - 1)
-  new_inode2name = INode2Name (c, VERSION)
-  new_inode_info = INodeInfo (repo, c, VERSION)
-
-  change_list = []
-  for inode in touched_inodes:
-    inode_name = new_inode2name.lookup (inode)
-    inode_type = new_inode_info.get_type (inode)
-    if inode in old_inodes:
-      old_links = old_inode2name.links (inode)
-      new_links = new_inode2name.links (inode)
-      if old_links != new_links:
-        old_name = old_inode2name.lookup (inode)
-        change_list.append (("R!", inode_type, "%s => %s" % (old_name, inode_name)))
-        n_renamed += 1
-      else:
-        change_list.append (("!", inode_type, inode_name))
-      n_changed += 1
-      bytes_changed_old += old_inode_info.get_size (inode)
-      bytes_changed_new += new_inode_info.get_size (inode)
-    else:
-      change_list.append (("+", inode_type, inode_name))
-      n_added += 1
-      bytes_added += new_inode_info.get_size (inode)
-
-  for inode in old_inodes:
-    if not inode in new_inodes:
-      inode_name = old_inode2name.lookup (inode)
-      inode_type = old_inode_info.get_type (inode)
-      change_list.append (("-", inode_type, inode_name))
+  for id in changed_dict:
+    if id in new_dict:
+      if id in old_dict: # NEW & OLD
+        if old_dict[id].names != new_dict[id].names:
+          change_list.append (("R!", new_dict[id].type, "%s => %s" % (old_dict[id].get_name(), new_dict[id].get_name())))
+          n_renamed += 1
+        else:
+          change_list.append (("!", new_dict[id].type, new_dict[id].get_name()))
+        n_changed += 1
+        bytes_changed_old += old_dict[id].size
+        bytes_changed_new += new_dict[id].size
+      else: # NEW
+        change_list.append (("+", new_dict[id].type , new_dict[id].get_name()))
+        bytes_added += new_dict[id].size
+        n_added += 1
+    else: # OLD
+      change_list.append (("-", old_dict[id].type, old_dict[id].get_name()))
       n_deleted += 1
-      bytes_deleted += old_inode_info.get_size (inode)
+      bytes_deleted += old_dict[id].size
 
   status = []
   status += [ "+ %d objects added (%s)." % (n_added, format_size1 (bytes_added)) ]
