@@ -750,6 +750,8 @@ class CommitCommand:
     else:
       commit_size_ok = False
 
+    status_line.update ("computing changes: done")
+
     if commit_size_ok:
       self.repo.bdb.begin_transaction()
       self.repo.bdb.store_history_entry (self.VERSION, hash, self.state.commit_author,
@@ -792,6 +794,8 @@ def run_command (repo, cmd):
 def new_commit_continue (repo, state):
   cmd = CommitCommand (None)
 
+  status_line.set_op ("COMMIT")
+
   cmd.set_state (state)
   cmd.restart (repo)
   cmd.execute()
@@ -803,4 +807,7 @@ def new_commit_continue (repo, state):
 
 def new_commit (repo, commit_args):
   cmd = CommitCommand (commit_args)
+
+  status_line.set_op ("COMMIT")
+
   run_command (repo, cmd)

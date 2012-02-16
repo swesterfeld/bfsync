@@ -77,7 +77,6 @@ def cmd_commit():
     commit_args["author"] = parsed_args.a
 
   repo = cd_repo_connect_db()
-  status_line.set_op ("COMMIT")
   new_commit (repo, commit_args = commit_args)
 
 def cmd_debug_load_all_inodes():
@@ -729,10 +728,10 @@ def cmd_continue():
 
   je = journal[0]
 
-  print "Journal:"
-  print "  -> operation %s, state %s" % (je.operation, je.state)
   if je.operation == "commit":
     new_commit_continue (repo, cPickle.loads (je.state))
+  else:
+    raise Exception ("unknown operation in journal, cannot continue")
 
 args = []
 
