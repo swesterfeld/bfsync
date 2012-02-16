@@ -142,9 +142,10 @@ def gen_status (repo):
   def walk (id, prefix, version, out_dict):
     inode = repo.bdb.load_inode (id, version)
     if inode.valid:
-      if changed_dict.has_key (id.str()):
-        if not out_dict.has_key (id.str()):
-          out_dict[id.str()] = INodeInfo()
+      id_str = id.str()
+      if changed_dict.has_key (id_str):
+        if not out_dict.has_key (id_str):
+          out_dict[id_str] = INodeInfo()
           if inode.hash == "new":
             try:
               filename = repo.make_number_filename (inode.new_file_number)
@@ -153,14 +154,14 @@ def gen_status (repo):
               size = 0
           else:
             size = inode.size
-          out_dict[id.str()].size = size
-          out_dict[id.str()].type = type2str (inode.type)
+          out_dict[id_str].size = size
+          out_dict[id_str].type = type2str (inode.type)
         if prefix == "":
           name = "/"
         else:
           name = prefix
-        out_dict[id.str()].names.append (name)
-      if inode.valid and inode.type == bfsyncdb.FILE_DIR:
+        out_dict[id_str].names.append (name)
+      if inode.type == bfsyncdb.FILE_DIR:
         links = repo.bdb.load_links (id, version)
         for link in links:
           inode_name = prefix + "/" + link.name
