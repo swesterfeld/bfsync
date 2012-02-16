@@ -555,12 +555,15 @@ def mk_journal_entry (repo, cmd):
   jentry = bfsyncdb.JournalEntry()
   jentry.operation = "commit"
   jentry.state = cPickle.dumps (cmd.get_state())
+  repo.bdb.clear_journal_entries()
   repo.bdb.store_journal_entry (jentry)
 
 class CommitState:
   pass
 
 class CommitCommand:
+  EXEC_PHASE_SCAN = 1
+
   def __init__ (self, commit_args):
     self.commit_args = commit_args
     self.total_file_size = 0
@@ -676,6 +679,7 @@ class CommitCommand:
 
   def start (self, repo):
     self.state = CommitState()
+    self.state.exec_phase = self.EXEC_PHASE_SCAN
     self.repo = repo
     self.make_commit_msg()
     self.VERSION = self.repo.first_unused_version()
@@ -689,15 +693,22 @@ class CommitCommand:
     return True
 
   def execute (self):
+    if self.state.exec_phase == self.EXEC_PHASE_SCAN:
+      self.state.id_list_filename = self.make_id_list()
+      self.state.exec_phase += 1
+
+      # create new journal entry
+      self.repo.bdb.begin_transaction()
+      mk_journal_entry (self.repo, self)
+      self.repo.bdb.commit_transaction()
+
     self.files_total = self.total_file_count
     self.files_added = 0
     self.bytes_done = 0
     self.start_time = time.time()
 
-    self.id_list_filename = self.make_id_list()
-
     # process files to add in small chunks
-    id_list_file = open (self.id_list_filename, "r")
+    id_list_file = open (self.state.id_list_filename, "r")
     TXN_OP_COUNT = 0
     self.repo.bdb.begin_transaction()
     for id_str in id_list_file:
