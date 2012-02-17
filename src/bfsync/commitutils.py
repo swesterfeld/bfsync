@@ -562,8 +562,11 @@ class CommitState:
   pass
 
 class CommitCommand:
-  EXEC_PHASE_SCAN = 1
-  EXEC_PHASE_ADD  = 2
+  EXEC_PHASE_SCAN     = 1
+  EXEC_PHASE_ADD      = 2
+  EXEC_PHASE_DIFF     = 3
+  EXEC_PHASE_HISTORY  = 4
+  EXEC_PHASE_CLEANUP  = 5
 
   def __init__ (self, commit_args):
     self.commit_args = commit_args
@@ -704,12 +707,12 @@ class CommitCommand:
       mk_journal_entry (self.repo, self)
       self.repo.bdb.commit_transaction()
 
-    self.files_total = self.state.total_file_count
-    self.files_added = 0
-    self.bytes_done = 0
-    self.start_time = time.time()
-
     if self.state.exec_phase == self.EXEC_PHASE_ADD:
+      self.files_total = self.state.total_file_count
+      self.files_added = 0
+      self.bytes_done = 0
+      self.start_time = time.time()
+
       # process files to add in small chunks
       id_list_file = open (self.state.id_list_filename, "r")
       TXN_OP_COUNT = 0
@@ -752,33 +755,52 @@ class CommitCommand:
       self.update_status()
       status_line.cleanup()
 
-    # compute commit diff
-    status_line.update ("computing changes")
+    if self.state.exec_phase == self.EXEC_PHASE_DIFF:
+      # compute commit diff
+      status_line.update ("computing changes")
 
-    self.repo.bdb.begin_transaction()
-    diff_filename = self.repo.make_temp_name()
-    self.repo.bdb.commit_transaction()
-
-    diff_file = open (diff_filename, "w")
-    diff (self.repo, diff_file)
-    diff_file.close()
-
-    if os.path.getsize (diff_filename) != 0:
-      xz (diff_filename)
-      hash = move_file_to_objects (self.repo, diff_filename + ".xz")
-      commit_size_ok = True
-    else:
-      commit_size_ok = False
-
-    status_line.update ("computing changes: done")
-
-    if commit_size_ok:
       self.repo.bdb.begin_transaction()
-      self.repo.bdb.store_history_entry (self.VERSION, hash, self.state.commit_author,
-                                                             self.state.commit_msg,
-                                                             self.state.commit_time)
+      diff_filename = self.repo.make_temp_name()
       self.repo.bdb.commit_transaction()
 
+      diff_file = open (diff_filename, "w")
+      diff (self.repo, diff_file)
+      diff_file.close()
+
+      if os.path.getsize (diff_filename) != 0:
+        xz (diff_filename)
+        self.state.commit_hash = move_file_to_objects (self.repo, diff_filename + ".xz")
+        commit_size_ok = True
+      else:
+        commit_size_ok = False
+
+      status_line.update ("computing changes: done")
+      status_line.cleanup()
+
+      if not commit_size_ok:
+        print "Nothing to commit."
+        return
+
+      self.state.exec_phase += 1
+
+      # create new journal entry
+      self.repo.bdb.begin_transaction()
+      mk_journal_entry (self.repo, self)
+      self.repo.bdb.commit_transaction()
+
+      ### => we have self.state.commit_hash now (and it points to the diff object)
+
+    if self.state.exec_phase == self.EXEC_PHASE_HISTORY:
+      self.repo.bdb.begin_transaction()
+      self.repo.bdb.store_history_entry (self.VERSION, self.state.commit_hash,
+                                                       self.state.commit_author,
+                                                       self.state.commit_msg,
+                                                       self.state.commit_time)
+      self.state.exec_phase += 1
+      mk_journal_entry (self.repo, self)
+      self.repo.bdb.commit_transaction()
+
+    if self.state.exec_phase == self.EXEC_PHASE_CLEANUP:
       while True:
         self.repo.bdb.begin_transaction()
         deleted = self.repo.bdb.clear_changed_inodes (20000)
@@ -786,8 +808,6 @@ class CommitCommand:
 
         if deleted == 0: # changed inodes table empty
           break
-    else:
-      print "Nothing to commit."
 
   def get_state (self):
     return self.state
