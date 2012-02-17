@@ -253,6 +253,7 @@ class WorkingSetGenerator:
     self.wset = []
 
 def commit (repo, expected_diff = None, expected_diff_hash = None, server = True, verbose = True, commit_args = None, need_transaction = True):
+  raise Exception ("old commit no longer supported")
   repo_path = repo.path
 
   DEBUG_MEM = False
@@ -596,8 +597,7 @@ class CommitCommand:
   EXEC_PHASE_HISTORY  = 4
   EXEC_PHASE_CLEANUP  = 5
 
-  def __init__ (self, commit_args):
-    self.commit_args = commit_args
+  def __init__ (self):
     self.outss = OutputSubsampler()
     self.DEBUG_MEM = False
 
@@ -666,9 +666,8 @@ class CommitCommand:
         format_time (eta)
       ))
 
-  def make_commit_msg (self):
+  def make_commit_msg (self, commit_args):
     # commit message
-    commit_args = self.commit_args
     verbose = True # FIXME
     have_message = False
     if commit_args:
@@ -713,16 +712,23 @@ class CommitCommand:
     self.state.commit_msg    = commit_msg
     self.state.commit_time   = commit_time
 
-  def start (self, repo):
+  def start (self, repo, commit_args, server):
     if self.DEBUG_MEM:
       print_mem_usage ("commit start")
 
     self.state = CommitState()
     self.state.exec_phase = self.EXEC_PHASE_SCAN
+    self.state.server = server
     self.repo = repo
-    self.make_commit_msg()
+    self.make_commit_msg (commit_args)
     self.VERSION = self.repo.first_unused_version()
-    self.server_conn = ServerConn (repo.path)
+
+    # lock repo to allow modifications
+    if self.state.server:
+      self.server_conn = ServerConn (repo.path)
+    else:
+      self.server_conn = NoServerConn()
+    self.server_conn.get_lock()
 
     if self.DEBUG_MEM:
       print_mem_usage ("after commit msg")
@@ -732,7 +738,13 @@ class CommitCommand:
   def restart (self, repo):
     self.repo = repo
     self.VERSION = self.repo.first_unused_version()
-    self.server_conn = ServerConn (repo.path)
+
+    # lock repo to allow modifications
+    if self.state.server:
+      self.server_conn = ServerConn (repo.path)
+    else:
+      self.server_conn = NoServerConn()
+    self.server_conn.get_lock()
     return True
 
   def execute (self):
@@ -864,6 +876,13 @@ class CommitCommand:
       if self.DEBUG_MEM:
         print_mem_usage ("after cleanup")
 
+      # we modified the db, so the fs needs to reload everything
+      # in-memory cached items will not be correct
+      self.server_conn.clear_cache()
+
+      # this will release the lock
+      self.server_conn.close()
+
   def get_state (self):
     return self.state
 
@@ -871,9 +890,6 @@ class CommitCommand:
     self.state = state
 
 def run_command (repo, cmd):
-  if not cmd.start (repo):
-    return False
-
   # create journal entry
   repo.bdb.begin_transaction()
   mk_journal_entry (repo, cmd)
@@ -887,7 +903,7 @@ def run_command (repo, cmd):
   repo.bdb.commit_transaction()
 
 def new_commit_continue (repo, state):
-  cmd = CommitCommand (None)
+  cmd = CommitCommand()
 
   status_line.set_op ("COMMIT")
 
@@ -900,8 +916,11 @@ def new_commit_continue (repo, state):
   repo.bdb.clear_journal_entries()
   repo.bdb.commit_transaction()
 
-def new_commit (repo, commit_args):
-  cmd = CommitCommand (commit_args)
+def new_commit (repo, commit_args, server = True):
+  cmd = CommitCommand()
+
+  if not cmd.start (repo, commit_args, server):
+    return False
 
   status_line.set_op ("COMMIT")
 
