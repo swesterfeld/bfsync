@@ -628,7 +628,7 @@ class CommitCommand:
     bytes_per_sec = max (self.state.bytes_done / elapsed_time, 1)
     eta = int ((self.state.total_file_size - self.state.bytes_done) / bytes_per_sec)
     status_line.update ("adding file %d/%d    %s    %.1f%%   %s   ETA: %s" % (
-        self.state.files_added, self.files_total,
+        self.state.files_added, self.state.total_file_count,
         format_size (self.state.bytes_done, self.state.total_file_size),
         self.state.bytes_done * 100.0 / max (self.state.total_file_size, 1),
         format_rate (bytes_per_sec),
@@ -712,7 +712,6 @@ class CommitCommand:
       self.repo.bdb.commit_transaction()
 
     if self.state.exec_phase == self.EXEC_PHASE_ADD:
-      self.files_total = self.state.total_file_count
       self.start_time = time.time() - self.state.previous_time
 
       # process files to add in small chunks
