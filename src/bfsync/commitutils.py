@@ -571,6 +571,7 @@ class CommitCommand:
   def __init__ (self, commit_args):
     self.commit_args = commit_args
     self.outss = OutputSubsampler()
+    self.DEBUG_MEM = False
 
   # update work to do
   def scan_inode (self, inode):
@@ -685,12 +686,19 @@ class CommitCommand:
     self.state.commit_time   = commit_time
 
   def start (self, repo):
+    if self.DEBUG_MEM:
+      print_mem_usage ("commit start")
+
     self.state = CommitState()
     self.state.exec_phase = self.EXEC_PHASE_SCAN
     self.repo = repo
     self.make_commit_msg()
     self.VERSION = self.repo.first_unused_version()
     self.server_conn = ServerConn (repo.path)
+
+    if self.DEBUG_MEM:
+      print_mem_usage ("after commit msg")
+
     return True
 
   def restart (self, repo):
@@ -712,6 +720,9 @@ class CommitCommand:
       self.repo.bdb.begin_transaction()
       mk_journal_entry (self.repo, self)
       self.repo.bdb.commit_transaction()
+
+      if self.DEBUG_MEM:
+        print_mem_usage ("after id list scanning")
 
     if self.state.exec_phase == self.EXEC_PHASE_ADD:
       self.start_time = time.time() - self.state.previous_time
@@ -759,6 +770,9 @@ class CommitCommand:
       self.update_status()
       status_line.cleanup()
 
+      if self.DEBUG_MEM:
+        print_mem_usage ("after add")
+
     if self.state.exec_phase == self.EXEC_PHASE_DIFF:
       # compute commit diff
       status_line.update ("computing changes")
@@ -792,6 +806,9 @@ class CommitCommand:
       mk_journal_entry (self.repo, self)
       self.repo.bdb.commit_transaction()
 
+      if self.DEBUG_MEM:
+        print_mem_usage ("after diff")
+
       ### => we have self.state.commit_hash now (and it points to the diff object)
 
     if self.state.exec_phase == self.EXEC_PHASE_HISTORY:
@@ -804,6 +821,9 @@ class CommitCommand:
       mk_journal_entry (self.repo, self)
       self.repo.bdb.commit_transaction()
 
+      if self.DEBUG_MEM:
+        print_mem_usage ("after history update")
+
     if self.state.exec_phase == self.EXEC_PHASE_CLEANUP:
       while True:
         self.repo.bdb.begin_transaction()
@@ -812,6 +832,9 @@ class CommitCommand:
 
         if deleted == 0: # changed inodes table empty
           break
+
+      if self.DEBUG_MEM:
+        print_mem_usage ("after cleanup")
 
   def get_state (self):
     return self.state
