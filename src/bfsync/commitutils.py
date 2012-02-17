@@ -106,6 +106,10 @@ def gen_status (repo):
   change_list = []
 
   VERSION = repo.first_unused_version()
+  DEBUG_MEM = False
+
+  if DEBUG_MEM:
+    print_mem_usage ("gen_status: start")
 
   changed_dict = dict()
   changed_it = bfsyncdb.ChangedINodesIterator (repo.bdb)
@@ -115,6 +119,9 @@ def gen_status (repo):
       break
     changed_dict[id.str()] = True
   del changed_it
+
+  if DEBUG_MEM:
+    print_mem_usage ("gen_status: after id iteration")
 
   def walk (id, prefix, version, out_dict):
     inode = repo.bdb.load_inode (id, version)
@@ -149,6 +156,9 @@ def gen_status (repo):
   walk (bfsyncdb.id_root(), "", VERSION, new_dict)
   walk (bfsyncdb.id_root(), "", VERSION - 1, old_dict)
 
+  if DEBUG_MEM:
+    print_mem_usage ("gen_status: after walk()")
+
   n_changed = 0
   bytes_changed_old = 0
   bytes_changed_new = 0
@@ -178,6 +188,9 @@ def gen_status (repo):
       n_deleted += 1
       bytes_deleted += old_dict[id].size
 
+  if DEBUG_MEM:
+    print_mem_usage ("gen_status: after change list gen")
+
   status = []
   status += [ "+ %d objects added (%s)." % (n_added, format_size1 (bytes_added)) ]
   status += [ "! %d objects changed (%s => %s)." % (n_changed,
@@ -190,6 +203,10 @@ def gen_status (repo):
   change_list.sort (key = lambda x: x[2])
   for change in change_list:
     status += [ "%2s %-8s %s" % change ]
+
+  if DEBUG_MEM:
+    print_mem_usage ("gen_status: end")
+
   return status
 
 def init_commit_msg (repo, filename):
