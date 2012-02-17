@@ -702,6 +702,7 @@ class CommitCommand:
       self.state.id_list_filename = self.make_id_list()
       self.state.files_added = 0
       self.state.bytes_done = 0
+      self.state.previous_time = 0
 
       self.state.exec_phase += 1
 
@@ -712,7 +713,7 @@ class CommitCommand:
 
     if self.state.exec_phase == self.EXEC_PHASE_ADD:
       self.files_total = self.state.total_file_count
-      self.start_time = time.time()
+      self.start_time = time.time() - self.state.previous_time
 
       # process files to add in small chunks
       id_list_file = open (self.state.id_list_filename, "r")
@@ -742,6 +743,7 @@ class CommitCommand:
 
           if TXN_OP_COUNT >= 20000:
             TXN_OP_COUNT = 0
+            self.state.previous_time = time.time() - self.start_time
             mk_journal_entry (self.repo, self)
             self.repo.bdb.commit_transaction()
             self.repo.bdb.begin_transaction()
