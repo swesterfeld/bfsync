@@ -563,6 +563,7 @@ class CommitState:
 
 class CommitCommand:
   EXEC_PHASE_SCAN = 1
+  EXEC_PHASE_ADD  = 2
 
   def __init__ (self, commit_args):
     self.commit_args = commit_args
@@ -708,44 +709,48 @@ class CommitCommand:
     self.bytes_done = 0
     self.start_time = time.time()
 
-    # process files to add in small chunks
-    id_list_file = open (self.state.id_list_filename, "r")
-    TXN_OP_COUNT = 0
-    self.repo.bdb.begin_transaction()
-    for id_str in id_list_file:
-      id = bfsyncdb.ID (id_str.strip())
-      if not id.valid:
-        raise Exception ("found invalid id during commit")
-      inode = self.repo.bdb.load_inode (id, self.VERSION)
-      if inode.valid and inode.hash == "new":
-        self.files_added += 1
-        filename = self.repo.make_number_filename (inode.new_file_number)
-        hash = self.hash_one (filename)
-        size = os.path.getsize (filename)
-        self.repo.bdb.delete_inode (inode)
+    if self.state.exec_phase == self.EXEC_PHASE_ADD:
+      # process files to add in small chunks
+      id_list_file = open (self.state.id_list_filename, "r")
+      TXN_OP_COUNT = 0
+      self.repo.bdb.begin_transaction()
+      for id_str in id_list_file:
+        id = bfsyncdb.ID (id_str.strip())
+        if not id.valid:
+          raise Exception ("found invalid id during commit")
+        inode = self.repo.bdb.load_inode (id, self.VERSION)
+        if inode.valid and inode.hash == "new":
+          self.files_added += 1
+          filename = self.repo.make_number_filename (inode.new_file_number)
+          hash = self.hash_one (filename)
+          size = os.path.getsize (filename)
+          self.repo.bdb.delete_inode (inode)
 
-        if self.repo.bdb.load_hash2file (hash) == 0:
-          self.repo.bdb.store_hash2file (hash, inode.new_file_number)
-        else:
-          self.repo.bdb.add_deleted_file (inode.new_file_number)
+          if self.repo.bdb.load_hash2file (hash) == 0:
+            self.repo.bdb.store_hash2file (hash, inode.new_file_number)
+          else:
+            self.repo.bdb.add_deleted_file (inode.new_file_number)
 
-        inode.hash = hash
-        inode.size = size
-        inode.new_file_number = 0
-        self.repo.bdb.store_inode (inode)
+          inode.hash = hash
+          inode.size = size
+          inode.new_file_number = 0
+          self.repo.bdb.store_inode (inode)
 
-        if TXN_OP_COUNT >= 20000:
-          TXN_OP_COUNT = 0
-          self.repo.bdb.commit_transaction()
-          self.repo.bdb.begin_transaction()
-        else:
-          TXN_OP_COUNT += 1
-    self.repo.bdb.commit_transaction()
+          if TXN_OP_COUNT >= 20000:
+            TXN_OP_COUNT = 0
+            mk_journal_entry (self.repo, self)
+            self.repo.bdb.commit_transaction()
+            self.repo.bdb.begin_transaction()
+          else:
+            TXN_OP_COUNT += 1
+      self.state.exec_phase += 1
+      mk_journal_entry (self.repo, self)
+      self.repo.bdb.commit_transaction()
 
-    id_list_file.close()
+      id_list_file.close()
 
-    self.update_status()
-    status_line.cleanup()
+      self.update_status()
+      status_line.cleanup()
 
     # compute commit diff
     status_line.update ("computing changes")
