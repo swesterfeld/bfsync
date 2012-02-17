@@ -65,15 +65,18 @@ def commit_msg_ok (filename):
   return result
 
 class INodeInfo:
-  def __init__ (self):
-    self.names = []
-    self.size  = 0
+  def __init__ (self, info):
+    if info:
+      self.info = info
+      self.size = info[0]
+      self.type = type2str (info[1])
+      self.names = self.info[2]
 
   def get_name (self):
-    if len (self.names) == 1:
-      return self.names[0]
+    if len (self.info[2]) == 1:
+      return self.info[2][0]
     else:
-      return "%s" % self.names
+      return "%s" % self.info[2]
 
 def type2str (type):
   if type == bfsyncdb.FILE_REGULAR:
@@ -117,19 +120,23 @@ def gen_status (repo):
     id = changed_it.get_next()
     if not id.valid:
       break
-    changed_dict[id.str()] = True
+    changed_dict[id.str()] = (None, None)
   del changed_it
 
   if DEBUG_MEM:
     print_mem_usage ("gen_status: after id iteration")
 
-  def walk (id, prefix, version, out_dict):
+  def walk (id, prefix, version, new_old):
     inode = repo.bdb.load_inode (id, version)
     if inode.valid:
       id_str = id.str()
       if changed_dict.has_key (id_str):
-        if not out_dict.has_key (id_str):
-          out_dict[id_str] = INodeInfo()
+        new, old = changed_dict[id_str]
+        if new_old == 0:
+          my = new
+        else:
+          my = old
+        if not my:
           if inode.hash == "new":
             try:
               filename = repo.make_number_filename (inode.new_file_number)
@@ -138,23 +145,24 @@ def gen_status (repo):
               size = 0
           else:
             size = inode.size
-          out_dict[id_str].size = size
-          out_dict[id_str].type = type2str (inode.type)
+          my = (size, inode.type, [])
         if prefix == "":
           name = "/"
         else:
           name = prefix
-        out_dict[id_str].names.append (name)
+        my[2].append (name)
+        if new_old == 0:
+          changed_dict[id_str] = (my, old)
+        else:
+          changed_dict[id_str] = (new, my)
       if inode.type == bfsyncdb.FILE_DIR:
         links = repo.bdb.load_links (id, version)
         for link in links:
           inode_name = prefix + "/" + link.name
-          walk (link.inode_id, inode_name, version, out_dict)
+          walk (link.inode_id, inode_name, version, new_old)
 
-  new_dict = dict()
-  old_dict = dict()
-  walk (bfsyncdb.id_root(), "", VERSION, new_dict)
-  walk (bfsyncdb.id_root(), "", VERSION - 1, old_dict)
+  walk (bfsyncdb.id_root(), "", VERSION, 0)
+  walk (bfsyncdb.id_root(), "", VERSION - 1, 1)
 
   if DEBUG_MEM:
     print_mem_usage ("gen_status: after walk()")
@@ -169,24 +177,27 @@ def gen_status (repo):
   n_renamed = 0
 
   for id in changed_dict:
-    if id in new_dict:
-      if id in old_dict: # NEW & OLD
-        if old_dict[id].names != new_dict[id].names:
-          change_list.append (("R!", new_dict[id].type, "%s => %s" % (old_dict[id].get_name(), new_dict[id].get_name())))
+    new_tuple, old_tuple = changed_dict[id]
+    new = INodeInfo (new_tuple)
+    old = INodeInfo (old_tuple)
+    if new_tuple:
+      if old_tuple: # NEW & OLD
+        if old.names != new.names:
+          change_list.append (("R!", new.type, "%s => %s" % (old.get_name(), new.get_name())))
           n_renamed += 1
         else:
-          change_list.append (("!", new_dict[id].type, new_dict[id].get_name()))
+          change_list.append (("!", new.type, new.get_name()))
         n_changed += 1
-        bytes_changed_old += old_dict[id].size
-        bytes_changed_new += new_dict[id].size
+        bytes_changed_old += old.size
+        bytes_changed_new += new.size
       else: # NEW
-        change_list.append (("+", new_dict[id].type , new_dict[id].get_name()))
-        bytes_added += new_dict[id].size
+        change_list.append (("+", new.type , new.get_name()))
+        bytes_added += new.size
         n_added += 1
     else: # OLD
-      change_list.append (("-", old_dict[id].type, old_dict[id].get_name()))
+      change_list.append (("-", old.type, old.get_name()))
       n_deleted += 1
-      bytes_deleted += old_dict[id].size
+      bytes_deleted += old.size
 
   if DEBUG_MEM:
     print_mem_usage ("gen_status: after change list gen")
