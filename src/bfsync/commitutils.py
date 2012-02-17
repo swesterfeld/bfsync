@@ -616,7 +616,7 @@ class CommitCommand:
         eof = True
       else:
         hash.update (data)
-        self.bytes_done += len (data)
+        self.state.bytes_done += len (data)
         if self.outss.need_update():
           self.update_status()
     file.close()
@@ -625,12 +625,12 @@ class CommitCommand:
   # update SHA1 hashing status
   def update_status (self):
     elapsed_time = max (time.time() - self.start_time, 1)
-    bytes_per_sec = max (self.bytes_done / elapsed_time, 1)
-    eta = int ((self.state.total_file_size - self.bytes_done) / bytes_per_sec)
+    bytes_per_sec = max (self.state.bytes_done / elapsed_time, 1)
+    eta = int ((self.state.total_file_size - self.state.bytes_done) / bytes_per_sec)
     status_line.update ("adding file %d/%d    %s    %.1f%%   %s   ETA: %s" % (
-        self.files_added, self.files_total,
-        format_size (self.bytes_done, self.state.total_file_size),
-        self.bytes_done * 100.0 / max (self.state.total_file_size, 1),
+        self.state.files_added, self.files_total,
+        format_size (self.state.bytes_done, self.state.total_file_size),
+        self.state.bytes_done * 100.0 / max (self.state.total_file_size, 1),
         format_rate (bytes_per_sec),
         format_time (eta)
       ))
@@ -700,6 +700,9 @@ class CommitCommand:
   def execute (self):
     if self.state.exec_phase == self.EXEC_PHASE_SCAN:
       self.state.id_list_filename = self.make_id_list()
+      self.state.files_added = 0
+      self.state.bytes_done = 0
+
       self.state.exec_phase += 1
 
       # create new journal entry
@@ -709,8 +712,6 @@ class CommitCommand:
 
     if self.state.exec_phase == self.EXEC_PHASE_ADD:
       self.files_total = self.state.total_file_count
-      self.files_added = 0
-      self.bytes_done = 0
       self.start_time = time.time()
 
       # process files to add in small chunks
@@ -723,7 +724,7 @@ class CommitCommand:
           raise Exception ("found invalid id during commit")
         inode = self.repo.bdb.load_inode (id, self.VERSION)
         if inode.valid and inode.hash == "new":
-          self.files_added += 1
+          self.state.files_added += 1
           filename = self.repo.make_number_filename (inode.new_file_number)
           hash = self.hash_one (filename)
           size = os.path.getsize (filename)
