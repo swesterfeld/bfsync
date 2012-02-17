@@ -620,6 +620,8 @@ class CommitCommand:
         if self.outss.need_update():
           self.update_status()
     file.close()
+    if self.outss.need_update():
+      self.update_status()
     return hash.hexdigest()
 
   # update SHA1 hashing status
