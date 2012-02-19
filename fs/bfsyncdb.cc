@@ -21,6 +21,7 @@
 #include "bfbdb.hh"
 #include "bfleakdebugger.hh"
 #include "bfhistory.hh"
+#include "bftimeprof.hh"
 
 using BFSync::DataOutBuffer;
 using BFSync::DataBuffer;
@@ -30,6 +31,8 @@ using BFSync::BDB_TABLE_INODES;
 using BFSync::BDB_TABLE_LINKS;
 using BFSync::string_printf;
 using BFSync::History;
+using BFSync::TimeProfHandle;
+using BFSync::TimeProfSection;
 
 using std::string;
 using std::vector;
@@ -267,9 +270,13 @@ id_load (ID& id, DataBuffer& dbuf)
   id.valid = true;
 }
 
+TimeProfSection tp_load_inode ("bfsyncdb.load_inode");
+
 INode
 BDBPtr::load_inode (const ID& id, unsigned int version)
 {
+  TimeProfHandle h (tp_load_inode);
+
   INode inode;
   DataOutBuffer kbuf;
 
@@ -320,9 +327,13 @@ BDBPtr::load_inode (const ID& id, unsigned int version)
   return inode;
 }
 
+TimeProfSection tp_store_inode ("bfsyncdb.store_inode");
+
 void
 BDBPtr::store_inode (const INode& inode)
 {
+  TimeProfHandle h (tp_store_inode);
+
   DataOutBuffer kbuf, dbuf;
 
   id_store (inode.id, kbuf);
@@ -358,11 +369,15 @@ BDBPtr::store_inode (const INode& inode)
   ptr->my_bdb->add_changed_inode (inode.id.id);
 }
 
+TimeProfSection tp_delete_inode ("bfsyncdb.delete_inode");
+
 void
 BDBPtr::delete_inode (const INode& inode)
 {
   if (!ptr->my_bdb->get_transaction())
     throw BDBException (BFSync::BDB_ERROR_NO_TRANS);
+
+  TimeProfHandle h (tp_store_inode);
 
   DataOutBuffer kbuf;
 
@@ -413,9 +428,13 @@ id_root()
   return id;
 }
 
+TimeProfSection tp_load_links ("bfsyncdb.load_links");
+
 std::vector<Link>
 BDBPtr::load_links (const ID& id, unsigned int version)
 {
+  TimeProfHandle h (tp_load_links);
+
   vector<Link> result;
 
   DataOutBuffer kbuf;
@@ -454,9 +473,13 @@ BDBPtr::load_links (const ID& id, unsigned int version)
   return result;
 }
 
+TimeProfSection tp_store_link ("bfsyncdb.store_link");
+
 void
 BDBPtr::store_link (const Link& link)
 {
+  TimeProfHandle h (tp_store_link);
+
   DbTxn *transaction = ptr->my_bdb->get_transaction();
   g_assert (transaction);
 
@@ -477,9 +500,13 @@ BDBPtr::store_link (const Link& link)
   g_assert (ret == 0);
 }
 
+TimeProfSection tp_delete_link ("bfsyncdb.delete_link");
+
 void
 BDBPtr::delete_link (const Link& link)
 {
+  TimeProfHandle h (tp_delete_link);
+
   DataOutBuffer kbuf, dbuf;
 
   id_store (link.dir_id, kbuf);
@@ -996,4 +1023,10 @@ BDBException::error_string()
         return "key not found";
     }
   return "unknown error";
+}
+
+string
+time_prof_result()
+{
+  return BFSync::TimeProf::the()->result();
 }

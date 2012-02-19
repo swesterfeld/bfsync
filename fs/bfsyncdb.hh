@@ -215,6 +215,7 @@ public:
 
 extern BDBPtr             open_db (const std::string& db, int cache_size_mb, bool recover);
 extern ID                 id_root();
+extern std::string        time_prof_result();
 
 class DiffGenerator
 {

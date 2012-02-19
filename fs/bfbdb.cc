@@ -1060,9 +1060,15 @@ BDB::gen_new_file_number()
   return value;
 }
 
+TimeProfSection tp_load_hash2file ("BDB::load_hash2file");
+
 unsigned int
 BDB::load_hash2file (const string& hash)
 {
+  Lock lock (mutex);
+
+  TimeProfHandle h (tp_load_hash2file);
+
   DataOutBuffer kbuf;
   kbuf.write_hash (hash);
 
