@@ -45,6 +45,7 @@ from ServerConn import ServerConn
 from RemoteRepo import RemoteRepo
 from stat import *
 from transferutils import get, put, push, pull, collect
+from xzutils import xz
 
 def find_bfsync_dir():
   old_cwd = os.getcwd()
@@ -439,7 +440,7 @@ def cmd_init():
   for s in change_list:
     f.write (s + "\0")
   f.close()
-  os.system ("xz -9 init-diff")
+  xz ("init-diff")
   hash = move_file_to_objects (repo, "init-diff.xz")
 
   # create initial history entry

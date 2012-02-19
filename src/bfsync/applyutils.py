@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from utils import parse_diff
-from commitutils import commit
+from commitutils import commit, new_commit
 import os
 import bfsyncdb
 
@@ -147,6 +147,9 @@ class ApplyTool:
     self.bdb.store_inode (inode)
 
 def apply (repo, diff, expected_hash = None, server = True, verbose = True, commit_args = None):
+  if verbose:
+    raise Exception ("apply with verbose = True no longer supported")
+
   changes = parse_diff (diff)
 
   VERSION = repo.first_unused_version()
@@ -169,7 +172,8 @@ def apply (repo, diff, expected_hash = None, server = True, verbose = True, comm
       apply_tool.apply_inode_minus (change[1:])
   repo.bdb.commit_transaction()
 
-  if expected_hash:
-    commit (repo, diff, expected_hash, server = server, verbose = verbose, commit_args = commit_args)
-  else:
-    commit (repo, server = server, verbose = verbose, commit_args = commit_args)
+  new_commit (repo, commit_args, server = server)
+  #if expected_hash:
+    #commit (repo, diff, expected_hash, server = server, verbose = verbose, commit_args = commit_args)
+  #else:
+  #  commit (repo, server = server, verbose = verbose, commit_args = commit_args)

@@ -24,8 +24,11 @@ from bfsync.utils import *
 from bfsync.xzutils import xzcat
 
 if len (sys.argv) == 2:
-  obj_name = os.path.join (find_repo_dir(), "objects", make_object_filename (sys.argv[1]))
-  diff = xzcat (obj_name)
+  repo = cd_repo_connect_db()
+  file_number = repo.bdb.load_hash2file (sys.argv[1])
+  if file_number != 0:
+    full_name = repo.make_number_filename (file_number)
+    diff = xzcat (full_name)
 else:
   diff = sys.stdin.read()
 

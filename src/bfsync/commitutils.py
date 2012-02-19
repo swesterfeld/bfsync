@@ -65,15 +65,18 @@ def commit_msg_ok (filename):
   return result
 
 class INodeInfo:
-  def __init__ (self):
-    self.names = []
-    self.size  = 0
+  def __init__ (self, info):
+    if info:
+      self.info = info
+      self.size = info[0]
+      self.type = type2str (info[1])
+      self.names = self.info[2]
 
   def get_name (self):
-    if len (self.names) == 1:
-      return self.names[0]
+    if len (self.info[2]) == 1:
+      return self.info[2][0]
     else:
-      return "%s" % self.names
+      return "%s" % self.info[2]
 
 def type2str (type):
   if type == bfsyncdb.FILE_REGULAR:
@@ -106,6 +109,10 @@ def gen_status (repo):
   change_list = []
 
   VERSION = repo.first_unused_version()
+  DEBUG_MEM = False
+
+  if DEBUG_MEM:
+    print_mem_usage ("gen_status: start")
 
   changed_dict = dict()
   changed_it = bfsyncdb.ChangedINodesIterator (repo.bdb)
@@ -113,16 +120,23 @@ def gen_status (repo):
     id = changed_it.get_next()
     if not id.valid:
       break
-    changed_dict[id.str()] = True
+    changed_dict[id.str()] = (None, None)
   del changed_it
 
-  def walk (id, prefix, version, out_dict):
+  if DEBUG_MEM:
+    print_mem_usage ("gen_status: after id iteration")
+
+  def walk (id, prefix, version, new_old):
     inode = repo.bdb.load_inode (id, version)
     if inode.valid:
       id_str = id.str()
       if changed_dict.has_key (id_str):
-        if not out_dict.has_key (id_str):
-          out_dict[id_str] = INodeInfo()
+        new, old = changed_dict[id_str]
+        if new_old == 0:
+          my = new
+        else:
+          my = old
+        if not my:
           if inode.hash == "new":
             try:
               filename = repo.make_number_filename (inode.new_file_number)
@@ -131,23 +145,27 @@ def gen_status (repo):
               size = 0
           else:
             size = inode.size
-          out_dict[id_str].size = size
-          out_dict[id_str].type = type2str (inode.type)
+          my = (size, inode.type, [])
         if prefix == "":
           name = "/"
         else:
           name = prefix
-        out_dict[id_str].names.append (name)
+        my[2].append (name)
+        if new_old == 0:
+          changed_dict[id_str] = (my, old)
+        else:
+          changed_dict[id_str] = (new, my)
       if inode.type == bfsyncdb.FILE_DIR:
         links = repo.bdb.load_links (id, version)
         for link in links:
           inode_name = prefix + "/" + link.name
-          walk (link.inode_id, inode_name, version, out_dict)
+          walk (link.inode_id, inode_name, version, new_old)
 
-  new_dict = dict()
-  old_dict = dict()
-  walk (bfsyncdb.id_root(), "", VERSION, new_dict)
-  walk (bfsyncdb.id_root(), "", VERSION - 1, old_dict)
+  walk (bfsyncdb.id_root(), "", VERSION, 0)
+  walk (bfsyncdb.id_root(), "", VERSION - 1, 1)
+
+  if DEBUG_MEM:
+    print_mem_usage ("gen_status: after walk()")
 
   n_changed = 0
   bytes_changed_old = 0
@@ -159,24 +177,30 @@ def gen_status (repo):
   n_renamed = 0
 
   for id in changed_dict:
-    if id in new_dict:
-      if id in old_dict: # NEW & OLD
-        if old_dict[id].names != new_dict[id].names:
-          change_list.append (("R!", new_dict[id].type, "%s => %s" % (old_dict[id].get_name(), new_dict[id].get_name())))
+    new_tuple, old_tuple = changed_dict[id]
+    new = INodeInfo (new_tuple)
+    old = INodeInfo (old_tuple)
+    if new_tuple:
+      if old_tuple: # NEW & OLD
+        if old.names != new.names:
+          change_list.append (("R!", new.type, "%s => %s" % (old.get_name(), new.get_name())))
           n_renamed += 1
         else:
-          change_list.append (("!", new_dict[id].type, new_dict[id].get_name()))
+          change_list.append (("!", new.type, new.get_name()))
         n_changed += 1
-        bytes_changed_old += old_dict[id].size
-        bytes_changed_new += new_dict[id].size
+        bytes_changed_old += old.size
+        bytes_changed_new += new.size
       else: # NEW
-        change_list.append (("+", new_dict[id].type , new_dict[id].get_name()))
-        bytes_added += new_dict[id].size
+        change_list.append (("+", new.type , new.get_name()))
+        bytes_added += new.size
         n_added += 1
     else: # OLD
-      change_list.append (("-", old_dict[id].type, old_dict[id].get_name()))
+      change_list.append (("-", old.type, old.get_name()))
       n_deleted += 1
-      bytes_deleted += old_dict[id].size
+      bytes_deleted += old.size
+
+  if DEBUG_MEM:
+    print_mem_usage ("gen_status: after change list gen")
 
   status = []
   status += [ "+ %d objects added (%s)." % (n_added, format_size1 (bytes_added)) ]
@@ -190,6 +214,10 @@ def gen_status (repo):
   change_list.sort (key = lambda x: x[2])
   for change in change_list:
     status += [ "%2s %-8s %s" % change ]
+
+  if DEBUG_MEM:
+    print_mem_usage ("gen_status: end")
+
   return status
 
 def init_commit_msg (repo, filename):
@@ -207,295 +235,8 @@ def get_author():
   hostname = os.uname()[1]
   return "%s@%s" % (username, hostname)
 
-class WorkingSetGenerator:
-  def __init__ (self, work_function):
-    self.work_function = work_function
-    self.max_set_size = 20000
-    self.wset = []
-
-  def add_item (self, item):
-    self.wset += [ item ]
-    if len (self.wset) == self.max_set_size:
-      self.work_function (self.wset)
-      self.wset = []
-
-  def finish (self):
-    if len (self.wset):
-      self.work_function (self.wset)
-    self.wset = []
-
-def commit (repo, expected_diff = None, expected_diff_hash = None, server = True, verbose = True, commit_args = None, need_transaction = True):
-  repo_path = repo.path
-
-  DEBUG_MEM = False
-  if DEBUG_MEM:
-    print_mem_usage ("commit start")
-
-  # lock repo to allow modifications
-  if server:
-    server_conn = ServerConn (repo_path)
-  else:
-    server_conn = NoServerConn()
-  server_conn.get_lock()
-
-  VERSION = repo.first_unused_version()
-
-  if DEBUG_MEM:
-    print_mem_usage ("after stats")
-
-  class Status:
-    def __init__ (self):
-      self.total_file_size = 0
-      self.total_file_count = 0
-      self.outss = OutputSubsampler()
-
-    def scan_inode (self, inode):
-      if inode.hash == "new":
-        filename = repo.make_number_filename (inode.new_file_number)
-        self.total_file_size += os.path.getsize (filename)
-        self.total_file_count += 1
-        if verbose and self.outss.need_update():
-          status_line.update ("scanning file %d (total %s)" % (
-            self.total_file_count, format_size1 (self.total_file_size)))
-
-  status = Status()
-
-  def update_status():
-    elapsed_time = max (time.time() - status.start_time, 1)
-    bytes_per_sec = max (status.bytes_done / elapsed_time, 1)
-    eta = int ((status.total_file_size - status.bytes_done) / bytes_per_sec)
-    status_line.update ("adding file %d/%d    %s    %.1f%%   %s   ETA: %s" % (
-        status.files_added, status.files_total,
-        format_size (status.bytes_done, status.total_file_size),
-        status.bytes_done * 100.0 / max (status.total_file_size, 1),
-        format_rate (bytes_per_sec),
-        format_time (eta)
-      ))
-
-  def hash_one (filename):
-    file = open (filename, "r")
-    hash = hashlib.sha1()
-    eof = False
-    while not eof:
-      data = file.read (256 * 1024)
-      if data == "":
-        eof = True
-      else:
-        hash.update (data)
-        status.bytes_done += len (data)
-        if verbose and status.outss.need_update():
-          update_status()
-    file.close()
-    return hash.hexdigest()
-
-  def print_it (wset):
-    wset_number_list = []
-    for inode in wset:
-      if inode.hash == "new":
-        wset_number_list.append (inode)
-    wset_number_list.sort (key = lambda inode: inode.new_file_number)
-    if need_transaction:
-      repo.bdb.begin_transaction()
-
-    for inode in wset_number_list:
-      status.files_added += 1
-
-      filename = repo.make_number_filename (inode.new_file_number)
-      hash = hash_one (filename)
-      size = os.path.getsize (filename)
-      repo.bdb.delete_inode (inode)
-
-      if repo.bdb.load_hash2file (hash) == 0:
-        repo.bdb.store_hash2file (hash, inode.new_file_number)
-      else:
-        repo.bdb.add_deleted_file (inode.new_file_number)
-
-      inode.hash = hash
-      inode.size = size
-      inode.new_file_number = 0
-      repo.bdb.store_inode (inode)
-    if need_transaction:
-      repo.bdb.commit_transaction()
-
-    # we can delete the files only if the transaction before this one succeeded,
-    # since otherwise we'll still need them to rerun the last transaction
-    if need_transaction:
-      repo.bdb.begin_transaction()
-
-    files = repo.bdb.load_deleted_files()
-    for file_number in files:
-      file_name = repo.make_number_filename (file_number)
-      if os.path.exists (file_name):
-        os.remove (file_name)
-
-    repo.bdb.clear_deleted_files()
-    if need_transaction:
-      repo.bdb.commit_transaction()
-
-  # read list of ids ; since this could be huge, we write the id strings
-  # to a file and reread the file later on
-  #
-  # we also need to do this before actually modifying the database, because
-  # the read cursor held by the ChangedINodesIterator will block writes
-
-  if need_transaction:
-    repo.bdb.begin_transaction()
-
-  id_list_filename = repo.make_temp_name()
-
-  if need_transaction:
-    repo.bdb.commit_transaction()
-
-  id_list_file = open (id_list_filename, "w")
-  changed_it = bfsyncdb.ChangedINodesIterator (repo.bdb)
-  while True:
-    id = changed_it.get_next()
-    if not id.valid:
-      break
-    id_list_file.write (id.str() + "\n")
-    inode = repo.bdb.load_inode (id, VERSION)
-    if inode.valid:
-      status.scan_inode (inode)
-  del changed_it # close read cursor
-  id_list_file.close()
-
-  status.files_total = status.total_file_count
-  status.files_added = 0
-  status.bytes_done = 0
-  status.start_time = time.time()
-
-  # process files to add in small chunks
-  id_list_file = open (id_list_filename, "r")
-  working_set_generator = WorkingSetGenerator (print_it)
-  for id_str in id_list_file:
-    id = bfsyncdb.ID (id_str.strip())
-    if not id.valid:
-      raise Exception ("found invalid id during commit")
-    inode = repo.bdb.load_inode (id, VERSION)
-    if inode.valid:
-      working_set_generator.add_item (inode)
-  working_set_generator.finish()
-  id_list_file.close()
-
-  if verbose:
-    update_status()
-    status_line.cleanup()
-
-  if DEBUG_MEM:
-    print_mem_usage ("with file_list/hash_list")
-
-  have_message = False
-  if commit_args:
-    if commit_args.get ("message"):
-      have_message = True
-
-  if verbose and not have_message:
-    if need_transaction:
-      repo.bdb.begin_transaction()
-
-    commit_msg_filename = repo.make_temp_name()
-
-    if need_transaction:
-      repo.bdb.commit_transaction()
-
-    init_commit_msg (repo, commit_msg_filename)
-    launch_editor (commit_msg_filename)
-    if not commit_msg_ok (commit_msg_filename):
-      raise BFSyncError ("commit: empty commit message - aborting commit")
-    commit_msg = ""
-    commit_msg_file = open (commit_msg_filename, "r")
-    for line in commit_msg_file:
-      if line[0] != "#":
-        commit_msg += line
-    commit_msg_file.close()
-  else:
-    commit_msg = "commit message"
-
-  commit_author = None
-  commit_time = None
-
-  if commit_args:
-    commit_author = commit_args.get ("author")
-    commit_time = commit_args.get ("time")
-    xcommit_msg = commit_args.get ("message")
-    if xcommit_msg is not None:
-      commit_msg = xcommit_msg
-
-  if commit_author is None:
-    commit_author = get_author()
-
-  if commit_time is None:
-    commit_time = int (time.time())
-
-  if DEBUG_MEM:
-    print_mem_usage ("after add")
-
-  VERSION = repo.first_unused_version()
-
-  # compute commit diff
-  if verbose:
-    status_line.update ("computing changes")
-
-  if need_transaction:
-    repo.bdb.begin_transaction()
-
-  diff_filename = repo.make_temp_name()
-
-  if need_transaction:
-    repo.bdb.commit_transaction()
-
-  diff_file = open (diff_filename, "w")
-  diff (repo, diff_file)
-  diff_file.close()
-
-  if DEBUG_MEM:
-    print_mem_usage ("after diff")
-
-  commit_size_ok = True
-  if expected_diff:
-    diff_file = open (diff_filename, "r")
-    new_diff = diff_file.read()
-    diff_file.close()
-    if new_diff != expected_diff:
-      raise Exception ("commit called with expected diff argument, but diffs didn't match")
-    hash = expected_diff_hash
-    if not repo.validate_object (hash):
-      raise Exception ("commit called with expected_diff argument, but object with hash %s doesn't validate" % hash)
-  else:
-    if os.path.getsize (diff_filename) != 0:
-      xz (diff_filename)
-      hash = move_file_to_objects (repo, diff_filename + ".xz")
-    else:
-      commit_size_ok = False
-
-  if verbose:
-    status_line.update ("computing changes: done")
-    status_line.cleanup()
-
-  if DEBUG_MEM:
-    print_mem_usage ("after xz")
-
-  if commit_size_ok:
-    if need_transaction:
-      repo.bdb.begin_transaction()
-
-    repo.bdb.store_history_entry (VERSION, hash, commit_author, commit_msg, commit_time)
-    repo.bdb.clear_changed_inodes (1000000)
-
-    if need_transaction:
-      repo.bdb.commit_transaction()
-  else:
-    print "Nothing to commit."
-
-  if DEBUG_MEM:
-    print_mem_usage ("commit end")
-
-  # we modified the db, so the fs needs to reload everything
-  # in-memory cached items will not be correct
-  server_conn.clear_cache()
-
-  # this will release the lock
-  server_conn.close()
+def commit():
+  raise Exception ("old style commit no longer supported")
 
 def revert (repo, VERSION, verbose = True):
   conn = repo.conn
@@ -562,26 +303,31 @@ class CommitState:
   pass
 
 class CommitCommand:
-  EXEC_PHASE_SCAN = 1
+  EXEC_PHASE_SCAN     = 1
+  EXEC_PHASE_ADD      = 2
+  EXEC_PHASE_DIFF     = 3
+  EXEC_PHASE_HISTORY  = 4
+  EXEC_PHASE_CLEANUP  = 5
 
-  def __init__ (self, commit_args):
-    self.commit_args = commit_args
-    self.total_file_size = 0
-    self.total_file_count = 0
+  def __init__ (self):
     self.outss = OutputSubsampler()
+    self.DEBUG_MEM = False
 
   # update work to do
   def scan_inode (self, inode):
     if inode.hash == "new":
       filename = self.repo.make_number_filename (inode.new_file_number)
-      self.total_file_size += os.path.getsize (filename)
-      self.total_file_count += 1
+      self.state.total_file_size += os.path.getsize (filename)
+      self.state.total_file_count += 1
       if self.outss.need_update():
         status_line.update ("scanning file %d (total %s)" % (
-          self.total_file_count, format_size1 (self.total_file_size)))
+          self.state.total_file_count, format_size1 (self.state.total_file_size)))
 
   # create file with changed IDs
   def make_id_list (self):
+    self.state.total_file_size = 0
+    self.state.total_file_count = 0
+
     self.repo.bdb.begin_transaction()
     id_list_filename = self.repo.make_temp_name()
     self.repo.bdb.commit_transaction()
@@ -611,28 +357,29 @@ class CommitCommand:
         eof = True
       else:
         hash.update (data)
-        self.bytes_done += len (data)
+        self.state.bytes_done += len (data)
         if self.outss.need_update():
           self.update_status()
     file.close()
+    if self.outss.need_update():
+      self.update_status()
     return hash.hexdigest()
 
   # update SHA1 hashing status
   def update_status (self):
     elapsed_time = max (time.time() - self.start_time, 1)
-    bytes_per_sec = max (self.bytes_done / elapsed_time, 1)
-    eta = int ((self.total_file_size - self.bytes_done) / bytes_per_sec)
+    bytes_per_sec = max (self.state.bytes_done / elapsed_time, 1)
+    eta = int ((self.state.total_file_size - self.state.bytes_done) / bytes_per_sec)
     status_line.update ("adding file %d/%d    %s    %.1f%%   %s   ETA: %s" % (
-        self.files_added, self.files_total,
-        format_size (self.bytes_done, self.total_file_size),
-        self.bytes_done * 100.0 / max (self.total_file_size, 1),
+        self.state.files_added, self.state.total_file_count,
+        format_size (self.state.bytes_done, self.state.total_file_size),
+        self.state.bytes_done * 100.0 / max (self.state.total_file_size, 1),
         format_rate (bytes_per_sec),
         format_time (eta)
       ))
 
-  def make_commit_msg (self):
+  def make_commit_msg (self, commit_args):
     # commit message
-    commit_args = self.commit_args
     verbose = True # FIXME
     have_message = False
     if commit_args:
@@ -677,24 +424,48 @@ class CommitCommand:
     self.state.commit_msg    = commit_msg
     self.state.commit_time   = commit_time
 
-  def start (self, repo):
+  def start (self, repo, commit_args, server):
+    if self.DEBUG_MEM:
+      print_mem_usage ("commit start")
+
     self.state = CommitState()
     self.state.exec_phase = self.EXEC_PHASE_SCAN
+    self.state.server = server
     self.repo = repo
-    self.make_commit_msg()
+    self.make_commit_msg (commit_args)
     self.VERSION = self.repo.first_unused_version()
-    self.server_conn = ServerConn (repo.path)
+
+    # lock repo to allow modifications
+    if self.state.server:
+      self.server_conn = ServerConn (repo.path)
+    else:
+      self.server_conn = NoServerConn()
+    self.server_conn.get_lock()
+
+    if self.DEBUG_MEM:
+      print_mem_usage ("after commit msg")
+
     return True
 
   def restart (self, repo):
     self.repo = repo
     self.VERSION = self.repo.first_unused_version()
-    self.server_conn = ServerConn (repo.path)
+
+    # lock repo to allow modifications
+    if self.state.server:
+      self.server_conn = ServerConn (repo.path)
+    else:
+      self.server_conn = NoServerConn()
+    self.server_conn.get_lock()
     return True
 
   def execute (self):
     if self.state.exec_phase == self.EXEC_PHASE_SCAN:
       self.state.id_list_filename = self.make_id_list()
+      self.state.files_added = 0
+      self.state.bytes_done = 0
+      self.state.previous_time = 0
+
       self.state.exec_phase += 1
 
       # create new journal entry
@@ -702,77 +473,110 @@ class CommitCommand:
       mk_journal_entry (self.repo, self)
       self.repo.bdb.commit_transaction()
 
-    self.files_total = self.total_file_count
-    self.files_added = 0
-    self.bytes_done = 0
-    self.start_time = time.time()
+      if self.DEBUG_MEM:
+        print_mem_usage ("after id list scanning")
 
-    # process files to add in small chunks
-    id_list_file = open (self.state.id_list_filename, "r")
-    TXN_OP_COUNT = 0
-    self.repo.bdb.begin_transaction()
-    for id_str in id_list_file:
-      id = bfsyncdb.ID (id_str.strip())
-      if not id.valid:
-        raise Exception ("found invalid id during commit")
-      inode = self.repo.bdb.load_inode (id, self.VERSION)
-      if inode.valid and inode.hash == "new":
-        self.files_added += 1
-        filename = self.repo.make_number_filename (inode.new_file_number)
-        hash = self.hash_one (filename)
-        size = os.path.getsize (filename)
-        self.repo.bdb.delete_inode (inode)
+    if self.state.exec_phase == self.EXEC_PHASE_ADD:
+      self.start_time = time.time() - self.state.previous_time
 
-        if self.repo.bdb.load_hash2file (hash) == 0:
-          self.repo.bdb.store_hash2file (hash, inode.new_file_number)
-        else:
-          self.repo.bdb.add_deleted_file (inode.new_file_number)
-
-        inode.hash = hash
-        inode.size = size
-        inode.new_file_number = 0
-        self.repo.bdb.store_inode (inode)
-
-        if TXN_OP_COUNT >= 20000:
-          TXN_OP_COUNT = 0
-          self.repo.bdb.commit_transaction()
-          self.repo.bdb.begin_transaction()
-        else:
-          TXN_OP_COUNT += 1
-    self.repo.bdb.commit_transaction()
-
-    id_list_file.close()
-
-    self.update_status()
-    status_line.cleanup()
-
-    # compute commit diff
-    status_line.update ("computing changes")
-
-    self.repo.bdb.begin_transaction()
-    diff_filename = self.repo.make_temp_name()
-    self.repo.bdb.commit_transaction()
-
-    diff_file = open (diff_filename, "w")
-    diff (self.repo, diff_file)
-    diff_file.close()
-
-    if os.path.getsize (diff_filename) != 0:
-      xz (diff_filename)
-      hash = move_file_to_objects (self.repo, diff_filename + ".xz")
-      commit_size_ok = True
-    else:
-      commit_size_ok = False
-
-    status_line.update ("computing changes: done")
-
-    if commit_size_ok:
+      # process files to add in small chunks
+      id_list_file = open (self.state.id_list_filename, "r")
+      TXN_OP_COUNT = 0
       self.repo.bdb.begin_transaction()
-      self.repo.bdb.store_history_entry (self.VERSION, hash, self.state.commit_author,
-                                                             self.state.commit_msg,
-                                                             self.state.commit_time)
+      for id_str in id_list_file:
+        id = bfsyncdb.ID (id_str.strip())
+        if not id.valid:
+          raise Exception ("found invalid id during commit")
+        inode = self.repo.bdb.load_inode (id, self.VERSION)
+        if inode.valid and inode.hash == "new":
+          self.state.files_added += 1
+          filename = self.repo.make_number_filename (inode.new_file_number)
+          hash = self.hash_one (filename)
+          size = os.path.getsize (filename)
+          self.repo.bdb.delete_inode (inode)
+
+          if self.repo.bdb.load_hash2file (hash) == 0:
+            self.repo.bdb.store_hash2file (hash, inode.new_file_number)
+          else:
+            self.repo.bdb.add_deleted_file (inode.new_file_number)
+
+          inode.hash = hash
+          inode.size = size
+          inode.new_file_number = 0
+          self.repo.bdb.store_inode (inode)
+
+          if TXN_OP_COUNT >= 20000:
+            TXN_OP_COUNT = 0
+            self.state.previous_time = time.time() - self.start_time
+            mk_journal_entry (self.repo, self)
+            self.repo.bdb.commit_transaction()
+            self.repo.bdb.begin_transaction()
+          else:
+            TXN_OP_COUNT += 1
+      self.state.exec_phase += 1
+      mk_journal_entry (self.repo, self)
       self.repo.bdb.commit_transaction()
 
+      id_list_file.close()
+
+      self.update_status()
+      status_line.cleanup()
+
+      if self.DEBUG_MEM:
+        print_mem_usage ("after add")
+
+    if self.state.exec_phase == self.EXEC_PHASE_DIFF:
+      # compute commit diff
+      status_line.update ("computing changes")
+
+      self.repo.bdb.begin_transaction()
+      diff_filename = self.repo.make_temp_name()
+      self.repo.bdb.commit_transaction()
+
+      diff_file = open (diff_filename, "w")
+      diff (self.repo, diff_file)
+      diff_file.close()
+
+      if os.path.getsize (diff_filename) != 0:
+        xz (diff_filename)
+        self.state.commit_hash = move_file_to_objects (self.repo, diff_filename + ".xz")
+        commit_size_ok = True
+      else:
+        commit_size_ok = False
+
+      status_line.update ("computing changes: done")
+      status_line.cleanup()
+
+      if not commit_size_ok:
+        print "Nothing to commit."
+        return
+
+      self.state.exec_phase += 1
+
+      # create new journal entry
+      self.repo.bdb.begin_transaction()
+      mk_journal_entry (self.repo, self)
+      self.repo.bdb.commit_transaction()
+
+      if self.DEBUG_MEM:
+        print_mem_usage ("after diff")
+
+      ### => we have self.state.commit_hash now (and it points to the diff object)
+
+    if self.state.exec_phase == self.EXEC_PHASE_HISTORY:
+      self.repo.bdb.begin_transaction()
+      self.repo.bdb.store_history_entry (self.VERSION, self.state.commit_hash,
+                                                       self.state.commit_author,
+                                                       self.state.commit_msg,
+                                                       self.state.commit_time)
+      self.state.exec_phase += 1
+      mk_journal_entry (self.repo, self)
+      self.repo.bdb.commit_transaction()
+
+      if self.DEBUG_MEM:
+        print_mem_usage ("after history update")
+
+    if self.state.exec_phase == self.EXEC_PHASE_CLEANUP:
       while True:
         self.repo.bdb.begin_transaction()
         deleted = self.repo.bdb.clear_changed_inodes (20000)
@@ -780,8 +584,16 @@ class CommitCommand:
 
         if deleted == 0: # changed inodes table empty
           break
-    else:
-      print "Nothing to commit."
+
+      if self.DEBUG_MEM:
+        print_mem_usage ("after cleanup")
+
+      # we modified the db, so the fs needs to reload everything
+      # in-memory cached items will not be correct
+      self.server_conn.clear_cache()
+
+      # this will release the lock
+      self.server_conn.close()
 
   def get_state (self):
     return self.state
@@ -790,9 +602,6 @@ class CommitCommand:
     self.state = state
 
 def run_command (repo, cmd):
-  if not cmd.start (repo):
-    return False
-
   # create journal entry
   repo.bdb.begin_transaction()
   mk_journal_entry (repo, cmd)
@@ -806,7 +615,7 @@ def run_command (repo, cmd):
   repo.bdb.commit_transaction()
 
 def new_commit_continue (repo, state):
-  cmd = CommitCommand (None)
+  cmd = CommitCommand()
 
   status_line.set_op ("COMMIT")
 
@@ -819,8 +628,11 @@ def new_commit_continue (repo, state):
   repo.bdb.clear_journal_entries()
   repo.bdb.commit_transaction()
 
-def new_commit (repo, commit_args):
-  cmd = CommitCommand (commit_args)
+def new_commit (repo, commit_args, server = True):
+  cmd = CommitCommand()
+
+  if not cmd.start (repo, commit_args, server):
+    return False
 
   status_line.set_op ("COMMIT")
 
