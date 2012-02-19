@@ -15,10 +15,12 @@
 * rename bfsync.transferutils => bfsync.transfer (and other fooutils => foo)
 * remove unused new/ files during revert or gc or commit
 * node discovery
+* kill new dir
 
 new_commit:
 ===========
 * use lock
+* properly delete duplicate files
 
 Performance:
 ============
