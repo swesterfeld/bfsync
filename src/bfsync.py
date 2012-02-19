@@ -18,9 +18,11 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from bfsync.main import main
+import bfsyncdb
 
 if False:
   import cProfile
   cProfile.run ("main()", "/tmp/bfsync-profile")
+  print bfsyncdb.time_prof_result()
 else:
   main()
