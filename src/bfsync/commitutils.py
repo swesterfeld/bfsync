@@ -486,16 +486,9 @@ class CommitCommand:
     if self.state.exec_phase == self.EXEC_PHASE_ADD:
       self.start_time = time.time() - self.state.previous_time
 
-      # process files to add in small chunks
-      id_list_file = open (self.state.id_list_filename, "r")
-      TXN_OP_COUNT = 0
-      self.repo.bdb.begin_transaction()
-      for id_str in id_list_file:
-        id = bfsyncdb.ID (id_str.strip())
-        if not id.valid:
-          raise Exception ("found invalid id during commit")
-        inode = self.repo.bdb.load_inode (id, self.VERSION)
-        if inode.valid and inode.hash == "new":
+      def process_inodes (inodes):
+        inodes.sort (key = lambda inode: inode.new_file_number)
+        for inode in inodes:
           self.state.files_added += 1
           filename = self.repo.make_number_filename (inode.new_file_number)
           hash = self.hash_one (filename)
@@ -512,14 +505,27 @@ class CommitCommand:
           inode.new_file_number = 0
           self.repo.bdb.store_inode (inode)
 
-          if TXN_OP_COUNT >= 20000:
-            TXN_OP_COUNT = 0
+      # process files to add in small chunks
+      id_list_file = open (self.state.id_list_filename, "r")
+
+      self.repo.bdb.begin_transaction()
+      inodes = []
+      for id_str in id_list_file:
+        id = bfsyncdb.ID (id_str.strip())
+        if not id.valid:
+          raise Exception ("found invalid id during commit")
+        inode = self.repo.bdb.load_inode (id, self.VERSION)
+        if inode.valid and inode.hash == "new":
+          inodes.append (inode)
+          if len (inodes) >= 20000:
+            process_inodes (inodes)
+            inodes = []
             self.state.previous_time = time.time() - self.start_time
             mk_journal_entry (self.repo, self)
             self.repo.bdb.commit_transaction()
             self.repo.bdb.begin_transaction()
-          else:
-            TXN_OP_COUNT += 1
+
+      process_inodes (inodes)
       self.state.exec_phase += 1
       mk_journal_entry (self.repo, self)
       self.repo.bdb.commit_transaction()
