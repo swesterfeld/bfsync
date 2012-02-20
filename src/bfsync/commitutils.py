@@ -319,7 +319,7 @@ class CommitCommand:
       filename = self.repo.make_number_filename (inode.new_file_number)
       self.state.total_file_size += os.path.getsize (filename)
       self.state.total_file_count += 1
-      if self.outss.need_update():
+      if self.state.verbose and self.outss.need_update():
         status_line.update ("scanning file %d (total %s)" % (
           self.state.total_file_count, format_size1 (self.state.total_file_size)))
 
@@ -358,10 +358,10 @@ class CommitCommand:
       else:
         hash.update (data)
         self.state.bytes_done += len (data)
-        if self.outss.need_update():
+        if self.state.verbose and self.outss.need_update():
           self.update_status()
     file.close()
-    if self.outss.need_update():
+    if self.state.verbose and self.outss.need_update():
       self.update_status()
     return hash.hexdigest()
 
@@ -380,13 +380,12 @@ class CommitCommand:
 
   def make_commit_msg (self, commit_args):
     # commit message
-    verbose = True # FIXME
     have_message = False
     if commit_args:
       if commit_args.get ("message"):
         have_message = True
 
-    if verbose and not have_message:
+    if self.state.verbose and not have_message:
       self.repo.bdb.begin_transaction()
       commit_msg_filename = self.repo.make_temp_name()
       self.repo.bdb.commit_transaction()
@@ -424,13 +423,14 @@ class CommitCommand:
     self.state.commit_msg    = commit_msg
     self.state.commit_time   = commit_time
 
-  def start (self, repo, commit_args, server):
+  def start (self, repo, commit_args, server, verbose):
     if self.DEBUG_MEM:
       print_mem_usage ("commit start")
 
     self.state = CommitState()
     self.state.exec_phase = self.EXEC_PHASE_SCAN
     self.state.server = server
+    self.state.verbose = verbose
     self.repo = repo
     self.make_commit_msg (commit_args)
     self.VERSION = self.repo.first_unused_version()
@@ -519,15 +519,17 @@ class CommitCommand:
 
       id_list_file.close()
 
-      self.update_status()
-      status_line.cleanup()
+      if self.state.verbose:
+        self.update_status()
+        status_line.cleanup()
 
       if self.DEBUG_MEM:
         print_mem_usage ("after add")
 
     if self.state.exec_phase == self.EXEC_PHASE_DIFF:
       # compute commit diff
-      status_line.update ("computing changes")
+      if self.state.verbose:
+        status_line.update ("computing changes")
 
       self.repo.bdb.begin_transaction()
       diff_filename = self.repo.make_temp_name()
@@ -544,8 +546,9 @@ class CommitCommand:
       else:
         commit_size_ok = False
 
-      status_line.update ("computing changes: done")
-      status_line.cleanup()
+      if self.state.verbose:
+        status_line.update ("computing changes: done")
+        status_line.cleanup()
 
       if not commit_size_ok:
         print "Nothing to commit."
@@ -645,10 +648,10 @@ def new_commit_continue (repo, state):
   repo.bdb.clear_journal_entries()
   repo.bdb.commit_transaction()
 
-def new_commit (repo, commit_args, server = True):
+def new_commit (repo, commit_args, server = True, verbose = True):
   cmd = CommitCommand()
 
-  if not cmd.start (repo, commit_args, server):
+  if not cmd.start (repo, commit_args, server, verbose):
     return False
 
   status_line.set_op ("COMMIT")

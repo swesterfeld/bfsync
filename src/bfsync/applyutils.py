@@ -172,7 +172,7 @@ def apply (repo, diff, expected_hash = None, server = True, verbose = True, comm
       apply_tool.apply_inode_minus (change[1:])
   repo.bdb.commit_transaction()
 
-  new_commit (repo, commit_args, server = server)
+  new_commit (repo, commit_args, server = server, verbose = verbose)
   #if expected_hash:
     #commit (repo, diff, expected_hash, server = server, verbose = verbose, commit_args = commit_args)
   #else:
