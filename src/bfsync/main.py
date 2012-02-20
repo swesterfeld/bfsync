@@ -610,7 +610,6 @@ def cmd_clone():
   os.chdir (dir)
   os.mkdir ("bdb", 0700)
   os.mkdir ("tmp", 0700)
-  os.mkdir ("new", 0700)
   os.mkdir ("objects", 0700)
   os.mkdir ("processes", 0700)
 
