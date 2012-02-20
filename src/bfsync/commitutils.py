@@ -424,13 +424,17 @@ class CommitCommand:
     self.state.commit_time   = commit_time
 
   def start (self, repo, commit_args, server, verbose):
-    if self.DEBUG_MEM:
-      print_mem_usage ("commit start")
-
     self.state = CommitState()
     self.state.exec_phase = self.EXEC_PHASE_SCAN
     self.state.server = server
     self.state.verbose = verbose
+
+    if self.DEBUG_MEM:
+      print_mem_usage ("commit start")
+
+    if self.state.verbose:
+      status_line.set_op ("COMMIT")
+
     self.repo = repo
     self.make_commit_msg (commit_args)
     self.VERSION = self.repo.first_unused_version()
@@ -450,6 +454,9 @@ class CommitCommand:
   def restart (self, repo):
     self.repo = repo
     self.VERSION = self.repo.first_unused_version()
+
+    if self.state.verbose:
+      status_line.set_op ("COMMIT")
 
     # lock repo to allow modifications
     if self.state.server:
@@ -637,8 +644,6 @@ def run_command (repo, cmd):
 def new_commit_continue (repo, state):
   cmd = CommitCommand()
 
-  status_line.set_op ("COMMIT")
-
   cmd.set_state (state)
   cmd.restart (repo)
   cmd.execute()
@@ -653,7 +658,5 @@ def new_commit (repo, commit_args, server = True, verbose = True):
 
   if not cmd.start (repo, commit_args, server, verbose):
     return False
-
-  status_line.set_op ("COMMIT")
 
   run_command (repo, cmd)
