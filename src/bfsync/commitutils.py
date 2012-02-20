@@ -577,6 +577,23 @@ class CommitCommand:
         print_mem_usage ("after history update")
 
     if self.state.exec_phase == self.EXEC_PHASE_CLEANUP:
+      ## remove duplicates
+      files = self.repo.bdb.load_deleted_files()
+      for file_number in files:
+        file_name = self.repo.make_number_filename (file_number)
+        if os.path.exists (file_name):
+          os.remove (file_name)
+
+      ## reset deleted_files table
+      while True:
+        self.repo.bdb.begin_transaction()
+        deleted = self.repo.bdb.clear_deleted_files (20000)
+        self.repo.bdb.commit_transaction()
+
+        if deleted == 0: # deleted files table empty
+          break
+
+      ## clear changed inodes
       while True:
         self.repo.bdb.begin_transaction()
         deleted = self.repo.bdb.clear_changed_inodes (20000)
