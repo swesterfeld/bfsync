@@ -843,10 +843,16 @@ BDBPtr::load_deleted_files()
   return ptr->my_bdb->load_deleted_files();
 }
 
-void
-BDBPtr::clear_deleted_files()
+unsigned int
+BDBPtr::clear_deleted_files (unsigned int max_files)
 {
-  return ptr->my_bdb->clear_deleted_files();
+  unsigned int result;
+
+  BFSync::BDBError err = ptr->my_bdb->clear_deleted_files (max_files, result);
+  if (err)
+    throw BDBException (err);
+
+  return result;
 }
 
 unsigned int

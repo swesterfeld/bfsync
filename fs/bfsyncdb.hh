@@ -192,7 +192,7 @@ public:
   void               add_deleted_file (unsigned int file_number);
   std::vector<unsigned int>
                      load_deleted_files();
-  void               clear_deleted_files();
+  unsigned int       clear_deleted_files (unsigned int max_files);
 
   void               add_temp_file (const std::string& filename, unsigned int pid);
   std::vector<TempFile> load_temp_files();

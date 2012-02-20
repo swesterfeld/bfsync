@@ -1155,20 +1155,40 @@ BDB::load_deleted_files()
   return files;
 }
 
-void
-BDB::clear_deleted_files()
+BDBError
+BDB::clear_deleted_files (unsigned int max_files, unsigned int& result)
 {
   Lock lock (mutex);
 
-  g_assert (transaction != NULL);
+  if (!transaction)
+    return BDB_ERROR_NO_TRANS;
 
   DataOutBuffer kbuf;
   kbuf.write_table (BDB_TABLE_DELETED_FILES);
 
   Dbt key (kbuf.begin(), kbuf.size());
+  Dbt data;
 
-  int ret = db->del (transaction, &key, 0);
-  g_assert (ret == 0 || ret == DB_NOTFOUND);
+  result = 0;
+
+  DbcPtr dbc (this, DbcPtr::WRITE);  /* get write cursor */
+
+  int ret = dbc->get (&key, &data, DB_SET);
+  while (ret == 0)
+    {
+      // delete entry
+      ret = dbc->del (0);
+      if (ret)
+        return ret2error (ret);
+
+      result++;                   /* delete at most max_files entries */
+      if (result >= max_files)
+        return BDB_ERROR_NONE;
+
+      /* goto next record */
+      ret = dbc->get (&key, &data, DB_NEXT_DUP);
+    }
+  return BDB_ERROR_NONE;
 }
 
 void

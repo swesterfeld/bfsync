@@ -197,7 +197,7 @@ public:
 
   void  add_deleted_file (unsigned int file_number);
   std::vector<unsigned int>  load_deleted_files();
-  void  clear_deleted_files();
+  BDBError  clear_deleted_files (unsigned int max_files, unsigned int& result);
 
   std::vector<TempFile> load_temp_files();
   void  add_temp_file (const TempFile& temp_file);
