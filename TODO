@@ -20,7 +20,6 @@
 new_commit:
 ===========
 * use lock
-* properly delete duplicate files
 
 Performance:
 ============
