@@ -36,7 +36,7 @@ import random
 
 from utils import *
 from diffutils import diff
-from commitutils import commit, revert, gen_status, new_commit, new_commit_continue
+from commitutils import commit, revert, revert_continue, gen_status, new_commit, new_commit_continue
 from remoteutils import *
 from TransferList import TransferList, TransferFile
 from StatusLine import status_line
@@ -728,6 +728,8 @@ def cmd_continue():
 
   if je.operation == "commit":
     new_commit_continue (repo, cPickle.loads (je.state))
+  elif je.operation == "revert":
+    revert_continue (repo, cPickle.loads (je.state))
   else:
     raise Exception ("unknown operation in journal, cannot continue")
 

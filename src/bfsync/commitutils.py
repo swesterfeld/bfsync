@@ -238,73 +238,152 @@ def get_author():
 def commit():
   raise Exception ("old style commit no longer supported")
 
+class RevertState:
+  pass
+
+class RevertCommand:
+  def make_id_list (self):
+    self.repo.bdb.begin_transaction()
+    self.state.id_list_filename = self.repo.make_temp_name()
+    self.repo.bdb.commit_transaction()
+
+    id_list_file = open (self.state.id_list_filename, "w")
+
+    ai = bfsyncdb.AllINodesIterator (self.repo.bdb)
+    while True:
+      id = ai.get_next()
+      if not id.valid:
+        break
+      id_list_file.write ("%s\n" % id.str())
+
+    id_list_file.close()
+    del ai
+
+  def restart (self, repo):
+    self.repo = repo
+
+    # lock repo to allow modifications
+    self.server_conn = ServerConn (repo.path)
+    self.server_conn.get_lock()
+    return True
+
+  def start (self, repo, VERSION, verbose):
+    self.state = RevertState()
+    self.state.verbose = verbose
+    self.repo = repo
+
+    # VERSION == -1 <=> revert to current version (discard new entries from FuSE fs)
+    if VERSION == -1:
+      self.state.VERSION = repo.first_unused_version() - 1
+    else:
+      self.state.VERSION = VERSION
+
+    if verbose:
+      print "reverting to version %d..." % self.state.VERSION
+
+    # lock repo to allow modifications
+    self.server_conn = ServerConn (repo.path)
+    self.server_conn.get_lock()
+
+    self.make_id_list()
+    return True
+
+  def execute (self):
+    id_list_file = open (self.state.id_list_filename, "r")
+
+    OPS = 0  # to keep number of operations per transaction below a pre-defined limit
+
+    self.repo.bdb.begin_transaction()
+    for id_str in id_list_file:
+      id = bfsyncdb.ID (id_str.strip())
+      if not id.valid:
+        raise Exception ("found invalid id during revert")
+
+      inodes = self.repo.bdb.load_all_inodes (id)
+      for inode in inodes:
+        if inode.vmin > self.state.VERSION:
+          self.repo.bdb.delete_inode (inode)
+          OPS += 1
+        elif inode.vmax >= self.state.VERSION:
+          self.repo.bdb.delete_inode (inode)
+          inode.vmax = bfsyncdb.VERSION_INF
+          self.repo.bdb.store_inode (inode)
+          OPS += 1
+
+      links = self.repo.bdb.load_all_links (id)
+      for link in links:
+        if link.vmin > self.state.VERSION:
+          self.repo.bdb.delete_link (link)
+          OPS += 1
+        elif link.vmax >= self.state.VERSION:
+          self.repo.bdb.delete_link (link)
+          link.vmax = bfsyncdb.VERSION_INF
+          self.repo.bdb.store_link (link)
+          OPS += 1
+
+      if OPS >= 20000:
+        self.repo.bdb.commit_transaction()
+        self.repo.bdb.begin_transaction()
+        OPS = 0
+
+    self.repo.bdb.commit_transaction()
+
+    ## clear changed inodes
+    while True:
+      self.repo.bdb.begin_transaction()
+      deleted = self.repo.bdb.clear_changed_inodes (20000)
+      self.repo.bdb.commit_transaction()
+
+      if deleted == 0: # changed inodes table empty
+        break
+
+    ## fix history
+    self.repo.bdb.begin_transaction()
+    v = 1
+    while True:
+      he = self.repo.bdb.load_history_entry (v)
+      if not he.valid:
+        break
+      if he.version > self.state.VERSION:
+        self.repo.bdb.delete_history_entry (v)
+      v += 1
+    self.repo.bdb.commit_transaction()
+
+    # we modified the db, so the fs needs to reload everything
+    # in-memory cached items will not be correct
+    self.server_conn.clear_cache()
+    return
+
+  def get_state (self):
+    return self.state
+
+  def get_operation (self):
+    return "revert"
+
+  def set_state (self, state):
+    self.state = state
+
+def revert_continue (repo, state):
+  cmd = RevertCommand()
+
+  cmd.set_state (state)
+  cmd.restart (repo)
+  cmd.execute()
+
+  # remove journal entry
+  repo.bdb.begin_transaction()
+  repo.bdb.clear_journal_entries()
+  repo.bdb.commit_transaction()
+
 def revert (repo, VERSION, verbose = True):
-  repo_path = repo.path
+  cmd = RevertCommand()
 
-  # lock repo to allow modifications
-  server_conn = ServerConn (repo_path)
-  server_conn.get_lock()
+  if not cmd.start (repo, VERSION, verbose):
+    return False
 
-  # VERSION == -1 <=> revert to current version (discard new entries from FuSE fs)
-  if VERSION == -1:
-    VERSION = repo.first_unused_version() - 1
+  run_command (repo, cmd)
+  return True
 
-  if verbose:
-    print "reverting to version %d..." % VERSION
-
-  repo.bdb.begin_transaction()
-
-  ai = bfsyncdb.AllINodesIterator (repo.bdb)
-  while True:
-    id = ai.get_next()
-    if not id.valid:
-      break
-
-    inodes = repo.bdb.load_all_inodes (id)
-    for inode in inodes:
-      if inode.vmin > VERSION:
-        repo.bdb.delete_inode (inode)
-      elif inode.vmax >= VERSION:
-        repo.bdb.delete_inode (inode)
-        inode.vmax = bfsyncdb.VERSION_INF
-        repo.bdb.store_inode (inode)
-
-    links = repo.bdb.load_all_links (id)
-    for link in links:
-      if link.vmin > VERSION:
-        repo.bdb.delete_link (link)
-      elif link.vmax >= VERSION:
-        repo.bdb.delete_link (link)
-        link.vmax = bfsyncdb.VERSION_INF
-        repo.bdb.store_link (link)
-
-
-  del ai
-  repo.bdb.commit_transaction()
-
-  ## clear changed inodes
-  while True:
-    repo.bdb.begin_transaction()
-    deleted = repo.bdb.clear_changed_inodes (20000)
-    repo.bdb.commit_transaction()
-
-    if deleted == 0: # changed inodes table empty
-      break
-
-  repo.bdb.begin_transaction()
-  v = 1
-  while True:
-    he = repo.bdb.load_history_entry (v)
-    if not he.valid:
-      break
-    if he.version > VERSION:
-      repo.bdb.delete_history_entry (v)
-    v += 1
-  repo.bdb.commit_transaction()
-
-  # we modified the db, so the fs needs to reload everything
-  # in-memory cached items will not be correct
-  server_conn.clear_cache()
   return
 
   c.execute ('''SELECT vmin, vmax, id FROM inodes WHERE vmax >= ?''', (VERSION, ))
@@ -342,7 +421,7 @@ def revert (repo, VERSION, verbose = True):
 
 def mk_journal_entry (repo, cmd):
   jentry = bfsyncdb.JournalEntry()
-  jentry.operation = "commit"
+  jentry.operation = cmd.get_operation()
   jentry.state = cPickle.dumps (cmd.get_state())
   repo.bdb.clear_journal_entries()
   repo.bdb.store_journal_entry (jentry)
@@ -678,6 +757,9 @@ class CommitCommand:
 
   def get_state (self):
     return self.state
+
+  def get_operation (self):
+    return "commit"
 
   def set_state (self, state):
     self.state = state
