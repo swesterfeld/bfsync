@@ -169,12 +169,14 @@ public:
   void               abort_transaction();
 
   INode              load_inode (const ID& id, unsigned int version);
+  std::vector<INode> load_all_inodes (const ID& id);
   void               store_inode (const INode& inode);
   void               delete_inode (const INode& inode);
 
   unsigned int       clear_changed_inodes (unsigned int max_inodes);
 
   std::vector<Link>  load_links (const ID& id, unsigned int version);
+  std::vector<Link>  load_all_links (const ID& id);
   void               store_link (const Link& link);
   void               delete_link (const Link& link);
 
@@ -268,6 +270,21 @@ public:
   ~INodeHashIterator();
 
   std::string get_next();
+};
+
+class AllINodesIterator
+{
+  BFSync::DbcPtr dbc;
+  int dbc_ret;
+  BDBPtr bdb_ptr;
+
+  std::set<BFSync::ID> known_ids;
+  Dbt key, data;
+public:
+  AllINodesIterator (BDBPtr bdb_ptr);
+  ~AllINodesIterator();
+
+  ID get_next();
 };
 
 class BDBException

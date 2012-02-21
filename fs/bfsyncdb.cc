@@ -327,6 +327,58 @@ BDBPtr::load_inode (const ID& id, unsigned int version)
   return inode;
 }
 
+TimeProfSection tp_load_all_inodes ("bfsyncdb.load_all_inodes");
+
+vector<INode>
+BDBPtr::load_all_inodes (const ID& id)
+{
+  TimeProfHandle h (tp_load_all_inodes);
+
+  vector<INode> all_inodes;
+
+  INode inode;
+  DataOutBuffer kbuf;
+
+  id_store (id, kbuf);
+  kbuf.write_table (BDB_TABLE_INODES);
+
+  Dbt ikey (kbuf.begin(), kbuf.size());
+  Dbt idata;
+
+  DbcPtr dbc (ptr->my_bdb); /* Acquire a cursor for the database. */
+
+  int ret = dbc->get (&ikey, &idata, DB_SET);
+  while (ret == 0)
+    {
+      DataBuffer dbuffer ((char *) idata.get_data(), idata.get_size());
+
+      inode.vmin = dbuffer.read_uint32();
+      inode.vmax = dbuffer.read_uint32();
+
+      inode.id   = id;
+      inode.uid  = dbuffer.read_uint32();
+      inode.gid  = dbuffer.read_uint32();
+      inode.mode = dbuffer.read_uint32();
+      inode.type = BFSync::FileType (dbuffer.read_uint32());
+      inode.hash = dbuffer.read_string();
+      inode.link = dbuffer.read_string();
+      inode.size = dbuffer.read_uint64();
+      inode.major = dbuffer.read_uint32();
+      inode.minor = dbuffer.read_uint32();
+      inode.nlink = dbuffer.read_uint32();
+      inode.ctime = dbuffer.read_uint32();
+      inode.ctime_ns = dbuffer.read_uint32();
+      inode.mtime = dbuffer.read_uint32();
+      inode.mtime_ns = dbuffer.read_uint32();
+      inode.new_file_number = dbuffer.read_uint32();
+
+      inode.valid = true;
+      all_inodes.push_back (inode);
+      ret = dbc->get (&ikey, &idata, DB_NEXT_DUP);
+    }
+  return all_inodes;
+}
+
 TimeProfSection tp_store_inode ("bfsyncdb.store_inode");
 
 void
@@ -468,6 +520,46 @@ BDBPtr::load_links (const ID& id, unsigned int version)
 
           result.push_back (l);
         }
+      ret = dbc->get (&lkey, &ldata, DB_NEXT_DUP);
+    }
+  return result;
+}
+
+TimeProfSection tp_load_all_links ("bfsyncdb.load_all_links");
+
+std::vector<Link>
+BDBPtr::load_all_links (const ID& id)
+{
+  TimeProfHandle h (tp_load_all_links);
+
+  vector<Link> result;
+
+  DataOutBuffer kbuf;
+
+  id_store (id, kbuf);
+  kbuf.write_table (BDB_TABLE_LINKS);
+
+  Dbt lkey (kbuf.begin(), kbuf.size());
+  Dbt ldata;
+
+  DbcPtr dbc (ptr->my_bdb); /* Acquire a cursor for the database. */
+
+  // iterate over key elements and delete records which are in LinkVersionList
+  int ret = dbc->get (&lkey, &ldata, DB_SET);
+  while (ret == 0)
+    {
+      DataBuffer dbuffer ((char *) ldata.get_data(), ldata.get_size());
+
+      Link l;
+
+      l.vmin = dbuffer.read_uint32();
+      l.vmax = dbuffer.read_uint32();
+      l.dir_id = id;
+      id_load (l.inode_id, dbuffer);
+      l.name = dbuffer.read_string();
+
+      result.push_back (l);
+
       ret = dbc->get (&lkey, &ldata, DB_NEXT_DUP);
     }
   return result;
@@ -1002,6 +1094,47 @@ INodeHashIterator::get_next()
     }
   return "";
 }
+
+AllINodesIterator::AllINodesIterator (BDBPtr bdb_ptr) :
+  dbc (bdb_ptr.get_bdb()),
+  bdb_ptr (bdb_ptr)
+{
+  dbc_ret = dbc->get (&key, &data, DB_FIRST);
+}
+
+AllINodesIterator::~AllINodesIterator()
+{
+}
+
+ID
+AllINodesIterator::get_next()
+{
+  while (dbc_ret == 0)
+    {
+      char table = ((char *) key.get_data()) [key.get_size() - 1];
+      ID id;
+      bool rid = false;
+
+      if (table == BDB_TABLE_INODES)
+        {
+          DataBuffer kbuffer ((char *) key.get_data(), key.get_size());
+          id_load (id, kbuffer);
+
+          if (known_ids.count (id.id) == 0)
+            {
+              known_ids.insert (id.id);
+              rid = true;
+            }
+        }
+      dbc_ret = dbc->get (&key, &data, DB_NEXT);
+      if (rid)
+        return id;
+    }
+  ID xid;
+  xid.valid = false;
+  return xid;
+}
+
 
 BDBException::BDBException (BFSync::BDBError error) :
   error (error)
