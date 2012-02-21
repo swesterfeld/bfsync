@@ -79,15 +79,6 @@ class ServerConn:
         raise Exception (result[0])
     raise Exception ("ServerConn: unable to clear cache (bad response received)")
 
-  def add_new (self, new_list):
-    result = self.process_call ([ "add-new" ] + new_list)
-    if result and len (result) == 1:
-      if result[0] == "ok":
-        return
-      else:
-        raise Exception (result[0])
-    raise Exception ("ServerConn: unable to add new file(s) (bad response received)")
-
   def close (self):
     self.conn_socket.close()
     self.conn_socket = None
