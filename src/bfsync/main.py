@@ -267,8 +267,6 @@ def cmd_status():
   print "=" * 80
 
 def cmd_revert():
-  print "FIXME: revert"
-  return
   repo = cd_repo_connect_db()
   if len (args) == 0:
     revert (repo, -1)

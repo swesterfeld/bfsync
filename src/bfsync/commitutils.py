@@ -239,10 +239,7 @@ def commit():
   raise Exception ("old style commit no longer supported")
 
 def revert (repo, VERSION, verbose = True):
-  conn = repo.conn
   repo_path = repo.path
-
-  c = conn.cursor()
 
   # lock repo to allow modifications
   server_conn = ServerConn (repo_path)
@@ -250,14 +247,65 @@ def revert (repo, VERSION, verbose = True):
 
   # VERSION == -1 <=> revert to current version (discard new entries from FuSE fs)
   if VERSION == -1:
-    VERSION = 1
-    c.execute ('''SELECT version FROM history''')
-    for row in c:
-      VERSION = max (row[0], VERSION)
-    VERSION -= 1
+    VERSION = repo.first_unused_version() - 1
 
   if verbose:
     print "reverting to version %d..." % VERSION
+
+  repo.bdb.begin_transaction()
+
+  ai = bfsyncdb.AllINodesIterator (repo.bdb)
+  while True:
+    id = ai.get_next()
+    if not id.valid:
+      break
+
+    inodes = repo.bdb.load_all_inodes (id)
+    for inode in inodes:
+      if inode.vmin > VERSION:
+        repo.bdb.delete_inode (inode)
+      elif inode.vmax >= VERSION:
+        repo.bdb.delete_inode (inode)
+        inode.vmax = bfsyncdb.VERSION_INF
+        repo.bdb.store_inode (inode)
+
+    links = repo.bdb.load_all_links (id)
+    for link in links:
+      if link.vmin > VERSION:
+        repo.bdb.delete_link (link)
+      elif link.vmax >= VERSION:
+        repo.bdb.delete_link (link)
+        link.vmax = bfsyncdb.VERSION_INF
+        repo.bdb.store_link (link)
+
+
+  del ai
+  repo.bdb.commit_transaction()
+
+  ## clear changed inodes
+  while True:
+    repo.bdb.begin_transaction()
+    deleted = repo.bdb.clear_changed_inodes (20000)
+    repo.bdb.commit_transaction()
+
+    if deleted == 0: # changed inodes table empty
+      break
+
+  repo.bdb.begin_transaction()
+  v = 1
+  while True:
+    he = repo.bdb.load_history_entry (v)
+    if not he.valid:
+      break
+    if he.version > VERSION:
+      repo.bdb.delete_history_entry (v)
+    v += 1
+  repo.bdb.commit_transaction()
+
+  # we modified the db, so the fs needs to reload everything
+  # in-memory cached items will not be correct
+  server_conn.clear_cache()
+  return
 
   c.execute ('''SELECT vmin, vmax, id FROM inodes WHERE vmax >= ?''', (VERSION, ))
   del_inode_list = []
