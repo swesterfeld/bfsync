@@ -911,6 +911,12 @@ BDBPtr::load_history_entry (int version)
   return result;
 }
 
+void
+BDBPtr::delete_history_entry (unsigned int version)
+{
+  ptr->my_bdb->delete_history_entry (version);
+}
+
 unsigned int
 BDBPtr::load_hash2file (const string& hash)
 {
