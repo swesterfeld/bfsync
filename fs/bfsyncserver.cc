@@ -309,59 +309,6 @@ Server::handle_client (int client_fd)
                       INodeRepo::the()->save_changes();
                     }
                 }
-              else if (request[0] == "add-new")
-                {
-                  FSLock add_lock (FSLock::REORG);
-                  bool ok = true;
-
-                  for (size_t i = 1; i + 1 < request.size(); i += 2)
-                    {
-                      string filename   = request[i];
-                      string hash       = request[i + 1];
-                      string error_msg  = "";
-
-                      if (!add_file (filename, hash, error_msg))
-                        {
-                          ok = false;
-                          string error = string_printf ("fail: error while adding file '%s', hash '%s'\n%s",
-                                                        filename.c_str(), hash.c_str(), error_msg.c_str());
-                          result.push_back (error);
-                          break;
-                        }
-                    }
-                  if (ok)
-                    result.push_back ("ok");
-
-                  /* to allow committing lots of files, we need to save/expire the INodeCache every
-                   * once in a while, because otherwise otherwise the memory of the filesystem
-                   * process will use more and more main memory
-                   */
-                  double time_now = gettime();
-                  if (fabs (time_now - last_inode_cache_save_time) > 5)
-                    {
-                      INodeRepo::the()->save_changes();
-                      INodeRepo::the()->delete_unused_inodes (INodeRepo::DM_SOME);
-                      last_inode_cache_save_time = time_now;
-                    }
-                }
-              else if (request[0] == "load-all-inodes")
-                {
-                  FSLock li_lock (FSLock::READ);
-
-                  double t = gettime();
-#if 0 // FIXME: load all inodes
-                  SQLStatement stmt ("SELECT * FROM inodes");
-                  Context ctx;
-                  while (stmt.step() == SQLITE_ROW)
-                    {
-                      INodePtr ptr (ctx, stmt.column_id (2));
-                    }
-#endif
-                  double te = gettime();
-
-                  string msg = string_printf ("loading took %.2f ms", (te - t) * 1000);
-                  result.push_back (msg);
-                }
               else if (request[0] == "save-changes")
                 {
                   if (!lock)
@@ -434,55 +381,4 @@ Server::handle_client (int client_fd)
     }
   // update history (relevant after commits)
   INodeRepo::the()->bdb->history()->read();
-}
-
-bool
-Server::add_file (const string& id, const string& hash, string& error)
-{
-  Context  ctx;
-  INodePtr inode (ctx, id);
-  if (!inode)
-    {
-      error = "inode '" + id + "' not found";
-      return false;
-    }
-
-  string new_filename = inode->new_file_path();
-  string object_filename = make_object_filename (hash);
-
-  struct stat stat, obj_stat;
-  if (lstat (new_filename.c_str(), &stat) != 0)
-    {
-      error = "can't lstat filename '" + new_filename + "'";
-      return false;
-    }
-
-  inode.update()->new_file_number = 0;
-  inode.update()->hash = hash;
-  inode.update()->size = stat.st_size;
-
-  if (lstat (object_filename.c_str(), &obj_stat) == 0)    // hash is already known
-    {
-      if (unlink (new_filename.c_str()) != 0)
-        {
-          error = "can't remove file '" + new_filename + "'";
-          return false;
-        }
-      return true;
-    }
-
-  // move file to hash repo
-  if (rename (new_filename.c_str(), object_filename.c_str()) != 0)
-    {
-      error = "can't rename file '" + new_filename + "' to '" + object_filename + "'";
-      return false;
-    }
-
-  // set mode to -r--------
-  if (chmod (object_filename.c_str(), 0400) != 0)
-    {
-      error = "can't chmod 0400 file '" + object_filename + "'";
-      return false;
-    }
-  return true;
 }
