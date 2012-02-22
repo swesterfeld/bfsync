@@ -637,6 +637,7 @@ class CommitCommand:
 
       self.repo.bdb.begin_transaction()
       inodes = []
+      OPS = 0
       for id_str in id_list_file:
         id = bfsyncdb.ID (id_str.strip())
         if not id.valid:
@@ -644,13 +645,16 @@ class CommitCommand:
         inode = self.repo.bdb.load_inode (id, self.VERSION)
         if inode.valid and inode.hash == "new":
           inodes.append (inode)
-          if len (inodes) >= 20000:
-            process_inodes (inodes)
-            inodes = []
-            self.state.previous_time = time.time() - self.start_time
-            mk_journal_entry (self.repo, self)
-            self.repo.bdb.commit_transaction()
-            self.repo.bdb.begin_transaction()
+
+        OPS += 1
+        if OPS >= 20000:
+          OPS = 0
+          process_inodes (inodes)
+          inodes = []
+          self.state.previous_time = time.time() - self.start_time
+          mk_journal_entry (self.repo, self)
+          self.repo.bdb.commit_transaction()
+          self.repo.bdb.begin_transaction()
 
       process_inodes (inodes)
       self.state.exec_phase += 1
