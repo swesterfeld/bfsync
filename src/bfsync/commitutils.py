@@ -21,6 +21,7 @@ from diffutils import diff
 from utils import *
 from xzutils import xz
 from HashCache import hash_cache
+from journal import run_command, mk_journal_entry
 
 import os
 import time
@@ -421,13 +422,6 @@ def revert (repo, VERSION, verbose = True):
   # in-memory cached items will not be correct
   server_conn.clear_cache()
 
-def mk_journal_entry (repo, cmd):
-  jentry = bfsyncdb.JournalEntry()
-  jentry.operation = cmd.get_operation()
-  jentry.state = cPickle.dumps (cmd.get_state())
-  repo.bdb.clear_journal_entries()
-  repo.bdb.store_journal_entry (jentry)
-
 class CommitState:
   pass
 
@@ -769,19 +763,6 @@ class CommitCommand:
 
   def set_state (self, state):
     self.state = state
-
-def run_command (repo, cmd):
-  # create journal entry
-  repo.bdb.begin_transaction()
-  mk_journal_entry (repo, cmd)
-  repo.bdb.commit_transaction()
-
-  cmd.execute()
-
-  # remove journal entry
-  repo.bdb.begin_transaction()
-  repo.bdb.clear_journal_entries()
-  repo.bdb.commit_transaction()
 
 def new_commit_continue (repo, state):
   cmd = CommitCommand()

@@ -17,6 +17,7 @@
 
 from utils import parse_diff
 from commitutils import commit, new_commit
+from journal import run_command
 import os
 import bfsyncdb
 
@@ -146,9 +147,51 @@ class ApplyTool:
       inode.mtime_ns  = int (row[14])
     self.bdb.store_inode (inode)
 
+class ApplyState:
+  pass
+
+class ApplyCommand:
+  def start (self, repo, diff, server, verbose, commit_args):
+    self.state = ApplyState()
+
+  def restart (self, repo):
+    pass
+
+  def execute (self):
+    pass
+
+  def get_operation (self):
+    return "apply"
+
+  def get_state (self):
+    return self.state
+
+  def set_state (self, state):
+    self.state = state
+
+def apply_continue (repo, state):
+  cmd = ApplyCommand()
+
+  cmd.set_state (state)
+  cmd.restart (repo)
+  cmd.execute()
+
+  # remove journal entry
+  repo.bdb.begin_transaction()
+  repo.bdb.clear_journal_entries()
+  repo.bdb.commit_transaction()
+
 def apply (repo, diff, expected_hash = None, server = True, verbose = True, commit_args = None):
   if verbose:
     raise Exception ("apply with verbose = True no longer supported")
+
+  cmd = ApplyCommand()
+
+  cmd.start (repo, diff, server, verbose, commit_args)
+  run_command (repo, cmd)
+  new_commit (repo, commit_args, server = server, verbose = verbose)
+
+  return # old code:
 
   changes = parse_diff (diff)
 
@@ -172,7 +215,6 @@ def apply (repo, diff, expected_hash = None, server = True, verbose = True, comm
       apply_tool.apply_inode_minus (change[1:])
   repo.bdb.commit_transaction()
 
-  new_commit (repo, commit_args, server = server, verbose = verbose)
   #if expected_hash:
     #commit (repo, diff, expected_hash, server = server, verbose = verbose, commit_args = commit_args)
   #else:
