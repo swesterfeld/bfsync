@@ -300,6 +300,8 @@ class RevertCommand:
         raise Exception ("found invalid id during revert")
 
       inodes = self.repo.bdb.load_all_inodes (id)
+      OPS += 1 # even read access will create new locks
+
       for inode in inodes:
         if inode.vmin > self.state.VERSION:
           self.repo.bdb.delete_inode (inode)
