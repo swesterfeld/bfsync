@@ -17,6 +17,7 @@
 * node discovery
 * partial commit
 * flush before status
+* make fstest work again
 
 new_commit:
 ===========
