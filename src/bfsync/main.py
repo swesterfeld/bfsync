@@ -169,6 +169,7 @@ def cmd_debug_integrity():
   conflicts = []
   VERSION = repo.first_unused_version()
 
+  ## check inode records
   for id_str in ids:
     id = bfsyncdb.ID (id_str)
     if not id.valid:
@@ -188,6 +189,30 @@ def cmd_debug_integrity():
     version = conflict[0]
     id = conflict[1]
     print "error: version %d available more than once for inode %s" % (version, id)
+    fail = True
+
+  ## check link records
+  link_d = dict()
+  conflicts = []
+  for id_str in ids:
+    id = bfsyncdb.ID (id_str)
+    if not id.valid:
+      raise Exception ("found invalid id during debug integrity")
+    links = repo.bdb.load_all_links (id)
+    for link in links:
+      version = link.vmin
+      while version <= link.vmax and version <= VERSION:
+        s = "%d|%s|%s" % (version, id_str, link.name)
+        if link_d.has_key (s):
+          conflicts += [ (version, id_str, link.name) ]
+        link_d[s] = 1
+        version += 1
+
+  for conflict in conflicts:
+    version = conflict[0]
+    id = conflict[1]
+    name = conflict[2]
+    print "error: version %d available more than once for link %s->%s" % (version, id, name)
     fail = True
 
   if fail:
