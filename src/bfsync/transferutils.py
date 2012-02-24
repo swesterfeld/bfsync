@@ -25,6 +25,7 @@ from commitutils import revert
 from xzutils import xzcat
 from StatusLine import status_line
 from HashCache import hash_cache
+from journal import run_commands
 import argparse
 import subprocess
 import datetime
@@ -1037,6 +1038,7 @@ def pull (repo, args, server = True):
       status_line.update ("patch %d/%d - fast forward" % (count, len (ff_apply)))
       apply (repo, xzcat (diff_file), diff, server = server, verbose = False, commit_args = commit_args)
       count += 1
+      run_commands (repo)
   else:
     history_merge (c, repo, local_history, remote_history, pull_args)
 

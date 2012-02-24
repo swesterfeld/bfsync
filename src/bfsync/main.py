@@ -36,8 +36,7 @@ import random
 
 from utils import *
 from diffutils import diff
-from commitutils import commit, revert, revert_continue, gen_status, new_commit, new_commit_continue
-from applyutils import apply_continue
+from commitutils import commit, revert, gen_status, new_commit
 from remoteutils import *
 from TransferList import TransferList, TransferFile
 from StatusLine import status_line
@@ -47,6 +46,7 @@ from RemoteRepo import RemoteRepo
 from stat import *
 from transferutils import get, put, push, pull, collect
 from xzutils import xz
+from journal import run_commands, run_continue
 
 def find_bfsync_dir():
   old_cwd = os.getcwd()
@@ -80,6 +80,7 @@ def cmd_commit():
 
   repo = cd_repo_connect_db()
   new_commit (repo, commit_args = commit_args)
+  run_commands (repo)
 
 def cmd_debug_load_all_inodes():
   bfsync_dir = find_bfsync_dir()
@@ -333,6 +334,7 @@ def cmd_revert():
     revert (repo, -1)
   else:
     revert (repo, int (args[0]))
+  run_commands (repo)
 
 def cmd_db_fingerprint():
   repo = cd_repo_connect_db()
@@ -786,15 +788,7 @@ def cmd_continue():
     raise BFSyncError ("journal contains more than one entry, cannot continue")
 
   je = journal[0]
-
-  if je.operation == "commit":
-    new_commit_continue (repo, cPickle.loads (je.state))
-  elif je.operation == "revert":
-    revert_continue (repo, cPickle.loads (je.state))
-  elif je.operation == "apply":
-    apply_continue (repo, cPickle.loads (je.state))
-  else:
-    raise Exception ("unknown operation in journal, cannot continue")
+  run_continue (repo, je)
 
 args = []
 

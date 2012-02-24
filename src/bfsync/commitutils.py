@@ -21,7 +21,7 @@ from diffutils import diff
 from utils import *
 from xzutils import xz
 from HashCache import hash_cache
-from journal import run_command, mk_journal_entry
+from journal import mk_journal_entry, queue_command, CMD_DONE, CMD_AGAIN
 
 import os
 import time
@@ -355,7 +355,7 @@ class RevertCommand:
     # we modified the db, so the fs needs to reload everything
     # in-memory cached items will not be correct
     self.server_conn.clear_cache()
-    return
+    return CMD_DONE
 
   def get_state (self):
     return self.state
@@ -366,25 +366,13 @@ class RevertCommand:
   def set_state (self, state):
     self.state = state
 
-def revert_continue (repo, state):
-  cmd = RevertCommand()
-
-  cmd.set_state (state)
-  cmd.restart (repo)
-  cmd.execute()
-
-  # remove journal entry
-  repo.bdb.begin_transaction()
-  repo.bdb.clear_journal_entries()
-  repo.bdb.commit_transaction()
-
 def revert (repo, VERSION, verbose = True):
   cmd = RevertCommand()
 
   if not cmd.start (repo, VERSION, verbose):
     return False
 
-  run_command (repo, cmd)
+  queue_command (cmd)
   return True
 
   return
@@ -600,7 +588,7 @@ class CommitCommand:
 
       # create new journal entry
       self.repo.bdb.begin_transaction()
-      mk_journal_entry (self.repo, self)
+      mk_journal_entry (self.repo)
       self.repo.bdb.commit_transaction()
 
       if self.DEBUG_MEM:
@@ -648,13 +636,13 @@ class CommitCommand:
           process_inodes (inodes)
           inodes = []
           self.state.previous_time = time.time() - self.start_time
-          mk_journal_entry (self.repo, self)
+          mk_journal_entry (self.repo)
           self.repo.bdb.commit_transaction()
           self.repo.bdb.begin_transaction()
 
       process_inodes (inodes)
       self.state.exec_phase += 1
-      mk_journal_entry (self.repo, self)
+      mk_journal_entry (self.repo)
       self.repo.bdb.commit_transaction()
 
       id_list_file.close()
@@ -692,13 +680,13 @@ class CommitCommand:
 
       if not commit_size_ok:
         print "Nothing to commit."
-        return
+        return CMD_DONE
 
       self.state.exec_phase += 1
 
       # create new journal entry
       self.repo.bdb.begin_transaction()
-      mk_journal_entry (self.repo, self)
+      mk_journal_entry (self.repo)
       self.repo.bdb.commit_transaction()
 
       if self.DEBUG_MEM:
@@ -713,7 +701,7 @@ class CommitCommand:
                                                        self.state.commit_msg,
                                                        self.state.commit_time)
       self.state.exec_phase += 1
-      mk_journal_entry (self.repo, self)
+      mk_journal_entry (self.repo)
       self.repo.bdb.commit_transaction()
 
       if self.DEBUG_MEM:
@@ -754,6 +742,7 @@ class CommitCommand:
 
       # this will release the lock
       self.server_conn.close()
+    return CMD_DONE
 
   def get_state (self):
     return self.state
@@ -764,22 +753,10 @@ class CommitCommand:
   def set_state (self, state):
     self.state = state
 
-def new_commit_continue (repo, state):
-  cmd = CommitCommand()
-
-  cmd.set_state (state)
-  cmd.restart (repo)
-  cmd.execute()
-
-  # remove journal entry
-  repo.bdb.begin_transaction()
-  repo.bdb.clear_journal_entries()
-  repo.bdb.commit_transaction()
-
 def new_commit (repo, commit_args, server = True, verbose = True):
   cmd = CommitCommand()
 
   if not cmd.start (repo, commit_args, server, verbose):
     return False
 
-  run_command (repo, cmd)
+  queue_command (cmd)

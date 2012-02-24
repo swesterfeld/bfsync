@@ -17,7 +17,7 @@
 
 from utils import parse_diff
 from commitutils import commit, new_commit
-from journal import run_command, mk_journal_entry
+from journal import mk_journal_entry, queue_command, CMD_DONE, CMD_AGAIN
 from StatusLine import status_line, OutputSubsampler
 import os
 import bfsyncdb
@@ -206,11 +206,12 @@ class ApplyCommand:
       OPS += 1
       if OPS >= 20000:
         OPS = 0
-        mk_journal_entry (self.repo, self)
+        mk_journal_entry (self.repo)
         self.repo.bdb.commit_transaction()
         self.repo.bdb.begin_transaction()
       status_line.update ("applied %d/%d changes" % (self.state.change_pos, len (self.changes)))
     self.repo.bdb.commit_transaction()
+    return CMD_DONE
 
   def get_operation (self):
     return "apply"
@@ -221,18 +222,6 @@ class ApplyCommand:
   def set_state (self, state):
     self.state = state
 
-def apply_continue (repo, state):
-  cmd = ApplyCommand()
-
-  cmd.set_state (state)
-  cmd.restart (repo)
-  cmd.execute()
-
-  # remove journal entry
-  repo.bdb.begin_transaction()
-  repo.bdb.clear_journal_entries()
-  repo.bdb.commit_transaction()
-
 def apply (repo, diff, expected_hash = None, server = True, verbose = True, commit_args = None):
   if verbose:
     raise Exception ("apply with verbose = True no longer supported")
@@ -240,7 +229,7 @@ def apply (repo, diff, expected_hash = None, server = True, verbose = True, comm
   cmd = ApplyCommand()
 
   cmd.start (repo, diff, server, verbose, commit_args)
-  run_command (repo, cmd)
+  queue_command (cmd)
   new_commit (repo, commit_args, server = server, verbose = verbose)
 
   return # old code:
