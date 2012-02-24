@@ -422,6 +422,7 @@ def cmd_pull():
   repo = cd_repo_connect_db ()
   status_line.set_op ("PULL")
   pull (repo, args)
+  run_commands (repo)
 
 def cmd_push():
   repo = cd_repo_connect_db()
@@ -679,6 +680,7 @@ def cmd_clone():
 
   # pull changes from master
   pull (repo, [ url ], server = False)
+  run_commands (repo)
 
 def cmd_repo_files():
   repo = connect_db (os.getcwd())

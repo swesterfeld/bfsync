@@ -25,7 +25,7 @@ from commitutils import revert
 from xzutils import xzcat
 from StatusLine import status_line
 from HashCache import hash_cache
-from journal import run_commands
+from journal import run_commands, queue_command, mk_journal_entry, CMD_AGAIN, CMD_DONE
 import argparse
 import subprocess
 import datetime
@@ -950,6 +950,48 @@ def check_uncommitted_changes (repo):
 
   return False
 
+class FastForwardState:
+  pass
+
+class FastForwardCommand:
+  def start (self, repo, ff_apply, server):
+    self.state = FastForwardState()
+    self.state.count = 0
+    self.state.ff_apply = ff_apply
+    self.state.server = server
+    self.repo = repo
+
+  def restart (self, repo):
+    self.repo = repo
+
+  def execute (self):
+    if self.state.count == len (self.state.ff_apply):
+      return CMD_DONE
+
+    diff, commit_args = self.state.ff_apply[self.state.count]
+    diff_file = self.repo.make_object_filename (diff)
+    status_line.update ("patch %d/%d - fast forward" % (self.state.count + 1, len (self.state.ff_apply)))
+    apply (self.repo, xzcat (diff_file), diff, server = self.state.server, verbose = False, commit_args = commit_args)
+
+    # FIXME: this could fail if
+    #  - some apply commands are already spawned, but self.state.count is not updated
+    self.state.count += 1
+
+    self.repo.bdb.begin_transaction()
+    mk_journal_entry (self.repo)
+    self.repo.bdb.commit_transaction()
+
+    return CMD_AGAIN # will execute queued commands before execute() gets called again
+
+  def get_operation (self):
+    return "fast-forward"
+
+  def get_state (self):
+    return self.state
+
+  def set_state (self, state):
+    self.state = state
+
 def pull (repo, args, server = True):
   parser = argparse.ArgumentParser (prog='bfsync pull')
   parser.add_argument ('--always-local', action='store_const', const=True,
@@ -1032,13 +1074,10 @@ def pull (repo, args, server = True):
   get_remote_objects (repo, remote_repo, transfer_objs, TransferParams (0))
 
   if can_fast_forward:
-    count = 1
-    for diff, commit_args in ff_apply:
-      diff_file = repo.make_object_filename (diff)
-      status_line.update ("patch %d/%d - fast forward" % (count, len (ff_apply)))
-      apply (repo, xzcat (diff_file), diff, server = server, verbose = False, commit_args = commit_args)
-      count += 1
-      run_commands (repo)
+    cmd = FastForwardCommand()
+
+    cmd.start (repo, ff_apply, server)
+    queue_command (cmd)
   else:
     history_merge (c, repo, local_history, remote_history, pull_args)
 

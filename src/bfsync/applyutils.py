@@ -209,7 +209,6 @@ class ApplyCommand:
         mk_journal_entry (self.repo)
         self.repo.bdb.commit_transaction()
         self.repo.bdb.begin_transaction()
-      status_line.update ("applied %d/%d changes" % (self.state.change_pos, len (self.changes)))
     self.repo.bdb.commit_transaction()
     return CMD_DONE
 

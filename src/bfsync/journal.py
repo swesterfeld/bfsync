@@ -76,6 +76,7 @@ def run_commands (repo):
 def run_continue (repo, je):
   from commitutils import CommitCommand, RevertCommand
   from applyutils import ApplyCommand
+  from transferutils import FastForwardCommand
   global cmd_stack
 
   assert (len (cmd_stack) == 1 and len (cmd_stack[0]) == 0)
@@ -91,6 +92,8 @@ def run_continue (repo, je):
         instance = RevertCommand()
       elif cmd[0] == "apply":
         instance = ApplyCommand()
+      elif cmd[0] == "fast-forward":
+        instance = FastForwardCommand()
       else:
         raise Exception ("unsupported command type %s during continue" % cmd[0])
 
