@@ -151,14 +151,51 @@ class ApplyState:
   pass
 
 class ApplyCommand:
+  def store_diff (self, diff):
+    self.repo.bdb.begin_transaction()
+    self.state.diff_filename = self.repo.make_temp_name()
+    self.repo.bdb.commit_transaction()
+
+    diff_file = open (self.state.diff_filename, "w")
+    diff_file.write (diff)
+    diff_file.close()
+
+  def load_diff (self):
+    diff_file = open (self.state.diff_filename, "r")
+    diff = diff_file.read()
+    diff_file.close()
+    return diff
+
   def start (self, repo, diff, server, verbose, commit_args):
     self.state = ApplyState()
+    self.state.VERSION = repo.first_unused_version()
+    self.repo = repo
+    self.store_diff (diff)
+    self.changes = parse_diff (diff)
 
   def restart (self, repo):
-    pass
+    diff = self.load_diff()
+    self.changes = parse_diff (diff)
+    self.repo = repo
 
   def execute (self):
-    pass
+    apply_tool = ApplyTool (self.repo.bdb, self.state.VERSION)
+
+    self.repo.bdb.begin_transaction() # FIXME: need transaction splitting
+    for change in self.changes:
+      if change[0] == "l+":
+        apply_tool.apply_link_plus (change[1:])
+      if change[0] == "i+":
+        apply_tool.apply_inode_plus (change[1:])
+      if change[0] == "l!":
+        apply_tool.apply_link_change (change[1:])
+      if change[0] == "i!":
+        apply_tool.apply_inode_change (change[1:])
+      if change[0] == "l-":
+        apply_tool.apply_link_minus (change[1:])
+      if change[0] == "i-":
+        apply_tool.apply_inode_minus (change[1:])
+    self.repo.bdb.commit_transaction()
 
   def get_operation (self):
     return "apply"
@@ -193,27 +230,6 @@ def apply (repo, diff, expected_hash = None, server = True, verbose = True, comm
 
   return # old code:
 
-  changes = parse_diff (diff)
-
-  VERSION = repo.first_unused_version()
-
-  apply_tool = ApplyTool (repo.bdb, VERSION)
-
-  repo.bdb.begin_transaction() # FIXME: need transaction splitting
-  for change in changes:
-    if change[0] == "l+":
-      apply_tool.apply_link_plus (change[1:])
-    if change[0] == "i+":
-      apply_tool.apply_inode_plus (change[1:])
-    if change[0] == "l!":
-      apply_tool.apply_link_change (change[1:])
-    if change[0] == "i!":
-      apply_tool.apply_inode_change (change[1:])
-    if change[0] == "l-":
-      apply_tool.apply_link_minus (change[1:])
-    if change[0] == "i-":
-      apply_tool.apply_inode_minus (change[1:])
-  repo.bdb.commit_transaction()
 
   #if expected_hash:
     #commit (repo, diff, expected_hash, server = server, verbose = verbose, commit_args = commit_args)
