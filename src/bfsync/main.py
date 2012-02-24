@@ -154,9 +154,44 @@ def cmd_debug_clear_cache():
 
 def cmd_debug_integrity():
   repo = cd_repo_connect_db()
-  conn = repo.conn
-  repo_path = repo.path
-  sys.stderr.write ("FIXME: fake debug integrity")
+
+  ids = []
+  ai = bfsyncdb.AllINodesIterator (repo.bdb)
+  while True:
+    id = ai.get_next()
+    if not id.valid:
+      break
+    ids.append (id.str())
+  del ai
+
+  fail = False
+  inode_d = dict()
+  conflicts = []
+  VERSION = repo.first_unused_version()
+
+  for id_str in ids:
+    id = bfsyncdb.ID (id_str)
+    if not id.valid:
+      raise Exception ("found invalid id during debug integrity")
+
+    inodes = repo.bdb.load_all_inodes (id)
+    for inode in inodes:
+      version = inode.vmin
+      while version <= inode.vmax and version <= VERSION:
+        s = "%d|%s" % (version, id_str)
+        if inode_d.has_key (s):
+          conflicts += [ (version, id_str) ]
+        inode_d[s] = 1
+        version += 1
+
+  for conflict in conflicts:
+    version = conflict[0]
+    id = conflict[1]
+    print "error: version %d available more than once for inode %s" % (version, id)
+    fail = True
+
+  if fail:
+    sys.exit (1)
   print "ok"
   return
 
