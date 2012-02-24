@@ -17,7 +17,8 @@
 
 from utils import parse_diff
 from commitutils import commit, new_commit
-from journal import run_command
+from journal import run_command, mk_journal_entry
+from StatusLine import status_line, OutputSubsampler
 import os
 import bfsyncdb
 
@@ -168,6 +169,7 @@ class ApplyCommand:
 
   def start (self, repo, diff, server, verbose, commit_args):
     self.state = ApplyState()
+    self.state.change_pos = 0
     self.state.VERSION = repo.first_unused_version()
     self.repo = repo
     self.store_diff (diff)
@@ -181,8 +183,13 @@ class ApplyCommand:
   def execute (self):
     apply_tool = ApplyTool (self.repo.bdb, self.state.VERSION)
 
-    self.repo.bdb.begin_transaction() # FIXME: need transaction splitting
-    for change in self.changes:
+    OPS = 0
+    self.repo.bdb.begin_transaction()
+    while self.state.change_pos < len (self.changes):
+      change = self.changes[self.state.change_pos]
+      self.state.change_pos += 1
+
+      # apply one change
       if change[0] == "l+":
         apply_tool.apply_link_plus (change[1:])
       if change[0] == "i+":
@@ -195,6 +202,14 @@ class ApplyCommand:
         apply_tool.apply_link_minus (change[1:])
       if change[0] == "i-":
         apply_tool.apply_inode_minus (change[1:])
+
+      OPS += 1
+      if OPS >= 20000:
+        OPS = 0
+        mk_journal_entry (self.repo, self)
+        self.repo.bdb.commit_transaction()
+        self.repo.bdb.begin_transaction()
+      status_line.update ("applied %d/%d changes" % (self.state.change_pos, len (self.changes)))
     self.repo.bdb.commit_transaction()
 
   def get_operation (self):
