@@ -195,7 +195,7 @@ def gen_status (repo):
         change_list.append (("+", new.type , new.get_name()))
         bytes_added += new.size
         n_added += 1
-    else: # OLD
+    elif old_tuple: # OLD
       change_list.append (("-", old.type, old.get_name()))
       n_deleted += 1
       bytes_deleted += old.size
