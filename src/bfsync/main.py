@@ -47,6 +47,7 @@ from stat import *
 from transferutils import get, put, push, pull, collect
 from xzutils import xz
 from journal import run_commands, run_continue
+from gcutils import gc
 
 def find_bfsync_dir():
   old_cwd = os.getcwd()
@@ -596,13 +597,7 @@ def cmd_gc():
   repo = cd_repo_connect_db()
 
   status_line.set_op ("GC")
-  objs = unused_objects (repo)
-  lobjs = len (objs)
-  pos = 1
-  for o in objs:
-    status_line.update ("removing file %d/%d" % (pos, lobjs))
-    pos += 1
-    os.remove (os.path.join (repo.path, "objects", make_object_filename (o)))
+  gc (repo)
 
 def cmd_clone():
   parser = argparse.ArgumentParser (prog='bfsync clone')
