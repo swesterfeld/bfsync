@@ -5,6 +5,6 @@ do
   echo "... n=$n"
   mkdir run$n
   cd run$n
-  mkfiles.sh
+  mkfiles.sh run$n
   cd ..
 done
