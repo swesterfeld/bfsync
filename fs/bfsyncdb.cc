@@ -203,6 +203,30 @@ JournalEntry::~JournalEntry()
   journal_entry_leak_debugger.del (this);
 }
 
+//---------------------------- Hash2FileEntry -----------------------------
+
+static BFSync::LeakDebugger hash2file_entry_leak_debugger ("(Python)BFSync::Hash2FileEntry");
+
+Hash2FileEntry::Hash2FileEntry() :
+  valid (false),
+  file_number (0)
+{
+  hash2file_entry_leak_debugger.add (this);
+}
+
+Hash2FileEntry::Hash2FileEntry (const Hash2FileEntry& h2f) :
+  valid (h2f.valid),
+  hash (h2f.hash),
+  file_number (h2f.file_number)
+{
+  hash2file_entry_leak_debugger.add (this);
+}
+
+Hash2FileEntry::~Hash2FileEntry()
+{
+  hash2file_entry_leak_debugger.del (this);
+}
+
 //---------------------------------------------------------------
 
 BDBPtr
@@ -1139,6 +1163,57 @@ AllINodesIterator::get_next()
   ID xid;
   xid.valid = false;
   return xid;
+}
+
+Hash2FileIterator::Hash2FileIterator (BDBPtr bdb_ptr) :
+  bdb_ptr (bdb_ptr)
+{
+  int ret;
+
+  DbTxn *txn = bdb_ptr.get_bdb()->get_transaction();
+
+  /* Acquire a cursor for the database. */
+  if ((ret = bdb_ptr.get_bdb()->get_db_hash2file()->cursor (txn, &cursor, 0)) != 0)
+    {
+      bdb_ptr.get_bdb()->get_db_hash2file()->err (ret, "DB->cursor");
+      cursor = 0;
+      dbc_ret = ret;
+      return;
+    }
+
+  dbc_ret = cursor->get (&key, &data, DB_FIRST);
+}
+
+Hash2FileIterator::~Hash2FileIterator()
+{
+  if (cursor)
+    cursor->close();
+}
+
+
+Hash2FileEntry
+Hash2FileIterator::get_next()
+{
+  Hash2FileEntry h2f;
+
+  if (dbc_ret == 0)
+    {
+      const unsigned char *kptr = (unsigned char *) key.get_data();
+      DataBuffer dbuffer ((char *) data.get_data(), data.get_size());
+
+      string hash;
+      for (size_t i = 0; i < key.get_size(); i++)
+        hash += string_printf ("%02x", kptr[i]); // slow!
+
+      h2f.hash = hash;
+      h2f.file_number = dbuffer.read_uint32();
+      h2f.valid = true;
+
+      dbc_ret = cursor->get (&key, &data, DB_NEXT);
+      return h2f;
+    }
+  h2f.valid = false;
+  return h2f;
 }
 
 

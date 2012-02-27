@@ -115,6 +115,17 @@ struct JournalEntry {
   std::string   state;
 };
 
+struct Hash2FileEntry {
+  Hash2FileEntry();
+  Hash2FileEntry (const Hash2FileEntry& h2fe);
+  ~Hash2FileEntry();
+
+  bool          valid;
+
+  std::string   hash;
+  unsigned int  file_number;
+};
+
 class BDBWrapper
 {
   unsigned int ref_count;
@@ -286,6 +297,19 @@ public:
   ~AllINodesIterator();
 
   ID get_next();
+};
+
+class Hash2FileIterator
+{
+  Dbc            *cursor;
+  BDBPtr          bdb_ptr;
+  int             dbc_ret;
+  Dbt             key, data;
+public:
+  Hash2FileIterator (BDBPtr bdb_ptr);
+  ~Hash2FileIterator();
+
+  Hash2FileEntry get_next();
 };
 
 class BDBException
