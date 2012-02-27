@@ -1108,6 +1108,26 @@ BDB::store_hash2file (const string& hash, unsigned int file_number)
   assert (ret == 0);
 }
 
+TimeProfSection tp_delete_hash2file ("BDB::delete_hash2file");
+
+void
+BDB::delete_hash2file (const string& hash)
+{
+  Lock lock (mutex);
+
+  TimeProfHandle h (tp_delete_hash2file);
+
+  g_assert (transaction);
+
+  DataOutBuffer kbuf;
+  kbuf.write_hash (hash);
+
+  Dbt key (kbuf.begin(), kbuf.size());
+
+  int ret = db_hash2file->del (transaction, &key, 0);
+  assert (ret == 0);
+}
+
 void
 BDB::add_deleted_file (unsigned int file_number)
 {

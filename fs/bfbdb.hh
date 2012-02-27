@@ -194,6 +194,7 @@ public:
 
   unsigned int load_hash2file (const std::string& hash);
   void  store_hash2file (const std::string& hash, unsigned int file_number);
+  void  delete_hash2file (const std::string& hash);
 
   void  add_deleted_file (unsigned int file_number);
   std::vector<unsigned int>  load_deleted_files();

@@ -954,6 +954,12 @@ BDBPtr::store_hash2file (const string& hash, unsigned int file_number)
 }
 
 void
+BDBPtr::delete_hash2file (const string& hash)
+{
+  ptr->my_bdb->delete_hash2file (hash);
+}
+
+void
 BDBPtr::add_deleted_file (unsigned int file_number)
 {
   ptr->my_bdb->add_deleted_file (file_number);
