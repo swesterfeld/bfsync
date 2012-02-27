@@ -18,8 +18,14 @@
 import bfsyncdb
 import os
 from StatusLine import status_line
+from utils import *
 
 def gc (repo):
+  DEBUG_MEM = True
+
+  if DEBUG_MEM:
+    print_mem_usage ("gc start")
+
   need_files = set()
 
   ai = bfsyncdb.AllINodesIterator (repo.bdb)
@@ -37,6 +43,9 @@ def gc (repo):
         need_files.add (file_number)
   del ai
 
+  if DEBUG_MEM:
+    print_mem_usage ("after need files loop")
+
   version = 1
   while True:
     hentry = repo.bdb.load_history_entry (version)
@@ -49,6 +58,9 @@ def gc (repo):
 
     version += 1
 
+  if DEBUG_MEM:
+    print_mem_usage ("after history loop")
+
   file_count = 0
   clean_count = 0
   for root, dirs, files in os.walk (os.path.join (repo.path, "objects")):
@@ -60,6 +72,9 @@ def gc (repo):
         clean_count += 1
       status_line.update ("removed %d/%d files" % (clean_count, file_count))
 
+  if DEBUG_MEM:
+    print_mem_usage ("after remove files loop")
+
   repo.bdb.begin_transaction()
   hi = bfsyncdb.Hash2FileIterator (repo.bdb)
   while True:
@@ -70,3 +85,6 @@ def gc (repo):
       repo.bdb.delete_hash2file (h2f.hash)
   del hi
   repo.bdb.commit_transaction()
+
+  if DEBUG_MEM:
+    print_mem_usage ("after remove h2f loop")
