@@ -313,6 +313,22 @@ public:
   Hash2FileEntry get_next();
 };
 
+class SortedArray
+{
+private:
+  SortedArray (const SortedArray& other); // should not  be used
+
+  std::vector<guint32> array;
+
+public:
+  SortedArray();
+  ~SortedArray();
+
+  void append (unsigned int n);
+  void sort_unique();
+  bool search (unsigned int n);
+};
+
 class BDBException
 {
 private:

@@ -23,6 +23,8 @@
 #include "bfhistory.hh"
 #include "bftimeprof.hh"
 
+#include <algorithm>
+
 using BFSync::DataOutBuffer;
 using BFSync::DataBuffer;
 using BFSync::DbcPtr;
@@ -1222,6 +1224,43 @@ Hash2FileIterator::get_next()
   return h2f;
 }
 
+//---------------------------- SortedArray -----------------------------
+
+static BFSync::LeakDebugger sorted_array_leak_debugger ("(Python)BFSync::SortedArray");
+
+SortedArray::SortedArray()
+{
+  sorted_array_leak_debugger.add (this);
+}
+
+SortedArray::~SortedArray()
+{
+  sorted_array_leak_debugger.del (this);
+}
+
+void
+SortedArray::append (unsigned int i)
+{
+  array.push_back (i);
+}
+
+void
+SortedArray::sort_unique()
+{
+  std::sort (array.begin(), array.end());
+
+  // dedup
+  vector<guint32>::iterator ai = std::unique (array.begin(), array.end());
+  array.resize (ai - array.begin());
+}
+
+bool
+SortedArray::search (unsigned int i)
+{
+  return std::binary_search (array.begin(), array.end(), i);
+}
+
+//---------------------------- BDBException -----------------------------
 
 BDBException::BDBException (BFSync::BDBError error) :
   error (error)
