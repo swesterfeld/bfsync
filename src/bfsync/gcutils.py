@@ -26,7 +26,7 @@ def gc (repo):
   if DEBUG_MEM:
     print_mem_usage ("gc start")
 
-  need_files = set()
+  need_files = bfsyncdb.SortedArray()
 
   ai = bfsyncdb.AllINodesIterator (repo.bdb)
   while True:
@@ -37,10 +37,12 @@ def gc (repo):
     for inode in inodes:
       if len (inode.hash) == 40:
         file_number = repo.bdb.load_hash2file (inode.hash)
-        need_files.add (file_number)
+        if file_number != 0:
+          need_files.append (file_number)
       if inode.hash == "new":
         file_number = inode.new_file_number
-        need_files.add (file_number)
+        if file_number != 0:
+          need_files.append (file_number)
   del ai
 
   if DEBUG_MEM:
@@ -54,9 +56,11 @@ def gc (repo):
 
     file_number = repo.bdb.load_hash2file (hentry.hash)
     if file_number != 0:
-      need_files.add (file_number)
+      need_files.append (file_number)
 
     version += 1
+
+  need_files.sort_unique()
 
   if DEBUG_MEM:
     print_mem_usage ("after history loop")
@@ -67,7 +71,7 @@ def gc (repo):
     for f in files:
       file_count += 1
       file_number = int (os.path.basename (root) + f, 16)
-      if file_number not in need_files:
+      if not need_files.search (file_number):
         os.remove (os.path.join (root, f))
         clean_count += 1
       status_line.update ("removed %d/%d files" % (clean_count, file_count))
@@ -81,7 +85,7 @@ def gc (repo):
     h2f = hi.get_next()
     if not h2f.valid:
       break
-    if not h2f.file_number in need_files:
+    if not need_files.search (h2f.file_number):
       repo.bdb.delete_hash2file (h2f.hash)
   del hi
   repo.bdb.commit_transaction()
