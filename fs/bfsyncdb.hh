@@ -18,6 +18,7 @@
 */
 
 #include "bfbdb.hh"
+#include "bfdeduptable.hh"
 #include <glib.h>
 #include <stdint.h>
 #include <string>
@@ -285,13 +286,29 @@ public:
   std::string get_next();
 };
 
+struct IDHash
+{
+  static size_t
+  size (unsigned char *)
+  {
+    return 20; /* 5 * uint32 */
+  }
+  static unsigned int
+  hash (unsigned char *mem)
+  {
+    guint32 result;
+    std::copy (mem, mem + 4, (unsigned char *) &result); // return id.a as hash
+    return result;
+  }
+};
+
 class AllINodesIterator
 {
   BFSync::DbcPtr dbc;
   int dbc_ret;
   BDBPtr bdb_ptr;
 
-  std::set<BFSync::ID> known_ids;
+  DedupTable<IDHash> known_ids;
   Dbt key, data;
 public:
   AllINodesIterator (BDBPtr bdb_ptr);
@@ -327,6 +344,8 @@ public:
   void append (unsigned int n);
   void sort_unique();
   bool search (unsigned int n);
+
+  unsigned int mem_usage();
 };
 
 class BDBException

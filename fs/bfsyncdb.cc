@@ -1142,6 +1142,7 @@ AllINodesIterator::AllINodesIterator (BDBPtr bdb_ptr) :
 
 AllINodesIterator::~AllINodesIterator()
 {
+  // known_ids.print_mem_usage();
 }
 
 ID
@@ -1158,11 +1159,17 @@ AllINodesIterator::get_next()
           DataBuffer kbuffer ((char *) key.get_data(), key.get_size());
           id_load (id, kbuffer);
 
-          if (known_ids.count (id.id) == 0)
-            {
-              known_ids.insert (id.id);
-              rid = true;
-            }
+          DataOutBuffer id_buf;
+          /* we don't store the prefix part, because a..e should be enough to figure out
+           * duplicates reliably - this results in a slightly reduced memory usage and
+           * it should be a bit faster (because now all known IDs have the same size) */
+          id_buf.write_uint32 (id.id.a);
+          id_buf.write_uint32 (id.id.b);
+          id_buf.write_uint32 (id.id.c);
+          id_buf.write_uint32 (id.id.d);
+          id_buf.write_uint32 (id.id.e);
+          if (!known_ids.insert ((unsigned char *) id_buf.begin()))
+            rid = true;
         }
       dbc_ret = dbc->get (&key, &data, DB_NEXT);
       if (rid)
@@ -1258,6 +1265,12 @@ bool
 SortedArray::search (unsigned int i)
 {
   return std::binary_search (array.begin(), array.end(), i);
+}
+
+unsigned int
+SortedArray::mem_usage()
+{
+  return array.capacity() * sizeof (&array[0]);
 }
 
 //---------------------------- BDBException -----------------------------
