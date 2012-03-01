@@ -165,8 +165,9 @@ DedupTable<T>::insert (unsigned char *buffer)
 template<class T> void
 DedupTable<T>::print_mem_usage()
 {
-  printf ("data:     %zd\n", data.size());
-  printf ("buckets:  %zd\n", buckets.size() * sizeof (buckets[0]));
+  printf ("data:     %zd  - capacity %zd\n", data.size(), data.capacity());
+  printf ("buckets:  %zd  - capacity %zd\n", buckets.size() * sizeof (buckets[0]),
+                                             buckets.capacity() * sizeof (buckets[0]));
   printf ("per-item: %.2f\n", double (data.size() + buckets.size() * sizeof (buckets[0])) / n_entries);
 }
 
