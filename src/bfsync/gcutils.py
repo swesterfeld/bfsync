@@ -43,10 +43,12 @@ def gc (repo):
         file_number = inode.new_file_number
         if file_number != 0:
           need_files.append (file_number)
-  del ai
 
   if DEBUG_MEM:
+    # need to do this before deleting ai
     print_mem_usage ("after need files loop")
+
+  del ai
 
   version = 1
   while True:

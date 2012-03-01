@@ -343,6 +343,17 @@ def init_bfsync_file (dir):
   f.close()
 
 def print_mem_usage (comment):
+  f = open ("/proc/self/smaps")
+  mem_smaps = 0
+  for line in f:
+    fields = line.split ()
+    if fields[0][0].isupper():
+      if fields[0] == "Rss:" and inode == 0:
+        mem_smaps += int (fields[1])
+    else:
+      inode = int (fields[4])
+  f.close()
   print
   print "** %s ** memory usage: %d K" % (comment, resource.getrusage (resource.RUSAGE_SELF).ru_maxrss)
+  print "** %s ** memory smaps: %d K" % (comment, mem_smaps)
   print
