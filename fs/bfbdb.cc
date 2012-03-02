@@ -1371,7 +1371,7 @@ BDB::clear_journal_entries()
 static inline int
 make_shm_key (int n)
 {
-  return n * 256 | 0xbfbdb000;
+  return (n * 256) ^ 0xbfbdb000;
 }
 
 int
