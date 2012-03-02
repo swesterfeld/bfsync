@@ -17,16 +17,21 @@
 
 import bfsyncdb
 import os
-from StatusLine import status_line
+from StatusLine import status_line, OutputSubsampler
 from utils import *
 
 def gc (repo):
-  DEBUG_MEM = True
+  DEBUG_MEM = False
 
   if DEBUG_MEM:
     print_mem_usage ("gc start")
 
   need_files = bfsyncdb.SortedArray()
+  object_count = 0
+  outss = OutputSubsampler()
+
+  def update_status():
+    status_line.update ("phase 1/4: scanning objects: %d" % object_count)
 
   ai = bfsyncdb.AllINodesIterator (repo.bdb)
   while True:
@@ -43,12 +48,18 @@ def gc (repo):
         file_number = inode.new_file_number
         if file_number != 0:
           need_files.append (file_number)
+      object_count += 1
+      if outss.need_update():
+        update_status()
+
+  update_status()
+  status_line.cleanup()
 
   if DEBUG_MEM:
     # need to do this before deleting ai
     print_mem_usage ("after need files loop")
 
-  del ai
+  del ai  # free memory
 
   version = 1
   while True:
@@ -73,6 +84,10 @@ def gc (repo):
   repo.bdb.commit_transaction()
 
   h2f_delete_file = open (h2f_delete_filename, "w")
+  h2f_entries = 0
+
+  def update_status_h2f():
+    status_line.update ("phase 2/4: scanning hash db entries: %d" % h2f_entries)
 
   hi = bfsyncdb.Hash2FileIterator (repo.bdb)
   while True:
@@ -81,7 +96,13 @@ def gc (repo):
       break
     if not need_files.search (h2f.file_number):
       h2f_delete_file.write ("%s\n" % h2f.hash)
+    if outss.need_update():
+      update_status_h2f()
+    h2f_entries += 1
   del hi
+
+  update_status_h2f()
+  status_line.cleanup()
 
   h2f_delete_file.close()
 
@@ -90,6 +111,8 @@ def gc (repo):
 
   ## delete unused hash entries in small chunks
   h2f_delete_file = open (h2f_delete_filename, "r")
+
+  status_line.update ("phase 3/4: removing unused hash db entries...")
 
   OPS = 0
   repo.bdb.begin_transaction()
@@ -107,11 +130,18 @@ def gc (repo):
 
   h2f_delete_file.close()
 
+  status_line.update ("phase 3/4: removing unused hash db entries: done")
+  status_line.cleanup()
+
   if DEBUG_MEM:
     print_mem_usage ("after remove h2f loop")
 
   file_count = 0
   clean_count = 0
+
+  def update_status_rm():
+    status_line.update ("phase 4/4: removing unused files: %d files checked, %d files removed" % (file_count, clean_count))
+
   for root, dirs, files in os.walk (os.path.join (repo.path, "objects")):
     for f in files:
       file_count += 1
@@ -119,7 +149,11 @@ def gc (repo):
       if not need_files.search (file_number):
         os.remove (os.path.join (root, f))
         clean_count += 1
-      status_line.update ("removed %d/%d files" % (clean_count, file_count))
+      if outss.need_update():
+        update_status_rm()
+
+  update_status_rm()
+  status_line.cleanup()
 
   if DEBUG_MEM:
     print_mem_usage ("after remove files loop")
