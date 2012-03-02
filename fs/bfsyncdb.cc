@@ -831,6 +831,15 @@ gen_ibang (const INode& i_old, const INode& i_new)
 }
 
 vector<string>
+gen_iminus (const INode& inode)
+{
+  vector<string> result;
+  result.push_back ("i-");
+  result.push_back (print_id (inode.id));
+  return result;
+}
+
+vector<string>
 gen_lplus (const Link *link)
 {
   vector<string> result;
@@ -865,6 +874,7 @@ DiffGenerator::get_next()
         }
       else if (i_old.valid && !i_new.valid)
         {
+          diffs.push_back (gen_iminus (i_old));
         }
 
       // generate l+ / l- and l! entries for dir_id = id
