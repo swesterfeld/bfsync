@@ -179,9 +179,13 @@ def push (repo, urls):
 
   remote_repo.put_objects (repo, tl, TransferParams (0))
 
-def load_diff (hash):
-  obj_name = os.path.join ("objects", make_object_filename (hash))
-  diff = xzcat (obj_name)
+def load_diff (repo, hash):
+  file_number = repo.bdb.load_hash2file (hash)
+  if file_number != 0:
+    full_name = repo.make_number_filename (file_number)
+    diff = xzcat (full_name)
+  else:
+    raise Exception ("Diff for hash %s not found" % hash)
   return diff
 
 ################################# MERGE ######################################
@@ -208,8 +212,8 @@ def db_link_inode (c, VERSION, dir_id, name):
   raise Exception ("link target for %s/%s not found" % (dir_id, name))
 
 class MergeHistory:
-  def __init__ (self, c, common_version, name):
-    self.c = c
+  def __init__ (self, repo, common_version, name):
+    self.repo = repo
     self.common_version = common_version
     self.inode_changes = dict()
     self.name = name
@@ -284,11 +288,27 @@ def find_conflicts (mhistory, lhistory):
   lset = set (lhistory.inodes())
   return list (mset.intersection (lset))
 
-def db_inode (c, VERSION, id):
-  c.execute ("SELECT * FROM inodes WHERE id = ? AND ? >= vmin AND ? <= vmax",
-             (id, VERSION, VERSION))
-  for row in c:
-    return list (row[2:])
+def db_inode (repo, VERSION, id_str):
+  id = bfsyncdb.ID (id_str)
+  inode = repo.bdb.load_inode (id, VERSION)
+  if inode.valid:
+    return [
+        inode.id.str(),
+        inode.uid,
+        inode.gid,
+        inode.mode,
+        inode.type,
+        inode.hash,
+        inode.link,
+        inode.size,
+        inode.major,
+        inode.minor,
+        inode.nlink,
+        inode.ctime,
+        inode.ctime_ns,
+        inode.mtime,
+        inode.mtime_ns
+      ]
   return False
 
 def db_contains_link (c, VERSION, dir_id, name):
@@ -298,12 +318,12 @@ def db_contains_link (c, VERSION, dir_id, name):
     return True
   return False
 
-def db_links (c, VERSION, id):
-  c.execute ("SELECT dir_id, name, inode_id FROM links WHERE inode_id = ? AND ? >= vmin AND ? <= vmax",
-             (id, VERSION, VERSION))
+def db_links (repo, VERSION, id_str):
+  id = bfsyncdb.ID (id_str)
+  links = repo.bdb.load_links (id, VERSION)
   results = []
-  for row in c:
-    results += [ list (row) ]
+  for link in links:
+    results += [ link.dir_id.str(), link.name, link.inode_id.str() ]
   return results
 
 def restore_inode_links (want_links, have_links):
@@ -547,8 +567,7 @@ class Conflict:
   pass
 
 class AutoConflictResolver:
-  def __init__ (self, c, repo, common_version, master_merge_history, local_merge_history):
-    self.c = c
+  def __init__ (self, repo, common_version, master_merge_history, local_merge_history):
     self.repo = repo
     self.common_version = common_version
     self.master_merge_history = master_merge_history
@@ -597,8 +616,7 @@ class AutoConflictResolver:
       return ""   # could not resolve automatically
 
 class UserConflictResolver:
-  def __init__ (self, c, repo, common_version, master_merge_history, local_merge_history):
-    self.c = c
+  def __init__ (self, repo, common_version, master_merge_history, local_merge_history):
     self.repo = repo
     self.common_version = common_version
     self.master_merge_history = master_merge_history
@@ -758,7 +776,7 @@ class UserConflictResolver:
 
 ################################# MERGE ######################################
 
-def history_merge (c, repo, local_history, remote_history, pull_args):
+def history_merge (repo, local_history, remote_history, pull_args):
   # figure out last common version
   common_version = find_common_version (local_history, remote_history)
 
@@ -766,22 +784,22 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
   total_patch_count = 1
 
   # ANALYZE master history
-  master_merge_history = MergeHistory (c, common_version, "master")
+  master_merge_history = MergeHistory (repo, common_version, "master")
 
   for rh in remote_history:   # remote history
     if rh[0] > common_version:
       diff = rh[1]
-      changes = parse_diff (load_diff (diff))
+      changes = parse_diff (load_diff (repo, diff))
       master_merge_history.add_changes (rh[0], changes)
       total_patch_count += 1
 
   # ANALYZE local history
-  local_merge_history = MergeHistory (c, common_version, "local")
+  local_merge_history = MergeHistory (repo, common_version, "local")
 
   for lh in local_history:    # local history
     if lh[0] > common_version:
       diff = lh[1]
-      changes = parse_diff (load_diff (diff))
+      changes = parse_diff (load_diff (repo, diff))
       local_merge_history.add_changes (lh[0], changes)
       total_patch_count += 1
 
@@ -790,8 +808,8 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
   restore_inode = dict()
   use_both_versions = dict()
 
-  auto_resolver = AutoConflictResolver (c, repo, common_version, master_merge_history, local_merge_history)
-  user_resolver = UserConflictResolver (c, repo, common_version, master_merge_history, local_merge_history)
+  auto_resolver = AutoConflictResolver (repo, common_version, master_merge_history, local_merge_history)
+  user_resolver = UserConflictResolver (repo, common_version, master_merge_history, local_merge_history)
   conflict_ids = find_conflicts (master_merge_history, local_merge_history)
   for conflict_id in conflict_ids:
     if pull_args.always_local:
@@ -806,9 +824,10 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
     else:
       conflict = Conflict()
       conflict.id = conflict_id
+      print "CONFLICT id=%s" % conflict.id
 
       # determine inode content for common, local and master version
-      conflict.common_inode = db_inode (c, common_version, conflict.id)
+      conflict.common_inode = db_inode (repo, common_version, conflict.id)
 
       conflict.master_inode = apply_inode_changes (
         conflict.common_inode,
@@ -819,7 +838,7 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
         local_merge_history.get_changes (conflict.id))
 
       # determine inode links for common/local/master version
-      conflict.common_links = db_links (c, common_version, conflict.id)
+      conflict.common_links = db_links (repo, common_version, conflict.id)
       conflict.master_links = apply_link_changes (conflict.common_links, master_merge_history.get_changes (conflict.id))
       conflict.local_links  = apply_link_changes (conflict.common_links, local_merge_history.get_changes (conflict.id))
 
@@ -847,6 +866,8 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
 
   # REVERT to common version
   revert (repo, common_version, verbose = False)
+  # command based revert
+  run_commands (repo)
 
   master_version = common_version
 
@@ -855,7 +876,11 @@ def history_merge (c, repo, local_history, remote_history, pull_args):
   for rh in remote_history:
     if rh[0] > common_version:
       diff = rh[1]
-      diff_file = os.path.join ("objects", make_object_filename (diff))
+      file_number = repo.bdb.load_hash2file (diff)
+      if file_number != 0:
+        diff_file = repo.make_number_filename (file_number)
+      else:
+        raise Exception ("Diff for hash %s not found" % hash)
 
       status_line.update ("patch %d/%d" % (patch_count, total_patch_count))
       patch_count += 1
@@ -1079,7 +1104,7 @@ def pull (repo, args, server = True):
     cmd.start (repo, ff_apply, server)
     queue_command (cmd)
   else:
-    history_merge (c, repo, local_history, remote_history, pull_args)
+    history_merge (repo, local_history, remote_history, pull_args)
 
 def collect (repo, args, old_cwd):
   conn = repo.conn
