@@ -339,44 +339,81 @@ def cmd_revert():
 
 def cmd_db_fingerprint():
   repo = cd_repo_connect_db()
-  conn = repo.conn
   repo_path = repo.path
-  c = conn.cursor()
-
-  sys.stderr.write ("FIXME: db fingerprint")
-  print "foo"
-  return
 
   # lock repo to ensure changes are written before we do something
   server_conn = ServerConn (repo_path)
   server_conn.get_lock()
 
-  c.execute ("SELECT * FROM inodes")
+  ai = bfsyncdb.AllINodesIterator (repo.bdb)
   inode_l = []
-  for row in c:
-    s = "i\0"
-    for f in row:
-      s += "%s\0" % f
-    inode_l += [ s ]
-  inode_l.sort()
-  c.execute ("SELECT * FROM links")
   link_l = []
-  for row in c:
-    s = "l\0"
-    for f in row:
-      s += "%s\0" % f
-    link_l += [ s ]
-  link_l.sort()
-  c.execute ("SELECT * FROM history")
+  while True:
+    id = ai.get_next()
+    if not id.valid:
+      break
+    inodes = repo.bdb.load_all_inodes (id)
+    for inode in inodes:
+      s = "\0".join ([
+        "i",
+        "%d" % inode.vmin,
+        "%d" % inode.vmax,
+        inode.id.str(),
+        "%d" % inode.uid,
+        "%d" % inode.gid,
+        "%o" % inode.mode,
+        "%d" % inode.type,
+        inode.hash,
+        inode.link,
+        "%d" % inode.size,
+        "%d" % inode.major,
+        "%d" % inode.minor,
+        "%d" % inode.nlink,
+        "%d" % inode.ctime,
+        "%d" % inode.ctime_ns,
+        "%d" % inode.mtime,
+        "%d" % inode.mtime_ns,
+        "%d" % inode.new_file_number
+      ])
+      inode_l.append (s)
+    links = repo.bdb.load_all_links (id)
+    for link in links:
+      s = "\0".join ([
+        "l",
+        "%d" % link.vmin,
+        "%d" % link.vmax,
+        link.dir_id.str(),
+        link.inode_id.str(),
+        link.name
+      ])
+      link_l.append (s)
+  del ai
+
   history_l = []
-  for row in c:
-    s = "h\0"
-    for f in row:
-      s += "%s\0" % f
-    history_l += [ s ]
+  VERSION = 1
+  while True:
+    hentry = repo.bdb.load_history_entry (VERSION)
+    VERSION += 1
+
+    if not hentry.valid:
+      break
+
+    s = "\0".join ([
+      "h",
+      "%d" % hentry.version,
+      hentry.hash,
+      hentry.author,
+      hentry.message,
+      "%d" % hentry.time
+    ])
+    history_l.append (s)
+
+  inode_l.sort()
+  link_l.sort()
   history_l.sort()
+
   all_str = ""
-  for r in link_l + inode_l + history_l:
+  for r in inode_l + link_l + history_l:
     all_str += r + "\0"
   print hashlib.sha1 (all_str).hexdigest()
 
