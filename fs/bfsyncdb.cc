@@ -35,6 +35,7 @@ using BFSync::string_printf;
 using BFSync::History;
 using BFSync::TimeProfHandle;
 using BFSync::TimeProfSection;
+using BFSync::BDBError;
 
 using std::string;
 using std::vector;
@@ -262,7 +263,7 @@ BDBPtr::open_ok()
 void
 BDBPtr::begin_transaction()
 {
-  BFSync::BDBError err = ptr->my_bdb->begin_transaction();
+  BDBError err = ptr->my_bdb->begin_transaction();
   if (err)
     throw BDBException (err);
 }
@@ -270,7 +271,7 @@ BDBPtr::begin_transaction()
 void
 BDBPtr::commit_transaction()
 {
-  BFSync::BDBError err = ptr->my_bdb->commit_transaction();
+  BDBError err = ptr->my_bdb->commit_transaction();
   if (err)
     throw BDBException (err);
 }
@@ -278,7 +279,7 @@ BDBPtr::commit_transaction()
 void
 BDBPtr::abort_transaction()
 {
-  BFSync::BDBError err = ptr->my_bdb->abort_transaction();
+  BDBError err = ptr->my_bdb->abort_transaction();
   if (err)
     throw BDBException (err);
 }
@@ -490,7 +491,7 @@ BDBPtr::clear_changed_inodes (unsigned int max_inodes)
 {
   unsigned int result;
 
-  BFSync::BDBError err = ptr->my_bdb->clear_changed_inodes (max_inodes, result);
+  BDBError err = ptr->my_bdb->clear_changed_inodes (max_inodes, result);
   if (err)
     throw BDBException (err);
 
@@ -659,7 +660,9 @@ BDBPtr::add_temp_file (const string& filename, unsigned int pid)
   f.filename = filename;
   f.pid = pid;
 
-  ptr->my_bdb->add_temp_file (f);
+  BDBError err = ptr->my_bdb->add_temp_file (f);
+  if (err)
+    throw BDBException (err);
 }
 
 std::vector<TempFile>
@@ -689,7 +692,7 @@ std::vector<JournalEntry>
 BDBPtr::load_journal_entries()
 {
   std::vector<BFSync::JournalEntry> jentries;
-  BFSync::BDBError err = ptr->my_bdb->load_journal_entries (jentries);
+  BDBError err = ptr->my_bdb->load_journal_entries (jentries);
   if (err)
     throw BDBException (err);
 
@@ -712,7 +715,7 @@ BDBPtr::store_journal_entry (const JournalEntry& journal_entry)
   je.operation = journal_entry.operation;
   je.state     = journal_entry.state;
 
-  BFSync::BDBError err = ptr->my_bdb->store_journal_entry (je);
+  BDBError err = ptr->my_bdb->store_journal_entry (je);
   if (err)
     throw BDBException (err);
 }
@@ -720,7 +723,7 @@ BDBPtr::store_journal_entry (const JournalEntry& journal_entry)
 void
 BDBPtr::clear_journal_entries()
 {
-  BFSync::BDBError err = ptr->my_bdb->clear_journal_entries();
+  BDBError err = ptr->my_bdb->clear_journal_entries();
   if (err)
     throw BDBException (err);
 }
@@ -978,7 +981,7 @@ BDBPtr::clear_deleted_files (unsigned int max_files)
 {
   unsigned int result;
 
-  BFSync::BDBError err = ptr->my_bdb->clear_deleted_files (max_files, result);
+  BDBError err = ptr->my_bdb->clear_deleted_files (max_files, result);
   if (err)
     throw BDBException (err);
 
@@ -1275,7 +1278,7 @@ SortedArray::mem_usage()
 
 //---------------------------- BDBException -----------------------------
 
-BDBException::BDBException (BFSync::BDBError error) :
+BDBException::BDBException (BDBError error) :
   error (error)
 {
 }

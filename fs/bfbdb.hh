@@ -201,7 +201,7 @@ public:
   BDBError  clear_deleted_files (unsigned int max_files, unsigned int& result);
 
   std::vector<TempFile> load_temp_files();
-  void  add_temp_file (const TempFile& temp_file);
+  BDBError  add_temp_file (const TempFile& temp_file);
   void  delete_temp_file (const std::string& filename);
 
   BDBError  load_journal_entries (std::vector<JournalEntry>& entries);

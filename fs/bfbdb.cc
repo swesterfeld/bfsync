@@ -1211,12 +1211,13 @@ BDB::clear_deleted_files (unsigned int max_files, unsigned int& result)
   return BDB_ERROR_NONE;
 }
 
-void
+BDBError
 BDB::add_temp_file (const TempFile& temp_file)
 {
   Lock lock (mutex);
 
-  g_assert (transaction);
+  if (!transaction)
+    return BDB_ERROR_NO_TRANS;
 
   DataOutBuffer kbuf, dbuf;
   kbuf.write_table (BDB_TABLE_TEMP_FILES);
@@ -1227,7 +1228,10 @@ BDB::add_temp_file (const TempFile& temp_file)
   Dbt data (dbuf.begin(), dbuf.size());
 
   int ret = db->put (transaction, &key, &data, 0);
-  assert (ret == 0);
+  if (ret)
+    return ret2error (ret);
+
+  return BDB_ERROR_NONE;
 }
 
 vector<TempFile>
