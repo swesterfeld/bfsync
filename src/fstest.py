@@ -30,21 +30,18 @@ BFSYNC = os.path.join (os.getcwd(), "../src/bfsync.py")
 
 class FuseFS:
   def init (self):
-    if os.path.exists ("test/backup"):
-      if run_quiet (["rsync", "--delete", "-a", "test/backup/", "test/repo"]) != 0:
-        raise Exception ("rsync backup => repo failed")
-    else:
-      cwd = os.getcwd()
-      if subprocess.call (["mkdir", "-p", "test"]) != 0:
-        raise Exception ("error during setup (can't create dirs)")
-      if subprocess.call (["mkdir", "-p", "mnt"]) != 0:
-        raise Exception ("error during setup (can't create dirs)")
-      if subprocess.call ([BFSYNC, "init", "test/master"]) != 0:
-        raise Exception ("error during setup (can't init master repo)")
-      if run_quiet ([BFSYNC, "clone", "-c", "1", "test/master", "test/repo"]) != 0:
-        raise Exception ("error during setup (can't clone master repo)")
-      if run_quiet (["rsync", "-a", "test/repo/", "test/backup"]) != 0:
-        raise Exception ("rsync repo => backup failed")
+    if os.path.exists ("test"):
+      if run_quiet (["rm", "-rf", "test"]) != 0:
+        raise Exception ("error during setup (can't remove old test dir)")
+    cwd = os.getcwd()
+    if subprocess.call (["mkdir", "-p", "test"]) != 0:
+      raise Exception ("error during setup (can't create dirs)")
+    if subprocess.call (["mkdir", "-p", "mnt"]) != 0:
+      raise Exception ("error during setup (can't create dirs)")
+    if subprocess.call ([BFSYNC, "init", "test/master"]) != 0:
+      raise Exception ("error during setup (can't init master repo)")
+    if run_quiet ([BFSYNC, "clone", "-c", "1", "test/master", "test/repo"]) != 0:
+      raise Exception ("error during setup (can't clone master repo)")
     start_bfsyncfs()
 
   def commit (self):
