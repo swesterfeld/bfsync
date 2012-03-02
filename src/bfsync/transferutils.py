@@ -323,7 +323,7 @@ def db_links (repo, VERSION, id_str):
   links = repo.bdb.load_links (id, VERSION)
   results = []
   for link in links:
-    results += [ link.dir_id.str(), link.name, link.inode_id.str() ]
+    results.append ([ link.dir_id.str(), link.name, link.inode_id.str() ])
   return results
 
 def restore_inode_links (want_links, have_links):
@@ -357,8 +357,8 @@ def gen_id():
   return id
 
 class DiffRewriter:
-  def __init__ (self, c):
-    self.c = c
+  def __init__ (self, repo):
+    self.repo = repo
     self.link_rewrite = dict()
     self.subst = dict()
     self.changes = []
@@ -368,10 +368,7 @@ class DiffRewriter:
 
   def rewrite (self, changes):
     # determine current db version
-    VERSION = 1
-    self.c.execute ('''SELECT version FROM history''')
-    for row in self.c:
-      VERSION = max (row[0], VERSION)
+    VERSION = self.repo.first_unused_version()
 
     new_diff = ""
     for change in changes:
@@ -891,31 +888,32 @@ def history_merge (repo, local_history, remote_history, pull_args):
       commit_args["time"] = rh[4]
 
       apply (repo, xzcat (diff_file), diff, verbose = False, commit_args = commit_args)
+      run_commands (repo)
       master_version = rh[0]
 
   # APPLY extra commit to be able to apply local history without problems
-  diff_rewriter = DiffRewriter (c)
+  diff_rewriter = DiffRewriter (repo)
 
   changes = []
   for inode in restore_inode:
-    common_inode = db_inode (c, common_version, inode)
-    if db_inode (c, master_version, inode):
+    common_inode = db_inode (repo, common_version, inode)
+    if db_inode (repo, master_version, inode):
       # inode still exists: just undo changes
       changes += [ map (str, [ "i!" ] + common_inode) ]
     else:
       # inode is gone: recreate it to allow applying local changes
       changes += [ map (str, [ "i+" ] + common_inode) ]
-    changes += restore_inode_links (db_links (c, common_version, inode), db_links (c, master_version, inode))
+    changes += restore_inode_links (db_links (repo, common_version, inode), db_links (repo, master_version, inode))
 
   for inode in use_both_versions:
     # duplicate inode
-    common_inode = db_inode (c, common_version, inode)
+    common_inode = db_inode (repo, common_version, inode)
     new_id = gen_id()
     changes += [ map (str, [ "i+", new_id ] + common_inode[1:]) ]
     diff_rewriter.subst_inode (common_inode[0], new_id)
 
     # duplicate inode links
-    for link in db_links (c, common_version, inode):
+    for link in db_links (repo, common_version, inode):
       changes.append ([ "l+", link[0], link[1], new_id ])
 
   new_diff = diff_rewriter.rewrite (changes)
@@ -925,6 +923,7 @@ def history_merge (repo, local_history, remote_history, pull_args):
     commit_args["author"] = "no author"
     commit_args["message"] = "automatically generated merge commit"
     apply (repo, new_diff, verbose = False, commit_args = commit_args)
+    run_commands (repo)
 
   # we count the "middle-patch" even if its empty to be able to predict
   # the number of patches
@@ -948,6 +947,7 @@ def history_merge (repo, local_history, remote_history, pull_args):
         commit_args["time"] = lh[4]
 
         apply (repo, new_diff, verbose = False, commit_args = commit_args)
+        run_commands (repo)
 
   status_line.cleanup()
   diff_rewriter.show_changes()
