@@ -40,7 +40,7 @@ class FuseFS:
       raise Exception ("error during setup (can't create dirs)")
     if subprocess.call ([BFSYNC, "init", "test/master"]) != 0:
       raise Exception ("error during setup (can't init master repo)")
-    if run_quiet ([BFSYNC, "clone", "-c", "1", "test/master", "test/repo"]) != 0:
+    if run_quiet ([BFSYNC, "clone", "-u", "-c", "1", "test/master", "test/repo"]) != 0:
       raise Exception ("error during setup (can't clone master repo)")
     start_bfsyncfs()
 
