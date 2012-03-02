@@ -67,6 +67,49 @@ def gc (repo):
   if DEBUG_MEM:
     print_mem_usage ("after history loop")
 
+  ## create file containing hashes that are no longer needed
+  repo.bdb.begin_transaction()
+  h2f_delete_filename = repo.make_temp_name()
+  repo.bdb.commit_transaction()
+
+  h2f_delete_file = open (h2f_delete_filename, "w")
+
+  hi = bfsyncdb.Hash2FileIterator (repo.bdb)
+  while True:
+    h2f = hi.get_next()
+    if not h2f.valid:
+      break
+    if not need_files.search (h2f.file_number):
+      h2f_delete_file.write ("%s\n" % h2f.hash)
+  del hi
+
+  h2f_delete_file.close()
+
+  if DEBUG_MEM:
+    print_mem_usage ("after delete h2f file gen")
+
+  ## delete unused hash entries in small chunks
+  h2f_delete_file = open (h2f_delete_filename, "r")
+
+  OPS = 0
+  repo.bdb.begin_transaction()
+
+  for hash in h2f_delete_file:
+    hash = hash.strip()
+    repo.bdb.delete_hash2file (hash)
+    OPS += 1
+    if OPS >= 20000:
+      repo.bdb.commit_transaction()
+      repo.bdb.begin_transaction()
+      OPS = 0
+
+  repo.bdb.commit_transaction()
+
+  h2f_delete_file.close()
+
+  if DEBUG_MEM:
+    print_mem_usage ("after remove h2f loop")
+
   file_count = 0
   clean_count = 0
   for root, dirs, files in os.walk (os.path.join (repo.path, "objects")):
@@ -80,17 +123,3 @@ def gc (repo):
 
   if DEBUG_MEM:
     print_mem_usage ("after remove files loop")
-
-  repo.bdb.begin_transaction()
-  hi = bfsyncdb.Hash2FileIterator (repo.bdb)
-  while True:
-    h2f = hi.get_next()
-    if not h2f.valid:
-      break
-    if not need_files.search (h2f.file_number):
-      repo.bdb.delete_hash2file (h2f.hash)
-  del hi
-  repo.bdb.commit_transaction()
-
-  if DEBUG_MEM:
-    print_mem_usage ("after remove h2f loop")
