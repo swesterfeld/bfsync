@@ -851,6 +851,16 @@ gen_lplus (const Link *link)
 }
 
 vector<string>
+gen_lminus (const Link *link)
+{
+  vector<string> result;
+  result.push_back ("l-");
+  result.push_back (print_id (link->dir_id));
+  result.push_back (link->name);
+  return result;
+}
+
+vector<string>
 DiffGenerator::get_next()
 {
   while (dbc_ret == 0 && diffs.empty())
@@ -894,6 +904,14 @@ DiffGenerator::get_next()
 
           if (!l_old && l_new)
             diffs.push_back (gen_lplus (l_new));
+        }
+      for (map<string, const Link*>::iterator mi = lmap_old.begin(); mi != lmap_old.end(); mi++)
+        {
+          const Link *l_old = lmap_old[mi->first];
+          const Link *l_new = lmap_new[mi->first];
+
+          if (l_old && !l_new)
+            diffs.push_back (gen_lminus (l_old));
         }
 
       /* goto next record */
