@@ -23,6 +23,8 @@
 #include "bfhistory.hh"
 #include "bftimeprof.hh"
 
+#include <db_cxx.h>
+
 #include <algorithm>
 
 using BFSync::DataOutBuffer;
@@ -244,6 +246,16 @@ open_db (const string& db, int cache_size_mb, bool recover)
     bdb->register_pid();
 
   return BDBPtr (wrapper);
+}
+
+void
+remove_db (const string& db)
+{
+  DbEnv db_env (DB_CXX_NO_EXCEPTIONS);
+
+  int ret = db_env.remove (db.c_str(), 0);
+  if (ret != 0)
+    throw BDBException (BFSync::BDB_ERROR_UNKNOWN);
 }
 
 void
