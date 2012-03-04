@@ -337,6 +337,10 @@ def cmd_revert():
     revert (repo, int (args[0]))
   run_commands (repo)
 
+def cmd_remove():
+  bdb_dir = os.path.join (find_repo_dir(), "bdb")
+  bfsyncdb.remove_db (bdb_dir)
+
 def cmd_db_fingerprint():
   repo = cd_repo_connect_db()
   repo_path = repo.path
@@ -850,6 +854,7 @@ def main():
       ( "clone",                  cmd_clone, 1),
       ( "repo-files",             cmd_repo_files, 1),
       ( "db-fingerprint",         cmd_db_fingerprint, 0),
+      ( "remove",                 cmd_remove, 0),
       ( "remote",                 cmd_remote, 1),
       ( "recover",                cmd_recover, 1),
       ( "debug-load-all-inodes",  cmd_debug_load_all_inodes, 0),
