@@ -29,27 +29,20 @@ class ApplyTool:
 
   def detach_link (self, description, dir_id, name):
     error_str = description + " (dir_id = %s and name = %s): " % (dir_id, name)
-
-    self.c.execute ("""SELECT * FROM links WHERE dir_id = ? AND name = ? AND ? >= vmin AND ? <= vmax""",
-                    (dir_id, name, self.VERSION, self.VERSION))
+    links = self.bdb.load_links (bfsyncdb.ID (dir_id), self.VERSION)
     count = 0
-    for r in self.c:
-      if (count == 0):
-        old_row = r
-      else:
-        raise Exception (error_str + "found more than one old entry")
-      count += 1
-    if count == 0:
-      raise Exception (error_str + "not found in db")
-    old_vmin = old_row[0]
-    old_vmax = old_row[1]
-    if old_vmax != self.VERSION:
-      raise Exception (error_str + "max version is not current version")
-    if old_vmin > self.VERSION - 1:
-      raise Exception (error_str + "min version is newer than (current version - 1)")
-
-    self.c.execute ("""UPDATE links SET vmax = ? WHERE dir_id = ? AND name = ? AND ? >= vmin AND ? <= vmax""",
-                    (self.VERSION - 1, dir_id, name, self.VERSION, self.VERSION))
+    for link in links:
+      if link.name == name:
+        count += 1
+        if link.vmin > self.VERSION - 1:
+          raise Exception (error_str + "min version is newer than (current version - 1)")
+        if link.vmax != bfsyncdb.VERSION_INF:
+          raise Exception (error_str + "max version is not inf")
+        self.bdb.delete_link (link)
+        link.vmax = self.VERSION - 1
+        self.bdb.store_link (link)
+    if count != 1:
+      raise Exception (error_str + "expected 1 link candidate, got %d" % count)
 
   def detach_inode (self, description, id):
     error_str = description + " (inode_id = %s): " % id
