@@ -69,11 +69,24 @@ class FuseFS:
       if subprocess.call (["fusermount", "-u", "mnt"]):
         print "can't stop bfsyncfs"
         sys.exit (1)
+    self.wait_umount()
 
   def umount (self):
     if subprocess.call (["fusermount", "-u", "mnt"]):
       print "can't stop bfsyncfs"
       sys.exit (1)
+    self.wait_umount()
+
+  def wait_umount (self):
+    while True:
+      tlen = 0
+      for root, dirs, files in os.walk ("test/master/processes"):
+        tlen += len (files)
+      for root, dirs, files in os.walk ("test/repo/processes"):
+        tlen += len (files)
+      if tlen == 0:
+        break
+      time.sleep (0.1)
 
 class NativeFS:
   def init (self):

@@ -233,8 +233,14 @@ BDB::close()
   delete db_env;
   db_env = NULL;
 
-  del_pid();
+  int n_pids = del_pid();
+  if (n_pids == 0)  // environment is no longer in use by any process
+    {
+      DbEnv rm_db_env (DB_CXX_NO_EXCEPTIONS);
 
+      ret = rm_db_env.remove ((repo_path + "/bdb").c_str(), 0);
+      assert (ret == 0);
+    }
   return (ret == 0);
 }
 
@@ -1464,11 +1470,26 @@ BDB::add_pid (const string& repo_path)
   fclose (pid_file);
 }
 
-void
+int
 BDB::del_pid()
 {
   if (!pid_filename.empty())
     unlink (pid_filename.c_str());
+
+  int n_pids = 0;
+
+  string proc_path = repo_path + "/processes";
+  GDir *dir = g_dir_open (proc_path.c_str(), 0, NULL);
+  if (dir)
+    {
+      const char *name;
+      while ((name = g_dir_read_name (dir)))
+        {
+          n_pids++;
+        }
+      g_dir_close (dir);
+    }
+  return n_pids;
 }
 
 void

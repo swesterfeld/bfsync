@@ -150,7 +150,7 @@ class BDB
 
   bool need_recover (const std::string& path);
   void add_pid (const std::string& path);
-  void del_pid();
+  int  del_pid();
 
   BDBError ret2error (int ret);
 
