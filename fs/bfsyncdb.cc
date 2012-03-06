@@ -931,7 +931,8 @@ DiffGenerator::get_next()
             }
           else if (l_old && l_new)
             {
-              diffs.push_back (gen_lbang (l_new));
+              if (l_old->inode_id.id != l_new->inode_id.id)
+                diffs.push_back (gen_lbang (l_new));
             }
         }
       for (map<string, const Link*>::iterator mi = lmap_old.begin(); mi != lmap_old.end(); mi++)

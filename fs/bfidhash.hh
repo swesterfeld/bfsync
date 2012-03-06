@@ -81,6 +81,12 @@ operator== (const ID& x, const ID& y)
   return (x.a == y.a) && (x.b == y.b) && (x.c == y.c) && (x.d == y.d) && (x.e == y.e) && (x.path_prefix == y.path_prefix);
 }
 
+inline bool
+operator!= (const ID& x, const ID& y)
+{
+  return !(x == y);
+}
+
 inline ID::ID (const ID& id) :
   path_prefix (id.path_prefix),
   a (id.a),
