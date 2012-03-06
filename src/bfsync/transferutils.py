@@ -311,12 +311,15 @@ def db_inode (repo, VERSION, id_str):
       ]
   return False
 
-def db_contains_link (c, VERSION, dir_id, name):
-  c.execute ("SELECT * FROM links WHERE dir_id = ? AND name = ? AND ? >= vmin AND ? <= vmax",
-             (dir_id, name, VERSION, VERSION))
-  for row in c:
-    return True
+def db_contains_link (repo, VERSION, dir_id_str, name):
+  dir_id = bfsyncdb.ID (dir_id_str)
+  links = repo.bdb.load_links (dir_id, VERSION)
+  for link in links:
+    if link.name == name:
+      return True
   return False
+  #c.execute ("SELECT * FROM links WHERE dir_id = ? AND name = ? AND ? >= vmin AND ? <= vmax",
+  #           (dir_id, name, VERSION, VERSION))
 
 def db_links (repo, VERSION, id_str):
   id = bfsyncdb.ID (id_str)
@@ -377,7 +380,7 @@ class DiffRewriter:
           change[3] = self.subst[change[3]]
         if self.subst.has_key (change[1]):
           change[1] = self.subst[change[1]]
-        if db_contains_link (self.c, VERSION, change[1], change[2]):
+        if db_contains_link (self.repo, VERSION, change[1], change[2]):
           filename = change[2]
           base, ext = os.path.splitext (filename)
 
@@ -385,7 +388,7 @@ class DiffRewriter:
           while True:
             # foo.gif => foo~1.gif
             newname = base + "~%d" % suffix + ext
-            if not db_contains_link (self.c, VERSION, change[1], newname):
+            if not db_contains_link (self.repo, VERSION, change[1], newname):
               break
             suffix += 1
 
