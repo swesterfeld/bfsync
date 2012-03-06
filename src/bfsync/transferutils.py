@@ -322,12 +322,16 @@ def db_contains_link (repo, VERSION, dir_id_str, name):
   #           (dir_id, name, VERSION, VERSION))
 
 def db_links (repo, VERSION, id_str):
-  id = bfsyncdb.ID (id_str)
-  links = repo.bdb.load_links (id, VERSION)
   results = []
-  for link in links:
-    results.append ([ link.dir_id.str(), link.name, link.inode_id.str() ])
+  def update_result (link):
+    if link.inode_id.str() == id_str:
+      results.append ([ link.dir_id.str(), link.name, link.inode_id.str() ])
+
+  links = repo.foreach_inode_link (VERSION, None, update_result)
   return results
+  #c.execute ("SELECT dir_id, name, inode_id FROM links WHERE inode_id = ? AND ? >= vmin AND ? <= vmax",
+  #           (id, VERSION, VERSION))
+
 
 def restore_inode_links (want_links, have_links):
   changes = []
