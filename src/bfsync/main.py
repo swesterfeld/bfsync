@@ -292,6 +292,12 @@ def cmd_debug_integrity():
   print "ok"
   return
 
+def cmd_debug_inode_name():
+  repo = cd_repo_connect_db()
+  inode_id = args[0]
+  version = int (args[1])
+  print repo.printable_name (inode_id, version)
+
 def cmd_log():
   repo = cd_repo_connect_db()
   repo_path = repo.path
@@ -863,6 +869,7 @@ def main():
       ( "debug-integrity",        cmd_debug_integrity, 0),
       ( "debug-get-prof",         cmd_debug_get_prof, 0),
       ( "debug-reset-prof",       cmd_debug_reset_prof, 0),
+      ( "debug-inode-name",       cmd_debug_inode_name, 1),
     ]
     parse_ok = False
     if command == None:

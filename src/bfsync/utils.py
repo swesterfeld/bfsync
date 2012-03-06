@@ -187,6 +187,19 @@ class Repo:
       if inode.valid:
         inode_callback (inode)
 
+  def printable_name (self, inode_id, version):
+    name_dict = dict()
+    def update_names (link):
+      name_dict[link.inode_id.str()] = (link.dir_id.str(), link.name)
+
+    self.foreach_inode_link (version, None, update_names)
+    name = []
+    while inode_id != "/" + 40 * "0":
+      pn = name_dict[inode_id]
+      inode_id = pn[0]
+      name.insert (0, pn[1])
+    return "/" + "/".join (name)
+
 def cd_repo_connect_db (cont = False):
   repo_path = find_repo_dir()
   bfsync_info = parse_config (repo_path + "/config")
@@ -321,14 +334,6 @@ def parse_diff (diff):
     changes += [ sdiff[start:start + fcount] ]
     start += fcount
   return changes
-
-def printable_name (c, id, VERSION):
-  if id == "0" * 40:
-    return "/"
-  c.execute ("SELECT dir_id, name FROM links WHERE inode_id=? AND ? >= vmin AND ? <= VMAX", (id, VERSION, VERSION))
-  for row in c:
-    return os.path.join (printable_name (c, row[0], VERSION), row[1])
-  return "*unknown*"
 
 class RemoteFile:
   pass

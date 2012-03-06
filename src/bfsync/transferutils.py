@@ -327,7 +327,7 @@ def db_links (repo, VERSION, id_str):
     if link.inode_id.str() == id_str:
       results.append ([ link.dir_id.str(), link.name, link.inode_id.str() ])
 
-  links = repo.foreach_inode_link (VERSION, None, update_result)
+  repo.foreach_inode_link (VERSION, None, update_result)
   return results
   #c.execute ("SELECT dir_id, name, inode_id FROM links WHERE inode_id = ? AND ? >= vmin AND ? <= vmax",
   #           (id, VERSION, VERSION))
@@ -398,7 +398,7 @@ class DiffRewriter:
 
           lrkey = (change[1], change[2])
           self.link_rewrite[lrkey] = newname
-          path = printable_name (self.c, change[1], VERSION)
+          path = self.repo.printable_name (change[1], VERSION)
           self.changes += [ (os.path.join (path, filename), os.path.join (path, newname)) ]
 
       if change[0] == "l+" or change[0] == "l-":
