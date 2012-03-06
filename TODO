@@ -3,7 +3,6 @@
 * automatic deadlock detection
 * retry transactions on deadlock
 * use operation journal to recover after partial op
-* apply (i-, ...)
 * auto-push/pull
 * properly handle copy-on-write() errors (disk full, ...)
 * check for open files before allowing readonly mode
