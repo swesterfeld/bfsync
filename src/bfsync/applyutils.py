@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from utils import parse_diff
-from commitutils import commit, new_commit
+from commitutils import commit
 from journal import mk_journal_entry, queue_command, CMD_DONE, CMD_AGAIN
 from StatusLine import status_line, OutputSubsampler
 import os
@@ -222,7 +222,7 @@ def apply (repo, diff, expected_hash = None, server = True, verbose = True, comm
 
   cmd.start (repo, diff, server, verbose, commit_args)
   queue_command (cmd)
-  new_commit (repo, commit_args, server = server, verbose = verbose)
+  commit (repo, commit_args, server = server, verbose = verbose)
 
   return # old code:
 

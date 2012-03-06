@@ -236,9 +236,6 @@ def get_author():
   hostname = os.uname()[1]
   return "%s@%s" % (username, hostname)
 
-def commit():
-  raise Exception ("old style commit no longer supported")
-
 class RevertState:
   pass
 
@@ -753,7 +750,7 @@ class CommitCommand:
   def set_state (self, state):
     self.state = state
 
-def new_commit (repo, commit_args, server = True, verbose = True):
+def commit (repo, commit_args, server = True, verbose = True):
   cmd = CommitCommand()
 
   if not cmd.start (repo, commit_args, server, verbose):

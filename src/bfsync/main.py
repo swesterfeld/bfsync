@@ -36,7 +36,7 @@ import random
 
 from utils import *
 from diffutils import diff
-from commitutils import commit, revert, gen_status, new_commit
+from commitutils import commit, revert, gen_status
 from remoteutils import *
 from TransferList import TransferList, TransferFile
 from StatusLine import status_line
@@ -80,7 +80,7 @@ def cmd_commit():
     commit_args["author"] = parsed_args.a
 
   repo = cd_repo_connect_db()
-  new_commit (repo, commit_args = commit_args)
+  commit (repo, commit_args = commit_args)
   run_commands (repo)
 
 def cmd_debug_load_all_inodes():
