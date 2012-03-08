@@ -486,6 +486,23 @@ def link_filename (repo, common_version, dir_id, merge_history):
 def pretty_date (sec, nsec):
   return datetime.datetime.fromtimestamp (sec).strftime ("%F %H:%M:%S.") + "%d" % (nsec / 100 / 1000 / 1000)
 
+def pretty_type (type):
+  if type == bfsyncdb.FILE_REGULAR:
+    return "file"
+  if type == bfsyncdb.FILE_SYMLINK:
+    return "symlink"
+  if type == bfsyncdb.FILE_DIR:
+    return "dir"
+  if type == bfsyncdb.FILE_FIFO:
+    return "fifo"
+  if type == bfsyncdb.FILE_SOCKET:
+    return "socket"
+  if type == bfsyncdb.FILE_BLOCK_DEV:
+    return "blockdev"
+  if type == bfsyncdb.FILE_CHAR_DEV:
+    return "chardev"
+  raise Exception ("unknown object type %s" % type)
+
 INODE_TYPE = 4
 INODE_CONTENT = 5
 
@@ -497,7 +514,7 @@ INODE_MTIME_NS = 14
 def pretty_format (inode):
   inode_type = inode[INODE_TYPE]
   pp = []
-  pp += [ ("Type", inode[INODE_TYPE]) ]
+  pp += [ ("Type", pretty_type (inode[INODE_TYPE])) ]
 
   if inode_type == "file":
     pp += [ ("Content", inode[INODE_CONTENT]) ]
@@ -637,12 +654,11 @@ class UserConflictResolver:
     os.mkdir (merge_dir)
 
     # Common content
-    common_file = os.path.join (self.repo.path, "objects", make_object_filename (common_hash))
+    common_file = self.repo.make_object_filename (common_hash)
     shutil.copyfile (common_file, os.path.join (merge_dir, "common_%s" % filename))
 
     # Master content
     if master_hash:
-      master_file = os.path.join (self.repo.path, "objects", make_object_filename (master_hash))
       default_get = self.repo.config.get ("default/get")
 
       if len (default_get) == 0:
@@ -652,11 +668,12 @@ class UserConflictResolver:
       remote_repo = RemoteRepo (url)
       get_remote_objects (self.repo, remote_repo, [ master_hash ], TransferParams (0))
 
+      master_file = self.repo.make_object_filename (master_hash)
       shutil.copyfile (master_file, os.path.join (merge_dir, "master_%s" % filename))
 
     # Local content
     if local_hash:
-      local_file = os.path.join (self.repo.path, "objects", make_object_filename (local_hash))
+      local_file = self.repo.make_object_filename (local_hash)
       shutil.copyfile (local_file, os.path.join (merge_dir, "local_%s" % filename))
 
   def rm_merge_dir (self, filename):
@@ -744,9 +761,9 @@ class UserConflictResolver:
         print "=============="
       if line == "s" or line == "C" or line == "M" or line == "L":
         conflict_type = common_inode[INODE_TYPE]
-        if conflict_type != "file":
+        if conflict_type != bfsyncdb.FILE_REGULAR:
           print
-          print "Sorry, shell is only supported for plain files, but conflict type is %s." % conflict_type
+          print "Sorry, shell is only supported for plain files, but conflict type is %s." % pretty_type (conflict_type)
           print
         else:
           c_hash = common_inode[INODE_CONTENT]
