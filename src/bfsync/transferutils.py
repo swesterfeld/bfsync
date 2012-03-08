@@ -363,8 +363,9 @@ def restore_inode_links (want_links, have_links):
       changes += [ [ "l+", str (add_link[0]), str (add_link[1]), str (add_link[2]) ] ]
   return changes
 
-def gen_id():
-  id = ""
+def gen_id (template_id):
+  (template_path_prefix, tid) = template_id.split ("/")
+  id = template_path_prefix + "/"
   for i in range (5):
     id += "%08x" % random.randint (0, 2**32 - 1)
   return id
@@ -938,7 +939,7 @@ def history_merge (repo, local_history, remote_history, pull_args):
   for inode in use_both_versions:
     # duplicate inode
     common_inode = db_inode (repo, common_version, inode)
-    new_id = gen_id()
+    new_id = gen_id (common_inode[0])
     changes += [ map (str, [ "i+", new_id ] + common_inode[1:]) ]
     diff_rewriter.subst_inode (common_inode[0], new_id)
 
