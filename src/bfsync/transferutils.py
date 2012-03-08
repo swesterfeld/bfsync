@@ -204,12 +204,18 @@ def find_common_version (local_history, remote_history):
       break
   return common_version
 
-def db_link_inode (c, VERSION, dir_id, name):
-  c.execute ("SELECT inode_id FROM links WHERE dir_id = ? AND name = ? AND ? >= vmin AND ? <= vmax",
-             (dir_id, name, VERSION, VERSION))
-  for row in c:
-    return row[0]
-  raise Exception ("link target for %s/%s not found" % (dir_id, name))
+def db_link_inode (repo, VERSION, dir_id_str, name):
+  dir_id = bfsyncdb.ID (dir_id_str)
+  links = repo.bdb.load_links (dir_id, VERSION)
+  for link in links:
+    if link.name == name:
+      return link.inode_id.str()
+  raise Exception ("link target for %s/%s not found" % (dir_id_str, name))
+
+  #c.execute ("SELECT inode_id FROM links WHERE dir_id = ? AND name = ? AND ? >= vmin AND ? <= vmax",
+  #           (dir_id, name, VERSION, VERSION))
+  #for row in c:
+  #  return row[0]
 
 class MergeHistory:
   def __init__ (self, repo, common_version, name):
@@ -232,7 +238,7 @@ class MergeHistory:
       if self.new_links.has_key ((change[1], change[2])):
         return self.new_links [(change[1], change[2])]
       else:
-        return db_link_inode (self.c, self.common_version, change[1], change[2])
+        return db_link_inode (self.repo, self.common_version, change[1], change[2])
     return "???"
 
   def add_1_change (self, version, change):
@@ -463,18 +469,18 @@ def apply_link_changes (links, changes):
       links = new_links
   return links
 
-def link_filename (c, common_version, dir_id, merge_history):
-  if dir_id == "0" * 40:
+def link_filename (repo, common_version, dir_id, merge_history):
+  if dir_id == "/" + "0" * 40:
     return "/"
 
-  links = db_links (c, common_version, dir_id)
+  links = db_links (repo, common_version, dir_id)
   if merge_history is None:
     pass
   else:
     links = apply_link_changes (links, merge_history.get_changes (dir_id))
 
   for link in links:
-    return os.path.join (link_filename (c, common_version, link[0], merge_history), link[1])
+    return os.path.join (link_filename (repo, common_version, link[0], merge_history), link[1])
   return links
 
 def pretty_date (sec, nsec):
@@ -691,23 +697,23 @@ class UserConflictResolver:
 
       common_names = []
       for link in common_links:
-        common_names.append (os.path.join (link_filename (self.c, self.common_version, link[0], None), link[1]))
+        common_names.append (os.path.join (link_filename (self.repo, self.common_version, link[0], None), link[1]))
 
       master_names = []
       for link in master_links:
         master_names.append (os.path.join (
-          link_filename (self.c, self.common_version, link[0], self.master_merge_history),
+          link_filename (self.repo, self.common_version, link[0], self.master_merge_history),
           link[1]
         ))
 
       local_names = []
       for link in local_links:
         local_names.append (os.path.join (
-          link_filename (self.c, self.common_version, link[0], self.local_merge_history),
+          link_filename (self.repo, self.common_version, link[0], self.local_merge_history),
           link[1]
         ))
 
-      fullname = printable_name (self.c, conflict.id, self.common_version)
+      fullname = self.repo.printable_name (conflict.id, self.common_version)
       filename = os.path.basename (fullname)
 
       print "=" * 80
