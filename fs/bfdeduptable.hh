@@ -50,13 +50,13 @@ static const unsigned int primes[] = /* from glib */
   2147483647
 };
 
-const unsigned int FREE = ~0;
+const size_t FREE = ~0;
 
 template<class T>
 class DedupTable
 {
   std::vector<unsigned char> data;
-  std::vector<unsigned int>  buckets;
+  std::vector<size_t>        buckets;
   size_t                     n_entries;
   double                     resize_factor;
 
@@ -95,7 +95,7 @@ DedupTable<T>::insert_bucket (unsigned char *buffer, size_t buffer_size)
   size_t bucket = T::hash (buffer) % buckets.size();
 
   // search in bucket
-  unsigned int data_pos = 0;
+  size_t data_pos = 0;
   for (size_t i = 0; i < buckets.size(); i++)
     {
       data_pos = buckets[bucket];
