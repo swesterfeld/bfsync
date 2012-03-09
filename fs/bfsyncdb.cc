@@ -22,10 +22,12 @@
 #include "bfleakdebugger.hh"
 #include "bfhistory.hh"
 #include "bftimeprof.hh"
+#include "bfidsorter.hh"
 
 #include <db_cxx.h>
 
 #include <algorithm>
+#include <set>
 
 using BFSync::DataOutBuffer;
 using BFSync::DataBuffer;
@@ -42,6 +44,7 @@ using BFSync::BDBError;
 using std::string;
 using std::vector;
 using std::map;
+using std::set;
 
 #undef major
 #undef minor
@@ -457,7 +460,7 @@ BDBPtr::store_inode (const INode& inode)
   int ret = ptr->my_bdb->get_db()->put (txn, &ikey, &idata, 0);
   g_assert (ret == 0);
 
-  ptr->my_bdb->add_changed_inode (inode.id.id);
+  // FIXME: ptr->my_bdb->add_changed_inode (inode.id.id);
 }
 
 TimeProfSection tp_delete_inode ("bfsyncdb.delete_inode");
@@ -629,6 +632,8 @@ BDBPtr::store_link (const Link& link)
 
   int ret = ptr->my_bdb->get_db()->put (transaction, &lkey, &ldata, 0);
   g_assert (ret == 0);
+
+  // FIXME: ptr->my_bdb->add_changed_inode (link.inode_id.id);
 }
 
 TimeProfSection tp_delete_link ("bfsyncdb.delete_link");
@@ -662,6 +667,8 @@ BDBPtr::delete_link (const Link& link)
 
       ret = dbc->get (&lkey, &ldata, DB_NEXT_DUP);
     }
+
+  // FIXME: ptr->my_bdb->add_changed_inode (link.inode_id.id);
 }
 
 void
@@ -772,11 +779,25 @@ DiffGenerator::DiffGenerator (BDBPtr bdb_ptr) :
   kbuf.write_table (BDB_TABLE_CHANGED_INODES);
 
   key = Dbt (kbuf.begin(), kbuf.size());
+
   dbc_ret = dbc->get (&key, &data, DB_SET);
+  while (dbc_ret == 0)
+    {
+      DataBuffer dbuffer ((char *) data.get_data(), data.get_size());
+
+      ID id;
+      id_load (id, dbuffer);  // id is one changed id
+      ids.insert (id.id);
+
+      /* goto next record */
+      dbc_ret = dbc->get (&key, &data, DB_NEXT_DUP);
+    }
+  ids.sort();
 
   bdb_ptr.get_bdb()->history()->read();
   v_old = bdb_ptr.get_bdb()->history()->current_version() - 1;
   v_new = bdb_ptr.get_bdb()->history()->current_version();
+  id_pos = 0;
 }
 
 DiffGenerator::~DiffGenerator()
@@ -886,12 +907,10 @@ gen_lminus (const Link *link)
 vector<string>
 DiffGenerator::get_next()
 {
-  while (dbc_ret == 0 && diffs.empty())
+  while (id_pos < ids.size() && diffs.empty())
     {
-      DataBuffer dbuffer ((char *) data.get_data(), data.get_size());
-
       ID id;
-      id_load (id, dbuffer);  // id is one changed id
+      id.id = ids.id (id_pos++);
 
       // generate i+ / i- and i! entries for id
       INode i_old = bdb_ptr.load_inode (id, v_old);
@@ -899,15 +918,15 @@ DiffGenerator::get_next()
 
       if (i_old.valid && i_new.valid)
         {
-          diffs.push_back (gen_ibang (i_old, i_new));
+          diffs.push (gen_ibang (i_old, i_new));
         }
       else if (!i_old.valid && i_new.valid)
         {
-          diffs.push_back (gen_iplus (i_new));
+          diffs.push (gen_iplus (i_new));
         }
       else if (i_old.valid && !i_new.valid)
         {
-          diffs.push_back (gen_iminus (i_old));
+          diffs.push (gen_iminus (i_old));
         }
 
       // generate l+ / l- and l! entries for dir_id = id
@@ -920,37 +939,39 @@ DiffGenerator::get_next()
       make_lmap (lmap_old, lvec_old);
       make_lmap (lmap_new, lvec_new);
 
+      // sort l+ / l- and l! entries by link name
+      set<string> link_names;
+
       for (map<string, const Link*>::iterator mi = lmap_new.begin(); mi != lmap_new.end(); mi++)
+        link_names.insert (mi->first);
+
+      for (map<string, const Link*>::iterator mi = lmap_old.begin(); mi != lmap_old.end(); mi++)
+        link_names.insert (mi->first);
+
+      for (set<string>::iterator lni = link_names.begin(); lni != link_names.end(); lni++)
         {
-          const Link *l_old = lmap_old[mi->first];
-          const Link *l_new = lmap_new[mi->first];
+          const Link *l_old = lmap_old[*lni];
+          const Link *l_new = lmap_new[*lni];
 
           if (!l_old && l_new)
             {
-              diffs.push_back (gen_lplus (l_new));
+              diffs.push (gen_lplus (l_new));
             }
           else if (l_old && l_new)
             {
               if (l_old->inode_id.id != l_new->inode_id.id)
-                diffs.push_back (gen_lbang (l_new));
+                diffs.push (gen_lbang (l_new));
+            }
+          else if (l_old && !l_new)
+            {
+              diffs.push (gen_lminus (l_old));
             }
         }
-      for (map<string, const Link*>::iterator mi = lmap_old.begin(); mi != lmap_old.end(); mi++)
-        {
-          const Link *l_old = lmap_old[mi->first];
-          const Link *l_new = lmap_new[mi->first];
-
-          if (l_old && !l_new)
-            diffs.push_back (gen_lminus (l_old));
-        }
-
-      /* goto next record */
-      dbc_ret = dbc->get (&key, &data, DB_NEXT_DUP);
     }
   if (!diffs.empty())
     {
-      vector<string> d = diffs.back();
-      diffs.pop_back();
+      vector<string> d = diffs.front();
+      diffs.pop();
       return d;
     }
   else

@@ -19,11 +19,13 @@
 
 #include "bfbdb.hh"
 #include "bfdeduptable.hh"
+#include "bfidsorter.hh"
 #include <glib.h>
 #include <stdint.h>
 #include <string>
 #include <vector>
 #include <set>
+#include <queue>
 
 struct ID {
   BFSync::ID id;
@@ -239,6 +241,8 @@ class DiffGenerator
   BFSync::DbcPtr dbc;
 
   BFSync::DataOutBuffer kbuf;
+  BFSync::IDSorter      ids;
+  size_t                id_pos;
 
   Dbt key;
   Dbt data;
@@ -248,7 +252,7 @@ class DiffGenerator
   unsigned int v_old, v_new;
 
   BDBPtr bdb_ptr;
-  std::vector< std::vector<std::string> > diffs;
+  std::queue< std::vector<std::string> > diffs;
 public:
   DiffGenerator (BDBPtr bdb_ptr);
   ~DiffGenerator();
