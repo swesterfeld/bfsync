@@ -460,7 +460,7 @@ BDBPtr::store_inode (const INode& inode)
   int ret = ptr->my_bdb->get_db()->put (txn, &ikey, &idata, 0);
   g_assert (ret == 0);
 
-  // FIXME: ptr->my_bdb->add_changed_inode (inode.id.id);
+  ptr->my_bdb->add_changed_inode (inode.id.id);
 }
 
 TimeProfSection tp_delete_inode ("bfsyncdb.delete_inode");
@@ -633,7 +633,7 @@ BDBPtr::store_link (const Link& link)
   int ret = ptr->my_bdb->get_db()->put (transaction, &lkey, &ldata, 0);
   g_assert (ret == 0);
 
-  // FIXME: ptr->my_bdb->add_changed_inode (link.inode_id.id);
+  ptr->my_bdb->add_changed_inode (link.dir_id.id);
 }
 
 TimeProfSection tp_delete_link ("bfsyncdb.delete_link");
@@ -668,7 +668,7 @@ BDBPtr::delete_link (const Link& link)
       ret = dbc->get (&lkey, &ldata, DB_NEXT_DUP);
     }
 
-  // FIXME: ptr->my_bdb->add_changed_inode (link.inode_id.id);
+  ptr->my_bdb->add_changed_inode (link.dir_id.id);
 }
 
 void
