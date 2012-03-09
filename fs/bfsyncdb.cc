@@ -662,8 +662,12 @@ BDBPtr::delete_link (const Link& link)
   int ret = dbc->get (&lkey, &ldata, DB_GET_BOTH);
   while (ret == 0)
     {
-      ret = dbc->del (0);
-      g_assert (ret == 0);
+      size_t size = ldata.get_size();
+      if (dbuf.size() == size && memcmp (dbuf.begin(), ldata.get_data(), size) == 0)
+        {
+          ret = dbc->del (0);
+          g_assert (ret == 0);
+        }
 
       ret = dbc->get (&lkey, &ldata, DB_NEXT_DUP);
     }
