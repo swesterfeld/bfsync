@@ -18,6 +18,13 @@
 * flush before status
 * make fstest work again
 
+packaging:
+==========
+* use ./setup.py to build without . in PATH
+* configure test for
+  - db
+  - swig
+
 new_commit:
 ===========
 * use lock
