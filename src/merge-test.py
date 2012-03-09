@@ -234,11 +234,9 @@ def hardlink (a, b):
   print "after merge:"
   print "#########################################################################"
   print "# REPO A:"
-  a.runx ("stat f")
-  a.runx ("stat af")
+  a.run ("stat f af bf")
   print "# REPO B:"
-  b.runx ("stat f")
-  b.runx ("stat bf")
+  b.run ("stat f af bf")
 
 tests += [
   ( hardlink, "hardlink", "create independent hardlinks on the same inode" )
