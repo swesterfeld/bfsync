@@ -25,7 +25,12 @@ from bfsync.xzutils import xzcat
 
 if len (sys.argv) == 2:
   repo = cd_repo_connect_db()
-  file_number = repo.bdb.load_hash2file (sys.argv[1])
+  if len (sys.argv[1]) < 10:
+    version = int (sys.argv[1])
+    hash = repo.bdb.load_history_entry (version).hash
+  else:
+    hash = sys.argv[1]
+  file_number = repo.bdb.load_hash2file (hash)
   if file_number != 0:
     full_name = repo.make_number_filename (file_number)
     diff = xzcat (full_name)
