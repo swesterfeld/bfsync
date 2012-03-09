@@ -918,7 +918,8 @@ DiffGenerator::get_next()
 
       if (i_old.valid && i_new.valid)
         {
-          diffs.push (gen_ibang (i_old, i_new));
+          if (i_old.vmin != i_new.vmin || i_old.vmax != i_new.vmax)
+            diffs.push (gen_ibang (i_old, i_new));
         }
       else if (!i_old.valid && i_new.valid)
         {
