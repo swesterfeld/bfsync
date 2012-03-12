@@ -517,7 +517,7 @@ def pretty_format (inode):
   pp = []
   pp += [ ("Type", pretty_type (inode[INODE_TYPE])) ]
 
-  if inode_type == "file":
+  if inode_type == bfsyncdb.FILE_REGULAR:
     pp += [ ("Content", inode[INODE_CONTENT]) ]
     pp += [ ("Size", inode[7]) ]
 
