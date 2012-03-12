@@ -852,7 +852,6 @@ def history_merge (repo, local_history, remote_history, pull_args):
     else:
       conflict = Conflict()
       conflict.id = conflict_id
-      print "CONFLICT id=%s" % conflict.id
 
       # determine inode content for common, local and master version
       conflict.common_inode = db_inode (repo, common_version, conflict.id)
