@@ -668,6 +668,31 @@ tests += [
   ( subdir_change, "subdir-change", "change subdir file contents in repo a/b")
 ]
 
+def symlink_mv (a, b):
+  a.runx ("ln -s /etc/hosts hosts")
+  a.commit()
+  sync_repos (a, b)
+
+  b.runx ("mv hosts hosts-b")
+  b.commit()
+  a.runx ("mv hosts hosts-a")
+  a.commit()
+
+  a.push()    # ensure that a is the version in the master history
+  sync_repos (a, b)
+  print "#########################################################################"
+  print "after merge:"
+  print "#########################################################################"
+  print "# REPO A:"
+  a.run ("ls -l")
+  print "# REPO B:"
+  b.run ("ls -l")
+
+tests += [
+  ( symlink_mv, "symlink-mv", "change name of symlink file in both repos")
+]
+
+
 def setup_initial():
   if os.path.exists ("merge-test"):
     os.system ("rm -rf merge-test")

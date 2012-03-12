@@ -525,10 +525,10 @@ def pretty_format (inode):
   pp += [ ("Group", inode[2]) ]
   pp += [ ("Mode", "%o" % (inode[3] & 07777)) ]
 
-  if inode_type == "symlink":
+  if inode_type == bfsyncdb.FILE_SYMLINK:
     pp += [ ("Symlink", inode[6]) ]
 
-  if inode_type == "blockdev" or inode_type == "chardev":
+  if inode_type == bfsyncdb.FILE_BLOCK_DEV or inode_type == bfsyncdb.FILE_CHAR_DEV:
     pp += [ ("Major", inode[8]) ]
     pp += [ ("Minor", inode[9]) ]
 
