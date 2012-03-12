@@ -41,6 +41,9 @@ MERGE:
 * better information for the user
   - change logs
   - inode values
+* command for interruptible merges
+* test for large merges
+* uncommitted changes check
 
 RELEASE:
 ========
