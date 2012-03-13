@@ -21,6 +21,7 @@ import os
 import sys
 import time
 import traceback
+import bfsyncdb
 from bfsync.commitutils import commit
 from bfsync.transferutils import get, push, pull
 from bfsync.utils import connect_db
@@ -704,9 +705,11 @@ def merge_perf (a, b):
     b.runx ("cd B%d; mkfiles.sh" % i)
     b.commit()
     # merge in repo b
+    bfsyncdb.time_prof_reset()
     start = time.time()
     b.pull ([])
     print "merge-time", i, time.time() - start
+    print bfsyncdb.time_prof_result()
     b.push()
     # pull merge result into repo a
     a.pull ([])
