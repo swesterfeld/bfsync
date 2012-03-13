@@ -304,7 +304,7 @@ class RevertCommand:
         if inode.vmin > self.state.VERSION:
           self.repo.bdb.delete_inode (inode)
           OPS += 1
-        elif inode.vmax >= self.state.VERSION:
+        elif inode.vmax != bfsyncdb.VERSION_INF and inode.vmax >= self.state.VERSION:
           self.repo.bdb.delete_inode (inode)
           inode.vmax = bfsyncdb.VERSION_INF
           self.repo.bdb.store_inode (inode)
@@ -315,7 +315,7 @@ class RevertCommand:
         if link.vmin > self.state.VERSION:
           self.repo.bdb.delete_link (link)
           OPS += 1
-        elif link.vmax >= self.state.VERSION:
+        elif link.vmax != bfsyncdb.VERSION_INF and link.vmax >= self.state.VERSION:
           self.repo.bdb.delete_link (link)
           link.vmax = bfsyncdb.VERSION_INF
           self.repo.bdb.store_link (link)
