@@ -29,12 +29,19 @@ def xz_compressor_for_file (filename):
 
   size = os.path.getsize (filename)
   if (size <= 8 * 1024 * 1024):
+    opts = {'format':'xz', 'level':6}
     if compressor6 is None:
-      compressor6 = lzma.LZMACompressor ({'format':'xz', 'level':6})
+      compressor6 = lzma.LZMACompressor (opts)
+    else:
+      compressor6.reset (opts)
     return compressor6
   else:
+    opts = {'format':'xz', 'level':9}
     if compressor9 is None:
-      compressor9 = lzma.LZMACompressor ({'format':'xz', 'level':9})
+      compressor9 = lzma.LZMACompressor (opts)
+    else:
+      compressor9.reset (opts)
+
     return compressor9
 
 def xz (filename):
@@ -49,8 +56,6 @@ def xz (filename):
   xz_f.close()
   f.close()
   os.remove (filename)
-
-  compressor.reset()
 
 def xzcat (filename):
   f = open (filename, "r")
