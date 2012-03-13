@@ -692,6 +692,28 @@ tests += [
   ( symlink_mv, "symlink-mv", "change name of symlink file in both repos")
 ]
 
+def merge_perf (a, b):
+  for i in range (1, 500):
+    # create 100000 files in repo a
+    a.runx ("mkdir A%d" % i)
+    a.runx ("cd A%d; mkfiles.sh" % i)
+    a.commit()
+    a.push()
+    # create 100000 files in repo b
+    b.runx ("mkdir B%d" % i)
+    b.runx ("cd B%d; mkfiles.sh" % i)
+    b.commit()
+    # merge in repo b
+    start = time.time()
+    b.pull ([])
+    print "merge-time", i, time.time() - start
+    b.push()
+    # pull merge result into repo a
+    a.pull ([])
+
+tests += [
+  ( merge_perf, "merge-perf", "test merge performance")
+]
 
 def setup_initial():
   if os.path.exists ("merge-test"):
