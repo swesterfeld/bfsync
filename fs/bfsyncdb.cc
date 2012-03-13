@@ -1395,3 +1395,9 @@ time_prof_result()
 {
   return BFSync::TimeProf::the()->result();
 }
+
+void
+time_prof_reset()
+{
+  BFSync::TimeProf::the()->reset();
+}
