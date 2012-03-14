@@ -193,6 +193,7 @@ public:
   std::vector<Link>  load_all_links (const ID& id);
   void               store_link (const Link& link);
   void               delete_link (const Link& link);
+  void               delete_links (const std::vector<Link>& links);
 
   void               walk();
   void               store_history_entry (int version,

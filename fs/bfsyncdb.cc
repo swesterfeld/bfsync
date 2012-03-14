@@ -675,6 +675,71 @@ BDBPtr::delete_link (const Link& link)
   ptr->my_bdb->add_changed_inode (link.dir_id.id);
 }
 
+TimeProfSection tp_delete_links ("bfsyncdb.delete_links");
+
+void
+BDBPtr::delete_links (const vector<Link>& links)
+{
+  if (links.size() == 0)
+    return; // nothing to do
+
+  TimeProfHandle h (tp_delete_links);
+
+  set< vector<char> > delete_data_set;
+  vector<char> all_key;
+
+  for (vector<Link>::const_iterator li = links.begin(); li != links.end(); li++)
+    {
+      const Link& link = *li;
+
+      DataOutBuffer kbuf, dbuf;
+
+      id_store (link.dir_id, kbuf);
+      kbuf.write_table (BDB_TABLE_LINKS);
+
+      dbuf.write_uint32 (link.vmin);
+      dbuf.write_uint32 (link.vmax);
+      id_store (link.inode_id, dbuf);
+      dbuf.write_string (link.name);
+
+      // all links must belong to the same inode id
+      if (li == links.begin())
+        {
+          all_key = kbuf.data();
+        }
+      else
+        {
+          g_assert (all_key == kbuf.data());
+        }
+
+      delete_data_set.insert (dbuf.data());
+    }
+
+  Dbt lkey (&all_key[0], all_key.size());
+  Dbt ldata;
+
+  DbcPtr dbc (ptr->my_bdb, DbcPtr::WRITE); /* Acquire a cursor for the database. */
+
+  // iterate over key elements to find link to delete
+  int ret = dbc->get (&lkey, &ldata, DB_SET);
+  while (ret == 0)
+    {
+      char *dbegin = (char *) ldata.get_data();
+      char *dend   = dbegin + ldata.get_size();
+
+      vector<char> data (dbegin, dend);
+      if (delete_data_set.count (data) != 0)
+        {
+          ret = dbc->del (0);
+          g_assert (ret == 0);
+        }
+
+      ret = dbc->get (&lkey, &ldata, DB_NEXT_DUP);
+    }
+
+  ptr->my_bdb->add_changed_inode (links[0].dir_id.id);
+}
+
 void
 BDBPtr::add_temp_file (const string& filename, unsigned int pid)
 {
