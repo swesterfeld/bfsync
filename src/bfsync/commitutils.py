@@ -311,15 +311,19 @@ class RevertCommand:
           OPS += 1
 
       links = self.repo.bdb.load_all_links (id)
+      del_links = bfsyncdb.LinkVector()
       for link in links:
         if link.vmin > self.state.VERSION:
-          self.repo.bdb.delete_link (link)
+          del_links.push_back (link)
           OPS += 1
         elif link.vmax != bfsyncdb.VERSION_INF and link.vmax >= self.state.VERSION:
-          self.repo.bdb.delete_link (link)
+          del_links.push_back (link)
           link.vmax = bfsyncdb.VERSION_INF
           self.repo.bdb.store_link (link)
           OPS += 1
+      # deleting all links in one step is faster than deleting them one-by-one
+      if len (del_links) > 0:
+        self.repo.bdb.delete_links (del_links)
 
       if OPS >= 20000:
         self.repo.bdb.commit_transaction()
