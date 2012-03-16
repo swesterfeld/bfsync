@@ -29,6 +29,7 @@
 
 #include "bfsyncfs.hh"
 #include "bfidhash.hh"
+#include "bfbdb.hh"
 
 using std::string;
 using std::vector;
@@ -246,6 +247,28 @@ perf_id2str()
   print_result ("id2str/sec", N / (end_t - start_t));
 }
 
+void
+perf_read_string()
+{
+  string s;
+  for (size_t i = 0; i < 40; i++)
+    s += "x";
+  DataOutBuffer db;
+  db.write_string (s);
+  vector<char> data (db.data());
+
+  const double start_t = gettime();
+  const size_t N = 1000 * 1000;
+  for (size_t i = 0; i < N; i++)
+    {
+      DataBuffer dbuffer (&data[0], data.size());
+      string rs = dbuffer.read_string();
+      assert (rs == s);
+    }
+  const double end_t = gettime();
+
+  print_result ("read_str/sec", N / (end_t - start_t));
+}
 
 int
 main()
@@ -256,6 +279,7 @@ main()
   perf_id_hash();
   perf_str2id();
   perf_id2str();
+  perf_read_string();
   FILE *test = fopen ("mnt/.bfsync/info", "r");
   if (!test)
     {

@@ -575,7 +575,7 @@ DataBuffer::read_uint32_be()
 string
 DataBuffer::read_string()
 {
-  string s;
+  const char *begin = ptr;
 
   while (remaining)
     {
@@ -583,9 +583,7 @@ DataBuffer::read_string()
       remaining--;
 
       if (c == 0)
-        return s;
-      else
-        s += c;
+        return string (begin, ptr - 1);
     }
   assert (false);
 }
