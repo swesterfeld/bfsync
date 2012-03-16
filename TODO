@@ -35,6 +35,7 @@ Performance:
 * cache friendly get would hash and copy file-by-file, since then the data
   is read only once from the physical media
 * sorted hash dedup
+* revert could be O(changed inodes) if it used changed_inodes & history diffs
 
 MERGE:
 ======
