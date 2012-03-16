@@ -471,7 +471,7 @@ BDBPtr::delete_inode (const INode& inode)
   if (!ptr->my_bdb->get_transaction())
     throw BDBException (BFSync::BDB_ERROR_NO_TRANS);
 
-  TimeProfHandle h (tp_store_inode);
+  TimeProfHandle h (tp_delete_inode);
 
   DataOutBuffer kbuf;
 
