@@ -576,16 +576,14 @@ string
 DataBuffer::read_string()
 {
   const char *begin = ptr;
+  size_t      len   = strnlen (begin, remaining);
 
-  while (remaining)
-    {
-      char c = *ptr++;
-      remaining--;
+  assert (len < remaining);
 
-      if (c == 0)
-        return string (begin, ptr - 1);
-    }
-  assert (false);
+  remaining -= len + 1;
+  ptr       += len + 1;
+
+  return string (begin, begin + len);
 }
 
 void
