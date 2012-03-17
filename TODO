@@ -36,6 +36,7 @@ Performance:
   is read only once from the physical media
 * sorted hash dedup
 * revert could be O(changed inodes) if it used changed_inodes & history diffs
+* backlinks allow faster status | merge
 
 MERGE:
 ======
