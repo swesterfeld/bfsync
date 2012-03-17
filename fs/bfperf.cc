@@ -40,9 +40,9 @@ using namespace BFSync;
 static string
 gen_id_str()
 {
-  string id = "/";
+  string id = "bfbdb000/";
   // globally (across all versions/hosts) uniq id, with the same amount of information as a SHA1-hash
-  while (id.size() < 40)
+  for (size_t i = 0; i < 5; i++)
     {
       char hex[32];
       sprintf (hex, "%08x", g_random_int());
