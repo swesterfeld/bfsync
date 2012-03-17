@@ -258,7 +258,7 @@ perf_read_string()
   vector<char> data (db.data());
 
   const double start_t = gettime();
-  const size_t N = 1000 * 1000;
+  const size_t N = 10 * 1000 * 1000;
   for (size_t i = 0; i < N; i++)
     {
       DataBuffer dbuffer (&data[0], data.size());
