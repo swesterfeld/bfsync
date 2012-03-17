@@ -41,23 +41,38 @@ uint32_hex (guint32 value, char *dest)
   dest[7] = hex_nibble [value  & 0xf];
 }
 
+static void
+uint8_hex (guint8 value, char *dest)
+{
+  const char *hex_nibble = "0123456789abcdef";
+
+  dest[0] = hex_nibble [(value >> 4) & 0xf];
+  dest[1] = hex_nibble [value  & 0xf];
+}
+
+
 string
 ID::str() const
 {
-  char buffer[41];
+  const size_t LEN = (path_prefix.size() * 2) + 1 + 40;
+  char buffer[LEN];
+  char *bp = &buffer[0];
 
-  uint32_hex (a, buffer);
-  uint32_hex (b, buffer + 8);
-  uint32_hex (c, buffer + 16);
-  uint32_hex (d, buffer + 24);
-  uint32_hex (e, buffer + 32);
-  buffer[40] = 0;
-
-  string prefix;
   for (size_t i = 0; i < path_prefix.size(); i++)
-    prefix += string_printf ("%02x", (unsigned char) path_prefix[i]);
+    {
+      uint8_hex (path_prefix[i], bp);
+      bp += 2;
+    }
 
-  return prefix + "/" + buffer;
+  *bp++ = '/';
+
+  uint32_hex (a, bp);
+  uint32_hex (b, bp + 8);
+  uint32_hex (c, bp + 16);
+  uint32_hex (d, bp + 24);
+  uint32_hex (e, bp + 32);
+
+  return string (buffer, buffer + LEN);
 }
 
 string
