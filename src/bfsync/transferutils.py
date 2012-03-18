@@ -983,27 +983,14 @@ def history_merge (repo, local_history, remote_history, pull_args):
   diff_rewriter.show_changes()
 
 def check_uncommitted_changes (repo):
-  return False
+  dg = bfsyncdb.DiffGenerator (repo.bdb)
+  change = dg.get_next()
+  del dg
 
-  # FIXME
-  # conn = repo.conn
-  # c = conn.cursor()
-
-  # VERSION = 1
-  # c.execute ('''SELECT version FROM history''')
-  # for row in c:
-  #   VERSION = max (row[0], VERSION)
-  # c.execute ('''SELECT COUNT (*) FROM inodes WHERE vmin=%d AND vmax=%d''' % (VERSION, VERSION))
-  # for row in c:
-  #   if row[0] > 0:
-  #     return True
-
-  c.execute ('''SELECT COUNT (*) FROM links WHERE vmin=%d AND vmax=%d''' % (VERSION, VERSION))
-  for row in c:
-    if row[0] > 0:
-      return True
-
-  return False
+  if len (change) == 0: # empty diff -> no uncommitted changes
+    return False
+  else:
+    return True
 
 class FastForwardState:
   pass
