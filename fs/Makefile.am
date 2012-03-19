@@ -10,7 +10,7 @@ noinst_PROGRAMS = bftesthelper bfdbdump bfproftest bflocktest bflockcheck bftest
 lib_LTLIBRARIES = libbfsync.la
 
 BFSYNC_HDRS = bfinode.hh bfidhash.hh bfsyncfs.hh bflink.hh bfsyncserver.hh bfhistory.hh \
-              bfcfgparser.hh bfleakdebugger.hh bfbdb.hh bftimeprof.hh
+              bfcfgparser.hh bfleakdebugger.hh bfbdb.hh bftimeprof.hh bfidsorter.hh
 
 libbfsync_la_SOURCES = bfsyncfs.cc bflink.cc bfinode.cc bfleakdebugger.cc bfsyncserver.cc bfidhash.cc \
                        bfhistory.cc bfcfgparser.cc bfbdb.cc bftimeprof.cc $(BFSYNC_HDRS)
