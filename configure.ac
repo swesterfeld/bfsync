@@ -9,6 +9,20 @@ AC_PROG_LIBTOOL
 AC_PATH_PROG(PYTHON, python)
 
 dnl
+dnl pkg-config
+dnl
+AC_DEFUN([AC_PKG_CONFIG_REQUIREMENTS],
+[
+    AC_CHECK_PROG(HAVE_PKG_CONFIG,pkg-config,yes,no)
+    if test "$HAVE_PKG_CONFIG" = "no"; then
+      AC_MSG_ERROR([You need to have pkg-config installed to build this package.
+
+Debian users: aptitude install pkg-config
+])
+    fi
+])
+
+dnl
 dnl glib
 dnl
 AC_DEFUN([AC_GLIB_REQUIREMENTS],
@@ -46,6 +60,7 @@ rm -fr conftest*
 
 # Check requirement sets
 
+AC_PKG_CONFIG_REQUIREMENTS
 AC_GLIB_REQUIREMENTS
 AC_FUSE_REQUIREMENTS
 
