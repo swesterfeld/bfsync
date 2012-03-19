@@ -200,6 +200,17 @@ class Repo:
       name.insert (0, pn[1])
     return "/" + "/".join (name)
 
+  def check_uncommitted_changes (self):
+    dg = bfsyncdb.DiffGenerator (self.bdb)
+    change = dg.get_next()
+    del dg
+
+    if len (change) == 0: # empty diff -> no uncommitted changes
+      return False
+    else:
+      return True
+
+
 def cd_repo_connect_db (cont = False):
   repo_path = find_repo_dir()
   bfsync_info = parse_config (repo_path + "/config")

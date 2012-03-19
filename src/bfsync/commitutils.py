@@ -109,65 +109,6 @@ def type2str (type):
 def gen_status (repo):
   change_list = []
 
-  VERSION = repo.first_unused_version()
-  DEBUG_MEM = False
-
-  if DEBUG_MEM:
-    print_mem_usage ("gen_status: start")
-
-  changed_dict = dict()
-  changed_it = bfsyncdb.ChangedINodesIterator (repo.bdb)
-  while True:
-    id = changed_it.get_next()
-    if not id.valid:
-      break
-    changed_dict[id.str()] = (None, None)
-  del changed_it
-
-  if DEBUG_MEM:
-    print_mem_usage ("gen_status: after id iteration")
-
-  def walk (id, prefix, version, new_old):
-    inode = repo.bdb.load_inode (id, version)
-    if inode.valid:
-      id_str = id.str()
-      if changed_dict.has_key (id_str):
-        new, old = changed_dict[id_str]
-        if new_old == 0:
-          my = new
-        else:
-          my = old
-        if not my:
-          if inode.hash == "new":
-            try:
-              filename = repo.make_number_filename (inode.new_file_number)
-              size = os.path.getsize (filename)
-            except:
-              size = 0
-          else:
-            size = inode.size
-          my = (size, inode.type, [])
-        if prefix == "":
-          name = "/"
-        else:
-          name = prefix
-        my[2].append (name)
-        if new_old == 0:
-          changed_dict[id_str] = (my, old)
-        else:
-          changed_dict[id_str] = (new, my)
-      if inode.type == bfsyncdb.FILE_DIR:
-        links = repo.bdb.load_links (id, version)
-        for link in links:
-          inode_name = prefix + "/" + link.name
-          walk (link.inode_id, inode_name, version, new_old)
-
-  walk (bfsyncdb.id_root(), "", VERSION, 0)
-  walk (bfsyncdb.id_root(), "", VERSION - 1, 1)
-
-  if DEBUG_MEM:
-    print_mem_usage ("gen_status: after walk()")
-
   n_changed = 0
   bytes_changed_old = 0
   bytes_changed_new = 0
@@ -177,31 +118,92 @@ def gen_status (repo):
   bytes_deleted = 0
   n_renamed = 0
 
-  for id in changed_dict:
-    new_tuple, old_tuple = changed_dict[id]
-    new = INodeInfo (new_tuple)
-    old = INodeInfo (old_tuple)
-    if new_tuple:
-      if old_tuple: # NEW & OLD
-        if old.names != new.names:
-          change_list.append (("R!", new.type, "%s => %s" % (old.get_name(), new.get_name())))
-          n_renamed += 1
-        else:
-          change_list.append (("!", new.type, new.get_name()))
-        n_changed += 1
-        bytes_changed_old += old.size
-        bytes_changed_new += new.size
-      else: # NEW
-        change_list.append (("+", new.type , new.get_name()))
-        bytes_added += new.size
-        n_added += 1
-    elif old_tuple: # OLD
-      change_list.append (("-", old.type, old.get_name()))
-      n_deleted += 1
-      bytes_deleted += old.size
+  DEBUG_MEM = False
 
-  if DEBUG_MEM:
-    print_mem_usage ("gen_status: after change list gen")
+  if repo.check_uncommitted_changes():
+    VERSION = repo.first_unused_version()
+
+    if DEBUG_MEM:
+      print_mem_usage ("gen_status: start")
+
+    changed_dict = dict()
+    changed_it = bfsyncdb.ChangedINodesIterator (repo.bdb)
+    while True:
+      id = changed_it.get_next()
+      if not id.valid:
+        break
+      changed_dict[id.str()] = (None, None)
+    del changed_it
+
+    if DEBUG_MEM:
+      print_mem_usage ("gen_status: after id iteration")
+
+    def walk (id, prefix, version, new_old):
+      inode = repo.bdb.load_inode (id, version)
+      if inode.valid:
+        id_str = id.str()
+        if changed_dict.has_key (id_str):
+          new, old = changed_dict[id_str]
+          if new_old == 0:
+            my = new
+          else:
+            my = old
+          if not my:
+            if inode.hash == "new":
+              try:
+                filename = repo.make_number_filename (inode.new_file_number)
+                size = os.path.getsize (filename)
+              except:
+                size = 0
+            else:
+              size = inode.size
+            my = (size, inode.type, [])
+          if prefix == "":
+            name = "/"
+          else:
+            name = prefix
+          my[2].append (name)
+          if new_old == 0:
+            changed_dict[id_str] = (my, old)
+          else:
+            changed_dict[id_str] = (new, my)
+        if inode.type == bfsyncdb.FILE_DIR:
+          links = repo.bdb.load_links (id, version)
+          for link in links:
+            inode_name = prefix + "/" + link.name
+            walk (link.inode_id, inode_name, version, new_old)
+
+    walk (bfsyncdb.id_root(), "", VERSION, 0)
+    walk (bfsyncdb.id_root(), "", VERSION - 1, 1)
+
+    if DEBUG_MEM:
+      print_mem_usage ("gen_status: after walk()")
+
+    for id in changed_dict:
+      new_tuple, old_tuple = changed_dict[id]
+      new = INodeInfo (new_tuple)
+      old = INodeInfo (old_tuple)
+      if new_tuple:
+        if old_tuple: # NEW & OLD
+          if old.names != new.names:
+            change_list.append (("R!", new.type, "%s => %s" % (old.get_name(), new.get_name())))
+            n_renamed += 1
+          else:
+            change_list.append (("!", new.type, new.get_name()))
+          n_changed += 1
+          bytes_changed_old += old.size
+          bytes_changed_new += new.size
+        else: # NEW
+          change_list.append (("+", new.type , new.get_name()))
+          bytes_added += new.size
+          n_added += 1
+      elif old_tuple: # OLD
+        change_list.append (("-", old.type, old.get_name()))
+        n_deleted += 1
+        bytes_deleted += old.size
+
+    if DEBUG_MEM:
+      print_mem_usage ("gen_status: after change list gen")
 
   status = []
   status += [ "+ %d objects added (%s)." % (n_added, format_size1 (bytes_added)) ]

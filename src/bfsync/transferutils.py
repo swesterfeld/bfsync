@@ -982,16 +982,6 @@ def history_merge (repo, local_history, remote_history, pull_args):
   status_line.cleanup()
   diff_rewriter.show_changes()
 
-def check_uncommitted_changes (repo):
-  dg = bfsyncdb.DiffGenerator (repo.bdb)
-  change = dg.get_next()
-  del dg
-
-  if len (change) == 0: # empty diff -> no uncommitted changes
-    return False
-  else:
-    return True
-
 class FastForwardState:
   pass
 
@@ -1048,7 +1038,7 @@ def pull (repo, args, server = True):
   repo_path = repo.path
 
   # Uncommitted changes?
-  if check_uncommitted_changes (repo):
+  if repo.check_uncommitted_changes():
     raise BFSyncError ("pull failed, there are uncommitted changes in this repo (commit or revert to fix this)")
 
   if pull_args.repo is None:
