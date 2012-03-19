@@ -1,4 +1,4 @@
-AC_INIT([bfsync], [0.2.0])
+AC_INIT([bfsync], [0.3.0])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE
@@ -42,6 +42,19 @@ AC_DEFUN([AC_FUSE_REQUIREMENTS],
     AC_SUBST(FUSE_LIBS)
 ])
 
+dnl
+dnl berkeley db
+dnl
+
+AC_DEFUN([AC_BDB_REQUIREMENTS],
+[
+    AC_LANG_SAVE
+    AC_LANG_CPLUSPLUS
+    AC_CHECK_HEADERS(db_cxx.h, ,
+      AC_MSG_ERROR([You need to have Berkeley DB installed to build this package.]))
+    AC_LANG_RESTORE
+])
+
 dnl ----------------------------- from acbirnet.m4 -------------------------------
 dnl Check whether cc accepts a certain option
 dnl MC_PROG_CC_SUPPORTS_OPTION(OPTIONS, ACTION-IF-FOUND [,ACTION-IF-NOT-FOUND])
@@ -63,6 +76,7 @@ rm -fr conftest*
 AC_PKG_CONFIG_REQUIREMENTS
 AC_GLIB_REQUIREMENTS
 AC_FUSE_REQUIREMENTS
+AC_BDB_REQUIREMENTS
 
 # Less cluttered build output
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
