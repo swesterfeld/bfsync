@@ -9,8 +9,15 @@ noinst_PROGRAMS = bftesthelper bfdbdump bfproftest bflocktest bflockcheck bftest
 
 lib_LTLIBRARIES = libbfsync.la
 
+PYTHON_FILES = setup.py
+SWIG_FILES = bfsyncdb.i
+EXTENSION_FILES = bfsyncdb.cc bfsyncdb.hh
+
+EXTRA_DIST = $(PYTHON_FILES) $(SWIG_FILES) $(EXTENSION_FILES)
+
 BFSYNC_HDRS = bfinode.hh bfidhash.hh bfsyncfs.hh bflink.hh bfsyncserver.hh bfhistory.hh \
-              bfcfgparser.hh bfleakdebugger.hh bfbdb.hh bftimeprof.hh bfidsorter.hh
+              bfcfgparser.hh bfleakdebugger.hh bfbdb.hh bftimeprof.hh bfidsorter.hh \
+              bfdeduptable.hh
 
 libbfsync_la_SOURCES = bfsyncfs.cc bflink.cc bfinode.cc bfleakdebugger.cc bfsyncserver.cc bfidhash.cc \
                        bfhistory.cc bfcfgparser.cc bfbdb.cc bftimeprof.cc $(BFSYNC_HDRS)
@@ -38,3 +45,6 @@ bftestidsort_SOURCES = bftestidsort.cc
 bftestidsort_LDADD = $(GLIB_LIBS) $(FUSE_LIBS) $(BDB_LIBS) libbfsync.la
 
 bftesthelper_SOURCES = bftesthelper.cc
+
+all-local: setup.py
+	$(PYTHON) setup.py build
