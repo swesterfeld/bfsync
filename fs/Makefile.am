@@ -48,3 +48,6 @@ bftesthelper_SOURCES = bftesthelper.cc
 
 all-local: setup.py
 	$(PYTHON) setup.py build
+
+install-exec-hook: setup.py
+	$(PYTHON) setup.py install --prefix=${prefix}
