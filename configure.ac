@@ -78,6 +78,11 @@ AC_GLIB_REQUIREMENTS
 AC_FUSE_REQUIREMENTS
 AC_BDB_REQUIREMENTS
 
+# Python modules
+
+AC_PYTHON_MODULE([setuptools], required)
+AC_PYTHON_MODULE([lzma], required)
+
 # Less cluttered build output
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
@@ -85,7 +90,6 @@ MC_PROG_CC_SUPPORTS_OPTION([-Wall], [
   CFLAGS="$CFLAGS -Wall"
   CXXFLAGS="$CXXFLAGS -Wall"
 ])
-
 
 AC_CONFIG_FILES([
   Makefile
