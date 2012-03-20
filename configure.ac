@@ -55,6 +55,19 @@ AC_DEFUN([AC_BDB_REQUIREMENTS],
     AC_LANG_RESTORE
 ])
 
+dnl
+dnl swig
+dnl
+AC_DEFUN([AC_SWIG_REQUIREMENTS],
+[
+  AC_CHECK_PROG(SWIG, swig, swig)
+  if test "x$SWIG" = x; then
+    AC_MSG_ERROR([You need to have swig installed to build this package.
+
+Debian users: aptitude install swig])
+  fi
+])
+
 dnl ----------------------------- from acbirnet.m4 -------------------------------
 dnl Check whether cc accepts a certain option
 dnl MC_PROG_CC_SUPPORTS_OPTION(OPTIONS, ACTION-IF-FOUND [,ACTION-IF-NOT-FOUND])
@@ -77,6 +90,7 @@ AC_PKG_CONFIG_REQUIREMENTS
 AC_GLIB_REQUIREMENTS
 AC_FUSE_REQUIREMENTS
 AC_BDB_REQUIREMENTS
+AC_SWIG_REQUIREMENTS
 
 # Python modules
 
