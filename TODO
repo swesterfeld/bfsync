@@ -12,6 +12,7 @@
 * node discovery
 * support partial commit
 * auto-push/pull
+* excludes
 
 Performance:
 ============
@@ -28,11 +29,7 @@ RELEASE:
 * merge uncommitted changes check
 * merge command for interruptible merges
 * persistent filesystem locking during active journal entry
-
-NEXT RELEASE:
-=============
-* excludes
-* lock repository during commit, push and pull
+* collect
 
 ==============================================================================================
 
