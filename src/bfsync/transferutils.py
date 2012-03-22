@@ -1136,11 +1136,15 @@ def collect (repo, args, old_cwd):
   dest_path = repo.make_temp_name()
   repo.bdb.commit_transaction()
 
-  ftotal = len (need_hash)
   def update_status():
     status_line.update ("%d local files (%s) / found %d/%d files (%s)" % (fcount, format_size1 (fsize), found, ftotal, format_size1 (found_size)))
 
+  repo.bdb.begin_transaction()
+
+  OPS = 0  # to keep number of operations per transaction below a pre-defined limit
+
   # walk dirs to find objects
+  ftotal = len (need_hash)
   fcount = 0
   found = 0
   fsize = 0
@@ -1157,18 +1161,27 @@ def collect (repo, args, old_cwd):
 
           if need_hash.has_key (hash):
             shutil.copyfile (full_name, dest_path)
-            move_file_to_objects (repo, dest_path)
+            move_file_to_objects (repo, dest_path, need_transaction = False)
             found += 1
             found_size += size
             # copy each file content only once, after that we don't need to do it again
             del need_hash[hash]
 
+            OPS += 1 # only move_file_to_objects actually causes BDB access
+
           fcount += 1
           fsize += size
           if outss.need_update():
             update_status()
+
+          if OPS >= 20000:
+            repo.bdb.commit_transaction()
+            repo.bdb.begin_transaction()
+            OPS = 0
+
         except IOError:
           pass  # usually: insufficient permissions to read file
         except OSError:
           pass  # usually: file not found
+  repo.bdb.commit_transaction()
   update_status()
