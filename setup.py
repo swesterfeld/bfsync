@@ -4,8 +4,8 @@ from setuptools import setup
 
 setup (
   name = 'bfsync',
-  version = '0.2.0',
-  description = 'Big File synchronization based on Git',
+  version = '0.3.0',
+  description = 'Big File synchronization tool',
   author = 'Stefan Westerfeld',
   author_email = 'stefan@space.twc.de',
   url = 'http://space.twc.de/~stefan/bfsync.php',
