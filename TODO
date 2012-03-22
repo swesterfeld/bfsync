@@ -26,7 +26,6 @@ RELEASE:
 ========
 * register pids, to be able to detect when to recover (<-> add locking)
 * flush before status
-* merge uncommitted changes check
 * merge command for interruptible merges
 * persistent filesystem locking during active journal entry
 * collect
