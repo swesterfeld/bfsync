@@ -24,6 +24,7 @@
 #include <assert.h>
 #include <string.h>
 #include <stdlib.h>
+#include <errno.h>
 
 #include <set>
 
@@ -58,7 +59,7 @@ static map<DbEnv*, bool> shm_init_fail;
 void
 panic_call (DbEnv *db_env, int error)
 {
-  if (error == 12)
+  if (error == ENOMEM || error == EINVAL)
     shm_init_fail[db_env] = true;
 }
 
@@ -180,7 +181,7 @@ BDB::open (const string& path, int cache_size_mb, bool recover)
               fprintf (stderr, "\n\n");
               fprintf (stderr, "=======================================================================\n");
               fprintf (stderr, "Allocation of memory during database initialization failed.\n\n");
-              fprintf (stderr, "Most likeley this means that shared memory could not be initialized\n");
+              fprintf (stderr, "Most likely this means that shared memory could not be initialized\n");
               fprintf (stderr, "during system wide shared memory limits. See CONFIGURING SHARED MEMORY\n");
               fprintf (stderr, "section in the bfsync manpage for a description how to fix this.\n");
               fprintf (stderr, "=======================================================================\n\n");
