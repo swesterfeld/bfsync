@@ -1,54 +1,33 @@
-* properly use transactions during pull,...
-* register pids, to be able to detect when to recover
 * automatic deadlock detection
 * retry transactions on deadlock
-* use operation journal to recover after partial op
-* auto-push/pull
 * properly handle copy-on-write() errors (disk full, ...)
 * check for open files before allowing readonly mode
 * better cache expiring for INodeLinks
-* background hashing for fs
 * merge INodeLinks and INode cache
 * detect protocol version
 * check permissions for touch
 * rename bfsync.transferutils => bfsync.transfer (and other fooutils => foo)
-* remove unused new/ files during revert or gc or commit
+
+* background hashing for fs
 * node discovery
-* partial commit
-* flush before status
-* make fstest work again
-
-packaging:
-==========
-* use ./setup.py to build without . in PATH
-* configure test for
-  - db
-  - swig
-
-new_commit:
-===========
-* use lock
+* support partial commit
+* auto-push/pull
 
 Performance:
 ============
-* fix redundant inserts (should be updates)
 * cache friendly get would hash and copy file-by-file, since then the data
   is read only once from the physical media
 * sorted hash dedup
 * revert could be O(changed inodes) if it used changed_inodes & history diffs
 * backlinks allow faster status | merge
 
-MERGE:
-======
-* better information for the user
-  - change logs
-  - inode values
-* command for interruptible merges
-* test for large merges
-* uncommitted changes check
-
 RELEASE:
 ========
+* register pids, to be able to detect when to recover (<-> add locking)
+* flush before status
+* merge uncommitted changes check
+* merge command for interruptible merges
+* persistent filesystem locking during active journal entry
 
 NEXT RELEASE:
 =============
