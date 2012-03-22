@@ -30,6 +30,7 @@ RELEASE:
 * merge command for interruptible merges
 * persistent filesystem locking during active journal entry
 * collect
+* generate setup.py for 32/64 bit include path
 
 ==============================================================================================
 
