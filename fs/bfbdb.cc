@@ -53,6 +53,15 @@ BDB::BDB() :
 {
 }
 
+static map<DbEnv*, bool> shm_init_fail;
+
+void
+panic_call (DbEnv *db_env, int error)
+{
+  if (error == 12)
+    shm_init_fail[db_env] = true;
+}
+
 bool
 BDB::open (const string& path, int cache_size_mb, bool recover)
 {
@@ -82,11 +91,14 @@ BDB::open (const string& path, int cache_size_mb, bool recover)
       repo_path = path;
 
       db_env = new DbEnv (DB_CXX_NO_EXCEPTIONS);
+
       db_env->set_shm_key (shm_id (path));
       db_env->set_cachesize (cache_size_gb, cache_size_mb * 1024 * 1024, 0); // set cache size
       db_env->set_lk_max_locks (100000);
       db_env->set_lk_max_objects (100000);
       db_env->log_set_config (DB_LOG_AUTO_REMOVE, 1);     // automatically remove old log files
+      db_env->set_paniccall (panic_call);
+
       ret = db_env->open (bdb_dir.c_str(),
         DB_CREATE |            /* on-demand create */
         DB_INIT_MPOOL |        /* shared memory buffer subsystem */
@@ -162,6 +174,19 @@ BDB::open (const string& path, int cache_size_mb, bool recover)
         }
       else
         {
+          db_env->set_paniccall (NULL);
+          if (shm_init_fail[db_env])
+            {
+              fprintf (stderr, "\n\n");
+              fprintf (stderr, "=======================================================================\n");
+              fprintf (stderr, "Allocation of memory during database initialization failed.\n\n");
+              fprintf (stderr, "Most likeley this means that shared memory could not be initialized\n");
+              fprintf (stderr, "during system wide shared memory limits. See CONFIGURING SHARED MEMORY\n");
+              fprintf (stderr, "section in the bfsync manpage for a description how to fix this.\n");
+              fprintf (stderr, "=======================================================================\n\n");
+
+              shm_init_fail[db_env] = false; // in case we try again later
+            }
           db_env->err (ret, "open database env failed");
           db = NULL;
           db_hash2file = NULL;
