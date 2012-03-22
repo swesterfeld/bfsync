@@ -28,7 +28,6 @@ RELEASE:
 * flush before status
 * merge command for interruptible merges
 * persistent filesystem locking during active journal entry
-* collect
 
 ==============================================================================================
 
