@@ -23,7 +23,7 @@ from utils import *
 from applyutils import apply
 from commitutils import revert
 from xzutils import xzcat
-from StatusLine import status_line
+from StatusLine import status_line, OutputSubsampler
 from HashCache import hash_cache
 from journal import run_commands, queue_command, mk_journal_entry, CMD_AGAIN, CMD_DONE
 import argparse
@@ -1116,6 +1116,8 @@ def pull (repo, args, server = True):
 def collect (repo, args, old_cwd):
   status_line.set_op ("COLLECT")
 
+  outss = OutputSubsampler()
+
   # create list of required objects
   need_hash = dict()
   hi = bfsyncdb.INodeHashIterator (repo.bdb)
@@ -1126,12 +1128,17 @@ def collect (repo, args, old_cwd):
     if len (hash) == 40:
       if not repo.validate_object (hash):
         need_hash[hash] = True
-        status_line.update ("preparing object list... need %d files" % len (need_hash))
+        if outss.need_update():
+          status_line.update ("preparing object list... need %d files" % len (need_hash))
   del hi # free locks the iterator might hold
 
   repo.bdb.begin_transaction()
   dest_path = repo.make_temp_name()
   repo.bdb.commit_transaction()
+
+  ftotal = len (need_hash)
+  def update_status():
+    status_line.update ("%d local files (%s) / found %d/%d files (%s)" % (fcount, format_size1 (fsize), found, ftotal, format_size1 (found_size)))
 
   # walk dirs to find objects
   fcount = 0
@@ -1154,12 +1161,14 @@ def collect (repo, args, old_cwd):
             found += 1
             found_size += size
             # copy each file content only once, after that we don't need to do it again
-            need_hash[hash] = False
+            del need_hash[hash]
 
           fcount += 1
           fsize += size
-          status_line.update ("%d local files (%s) / found %d/%d files (%s)" % (fcount, format_size1 (fsize), found, len (need_hash), format_size1 (found_size)))
+          if outss.need_update():
+            update_status()
         except IOError:
           pass  # usually: insufficient permissions to read file
         except OSError:
           pass  # usually: file not found
+  update_status()
