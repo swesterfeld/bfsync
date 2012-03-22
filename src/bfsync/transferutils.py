@@ -1114,23 +1114,25 @@ def pull (repo, args, server = True):
     history_merge (repo, local_history, remote_history, pull_args)
 
 def collect (repo, args, old_cwd):
-  conn = repo.conn
-  c = conn.cursor()
-
   status_line.set_op ("COLLECT")
 
   # create list of required objects
   need_hash = dict()
-  c.execute ('''SELECT DISTINCT hash FROM inodes''')
-  for row in c:
-    hash = row[0]
+  hi = bfsyncdb.INodeHashIterator (repo.bdb)
+  while True:
+    hash = hi.get_next()
+    if hash == "":
+      break           # done
     if len (hash) == 40:
-      dest_file = os.path.join ("objects", make_object_filename (hash))
-      if not validate_object (dest_file, hash):
+      if not repo.validate_object (hash):
         need_hash[hash] = True
-    status_line.update ("preparing object list... need %d files" % len (need_hash))
+        status_line.update ("preparing object list... need %d files" % len (need_hash))
+  del hi # free locks the iterator might hold
 
+  repo.bdb.begin_transaction()
   dest_path = repo.make_temp_name()
+  repo.bdb.commit_transaction()
+
   # walk dirs to find objects
   fcount = 0
   found = 0
@@ -1151,6 +1153,8 @@ def collect (repo, args, old_cwd):
             move_file_to_objects (repo, dest_path)
             found += 1
             found_size += size
+            # copy each file content only once, after that we don't need to do it again
+            need_hash[hash] = False
 
           fcount += 1
           fsize += size
