@@ -19,6 +19,7 @@ import os
 import CfgParser
 import bfsyncdb
 import resource
+import cPickle
 from tempfile import NamedTemporaryFile
 
 def format_size (size, total_size):
@@ -229,7 +230,12 @@ def cd_repo_connect_db (cont = False):
 
   jentries = repo.bdb.load_journal_entries()
   if len (jentries) != 0 and not cont:
-    raise BFSyncError ("database operation was interrupted, run bfsync continue to fix this")
+    op = cPickle.loads (jentries[0].operation)
+    print "The following command was interrupted:"
+    print
+    print " *", op.command_line
+    print
+    raise BFSyncError ("run bfsync continue to fix this")
 
   repo.path = repo_path
   repo.config = bfsync_info

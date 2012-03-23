@@ -18,14 +18,21 @@
 import bfsyncdb
 import cPickle
 
+class JournalOperation:
+  pass
+
 cmd_stack = [ [] ]
+cmd_op = JournalOperation()
 
 CMD_DONE = 1
 CMD_AGAIN = 2
 
+def init_journal (command_line):
+  cmd_op.command_line = command_line
+
 def mk_journal_entry (repo):
   jentry = bfsyncdb.JournalEntry()
-  jentry.operation = "nop"
+  jentry.operation = cPickle.dumps (cmd_op)
 
   all_state_list = []
   for cmds in cmd_stack:
@@ -78,10 +85,12 @@ def run_continue (repo, je):
   from applyutils import ApplyCommand
   from transferutils import FastForwardCommand
   global cmd_stack
+  global cmd_op
 
   assert (len (cmd_stack) == 1 and len (cmd_stack[0]) == 0)
   cmd_stack = []
 
+  cmd_op = cPickle.loads (je.operation)
   state = cPickle.loads (je.state)
   for cmds in state:
     cmd_stack.append ([])

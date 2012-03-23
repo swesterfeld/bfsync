@@ -46,7 +46,7 @@ from RemoteRepo import RemoteRepo
 from stat import *
 from transferutils import get, put, push, pull, collect
 from xzutils import xz
-from journal import run_commands, run_continue
+from journal import run_commands, run_continue, init_journal
 from gcutils import gc
 
 def find_bfsync_dir():
@@ -884,6 +884,7 @@ def main():
 
         cProfile.run ("command_func()", "/tmp/bfsync-profile-%s" % command)
       else:
+        init_journal (" ".join ([ "bfsync" ] + sys.argv[1:]))
         command_func()
     except BFSyncError, err:
       hash_cache.save()
