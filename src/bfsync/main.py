@@ -39,7 +39,7 @@ from diffutils import diff
 from commitutils import commit, revert, gen_status
 from remoteutils import *
 from TransferList import TransferList, TransferFile
-from StatusLine import status_line
+from StatusLine import status_line, OutputSubsampler
 from HashCache import hash_cache
 from ServerConn import ServerConn
 from RemoteRepo import RemoteRepo
@@ -566,21 +566,6 @@ def guess_dir_name (url):
     dir_name = ch + dir_name
   return url
 
-def table_objs (repo, table):
-  thashes = []
-  conn = repo.conn
-  c = conn.cursor()
-
-  objs = 0
-  need_objs = 0
-  c.execute ("""SELECT DISTINCT hash FROM %s""" % table)
-  for row in c:
-    hash = row[0]
-    if len (hash) == 40:
-      thashes.append (hash)
-
-  return thashes
-
 def check_objs (repo, hobjs, iobjs):
   all_objs = len (hobjs) + len (iobjs)
 
@@ -588,20 +573,25 @@ def check_objs (repo, hobjs, iobjs):
   need_hobjs = 0
   need_iobjs = 0
 
-  for hash in hobjs:
-    dest_file = os.path.join (repo.path, "objects", make_object_filename (hash))
-    check_objs += 1
-    if not validate_object (dest_file, hash):
-      need_hobjs += 1
+  outss = OutputSubsampler()
+  def update_status():
     status_line.update ("checking object %d/%d" % (check_objs, all_objs))
+
+  for hash in hobjs:
+    check_objs += 1
+    if not repo.validate_object (hash):
+      need_hobjs += 1
+    if outss.need_update():
+      update_status()
 
   for hash in iobjs:
-    dest_file = os.path.join (repo.path, "objects", make_object_filename (hash))
     check_objs += 1
-    if not validate_object (dest_file, hash):
+    if not repo.validate_object (hash):
       need_iobjs += 1
-    status_line.update ("checking object %d/%d" % (check_objs, all_objs))
+    if outss.need_update():
+      update_status()
 
+  update_status()
   status_line.cleanup()
 
   print
@@ -612,33 +602,33 @@ def check_objs (repo, hobjs, iobjs):
     else:
       print "%s:\n - all %d objects available." % (x[0], x[2])
 
-def unused_objects (repo):
-  result = []
-
-  # check objects required by db
-  used_set = set()
-  for table in [ "history", "inodes" ]:
-    for row in repo.conn.execute ("""SELECT DISTINCT hash FROM %s""" % table):
-      hash = row[0]
-      if len (hash) == 40:
-        used_set.add (hash)
-
-  for root, dirs, files in os.walk (os.path.join (repo.path, "objects")):
-    for f in files:
-      hash = os.path.basename (root) + f
-      if hash not in used_set:
-        result.append (hash)
-  return result
-
 def cmd_check():
   repo = cd_repo_connect_db()
 
   status_line.set_op ("CHECK")
-  history_objs = table_objs (repo, "history")
-  inode_objs = table_objs (repo, "inodes")
+
+  # create list of objects required by history
+  history_objs_set = set()
+  VERSION = 1
+  while True:
+    hentry = repo.bdb.load_history_entry (VERSION)
+    VERSION += 1
+    if not hentry.valid:
+      break
+    history_objs_set.add (hentry.hash)
+  history_objs = list (history_objs_set)
+
+  # create list of hashes required by inodes
+  inode_objs = []
+  hi = bfsyncdb.INodeHashIterator (repo.bdb)
+  while True:
+    hash = hi.get_next()
+    if hash == "":
+      break           # done
+    inode_objs.append (hash)
+  del hi # free locks iterator may have held
+
   check_objs (repo, history_objs, inode_objs)
-  print "Unused:"
-  print " - %d objects are not used." % len (unused_objects (repo))
 
 def cmd_gc():
   repo = cd_repo_connect_db()
