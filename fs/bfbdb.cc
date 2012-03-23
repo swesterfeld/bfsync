@@ -74,7 +74,7 @@ BDB::open (const string& path, int cache_size_mb, bool recover)
       printf ("%s: need to recover repository\n", path.c_str());
       printf ("============================================================================\n");
       printf (" - some processes did not shut down properly\n");
-      printf (" - use bfsync.py recover %s to fix this\n", path.c_str());
+      printf (" - use bfsync recover %s to fix this\n", path.c_str());
       printf ("============================================================================\n");
       return false;
     }
