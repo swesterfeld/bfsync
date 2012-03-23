@@ -1125,11 +1125,10 @@ def collect (repo, args, old_cwd):
     hash = hi.get_next()
     if hash == "":
       break           # done
-    if len (hash) == 40:
-      if not repo.validate_object (hash):
-        need_hash[hash] = True
-        if outss.need_update():
-          status_line.update ("preparing object list... need %d files" % len (need_hash))
+    if not repo.validate_object (hash):
+      need_hash[hash] = True
+      if outss.need_update():
+        status_line.update ("preparing object list... need %d files" % len (need_hash))
   del hi # free locks the iterator might hold
 
   repo.bdb.begin_transaction()
