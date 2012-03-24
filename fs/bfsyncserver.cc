@@ -176,6 +176,8 @@ Server::run()
 
           INodeRepo::the()->save_changes();
           INodeRepo::the()->delete_unused_inodes (INodeRepo::DM_SOME);
+
+          bfsyncfs_update_read_only(); // check for finished operations
         }
     }
 }
@@ -374,6 +376,7 @@ Server::handle_client (int client_fd)
           client_req.clear();
         }
     }
+  bfsyncfs_update_read_only(); // there might be a new operation in journal now
   if (lock)
     {
       delete lock;

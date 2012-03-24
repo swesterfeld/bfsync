@@ -110,6 +110,16 @@ debug_file()
   return bf_debug_file;
 }
 
+static bool bfsyncfs_read_only = false;
+
+void
+bfsyncfs_update_read_only()
+{
+  vector<JournalEntry> jvec;
+  INodeRepo::the()->bdb->load_journal_entries (jvec);
+  bfsyncfs_read_only = (jvec.size() != 0);
+}
+
 string
 get_dirname (const string& dirname)
 {
@@ -677,6 +687,8 @@ bfsync_open (const char *path_arg, struct fuse_file_info *fi)
         return -EROFS;
       ctx.version = version;
     }
+  if (open_for_write && bfsyncfs_read_only)
+    return -EROFS;
 
   if (string (path) == "/.bfsync/info")
     {
@@ -779,7 +791,7 @@ bfsync_write (const char *path_arg, const char *buf, size_t size, off_t offset,
   FSLock lock (FSLock::WRITE);
   Context ctx;
   int version = version_map_path (path);
-  if (version > 0)
+  if (version > 0 || bfsyncfs_read_only)
     return -EROFS;
 
   FileHandle *fh = reinterpret_cast<FileHandle *> (fi->fh);
@@ -809,7 +821,7 @@ bfsync_mknod (const char *path_arg, mode_t mode, dev_t dev)
   FSLock lock (FSLock::WRITE);
   Context ctx;
   int version = version_map_path (path);
-  if (version > 0)
+  if (version > 0 || bfsyncfs_read_only)
     return -EROFS;
 
   IFPStatus ifp;
@@ -880,7 +892,7 @@ bfsync_chmod (const char *name_arg, mode_t mode)
   FSLock lock (FSLock::WRITE);
   Context ctx;
   int version = version_map_path (name);
-  if (version > 0)
+  if (version > 0 || bfsyncfs_read_only)
     return -EROFS;
 
   IFPStatus ifp;
@@ -912,7 +924,7 @@ bfsync_chown (const char *name_arg, uid_t uid, gid_t gid)
   FSLock lock (FSLock::WRITE);
   Context ctx;
   int version = version_map_path (name);
-  if (version > 0)
+  if (version > 0 || bfsyncfs_read_only)
     return -EROFS;
 
   IFPStatus ifp;
@@ -983,7 +995,7 @@ bfsync_utimens (const char *name_arg, const struct timespec times[2])
   FSLock lock (FSLock::WRITE);
   Context ctx;
   int version = version_map_path (name);
-  if (version > 0)
+  if (version > 0 || bfsyncfs_read_only)
     return -EROFS;
 
   IFPStatus ifp;
@@ -1011,7 +1023,7 @@ bfsync_truncate (const char *name_arg, off_t off)
   FSLock lock (FSLock::WRITE);
   Context ctx;
   int version = version_map_path (name);
-  if (version > 0)
+  if (version > 0 || bfsyncfs_read_only)
     return -EROFS;
 
   IFPStatus ifp;
@@ -1046,7 +1058,7 @@ bfsync_unlink (const char *name_arg)
   FSLock lock (FSLock::WRITE);
   Context ctx;
   int version = version_map_path (name);
-  if (version > 0)
+  if (version > 0 || bfsyncfs_read_only)
     return -EROFS;
 
   IFPStatus ifp;
@@ -1096,7 +1108,7 @@ bfsync_mkdir (const char *path_arg, mode_t mode)
   FSLock lock (FSLock::WRITE);
   Context ctx;
   int version = version_map_path (path);
-  if (version > 0)
+  if (version > 0 || bfsyncfs_read_only)
     return -EROFS;
 
   IFPStatus ifp;
@@ -1131,7 +1143,7 @@ bfsync_rmdir (const char *name_arg)
   FSLock lock (FSLock::WRITE);
   Context ctx;
   int version = version_map_path (name);
-  if (version > 0)
+  if (version > 0 || bfsyncfs_read_only)
     return -EROFS;
 
   IFPStatus ifp;
@@ -1189,7 +1201,7 @@ bfsync_rename (const char *old_path_arg, const char *new_path_arg)
 
   int version;
   version = version_map_path (old_path);
-  if (version > 0)
+  if (version > 0 || bfsyncfs_read_only)
     return -EROFS;
 
   version = version_map_path (new_path);
@@ -1262,7 +1274,7 @@ bfsync_symlink (const char *from_arg, const char *to_arg)
   FSLock lock (FSLock::WRITE);
   Context ctx;
   int version = version_map_path (to);
-  if (version > 0)
+  if (version > 0 || bfsyncfs_read_only)
     return -EROFS;
 
   IFPStatus ifp;
@@ -1300,7 +1312,7 @@ bfsync_readlink (const char *path_arg, char *buffer, size_t size)
   FSLock lock (FSLock::READ);
   Context ctx;
   int version = version_map_path (path);
-  if (version > 0)
+  if (version > 0 || bfsyncfs_read_only)
     ctx.version = version;
 
   IFPStatus ifp;
@@ -1337,7 +1349,7 @@ bfsync_link (const char *old_path_arg, const char *new_path_arg)
 
   int version;
   version = version_map_path (old_path);
-  if (version > 0)
+  if (version > 0 || bfsyncfs_read_only)
     return -EROFS;
 
   version = version_map_path (new_path);
@@ -1540,6 +1552,14 @@ bfsyncfs_main (int argc, char **argv)
   INodeRepo inode_repo (bdb);
 
   inode_repo.bdb->history()->read();
+
+  // set readonly mode if there is a journal entry of some "running" operation
+  bfsyncfs_update_read_only();
+  if (bfsyncfs_read_only)
+    {
+      printf ("bfsyncfs: some operation did not complete, mounting readonly\n");
+      printf ("bfsyncfs: use bfsync continue to fix this\n");
+    }
 
   int fuse_rc = fuse_main (my_argc, my_argv, &bfsync_oper, NULL);
 

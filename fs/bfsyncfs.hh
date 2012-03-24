@@ -174,7 +174,8 @@ struct Options {
   static Options *the();
 };
 
-int bfsync_getattr (const char *path_arg, struct stat *stbuf);
+int   bfsync_getattr (const char *path_arg, struct stat *stbuf);
+void  bfsyncfs_update_read_only();
 
 class Context
 {
@@ -194,6 +195,6 @@ const unsigned int VERSION_INF = 0xffffffff;
 
 }
 
-int bfsyncfs_main (int argc, char **argv);
+int   bfsyncfs_main (int argc, char **argv);
 
 #endif /* BFSYNC_FS_HH */
