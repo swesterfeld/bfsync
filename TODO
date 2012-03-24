@@ -7,6 +7,9 @@
 * detect protocol version
 * check permissions for touch
 * rename bfsync.transferutils => bfsync.transfer (and other fooutils => foo)
+* more strict locking for multi-part commands such as pull: lock should be
+  acquired before checking for uncommitted changes and released after the
+  end of pull
 
 * background hashing for fs
 * node discovery
@@ -27,7 +30,6 @@ RELEASE:
 * register pids, to be able to detect when to recover (<-> add locking)
 * flush before status
 * merge command for interruptible merges
-* persistent filesystem locking during active journal entry
 
 ==============================================================================================
 
