@@ -231,11 +231,24 @@ def cd_repo_connect_db (cont = False):
   jentries = repo.bdb.load_journal_entries()
   if len (jentries) != 0 and not cont:
     op = cPickle.loads (jentries[0].operation)
-    print "The following command was interrupted:"
-    print
-    print " *", op.command_line
-    print
-    raise BFSyncError ("run bfsync continue to fix this")
+    try:
+      os.kill (op.pid, 0)
+      # pid still running
+      running = True
+    except:
+      running = False
+    if running:
+      print "The following command is still running (pid %d):" % op.pid
+      print
+      print " *", op.command_line
+      print
+      raise BFSyncError ("wait until this command is finished before trying again")
+    else:
+      print "The following command was interrupted:"
+      print
+      print " *", op.command_line
+      print
+      raise BFSyncError ("run bfsync continue to fix this")
 
   repo.path = repo_path
   repo.config = bfsync_info

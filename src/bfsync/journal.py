@@ -17,6 +17,7 @@
 
 import bfsyncdb
 import cPickle
+import os
 
 class JournalOperation:
   pass
@@ -28,6 +29,7 @@ CMD_DONE = 1
 CMD_AGAIN = 2
 
 def init_journal (command_line):
+  cmd_op.pid = os.getpid()
   cmd_op.command_line = command_line
 
 def mk_journal_entry (repo):
@@ -91,6 +93,8 @@ def run_continue (repo, je):
   cmd_stack = []
 
   cmd_op = cPickle.loads (je.operation)
+  cmd_op.pid = os.getpid()                # replace pid with the pid of the continue process
+
   state = cPickle.loads (je.state)
   for cmds in state:
     cmd_stack.append ([])
