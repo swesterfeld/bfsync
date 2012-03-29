@@ -29,7 +29,6 @@ RELEASE:
 ========
 * register pids, to be able to detect when to recover (<-> add locking)
 * flush before status
-* merge command for interruptible merges
 
 ==============================================================================================
 
