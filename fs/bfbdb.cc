@@ -63,6 +63,22 @@ panic_call (DbEnv *db_env, int error)
     shm_init_fail[db_env] = true;
 }
 
+static double
+read_shm_limit (const string& limit)
+{
+
+  FILE *file = fopen (string_printf ("/proc/sys/kernel/%s", limit.c_str()).c_str(), "r");
+  if (!file)
+    return -1;
+
+  char buffer[1024];
+  fgets (buffer, 1024, file);
+  double result = atof (buffer);
+  fclose (file);
+
+  return result;
+}
+
 bool
 BDB::open (const string& path, int cache_size_mb, bool recover)
 {
@@ -180,10 +196,27 @@ BDB::open (const string& path, int cache_size_mb, bool recover)
             {
               fprintf (stderr, "\n\n");
               fprintf (stderr, "=======================================================================\n");
-              fprintf (stderr, "Allocation of memory during database initialization failed.\n\n");
+              fprintf (stderr, "Allocation of memory during database initialization failed.\n");
+              fprintf (stderr, "\n");
               fprintf (stderr, "Most likely this means that shared memory could not be initialized\n");
               fprintf (stderr, "during system wide shared memory limits. See CONFIGURING SHARED MEMORY\n");
               fprintf (stderr, "section in the bfsync manpage for a description how to fix this.\n");
+
+              const double shmmax = read_shm_limit ("shmmax") / 1024.0 / 1024.0;
+              const double shmall = read_shm_limit ("shmall") * sysconf (_SC_PAGESIZE) / 1024.0 / 1024.0;
+              if (shmmax > 0 && shmall > 0)
+                {
+                  fprintf (stderr, "\n");
+                  fprintf (stderr, "System-wide shared memory limits:\n");
+                  fprintf (stderr, "---------------------------------\n");
+                  fprintf (stderr, " * maximum size       %9.1f MB\n", shmmax);
+                  fprintf (stderr, " * maximum total size %9.1f MB\n", shmall);
+                  fprintf (stderr, "\n");
+                  fprintf (stderr, "Repository config:\n");
+                  fprintf (stderr, "------------------\n");
+                  fprintf (stderr, " * cache size         %9.1f MB\n", double (1024 * cache_size_gb + cache_size_mb));
+                }
+
               fprintf (stderr, "=======================================================================\n\n");
 
               shm_init_fail[db_env] = false; // in case we try again later
