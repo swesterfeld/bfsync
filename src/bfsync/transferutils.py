@@ -428,15 +428,19 @@ class DiffRewriter:
 
     return new_diff
 
-  def show_changes (self):
+  def get_change_message (self):
+    change_message = []
     if len (self.changes) > 0:
-      print
-      print "The following local files were renamed to avoid name conflicts"
-      print "with the master history:"
-      print
+      change_message += [
+        "",
+        "The following local files were renamed to avoid name conflicts",
+        "with the master history:",
+        ""
+      ]
       for old, new in self.changes:
-        print " * '%s' => '%s'" % (old, new)
-      print
+        change_message.append (" * '%s' => '%s'" % (old, new))
+      change_message.append ("")
+    return change_message
 
 def apply_inode_changes (inode, changes):
   inode = inode[:]  # copy inode
@@ -960,6 +964,7 @@ class MergeCommand:
           }
           add_local_diff (new_diff, commit_args)
 
+      self.state.change_message = diff_rewriter.get_change_message()
       self.state.exec_phase += 1
 
       # create new journal entry
@@ -987,8 +992,9 @@ class MergeCommand:
 
         return CMD_AGAIN
 
-    #status_line.cleanup()
-    #diff_rewriter.show_changes()
+    status_line.cleanup()
+    if len (self.state.change_message):
+      print "\n".join (self.state.change_message)
 
     return CMD_DONE
 
