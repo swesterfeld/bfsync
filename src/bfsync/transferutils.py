@@ -804,6 +804,222 @@ class UserConflictResolver:
 
 ################################# MERGE ######################################
 
+def cat (filename):
+  f = open (filename, "r")
+  result = f.read()
+  f.close()
+  return result
+
+class MergeState:
+  pass
+
+class MergeCommand:
+  EXEC_PHASE_REVERT_COMMON  = 1
+  EXEC_PHASE_APPLY_MASTER   = 2
+  EXEC_PHASE_REWRITE_DIFFS  = 3
+  EXEC_PHASE_APPLY_LOCAL    = 4
+
+  def start (self, repo, common_version, total_patch_count,
+             restore_inode, use_both_versions, inode_ignore_change,
+             local_history, remote_history):
+    self.state = MergeState()
+    self.state.common_version = common_version
+    self.state.current_version = -1
+    self.state.patch_count = 1
+    self.state.total_patch_count = total_patch_count
+    self.state.local_history = local_history
+    self.state.remote_history = remote_history
+    self.state.restore_inode = restore_inode
+    self.state.use_both_versions = use_both_versions
+    self.state.inode_ignore_change = inode_ignore_change
+    self.state.exec_phase = self.EXEC_PHASE_REVERT_COMMON
+    self.repo = repo
+
+  def restart (self, repo):
+    self.repo = repo
+
+  def execute (self):
+    if self.state.exec_phase == self.EXEC_PHASE_REVERT_COMMON:
+      #=> spawn revert sub-command
+      revert (self.repo, self.state.common_version, verbose = False)
+
+      self.state.exec_phase += 1
+      self.state.current_version = self.state.common_version
+
+      # create new journal entry
+      self.repo.bdb.begin_transaction()
+      mk_journal_entry (self.repo)
+      self.repo.bdb.commit_transaction()
+
+      return CMD_AGAIN # will execute queued commands before execute() gets called again
+
+    if self.state.exec_phase == self.EXEC_PHASE_APPLY_MASTER:
+      # APPLY master history
+      for rh in self.state.remote_history:
+        if rh[0] > self.state.current_version:
+          diff = rh[1]
+          file_number = self.repo.bdb.load_hash2file (diff)
+          if file_number != 0:
+            diff_file = self.repo.make_number_filename (file_number)
+          else:
+            raise Exception ("Diff for hash %s not found" % hash)
+
+          commit_args = {
+            "author" : rh[2],
+            "message" : rh[3],
+            "time" : rh[4]
+          }
+
+          #=> spawn apply sub-command
+          apply (self.repo, xzcat (diff_file), diff, verbose = False, commit_args = commit_args)
+          self.state.current_version = rh[0]
+
+          status_line.update ("patch %d/%d" % (self.state.patch_count, self.state.total_patch_count))
+          self.state.patch_count += 1
+
+          # create new journal entry
+          self.repo.bdb.begin_transaction()
+          mk_journal_entry (self.repo)
+          self.repo.bdb.commit_transaction()
+
+          return CMD_AGAIN
+
+      self.state.master_version = self.state.current_version
+      self.state.exec_phase += 1
+
+      # create new journal entry
+      self.repo.bdb.begin_transaction()
+      mk_journal_entry (self.repo)
+      self.repo.bdb.commit_transaction()
+
+    if self.state.exec_phase == self.EXEC_PHASE_REWRITE_DIFFS:
+      # APPLY extra commit to be able to apply local history without problems
+      diff_rewriter = DiffRewriter (self.repo)
+
+      changes = []
+      for inode in self.state.restore_inode:
+        common_inode = db_inode (self.repo, self.state.common_version, inode)
+        if db_inode (self.repo, self.state.master_version, inode):
+          # inode still exists: just undo changes
+          changes += [ map (str, [ "i!" ] + common_inode) ]
+        else:
+          # inode is gone: recreate it to allow applying local changes
+          changes += [ map (str, [ "i+" ] + common_inode) ]
+        changes += restore_inode_links (db_links (self.repo, self.state.common_version, inode),
+                                        db_links (self.repo, self.state.master_version, inode))
+
+      for inode in self.state.use_both_versions:
+        # duplicate inode
+        common_inode = db_inode (self.repo, self.state.common_version, inode)
+        new_id = gen_id (common_inode[0])
+        changes += [ map (str, [ "i+", new_id ] + self.state.common_inode[1:]) ]
+        diff_rewriter.subst_inode (common_inode[0], new_id)
+
+        # duplicate inode links
+        for link in db_links (self.repo, self.state.common_version, inode):
+          changes.append ([ "l+", link[0], link[1], new_id ])
+
+      new_diff = diff_rewriter.rewrite (changes)
+
+      self.repo.bdb.begin_transaction()
+      self.state.gen_diff = self.repo.make_temp_name()
+      self.repo.bdb.commit_transaction()
+
+      gen_diff_file = open (self.state.gen_diff, "w")
+      gen_diff_file.write (new_diff)
+      gen_diff_file.close()
+
+      self.state.local_diffs = []
+
+      for lh in self.state.local_history:    # local history
+        if lh[0] > self.state.common_version:
+          diff = lh[1]
+          changes = parse_diff (load_diff (self.repo, diff))
+
+          # ANALYZE local history (again) - we don't want this to be part of the state
+          # because then the state would be huge
+
+          local_merge_history = MergeHistory (self.repo, self.state.common_version, "local")
+          local_merge_history.add_changes (lh[0], changes)
+
+          changes = local_merge_history.get_changes_without (lh[0], self.state.inode_ignore_change)
+
+          new_diff = diff_rewriter.rewrite (changes)
+          if new_diff != "":
+            commit_args = {
+              "author"  : lh[2],
+              "message" : lh[3],
+              "time"    : lh[4]
+            }
+
+            self.repo.bdb.begin_transaction()
+            diff_filename = self.repo.make_temp_name()
+            self.state.local_diffs.append ((diff_filename, commit_args))
+            self.repo.bdb.commit_transaction()
+
+            diff_file = open (diff_filename, "w")
+            diff_file.write (new_diff)
+            diff_file.close()
+
+      self.state.exec_phase += 1
+
+      # create new journal entry
+      self.repo.bdb.begin_transaction()
+      mk_journal_entry (self.repo)
+      self.repo.bdb.commit_transaction()
+
+    if self.state.exec_phase == self.EXEC_PHASE_APPLY_LOCAL:
+      if self.state.gen_diff != "":
+        commit_args = { "author" : "no author", "message" : "automatically generated merge commit" }
+        #=> spawn apply sub-command
+        diff = cat (self.state.gen_diff)
+        if diff != "":
+          apply (self.repo, diff, verbose = False, commit_args = commit_args)
+        status_line.update ("patch %d/%d" % (self.state.patch_count, self.state.total_patch_count))
+        self.state.patch_count += 1
+
+        self.state.gen_diff = ""
+
+        # create new journal entry
+        self.repo.bdb.begin_transaction()
+        mk_journal_entry (self.repo)
+        self.repo.bdb.commit_transaction()
+
+        return CMD_AGAIN
+
+      if len (self.state.local_diffs):
+        diff_file, commit_args = self.state.local_diffs[0]
+
+        #=> spawn apply sub-command
+        diff = cat (diff_file)
+        if diff != "":
+          apply (self.repo, diff, verbose = False, commit_args = commit_args)
+        status_line.update ("patch %d/%d" % (self.state.patch_count, self.state.total_patch_count))
+        self.state.patch_count += 1
+
+        self.state.local_diffs = self.state.local_diffs[1:]
+
+        # create new journal entry
+        self.repo.bdb.begin_transaction()
+        mk_journal_entry (self.repo)
+        self.repo.bdb.commit_transaction()
+
+        return CMD_AGAIN
+
+    #status_line.cleanup()
+    #diff_rewriter.show_changes()
+
+    return CMD_DONE
+
+  def get_operation (self):
+    return "merge"
+
+  def get_state (self):
+    return self.state
+
+  def set_state (self, state):
+    self.state = state
+
 def history_merge (repo, local_history, remote_history, pull_args):
   # figure out last common version
   common_version = find_common_version (local_history, remote_history)
@@ -891,96 +1107,19 @@ def history_merge (repo, local_history, remote_history, pull_args):
     elif choice == "a":
       return
 
-  # REVERT to common version
-  revert (repo, common_version, verbose = False)
-  # command based revert
-  run_commands (repo)
+  cmd = MergeCommand()
+  cmd.start (repo,
+    common_version = common_version,
+    total_patch_count = total_patch_count,
+    restore_inode = restore_inode,
+    inode_ignore_change = inode_ignore_change,
+    use_both_versions = use_both_versions,
+    local_history = local_history,
+    remote_history = remote_history)
 
-  master_version = common_version
+  queue_command (cmd)
+  return True
 
-  patch_count = 1
-  # APPLY master history
-  for rh in remote_history:
-    if rh[0] > common_version:
-      diff = rh[1]
-      file_number = repo.bdb.load_hash2file (diff)
-      if file_number != 0:
-        diff_file = repo.make_number_filename (file_number)
-      else:
-        raise Exception ("Diff for hash %s not found" % hash)
-
-      status_line.update ("patch %d/%d" % (patch_count, total_patch_count))
-      patch_count += 1
-
-      commit_args = dict()
-      commit_args["author"] = rh[2]
-      commit_args["message"] = rh[3]
-      commit_args["time"] = rh[4]
-
-      apply (repo, xzcat (diff_file), diff, verbose = False, commit_args = commit_args)
-      run_commands (repo)
-      master_version = rh[0]
-
-  # APPLY extra commit to be able to apply local history without problems
-  diff_rewriter = DiffRewriter (repo)
-
-  changes = []
-  for inode in restore_inode:
-    common_inode = db_inode (repo, common_version, inode)
-    if db_inode (repo, master_version, inode):
-      # inode still exists: just undo changes
-      changes += [ map (str, [ "i!" ] + common_inode) ]
-    else:
-      # inode is gone: recreate it to allow applying local changes
-      changes += [ map (str, [ "i+" ] + common_inode) ]
-    changes += restore_inode_links (db_links (repo, common_version, inode), db_links (repo, master_version, inode))
-
-  for inode in use_both_versions:
-    # duplicate inode
-    common_inode = db_inode (repo, common_version, inode)
-    new_id = gen_id (common_inode[0])
-    changes += [ map (str, [ "i+", new_id ] + common_inode[1:]) ]
-    diff_rewriter.subst_inode (common_inode[0], new_id)
-
-    # duplicate inode links
-    for link in db_links (repo, common_version, inode):
-      changes.append ([ "l+", link[0], link[1], new_id ])
-
-  new_diff = diff_rewriter.rewrite (changes)
-
-  if new_diff != "":
-    status_line.update ("patch %d/%d" % (patch_count, total_patch_count))
-    commit_args["author"] = "no author"
-    commit_args["message"] = "automatically generated merge commit"
-    apply (repo, new_diff, verbose = False, commit_args = commit_args)
-    run_commands (repo)
-
-  # we count the "middle-patch" even if its empty to be able to predict
-  # the number of patches
-  patch_count += 1
-
-  # APPLY modified local history
-
-  for lh in local_history:
-    if lh[0] > common_version:
-      # adapt diff to get rid of conflicts
-      changes = local_merge_history.get_changes_without (lh[0], inode_ignore_change)
-
-      new_diff = diff_rewriter.rewrite (changes)
-      # apply modified diff
-      status_line.update ("patch %d/%d" % (patch_count, total_patch_count))
-      patch_count += 1
-      if new_diff != "":
-        commit_args = dict()
-        commit_args["author"] = lh[2]
-        commit_args["message"] = lh[3]
-        commit_args["time"] = lh[4]
-
-        apply (repo, new_diff, verbose = False, commit_args = commit_args)
-        run_commands (repo)
-
-  status_line.cleanup()
-  diff_rewriter.show_changes()
 
 class FastForwardState:
   pass

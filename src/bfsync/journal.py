@@ -85,7 +85,7 @@ def run_commands (repo):
 def run_continue (repo, je):
   from commitutils import CommitCommand, RevertCommand
   from applyutils import ApplyCommand
-  from transferutils import FastForwardCommand
+  from transferutils import FastForwardCommand, MergeCommand
   global cmd_stack
   global cmd_op
 
@@ -107,6 +107,8 @@ def run_continue (repo, je):
         instance = ApplyCommand()
       elif cmd[0] == "fast-forward":
         instance = FastForwardCommand()
+      elif cmd[0] == "merge":
+        instance = MergeCommand()
       else:
         raise Exception ("unsupported command type %s during continue" % cmd[0])
 
