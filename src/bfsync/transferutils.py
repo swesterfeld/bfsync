@@ -912,7 +912,7 @@ class MergeCommand:
         # duplicate inode
         common_inode = db_inode (self.repo, self.state.common_version, inode)
         new_id = gen_id (common_inode[0])
-        changes += [ map (str, [ "i+", new_id ] + self.state.common_inode[1:]) ]
+        changes += [ map (str, [ "i+", new_id ] + common_inode[1:]) ]
         diff_rewriter.subst_inode (common_inode[0], new_id)
 
         # duplicate inode links
