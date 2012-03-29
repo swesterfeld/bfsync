@@ -919,17 +919,25 @@ class MergeCommand:
         for link in db_links (self.repo, self.state.common_version, inode):
           changes.append ([ "l+", link[0], link[1], new_id ])
 
-      new_diff = diff_rewriter.rewrite (changes)
-
-      self.repo.bdb.begin_transaction()
-      self.state.gen_diff = self.repo.make_temp_name()
-      self.repo.bdb.commit_transaction()
-
-      gen_diff_file = open (self.state.gen_diff, "w")
-      gen_diff_file.write (new_diff)
-      gen_diff_file.close()
-
       self.state.local_diffs = []
+
+      def add_local_diff (diff, commit_args):
+        # create temp file containing diff & append diff to local_diffs list
+        self.repo.bdb.begin_transaction()
+        diff_filename = self.repo.make_temp_name()
+        self.state.local_diffs.append ((diff_filename, commit_args))
+        self.repo.bdb.commit_transaction()
+
+        diff_file = open (diff_filename, "w")
+        diff_file.write (diff)
+        diff_file.close()
+
+      new_diff = diff_rewriter.rewrite (changes)
+      commit_args = {
+        "author" : "no author",
+        "message" : "automatically generated merge commit"
+      }
+      add_local_diff (new_diff, commit_args)
 
       for lh in self.state.local_history:    # local history
         if lh[0] > self.state.common_version:
@@ -945,21 +953,12 @@ class MergeCommand:
           changes = local_merge_history.get_changes_without (lh[0], self.state.inode_ignore_change)
 
           new_diff = diff_rewriter.rewrite (changes)
-          if new_diff != "":
-            commit_args = {
-              "author"  : lh[2],
-              "message" : lh[3],
-              "time"    : lh[4]
-            }
-
-            self.repo.bdb.begin_transaction()
-            diff_filename = self.repo.make_temp_name()
-            self.state.local_diffs.append ((diff_filename, commit_args))
-            self.repo.bdb.commit_transaction()
-
-            diff_file = open (diff_filename, "w")
-            diff_file.write (new_diff)
-            diff_file.close()
+          commit_args = {
+            "author"  : lh[2],
+            "message" : lh[3],
+            "time"    : lh[4]
+          }
+          add_local_diff (new_diff, commit_args)
 
       self.state.exec_phase += 1
 
@@ -969,24 +968,6 @@ class MergeCommand:
       self.repo.bdb.commit_transaction()
 
     if self.state.exec_phase == self.EXEC_PHASE_APPLY_LOCAL:
-      if self.state.gen_diff != "":
-        commit_args = { "author" : "no author", "message" : "automatically generated merge commit" }
-        #=> spawn apply sub-command
-        diff = cat (self.state.gen_diff)
-        if diff != "":
-          apply (self.repo, diff, verbose = False, commit_args = commit_args)
-        status_line.update ("patch %d/%d" % (self.state.patch_count, self.state.total_patch_count))
-        self.state.patch_count += 1
-
-        self.state.gen_diff = ""
-
-        # create new journal entry
-        self.repo.bdb.begin_transaction()
-        mk_journal_entry (self.repo)
-        self.repo.bdb.commit_transaction()
-
-        return CMD_AGAIN
-
       if len (self.state.local_diffs):
         diff_file, commit_args = self.state.local_diffs[0]
 
