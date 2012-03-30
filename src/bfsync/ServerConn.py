@@ -79,6 +79,15 @@ class ServerConn:
         raise Exception (result[0])
     raise Exception ("ServerConn: unable to clear cache (bad response received)")
 
+  def update_read_only (self):
+    result = self.process_call (["update-read-only"])
+    if result and len (result) == 1:
+      if result[0] == "ok":
+        return
+      else:
+        raise Exception (result[0])
+    raise Exception ("ServerConn: unable to update read only mode (bad response received)")
+
   def close (self):
     self.conn_socket.close()
     self.conn_socket = None

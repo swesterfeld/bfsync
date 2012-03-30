@@ -18,6 +18,7 @@
 import bfsyncdb
 import cPickle
 import os
+from ServerConn import ServerConn
 
 class JournalOperation:
   pass
@@ -81,6 +82,15 @@ def run_commands (repo):
   repo.bdb.begin_transaction()
   repo.bdb.clear_journal_entries()
   repo.bdb.commit_transaction()
+
+  # notify server: operation is no longer active => re-enter read/write mode
+  try:
+    server_conn = ServerConn (repo.path)
+    server_conn.get_lock()
+    server_conn.update_read_only()
+    server_conn.close()
+  except IOError, e:
+    pass       # no server => no notification
 
 def run_continue (repo, je):
   from commitutils import CommitCommand, RevertCommand
