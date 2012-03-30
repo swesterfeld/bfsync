@@ -104,7 +104,7 @@ class Repo:
       raise Exception ("db integrity check failed")
 
   def close (self):
-    self.repo.conn.close()
+    del self.repo
     self.repo = None
 
 def sync_repos (a, b):
