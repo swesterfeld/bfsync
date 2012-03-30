@@ -358,6 +358,9 @@ class RevertCommand:
     # we modified the db, so the fs needs to reload everything
     # in-memory cached items will not be correct
     self.server_conn.clear_cache()
+
+    # this will release the lock
+    self.server_conn.close()
     return CMD_DONE
 
   def get_state (self):
