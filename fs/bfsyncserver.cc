@@ -255,8 +255,6 @@ Server::handle_client (int client_fd)
 
   vector<char> client_req;
 
-  double last_inode_cache_save_time = gettime();
-
   while (client_fd > 0)
     {
       cpoll_fds[0].fd = client_fd;
@@ -344,6 +342,11 @@ Server::handle_client (int client_fd)
                       FSLock cc_lock (FSLock::REORG);
                       INodeRepo::the()->clear_cache();
                     }
+                }
+              else if (request[0] == "update-read-only")
+                {
+                  result.push_back ("ok");
+                  bfsyncfs_update_read_only();
                 }
               else if (request[0] == "perf-getattr")
                 {
