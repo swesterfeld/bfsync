@@ -22,6 +22,8 @@ import resource
 import cPickle
 from tempfile import NamedTemporaryFile
 
+ID_ROOT = "/" + "0" * 40        # root directory id string
+
 def format_size (size, total_size):
   unit_str = [ "B", "KB", "MB", "GB", "TB" ]
   unit = 0
@@ -195,7 +197,7 @@ class Repo:
 
     self.foreach_inode_link (version, None, update_names)
     name = []
-    while inode_id != "/" + 40 * "0":
+    while inode_id != ID_ROOT:
       pn = name_dict[inode_id]
       inode_id = pn[0]
       name.insert (0, pn[1])
