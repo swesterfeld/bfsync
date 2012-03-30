@@ -475,7 +475,7 @@ def apply_link_changes (links, changes):
   return links
 
 def link_filename (repo, common_version, dir_id, merge_history):
-  if dir_id == "/" + "0" * 40:
+  if dir_id == ID_ROOT:
     return "/"
 
   links = db_links (repo, common_version, dir_id)
@@ -943,17 +943,19 @@ class MergeCommand:
       }
       add_local_diff (new_diff, commit_args)
 
+      # ANALYZE local history (again) - we don't want this to be part of the state
+      # because then the state would be huge
+      local_merge_history = MergeHistory (self.repo, self.state.common_version, "local")
+
       for lh in self.state.local_history:    # local history
         if lh[0] > self.state.common_version:
           diff = lh[1]
           changes = parse_diff (load_diff (self.repo, diff))
-
-          # ANALYZE local history (again) - we don't want this to be part of the state
-          # because then the state would be huge
-
-          local_merge_history = MergeHistory (self.repo, self.state.common_version, "local")
           local_merge_history.add_changes (lh[0], changes)
 
+      for lh in self.state.local_history:    # local history
+        if lh[0] > self.state.common_version:
+          diff = lh[1]
           changes = local_merge_history.get_changes_without (lh[0], self.state.inode_ignore_change)
 
           new_diff = diff_rewriter.rewrite (changes)
@@ -1048,7 +1050,7 @@ def history_merge (repo, local_history, remote_history, pull_args):
     elif pull_args.always_master:
       choice = "m"
     elif pull_args.always_both:
-      if conflict_id == "0"*40:
+      if conflict_id == ID_ROOT:
         choice = "m"
       else:
         choice = "b"
