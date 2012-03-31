@@ -83,7 +83,7 @@ class TransferList:
     rate_limiter = RateLimiter (pipe, params)
     for tfile in self.tlist:
       self.file_number += 1
-      f = open (os.path.join (repo.path, "objects", make_object_filename (tfile.hash)))
+      f = open (repo.make_object_filename (tfile.hash))
       remaining = tfile.size
       while (remaining > 0):
         todo = min (remaining, 256 * 1024)
@@ -128,6 +128,7 @@ class TransferList:
         format_time (eta)
       ))
   def receive_files (self, repo, pipe, verbose):
+    repo.bdb.begin_transaction()    # FIXME: need transaction splitting
     self.start_time = time.time()
     dest_path = repo.make_temp_name()
     for tfile in self.tlist:
@@ -143,10 +144,11 @@ class TransferList:
         if verbose and self.need_update():
           self.update_status_line()
       f.close()
-      move_file_to_objects (repo, dest_path)
+      move_file_to_objects (repo, dest_path, False)
     if (verbose):
       self.update_status_line()
       status_line.cleanup()
+    repo.bdb.commit_transaction()
   def copy_files (self, dest_repo, src_repo):
     dest_repo.bdb.begin_transaction()    # FIXME: need transaction splitting
     self.start_time = time.time()
