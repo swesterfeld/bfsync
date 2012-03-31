@@ -724,31 +724,32 @@ def cmd_repo_files():
   dir_list = repo_files_args.dirs
   null = repo_files_args.null
 
-  c = repo.conn.cursor()
-
   # determine current db version
-  VERSION = 1
-  c.execute ('''SELECT version FROM history''')
-  for row in c:
-    VERSION = max (row[0], VERSION)
+  VERSION = repo.first_unused_version()
 
-  hash_dict = dict()
-  c.execute ("SELECT hash FROM inodes WHERE ? >= vmin AND ? <= vmax", (VERSION, VERSION))
-  for row in c:
-    if len (row[0]) == 40:
-      hash_dict[row[0]] = True
+  # create set with hashes contained in the current version
+  hash_set = set()
+  def update_hash_set (inode):
+    if len (inode.hash) == 40:
+      hash_set.add (inode.hash)
 
+  repo.foreach_inode_link (VERSION, update_hash_set, None)
+
+  # search files in target dir which are available in current version
   for dir in dir_list:
     for walk_dir, walk_dirs, walk_files in os.walk (dir):
       for f in walk_files:
         full_name = os.path.join (walk_dir, f)
-        if os.path.isfile (full_name):        # ignore symlinks
-          hash = hash_cache.compute_hash (full_name)
-          if hash_dict.has_key (hash):
-            if null:
-              sys.stdout.write (full_name + '\0')
-            else:
-              print full_name
+        if os.path.isfile (full_name) and not os.path.islink (full_name): # ignore symlinks
+          try:
+            hash = hash_cache.compute_hash (full_name)
+            if hash in hash_set:
+              if null:
+                sys.stdout.write (full_name + '\0')
+              else:
+                print full_name
+          except IOError, e:
+            pass # ignore files that cannot be read due to permissions
 
 def cmd_collect():
   old_cwd = os.getcwd()
