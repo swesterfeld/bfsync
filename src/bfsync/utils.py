@@ -163,7 +163,7 @@ class Repo:
     if inode_callback:
       inode_callback (inode)
 
-    if inode.type != 3: # FIXME: constants
+    if inode.type != bfsyncdb.FILE_DIR:
       return # not a directory, no links
 
     links = self.bdb.load_links (inode.id, version)
