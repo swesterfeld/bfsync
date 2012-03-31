@@ -430,9 +430,7 @@ def cmd_db_fingerprint():
 def cmd_remote():
   os.chdir (args[0])
   repo = cd_repo_connect_db()
-  conn = repo.conn
   repo_path = repo.path
-  c = conn.cursor()
 
   while True:
     command = sys.stdin.readline().strip()
