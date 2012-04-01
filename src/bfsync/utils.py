@@ -378,3 +378,24 @@ def print_mem_usage (comment):
   print "** %s ** memory usage: %d K" % (comment, resource.getrusage (resource.RUSAGE_SELF).ru_maxrss)
   print "** %s ** memory smaps: %d K" % (comment, mem_smaps)
   print
+
+class TransactionSplitter:
+  def __init__ (self, repo, max_count):
+    self.repo = repo
+    self.count = 0
+    self.max_count = max_count
+    self.repo.bdb.begin_transaction()
+
+  def __del__ (self):
+    assert self.count == 0
+
+  def split (self):
+    self.count += 1
+    if self.count >= self.max_count:
+      self.repo.bdb.commit_transaction()
+      self.repo.bdb.begin_transaction()
+      self.count = 0
+
+  def commit (self):
+    self.repo.bdb.commit_transaction()
+    self.count = 0

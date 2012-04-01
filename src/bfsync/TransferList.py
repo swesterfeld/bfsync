@@ -128,7 +128,7 @@ class TransferList:
         format_time (eta)
       ))
   def receive_files (self, repo, pipe, verbose):
-    repo.bdb.begin_transaction()    # FIXME: need transaction splitting
+    tsplitter = TransactionSplitter (repo, 20000)
     self.start_time = time.time()
     dest_path = repo.make_temp_name()
     for tfile in self.tlist:
@@ -145,12 +145,13 @@ class TransferList:
           self.update_status_line()
       f.close()
       move_file_to_objects (repo, dest_path, False)
+      tsplitter.split()             # start new transaction every once in a while
     if (verbose):
       self.update_status_line()
       status_line.cleanup()
-    repo.bdb.commit_transaction()
+    tsplitter.commit()
   def copy_files (self, dest_repo, src_repo):
-    dest_repo.bdb.begin_transaction()    # FIXME: need transaction splitting
+    tsplitter = TransactionSplitter (dest_repo, 20000)
     self.start_time = time.time()
     dest_path = dest_repo.make_temp_name()
     for tfile in self.tlist:
@@ -165,8 +166,9 @@ class TransferList:
       self.bytes_done += tfile.size
       if self.need_update():
         self.update_status_line()
+      tsplitter.split()             # start new transaction every once in a while
     self.update_status_line()
     status_line.cleanup()
-    dest_repo.bdb.commit_transaction()
+    tsplitter.commit()
 
 
