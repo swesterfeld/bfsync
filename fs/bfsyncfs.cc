@@ -1486,6 +1486,28 @@ bfsyncfs_main (int argc, char **argv)
       exit (1);
     }
 
+  CfgParser repo_info_parser;
+  if (!repo_info_parser.parse (repo_path + "/info"))
+    {
+      printf ("bfsyncfs: parse error in repo info:\n%s\n", repo_info_parser.error().c_str());
+      exit (1);
+    }
+  map<string, vector<string> > info_values = repo_info_parser.values();
+  const vector<string>& repo_type = info_values["repo-type"];
+  bool repo_type_ok = false;
+  if (repo_type.size() == 1)
+    {
+      if (repo_type[0] == "store")
+        repo_type_ok = true;
+      else
+        printf ("bfsyncfs: repo-type info setting is '%s'\n", repo_type[0].c_str());
+    }
+  if (!repo_type_ok)
+    {
+      printf ("bfsyncfs: bad repository type, cannot mount\n");
+      exit (1);
+    }
+
   special_files.info  = "repo-type mount;\n";
   special_files.info += "repo-path \"" + repo_path + "\";\n";
   special_files.info += "mount-point \"" + mount_point + "\";\n";
