@@ -651,6 +651,10 @@ class CommitCommand:
 
       if not commit_size_ok:
         print "Nothing to commit."
+
+        # cleanup server lock
+        self.server_conn.clear_cache()
+        self.server_conn.close()
         return CMD_DONE
 
       self.state.exec_phase += 1
