@@ -800,7 +800,7 @@ def cmd_recover():
     os.remove (filename)
 
 def cmd_continue():
-  parser = argparse.ArgumentParser (prog='bfsync recover')
+  parser = argparse.ArgumentParser (prog='bfsync continue')
   parser.add_argument ("dest_dir", nargs = "?")
   parsed_args = parser.parse_args (args)
 

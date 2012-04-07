@@ -1580,7 +1580,7 @@ bfsyncfs_main (int argc, char **argv)
   if (bfsyncfs_read_only)
     {
       printf ("bfsyncfs: some operation did not complete, mounting readonly\n");
-      printf ("bfsyncfs: use bfsync continue to fix this\n");
+      printf ("bfsyncfs: use bfsync continue %s to fix this\n", bdb_path.c_str());
     }
 
   int fuse_rc = fuse_main (my_argc, my_argv, &bfsync_oper, NULL);

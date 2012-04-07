@@ -250,7 +250,7 @@ def cd_repo_connect_db (cont = False):
       print
       print " *", op.command_line
       print
-      raise BFSyncError ("run bfsync continue to fix this")
+      raise BFSyncError ("run bfsync continue %s to fix this" % repo_path)
 
   repo.path = repo_path
   repo.config = bfsync_info
