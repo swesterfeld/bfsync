@@ -328,6 +328,14 @@ def cmd_log():
 
 def cmd_status():
   repo = cd_repo_connect_db()
+
+  # lock if server is running: this causes bfsyncfs cache to be written
+  try:
+    server_conn = ServerConn (repo.path)
+    server_conn.get_lock()
+  except IOError, e:
+    pass       # no server => no lock
+
   status = gen_status (repo)
 
   print "=" * 80
