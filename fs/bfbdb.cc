@@ -1432,7 +1432,20 @@ BDB::clear_journal_entries()
 static inline int
 make_shm_key (int n)
 {
-  return (n * 256) ^ 0xbfbdb000;
+  // we make sure that keys of the same user don't collide ourselves; to
+  // ensure keys of different users don't collide we start at a different
+  // starting point determined by the uid
+
+  string base_str = string_printf ("bfsync|%d", getuid());
+
+  GChecksum *checksum = g_checksum_new (G_CHECKSUM_SHA1);
+  g_checksum_update (checksum, (const guchar *) base_str.c_str(), base_str.size());
+  gsize len = 20;
+  guint32 buffer[len / 4];
+  g_checksum_get_digest (checksum, (guint8 *) buffer, &len);
+  g_checksum_free (checksum);
+
+  return (n * 8) ^ buffer[0];
 }
 
 int
