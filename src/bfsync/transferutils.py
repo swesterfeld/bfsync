@@ -25,7 +25,7 @@ from commitutils import revert
 from xzutils import xzcat
 from StatusLine import status_line, OutputSubsampler
 from HashCache import hash_cache
-from journal import run_commands, queue_command, mk_journal_entry, CMD_AGAIN, CMD_DONE
+from journal import queue_command, mk_journal_entry, CMD_AGAIN, CMD_DONE
 import argparse
 import subprocess
 import datetime
