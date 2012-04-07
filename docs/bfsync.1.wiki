@@ -25,8 +25,8 @@ avoid entering your password over and over again.
 
 == COMMANDS ==
 
-; '''clone''' ''[ -u ]'' ''<repo>'' ''[ <dest-dir> ]''
-: Initialize new cloned bfsync repo from bfsync master repo ''<repo>''. If ''<dest-dir>'' is not specified, bfsync clone will generate a directory name from the repository name, otherwise it will clone into the directory ''<dest-dir>''. If -u is given, bfsync clone will set the "use-uid-gid" option in the config file for the cloned repository to 1. This means that upon mount, the user id settings and group id settings for files/directories will be taken from the repository. This will only make sense if all machines that access the data have the same uid/gid numbers. The default (without -u) is not to use the uid/gid numbers, which should be perfect for almost every use case.  
+; '''clone''' ''[ -u ]'' ''[ -c <cache_size_mb> ] ''<repo>'' ''[ <dest-dir> ]''
+: Initialize new cloned bfsync repo from bfsync master repo ''<repo>''. If ''<dest-dir>'' is not specified, bfsync clone will generate a directory name from the repository name, otherwise it will clone into the directory ''<dest-dir>''. If -u is given, bfsync clone will set the "use-uid-gid" option in the config file for the cloned repository to 1. This means that upon mount, the user id settings and group id settings for files/directories will be taken from the repository. This will only make sense if all machines that access the data have the same uid/gid numbers. The default (without -u) is not to use the uid/gid numbers, which should be perfect for almost every use case. The cache size is the amount of shared memory that will be used as database cache size. It defaults to 16 MB, which is fine for repositories that contain a small amount of files. For synchronizing big files between different hosts, that will usually work. If the amount of files is large (> 100.000), you need a larger cache size. At least 100 MB cache per 1.000.000 files stored should be used, more is better, if you can afford it.
 
 ; '''commit''' ''[-m <message>]'' ''[-a <author>]''
 : Commit changes to the repository. Normally, an editor will be started to allow the user to enter a commit message. If the -m option is used, the commit message is set to the <message> argument, and no editor will be started. The -a option allows to specify the author of the commit (otherwise it defaults to user@host).
@@ -68,9 +68,6 @@ avoid entering your password over and over again.
 
 Every bfsync checkout has a file called "config", which can be used to set configuration variables for this checkout.
 
-; '''sqlite-sync''' ''0|1'';
-: This can be used to control whether sqlite should block the application until all data has been written to the disk. With sqlite-sync set to 1 (the default), sqlite will wait for the disk; this is slower than setting this to zero; however the sqlite documentation indicates that setting sqlite-sync to 0 might lead to a corrupt database if the system has a power failure or operating system crash while writing changes.
-
 ; '''use-uid-gid''' ''0|1'';
 : Bfsync was designed to store all file meta data, including the user id and group id of each file. These numbers will only make sense if all checkouts use the same uid/gid number to name mappings. Since for most users we cannot assume that the uid/gid numbers are the same on every system that has a checkout, bfsync defaults to ignoring the access permissions and uid/gid numbers stored in the repository. All files will appear to belong to the user that mounted the filesystem, and access rights will also not be enforced. To use the uid/gid numbers and enforce access rights, set use-uid-gid to 1. This is for instance useful if you want to copy data into the repository as root and preserve the ownership of the files.
 
@@ -94,6 +91,45 @@ The configuration keys in the '''default group''' can be set simultaneously, by 
     push "...";
     pull "...";
   }
+
+== SHARED MEMORY CONFIGURATION ==
+
+Shared memory is used by bfsync to access the Berkeley DB database contents from different processes: the bfsync FUSE filesystem process, bfsyncfs, and the python frontend, bfsync. Under Linux, the amount of shared memory usually is limited by three system-wide kernel parameters:
+
+; '''/proc/sys/kernel/shmall'''
+: The maximum amount of shared memory that can be allocated.
+
+; '''/proc/sys/kernel/shmmax'''
+: The maximum size of a shared memory segment.
+
+; '''/proc/sys/kernel/shmmni'''
+: The maximum number of shared memory segments.
+
+These limits need to be large enough to allow bfsync to allocate the required amount of shared memory. The amount of shared memory required mainly depends on the cache size. Bfsync will use somewhat more shared memory than the cache size, but setting the limits too high is usually not a problem. Example: If you're using three bfsync filesystems with 256 MB cache per filesystem, you can do so if '''shmall''' is 2 GB and '''shmmax''' is 512 MB. '''shmmni''' is usually not an issue, because bfsync doesn't use may segments (about 4 per filesystem).
+
+To display your current limits, you can use:
+
+; '''server:~$ ipcs -lm
+: Display the system wide shared memory limits.
+
+To adjust shared memory settings at boot time, create a file called ''/etc/sysctl.d/90-bfsync-shm.conf'':
+
+ # Shared memory settings for bfsync
+ 
+ # Maximum size of shared memory segment in bytes
+ # 512 MB
+ kernel.shmmax = 536870912
+ 
+ # Maximum total size of shared memory in pages (normally 4096 bytes)
+ # 2 GB
+ kernel.shmall = 524288
+
+Note that if you have other programs that also need shared memory, you need to coordinate the settings of all shared memory using programs. Its also not a problem if your limits are too high, so if the system wide limit for '''shmall''' is already 8 GB, there is no need to adjust it.
+
+After creating this files, the settings will be loaded at boot time. To activate the shared memory configuration without rebooting, you can use
+
+; '''server:~$ sysctl -p /etc/sysctl.d/90-bfsync-shm.conf'''
+: Load shared memory settings (as root).
 
 == MERGES ==
 
@@ -203,6 +239,62 @@ As last step, we'll transfer the file to client2. Of course we could use the sam
 
 ; '''client2:~/big$ bfsync get server:big'''
 : Get the file from the server.
+
+== BACKUP WALKTHROUGH ==
+
+Since bfsync implements file level deduplication and versioning of files, it can be used to do backups. Backups typically contain lots of files (like 5.000.000 files). Therefore you can only use a subset of the available commands for backups, since some commands do not work well if the number of files is that large. Currently, only '''commit''' and '''gc''' have been optimized for backup usage. It is likely that '''get''', '''put''', '''check''' and others will be supported for backups in the future. However, advanced functions like merges might never be supported for backups - for typical backup scenarios this is not an issue.
+
+The first step for backups is to set up repositories:
+* all steps should be done as root
+* for this example, we assume that our backup harddisk is mounted to /backup
+
+; '''server:/backup$ bfsync init master'''
+: Setup master repository
+
+; '''server:/backup$ bfsync clone -u -c 500 master repo'''
+: Clone repository, ensure uid/gid are stored and set cache size.
+
+The cache size is important for backups: if it is too small, the backup will take a lot more time. However, since the cache is stored in shared memory, a overly large cache may use too much of the system memory. As a rule of thumb, 100 megabytes of cache should be used for every 1.000.000 files that are stored in the backup. More is better, if you can afford it.
+
+; '''server:/backup$ mkdir mnt'''
+: Create mount point on the server.
+
+; '''server:/backup$ bfsyncfs repo mnt'''
+: Mount repository.
+
+; '''server:/backup$ cd /backup/mnt'''
+
+Now that everything is initialized, we can backup some data. For this example we backup /home.
+
+; '''server:/backup/mnt$ rsync -axH --delete /home/ home
+: Copy everything from /home to the backup. This is the initial backup, so all files will be copyied to the backup harddisk.
+
+The rsync options we use here are '''-a''' to copy all file attributes, '''-x''' to exclude everything that is not on the filesystem that /home is on and '''-H''' to backup hardlinks as hardlinks. Using '''--delete''' deletes files in the target directory that are not in the source directory.
+
+; '''server:/backup/mnt$ bfsync commit -m "initial backup"'''
+: Snapshot current state, run deduplication.
+
+We have the initial full backup. Now one day later, we only need to backup changes (which will be a lot faster than the initial backup), like this:
+
+; '''server:/backup/mnt$ rsync -axH --delete /home/ home
+: Copy changes from /home to the backup.
+
+; '''server:/backup/mnt$ bfsync commit -m "first incremental backup"'''
+: Snapshot current state, run deduplication.
+
+Now, we've created the first incremental backup. This usually uses a lot less additional disk space than the initial full backup, since usually only few files will be changed. To access an individual backup, you can use
+
+; '''server:/backup/mnt$ cd /backup/mnt/.bfsync/commits/''2''/home'''
+: Access a specific version. The version log can be viewed with '''bfsync log'''.
+
+To automate the process, a script which runs the rsync and commit steps every night can be used. Removing the contents of old backups is currently not supported, but will be available in the future.
+
+The commandline for creating a backup of the root filesystem is:
+
+; '''server:/backup/mnt$ rsync -axH --delete / root
+: Copy changes from / to the backup.
+
+If you backup more than one filesystem every day, you only need to commit once, that is first rsync all filesystems and commit as last step.
 
 == SEE ALSO ==
 [[bfsyncfs.1]]
