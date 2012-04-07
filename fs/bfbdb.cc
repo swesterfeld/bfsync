@@ -199,7 +199,7 @@ BDB::open (const string& path, int cache_size_mb, bool recover)
               fprintf (stderr, "Allocation of memory during database initialization failed.\n");
               fprintf (stderr, "\n");
               fprintf (stderr, "Most likely this means that shared memory could not be initialized\n");
-              fprintf (stderr, "during system wide shared memory limits. See CONFIGURING SHARED MEMORY\n");
+              fprintf (stderr, "during system wide shared memory limits. See SHARED MEMORY CONFIGURATION\n");
               fprintf (stderr, "section in the bfsync manpage for a description how to fix this.\n");
 
               const double shmmax = read_shm_limit ("shmmax") / 1024.0 / 1024.0;
