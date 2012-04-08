@@ -1,3 +1,8 @@
+Overview of Changes in bfsync-0.3.0:
+
+* use Berkeley DB instead of SQLITE to store history
+* made code more scalable: storing lots of files (5.000.000) is possible now
+
 Overview of Changes in bfsync-0.2.0:
 
 * almost completely rewrote all code
