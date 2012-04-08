@@ -63,7 +63,13 @@ avoid entering your password over and over again.
 
 ; '''revert''' ''[<version>]''
 : If <version> is not specified, revert will discard all uncommitted changes, and revert to the newest version available in the history. If <version> is specified, it will go back in time to that version.
- 
+
+; '''continue''' ''[<repo>]''
+: There are some operations, such as commit or revert, that must be finished completely once they are started, to ensure that the database is in a consistent state. If such an operation is interrupted, for instance because of a power failure, user abort (^C) or because the process was killed, it needs to be completed before the repository can be used for something else. A filesystem with an unfinished command can only be used in readonly mode until that operation is finished. The "continue" command can be used to finish an unfinished operation, either with the repository directory as argument, or if that is not there, the repository will be choosen according to the directory "continue" was started in.
+
+; '''recover''' ''[<repo>]''
+: Since bfsync uses Berkeley DB to store its data, the data integrity is protected even against extreme failures. For instance if the process that accesses the database crashes or is killed, or if everything on the host running bfsync is interrupted due to power failure or kernel panic. After such failures, the database needs recovery. Trying to mount bfsyncfs in that situation or using the bfsync utility will fail. In this situation running "recover" will restore the database to a consistent state and after that, normal work can start again. The repository is choosen either from the ''<repo>'' argument, or if that is not there, from the directory "continue" was started in. Recovery can not be done if there are still processes that are using the database. In that case, these processes need to be terminated before recovery. Attempting recovery if it is not necessary is safe, so it won't change the database state.
+
 == CONFIGURATION ==
 
 Every bfsync checkout has a file called "config", which can be used to set configuration variables for this checkout.
