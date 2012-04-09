@@ -50,3 +50,8 @@ all-local: setup.py
 
 install-exec-hook: setup.py
 	$(PYTHON) setup.py install --prefix=${prefix}
+# update ldconfig cache to be able to load python module linked to libbfsync.so
+# don't bother if this fails (maybe installing as user into user defined prefix)
+#
+# I think libtool should do this, but on my test system it doesn't
+	/sbin/ldconfig ${libdir} || true
