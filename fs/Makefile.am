@@ -1,5 +1,4 @@
-AM_CXXFLAGS = $(GLIB_CFLAGS) $(FUSE_CFLAGS) -I/usr/local/BerkeleyDB.5.3/include
-AM_LDFLAGS = -L/usr/local/BerkeleyDB.5.3/lib
+AM_CXXFLAGS = $(GLIB_CFLAGS) $(FUSE_CFLAGS)
 AM_CFLAGS = $(GLIB_CFLAGS) $(FUSE_CFLAGS)
 
 BDB_LIBS = -ldb_cxx
