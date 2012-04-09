@@ -70,7 +70,7 @@ It is possible to use bfsync for backups, in that case you only use a subset of 
 : There are some operations, such as commit or revert, that must be finished completely once they are started, to ensure that the database is in a consistent state. If such an operation is interrupted, for instance because of a power failure, user abort (^C) or because the process was killed, it needs to be completed before the repository can be used for something else. A filesystem with an unfinished command can only be used in readonly mode until that operation is finished. The "continue" command can be used to finish an unfinished operation, either with the repository directory as argument, or if that is not there, the repository will be choosen according to the directory "continue" was started in.
 
 ; '''recover''' ''[<repo>]''
-: Since bfsync uses Berkeley DB to store its data, the data integrity is protected even against extreme failures. For instance if the process that accesses the database crashes or is killed, or if everything on the host running bfsync is interrupted due to power failure or kernel panic. After such failures, the database needs recovery. Trying to mount bfsyncfs in that situation or using the bfsync utility will fail. In this situation running "recover" will restore the database to a consistent state and after that, normal work can start again. The repository is choosen either from the ''<repo>'' argument, or if that is not there, from the directory "continue" was started in. Recovery can not be done if there are still processes that are using the database. In that case, these processes need to be terminated before recovery. Attempting recovery if it is not necessary is safe, so it won't change the database state.
+: Since bfsync uses Berkeley DB to store its data, the data integrity is protected even against extreme failures. For instance if the process that accesses the database crashes or is killed, or if everything on the host running bfsync is interrupted due to power failure or kernel panic. After such failures, the database needs recovery. Trying to mount bfsyncfs in that situation or using the bfsync utility will fail. In this situation running "recover" will restore the database to a consistent state and after that, normal work can start again. The repository is choosen either from the ''<repo>'' argument, or if that is not there, from the directory "recover" was started in. Recovery can not be done if there are still processes that are using the database. In that case, these processes need to be terminated before recovery. Attempting recovery if it is not necessary is safe, so it won't change the database state.
 
 == CONFIGURATION ==
 
@@ -258,9 +258,7 @@ As last step, we'll transfer the file to client2. Of course we could use the sam
 
 Since bfsync implements file level deduplication and versioning of files, it can be used to do backups. Backups typically contain lots of files (like 5.000.000 files). Therefore you can only use a subset of the available commands for backups, since some commands do not work well if the number of files is that large. Currently, only '''commit''' and '''gc''' have been optimized for backup usage. It is likely that '''get''', '''put''', '''check''' and others will be supported for backups in the future. However, advanced functions like merges might never be supported for backups - for typical backup scenarios this is not an issue.
 
-The first step for backups is to set up repositories:
-* all steps should be done as root
-* for this example, we assume that our backup harddisk is mounted to /backup
+The first step for backups is to set up repositories. All '''steps should be done as root'''. For this example, we assume that our '''backup harddisk is mounted to /backup'''.
 
 ; '''server:/backup$ bfsync init master'''
 : Setup master repository
@@ -271,12 +269,13 @@ The first step for backups is to set up repositories:
 The cache size is important for backups: if it is too small, the backup will take a lot more time. However, since the cache is stored in shared memory, a overly large cache may use too much of the system memory. As a rule of thumb, 100 megabytes of cache should be used for every 1.000.000 files that are stored in the backup. More is better, if you can afford it.
 
 ; '''server:/backup$ mkdir mnt'''
-: Create mount point on the server.
+: Create mount point for the backup repository.
 
 ; '''server:/backup$ bfsyncfs repo mnt'''
 : Mount repository.
 
 ; '''server:/backup$ cd /backup/mnt'''
+: Change dir.
 
 Now that everything is initialized, we can backup some data. For this example we backup /home.
 
