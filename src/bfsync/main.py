@@ -831,6 +831,16 @@ def cmd_continue():
   je = journal[0]
   run_continue (repo, je)
 
+def cmd_debug_hash_filename():
+  hash = args[0]
+  repo = cd_repo_connect_db()
+  file_number = repo.bdb.load_hash2file (hash)
+  if file_number != 0:
+    full_name = repo.make_number_filename (file_number)
+    print full_name
+  else:
+    print "not found in objects"
+
 args = []
 
 def main():
@@ -867,6 +877,7 @@ def main():
       ( "debug-get-prof",         cmd_debug_get_prof, 0),
       ( "debug-reset-prof",       cmd_debug_reset_prof, 0),
       ( "debug-inode-name",       cmd_debug_inode_name, 1),
+      ( "debug-hash-filename",    cmd_debug_hash_filename, 1),
     ]
     parse_ok = False
     if command == None:
