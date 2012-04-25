@@ -58,7 +58,7 @@ def get (repo, urls):
   if len (urls) == 0:
     default_get = repo.config.get ("default/get")
     if len (default_get) == 0:
-      raise Exception ("get: no repository specified and default/get config value empty")
+      raise BFSyncError ("get: no repository specified and default/get config value empty")
     url = default_get[0]
   else:
     url = urls[0]
@@ -89,10 +89,10 @@ def put (repo, urls):
   repo_path = repo.path
 
   if len (urls) == 0:
-    default_get = repo.config.get ("default/put")
-    if len (default_get) == 0:
-      raise Exception ("put: no repository specified and default/put config value empty")
-    url = default_get[0]
+    default_put = repo.config.get ("default/put")
+    if len (default_put) == 0:
+      raise BFSyncError ("put: no repository specified and default/put config value empty")
+    url = default_put[0]
   else:
     url = urls[0]
 
@@ -667,7 +667,7 @@ class UserConflictResolver:
       default_get = self.repo.config.get ("default/get")
 
       if len (default_get) == 0:
-        raise Exception ("get: no repository specified and default/get config value empty")
+        raise BFSyncError ("get: no repository specified and default/get config value empty")
       url = default_get[0]
 
       remote_repo = RemoteRepo (url)
