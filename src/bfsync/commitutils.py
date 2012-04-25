@@ -24,6 +24,7 @@ from HashCache import hash_cache
 from journal import mk_journal_entry, queue_command, CMD_DONE, CMD_AGAIN
 
 import os
+import pwd
 import time
 import hashlib
 import cPickle
@@ -234,7 +235,7 @@ def init_commit_msg (repo, filename):
   msg_file.close()
 
 def get_author():
-  username = os.getlogin()
+  username = pwd.getpwuid (os.getuid()).pw_name
   hostname = os.uname()[1]
   return "%s@%s" % (username, hostname)
 
