@@ -216,12 +216,19 @@ class Repo:
 
 def cd_repo_connect_db (cont = False):
   repo_path = find_repo_dir()
-  bfsync_info = parse_config (repo_path + "/config")
+  bfsync_config = parse_config (repo_path + "/config")
+  bfsync_info = parse_config (repo_path + "/info")
 
-  cache_size = bfsync_info.get ("cache-size")
+  cache_size = bfsync_config.get ("cache-size")
   if len (cache_size) != 1:
     raise Exception ("bad cache-size setting")
   cache_size = int (cache_size[0])
+
+  version = bfsync_info.get ("version")
+  if len (version) != 1:
+    raise Exception ("bad version setting");
+  if version[0] != bfsyncdb.repo_version():
+    raise BFSyncError ("incompatible repository version, need version %s, got version %s" % (bfsyncdb.repo_version(), version[0]))
 
   os.chdir (repo_path)
 
@@ -253,7 +260,7 @@ def cd_repo_connect_db (cont = False):
       raise BFSyncError ("run bfsync continue %s to fix this" % repo_path)
 
   repo.path = repo_path
-  repo.config = bfsync_info
+  repo.config = bfsync_config
 
   if not cont:
     # wipe old temp files (only if we're not starting in "continue" mode)
