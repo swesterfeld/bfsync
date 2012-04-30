@@ -23,6 +23,7 @@
 #include "bfhistory.hh"
 #include "bftimeprof.hh"
 #include "bfidsorter.hh"
+#include "config.h"
 
 #include <db_cxx.h>
 
@@ -1465,4 +1466,10 @@ void
 time_prof_reset()
 {
   BFSync::TimeProf::the()->reset();
+}
+
+string
+repo_version()
+{
+  return VERSION;
 }

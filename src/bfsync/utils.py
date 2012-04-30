@@ -304,7 +304,8 @@ def parse_config (filename):
     "put-rate-limit",
     "use-uid-gid",
     "cache-size",
-    "repo-id"
+    "repo-id",
+    "version"
   ])
   return bfsync_info
 

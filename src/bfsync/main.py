@@ -514,6 +514,7 @@ def cmd_init():
   # info file
   f = open ("info", "w")
   f.write ("repo-type master;\n")
+  f.write ("version \"%s\";\n" % bfsyncdb.repo_version())
   f.close()
 
   # config file
@@ -682,6 +683,7 @@ def cmd_clone():
   # init info
   f = open (os.path.join (dir, "info"), "w")
   f.write ("repo-type store;\n")
+  f.write ("version \"%s\";\n" % bfsyncdb.repo_version())
   f.close()
 
   # default config

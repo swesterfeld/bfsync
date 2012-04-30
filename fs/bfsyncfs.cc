@@ -25,6 +25,7 @@
 #include "bfcfgparser.hh"
 #include "bfbdb.hh"
 #include "bftimeprof.hh"
+#include "config.h"
 
 #include <sys/time.h>
 #include <fuse.h>
@@ -1417,6 +1418,22 @@ exit_usage()
   exit (1);
 }
 
+void
+check_version_compat_or_die (const vector<string>& info_version)
+{
+  string vstr = "";
+  if (info_version.size() == 1)
+    {
+      vstr = info_version[0];
+    }
+  if (vstr != VERSION)
+    {
+      fprintf (stderr, "bfsyncfs: incompatible repository version, can not mount\n");
+      fprintf (stderr, "          need repository version '%s', got repository version '%s'\n", VERSION, vstr.c_str());
+      exit (1);
+    }
+}
+
 }
 
 int
@@ -1508,6 +1525,8 @@ bfsyncfs_main (int argc, char **argv)
       printf ("bfsyncfs: bad repository type, cannot mount\n");
       exit (1);
     }
+
+  check_version_compat_or_die (info_values["version"]);
 
   special_files.info  = "repo-type mount;\n";
   special_files.info += "repo-path \"" + repo_path + "\";\n";

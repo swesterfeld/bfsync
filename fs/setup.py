@@ -22,7 +22,7 @@ bfsyncdb_module = Extension('_bfsyncdb',
                            sources=['bfsyncdb.cc', 'bfsyncdb.i'],
                            library_dirs = ['.libs'] + pkg_config_values["-L"],
                            libraries=['bfsync'] + pkg_config_values["-l"],
-                           include_dirs=['/usr/local/BerkeleyDB.5.3/include'] + pkg_config_values["-I"],
+                           include_dirs=['..'] + pkg_config_values["-I"],
                            language='c++',
                            swig_opts=['-c++']
                            )

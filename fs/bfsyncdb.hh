@@ -366,6 +366,8 @@ public:
   std::string error_string();
 };
 
+std::string repo_version();
+
 const unsigned int VERSION_INF = 0xffffffff;
 
 const unsigned int FILE_REGULAR     = BFSync::FILE_REGULAR;
