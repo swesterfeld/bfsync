@@ -518,6 +518,7 @@ bfsync_getattr (const char *path_arg, struct stat *stbuf)
         {
           stbuf->st_size = inode->size;
         }
+      stbuf->st_blocks = (stbuf->st_size + 511) / 512;
       stbuf->st_mode = inode_mode | S_IFREG;
     }
   else if (inode->type == FILE_SYMLINK)
