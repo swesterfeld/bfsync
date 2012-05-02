@@ -43,6 +43,9 @@ class RemoteRepo:
     else:
       raise Exception ("unknown url type %s, neither local nor remote?" % url)
 
+    if self.version() != bfsyncdb.repo_version():
+      raise Exception ("incompatible version: remote bfsync version is '%s', required version is '%s'")
+
   def get_history (self):
     if self.conn == LOCAL:
       return remote_history (self.repo)
@@ -102,3 +105,11 @@ class RemoteRepo:
       tlist.send_list (self.remote_p.stdin)
       tlist.send_files (repo, self.remote_p.stdin, True, tparams)
       self.remote_p.stdin.flush()
+
+  def version (self):
+    if self.conn == LOCAL:
+      return bfsyncdb.repo_version()
+    else:
+      self.remote_p.stdin.write ("version\n")
+      result_len = int (self.remote_p.stdout.readline())
+      return cPickle.loads (self.remote_p.stdout.read (result_len))

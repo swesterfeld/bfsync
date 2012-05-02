@@ -445,6 +445,8 @@ def cmd_remote():
     result = None
     if command == "history":
       result = cPickle.dumps (remote_history (repo))
+    elif command == "version":
+      result = cPickle.dumps (bfsyncdb.repo_version())
     elif command == "ls":
       hashes_len = int (sys.stdin.readline())
       hashes = cPickle.loads (sys.stdin.read (hashes_len))
