@@ -1451,17 +1451,17 @@ make_shm_key (int n)
 int
 BDB::shm_id (const string& path)
 {
-  CfgParser repo_cfg_parser;
-  if (!repo_cfg_parser.parse (path + "/config"))
+  CfgParser repo_info_parser;
+  if (!repo_info_parser.parse (path + "/info"))
     {
-      printf ("parse error in repo config:\n%s\n", repo_cfg_parser.error().c_str());
+      printf ("parse error in repo info:\n%s\n", repo_info_parser.error().c_str());
       exit (1);
     }
 
   int new_key = 1;
 
-  map<string, vector<string> > cfg_values = repo_cfg_parser.values();
-  const vector<string>& repo_id = cfg_values["repo-id"];
+  map<string, vector<string> > info_values = repo_info_parser.values();
+  const vector<string>& repo_id = info_values["repo-id"];
   if (repo_id.size() == 1)
     {
       string keys_filename = string_printf ("%s/%s", g_get_home_dir(), ".bfsync_keys");
@@ -1499,6 +1499,11 @@ BDB::shm_id (const string& path)
       assert (keys_file);
       fprintf (keys_file, "key-%s %d; # path \"%s\"\n", repo_id[0].c_str(), new_key, apath.c_str());
       fclose (keys_file);
+    }
+  else
+    {
+      printf ("No repo-id entry found in '%s/info'.\n", path.c_str());
+      exit (1);
     }
   return make_shm_key (new_key);
 }
