@@ -843,6 +843,9 @@ def cmd_debug_hash_filename():
   else:
     print "not found in objects"
 
+def cmd_version():
+  print "bfsync %s" % bfsyncdb.repo_version()
+
 args = []
 
 def main():
@@ -880,6 +883,7 @@ def main():
       ( "debug-reset-prof",       cmd_debug_reset_prof, 0),
       ( "debug-inode-name",       cmd_debug_inode_name, 1),
       ( "debug-hash-filename",    cmd_debug_hash_filename, 1),
+      ( "--version",              cmd_version, 0),
     ]
     parse_ok = False
     if command == None:
