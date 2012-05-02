@@ -43,8 +43,12 @@ class RemoteRepo:
     else:
       raise Exception ("unknown url type %s, neither local nor remote?" % url)
 
-    if self.version() != bfsyncdb.repo_version():
-      raise Exception ("incompatible version: remote bfsync version is '%s', required version is '%s'")
+    # check compatibility of remote bfsync version with local bfsync version
+    local_version = bfsyncdb.repo_version()
+    remote_version = self.version()
+    if local_version != remote_version:
+      raise BFSyncError ("incompatible version: remote bfsync version is '%s', local version is '%s'" % (
+                       remote_version, local_version))
 
   def get_history (self):
     if self.conn == LOCAL:
