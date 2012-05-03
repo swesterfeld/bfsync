@@ -846,6 +846,38 @@ def cmd_debug_hash_filename():
 def cmd_version():
   print "bfsync %s" % bfsyncdb.repo_version()
 
+def cmd_disk_usage():
+  repo = cd_repo_connect_db()
+
+  class Usage:
+    pass
+
+  usage = Usage()
+  hset = set()
+
+  def du_add (inode):
+    if len (inode.hash) == 40:
+      if not inode.hash in hset:
+        usage.mem += inode.size
+        hset.add (inode.hash)
+
+  versions = []
+  VERSION = 1
+  while True:
+    hentry = repo.bdb.load_history_entry (VERSION)
+    VERSION += 1
+
+    if not hentry.valid:
+      break
+    versions.append (hentry.version)
+
+  versions.reverse()
+
+  for version in versions:
+    usage.mem = 0
+    repo.foreach_inode_link (version, du_add, None)
+    print version, usage.mem
+
 args = []
 
 def main():
@@ -875,6 +907,7 @@ def main():
       ( "remove",                 cmd_remove, 0),
       ( "remote",                 cmd_remote, 1),
       ( "recover",                cmd_recover, 1),
+      ( "disk-usage",             cmd_disk_usage, 0),
       ( "debug-load-all-inodes",  cmd_debug_load_all_inodes, 0),
       ( "debug-perf-getattr",     cmd_debug_perf_getattr, 1),
       ( "debug-clear-cache",      cmd_debug_clear_cache, 1),
