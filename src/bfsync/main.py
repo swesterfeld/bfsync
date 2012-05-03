@@ -898,6 +898,37 @@ def cmd_disk_usage():
   print "--------+---------------------+-----------------------"
   print "      total                   | %20s" % dot_format (total_mem)
 
+def cmd_new_files():
+  repo = cd_repo_connect_db()
+  VERSION = int (args[0])
+  hset = set()
+
+  # make a set of hashes that were already in the repository
+  # before the version we're checking
+  def collect_hashes (inode):
+    if len (inode.hash) == 40:
+      hset.add (inode.hash)
+
+  if VERSION > 1:
+    repo.foreach_inode_link (VERSION - 1, collect_hashes, None)
+
+  def walk (id, prefix):
+    inode = repo.bdb.load_inode (id, VERSION)
+    if inode.valid:
+      # print filename if hash was not known in previous version
+      if len (inode.hash) == 40 and not inode.hash in hset:
+        print ".bfsync/commits/%d%s" % (VERSION, prefix)
+        hset.add (inode.hash)
+
+      # recurse into subdirs
+      if inode.type == bfsyncdb.FILE_DIR:
+        links = repo.bdb.load_links (id, VERSION)
+        for link in links:
+          inode_name = prefix + "/" + link.name
+          walk (link.inode_id, inode_name)
+
+  walk (bfsyncdb.id_root(), "")
+
 args = []
 
 def main():
@@ -923,6 +954,7 @@ def main():
       ( "init",                   cmd_init, 1),
       ( "clone",                  cmd_clone, 1),
       ( "repo-files",             cmd_repo_files, 1),
+      ( "new-files",              cmd_new_files, 1),
       ( "db-fingerprint",         cmd_db_fingerprint, 0),
       ( "remove",                 cmd_remove, 0),
       ( "remote",                 cmd_remote, 1),
