@@ -846,6 +846,16 @@ def cmd_debug_hash_filename():
 def cmd_version():
   print "bfsync %s" % bfsyncdb.repo_version()
 
+def dot_format (number):  # 12345678 => "12.345.678"
+  nstr = "%d" % number
+  nstr = nstr[::-1]
+  result = ""
+  for c in nstr:
+    if len (result) % 4 == 3 and len (result) > 0:
+      result += "."
+    result += c
+  return result[::-1]
+
 def cmd_disk_usage():
   repo = cd_repo_connect_db()
 
@@ -869,14 +879,24 @@ def cmd_disk_usage():
 
     if not hentry.valid:
       break
-    versions.append (hentry.version)
+    versions.append (hentry)
 
   versions.reverse()
 
-  for version in versions:
+  total_mem = 0
+  print "Version |       Time          |   Bytes used (delta)"
+  print "--------+---------------------+-----------------------"
+  for hentry in versions:
     usage.mem = 0
-    repo.foreach_inode_link (version, du_add, None)
-    print version, usage.mem
+    repo.foreach_inode_link (hentry.version, du_add, None)
+    print "%6d  | %s | %20s" % (
+      hentry.version,
+      datetime.datetime.fromtimestamp (hentry.time).strftime ("%F %H:%M:%S"),
+      dot_format (usage.mem)
+    )
+    total_mem += usage.mem
+  print "--------+---------------------+-----------------------"
+  print "      total                   | %20s" % dot_format (total_mem)
 
 args = []
 
