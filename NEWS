@@ -1,3 +1,14 @@
+Overview of Changes in bfsync-0.3.1:
+
+* added bfsync new-files command: show new/changed files for a given version
+* added bfsync disk-usage command: generate disk usage statistics
+* support bfsync --version
+* check version compatibility during mount / remote connections
+* added disk usage information to FuSE filesystem (support du)
+* correctly determine user name when running from cron
+* use xz -6 for history diffs (not -9) to better support low mem machines
+* minor fixes
+
 Overview of Changes in bfsync-0.3.0:
 
 * use Berkeley DB instead of SQLITE to store history
