@@ -857,6 +857,10 @@ def dot_format (number):  # 12345678 => "12.345.678"
   return result[::-1]
 
 def cmd_disk_usage():
+  parser = argparse.ArgumentParser (prog='bfsync disk-usage', add_help=False)
+  parser.add_argument ('-h', action="store_true", default=False)
+  parsed_args = parser.parse_args (args)
+
   repo = cd_repo_connect_db()
 
   class Usage:
@@ -889,14 +893,23 @@ def cmd_disk_usage():
   for hentry in versions:
     usage.mem = 0
     repo.foreach_inode_link (hentry.version, du_add, None)
+    if parsed_args.h:
+      mem_fmt = format_size1 (usage.mem)
+    else:
+      mem_fmt = dot_format (usage.mem)
     print "%6d  | %s | %20s" % (
       hentry.version,
       datetime.datetime.fromtimestamp (hentry.time).strftime ("%F %H:%M:%S"),
-      dot_format (usage.mem)
+      mem_fmt
     )
     total_mem += usage.mem
+
+  if parsed_args.h:
+    total_mem_fmt = format_size1 (total_mem)
+  else:
+    total_mem_fmt = dot_format (total_mem)
   print "--------+---------------------+-----------------------"
-  print "      total                   | %20s" % dot_format (total_mem)
+  print "      total                   | %20s" % total_mem_fmt
 
 def cmd_new_files():
   parser = argparse.ArgumentParser (prog='bfsync new-files', add_help=False)
@@ -982,7 +995,7 @@ def main():
       ( "remove",                 cmd_remove, 0),
       ( "remote",                 cmd_remote, 1),
       ( "recover",                cmd_recover, 1),
-      ( "disk-usage",             cmd_disk_usage, 0),
+      ( "disk-usage",             cmd_disk_usage, 1),
       ( "debug-load-all-inodes",  cmd_debug_load_all_inodes, 0),
       ( "debug-perf-getattr",     cmd_debug_perf_getattr, 1),
       ( "debug-clear-cache",      cmd_debug_clear_cache, 1),
