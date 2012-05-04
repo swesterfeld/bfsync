@@ -899,8 +899,14 @@ def cmd_disk_usage():
   print "      total                   | %20s" % dot_format (total_mem)
 
 def cmd_new_files():
+  parser = argparse.ArgumentParser (prog='bfsync new-files', add_help=False)
+  parser.add_argument ('-s', action="store_true", default=False)
+  parser.add_argument ('-h', action="store_true", default=False)
+  parser.add_argument ("version")
+  parsed_args = parser.parse_args (args)
+
   repo = cd_repo_connect_db()
-  VERSION = int (args[0])
+  VERSION = int (parsed_args.version)
   hset = set()
 
   # make a set of hashes that were already in the repository
@@ -912,12 +918,18 @@ def cmd_new_files():
   if VERSION > 1:
     repo.foreach_inode_link (VERSION - 1, collect_hashes, None)
 
+  size_sort_list = []
+
   def walk (id, prefix):
     inode = repo.bdb.load_inode (id, VERSION)
     if inode.valid:
       # print filename if hash was not known in previous version
       if len (inode.hash) == 40 and not inode.hash in hset:
-        print ".bfsync/commits/%d%s" % (VERSION, prefix)
+        filename = "%s" % prefix
+        if parsed_args.s:
+          size_sort_list.append ((inode.size, filename))
+        else:
+          print filename
         hset.add (inode.hash)
 
       # recurse into subdirs
@@ -928,6 +940,17 @@ def cmd_new_files():
           walk (link.inode_id, inode_name)
 
   walk (bfsyncdb.id_root(), "")
+
+  if parsed_args.s:
+    size_sort_list.sort (key = lambda x: x[0])
+    print "%20s | %s" % ("File size", "Filename")
+    print "---------------------+--------------------------------------------------------------------"
+    for f in size_sort_list:
+      if parsed_args.h:
+        size_fmt = format_size1 (f[0])
+      else:
+        size_fmt = dot_format (f[0])
+      print "%20s | %s" % (size_fmt, f[1])
 
 args = []
 
