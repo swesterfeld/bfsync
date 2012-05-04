@@ -1,4 +1,4 @@
-.TH "BFSYNC" "1" "2012\-04\-09" "Revision 715" "bfsync Manual Page"
+.TH "BFSYNC" "1" "2012\-05\-04" "Revision 718" "bfsync Manual Page"
 
 .SH NAME
 
@@ -84,6 +84,18 @@ There are some operations, such as commit or revert, that must be finished compl
 .TP
 \fBrecover\fR \fI[<repo>]\fR
 Since bfsync uses Berkeley DB to store its data, the data integrity is protected even against extreme failures. For instance if the process that accesses the database crashes or is killed, or if everything on the host running bfsync is interrupted due to power failure or kernel panic. After such failures, the database needs recovery. Trying to mount bfsyncfs in that situation or using the bfsync utility will fail. In this situation running "recover" will restore the database to a consistent state and after that, normal work can start again. The repository is choosen either from the \fI<repo>\fR argument, or if that is not there, from the directory "recover" was started in. Recovery can not be done if there are still processes that are using the database. In that case, these processes need to be terminated before recovery. Attempting recovery if it is not necessary is safe, so it won't change the database state.
+.PP
+.TP
+\fBdisk-usage\fR \fI[-h]\fR
+This generates disk usage information. The \fI-h\fR option will use human readable sizes (like 15G for 15 gigabytes), omitting it will print the sizes in bytes. The disk usage information is designed to see what could be freed when removing older versions. Therefore, it will start with the most recent version, since you'll want to keep this version in any case. This first size will be the size required to store one full backup (for the backup use case). Then, older versions are examined. Only the sizes of the files are counted that need to be kept additionally to be able to retrieve the older version completely. Since most of the files will be unchanged when compared to the current version, the increments will usually be small.
+.PP
+.TP
+\fBnew-files\fR \fI[-h]\fR \fI[-s]\fR \fI<version>\fR
+This command shows which files were added to the repository for a given version. It supports \fI-s\fR, which will also print the sizes of the newly added files. The \fI-h\fR option will use human readable sizes, omitting it will print the sizes in bytes. When the size information is requested, the files will be sorted by size, to make it easier to find out which are the biggest additions of this version.
+.PP
+.TP
+\fB--version\fR
+Print bfsync version.
 .PP
 
 .SH CONFIGURATION
