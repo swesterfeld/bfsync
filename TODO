@@ -15,6 +15,7 @@
 * support partial commit
 * auto-push/pull
 * excludes
+* detect broken connections using non-blocking i/o and timeouts
 
 Performance:
 ============
