@@ -16,6 +16,7 @@
 * auto-push/pull
 * excludes
 * detect broken connections using non-blocking i/o and timeouts
+* split transactions every 15 seconds
 
 Performance:
 ============
