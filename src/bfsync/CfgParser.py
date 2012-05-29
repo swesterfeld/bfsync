@@ -147,3 +147,51 @@ class CfgParser:
       return []
     else:
       return self.values[key]
+
+  def set (self, key, values):
+    if key not in self.allow_keys:
+      raise Exception ("unsupported key %s" % key)
+    self.values[key] = values
+
+  def to_string (self):
+    def maybe_quote (value):
+      if re.match ("^[a-z0-9_:.@/-]+$", value):
+        return value
+      else:
+        result = ""
+        for c in value:
+          if c == '"' or c == '\\':
+            result += '\\'
+          result += c
+        return '"' + result + '"'
+
+    str = ""
+    last_group = ""
+    for key in sorted (self.values.keys()):
+      split_key = key.split ("/")
+      if len (split_key) == 2:
+        key_group = split_key[0]
+        key_key   = split_key[1]
+      else:
+        key_group = ""
+        key_key   = key
+
+      if last_group != key_group:
+        if last_group != "":
+          str += "}\n"
+        if key_group != "":
+          str += key_group + " {\n"
+        last_group = key_group
+
+      values = self.values[key]
+      if len (values) > 0:
+        # add indentation in groups
+        if key_group != "":
+          str += "  ";
+        str += key_key
+        for value in values:
+          str += " %s" % maybe_quote (value)
+        str += ";\n"
+    if last_group != "":
+      str += "}\n"
+    return str

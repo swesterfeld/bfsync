@@ -884,6 +884,19 @@ def cmd_need_continue():
     print "not required"
     sys.exit (1)
 
+def cmd_config_set():
+  repo = cd_repo_connect_db()
+
+  key = args[0]
+  values = args[1:]
+
+  repo.config.set (key, values)
+
+  # write new config file
+  f = open ("config", "w")
+  f.write (repo.config.to_string())
+  f.close()
+
 def cmd_debug_hash_filename():
   hash = args[0]
   repo = cd_repo_connect_db()
@@ -1049,6 +1062,7 @@ def main():
       ( "need-recover",           cmd_need_recover, 1),
       ( "need-continue",          cmd_need_continue, 1),
       ( "disk-usage",             cmd_disk_usage, 1),
+      ( "config-set",             cmd_config_set, 1),
       ( "debug-load-all-inodes",  cmd_debug_load_all_inodes, 0),
       ( "debug-perf-getattr",     cmd_debug_perf_getattr, 1),
       ( "debug-clear-cache",      cmd_debug_clear_cache, 1),
