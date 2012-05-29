@@ -29,7 +29,7 @@ class CfgParser:
   TOKEN_ERROR = 7
 
   def get_token (self):
-    m = re.match ("([a-z0-9_:.@/-]+)(.*)", self.toparse, re.DOTALL)
+    m = re.match ("([a-zA-Z0-9_:.@/-]+)(.*)", self.toparse, re.DOTALL)
     if m:
       self.toparse = m.group (2)
       return self.TOKEN_IDENTIFIER, m.group (1)
@@ -155,7 +155,7 @@ class CfgParser:
 
   def to_string (self):
     def maybe_quote (value):
-      if re.match ("^[a-z0-9_:.@/-]+$", value):
+      if re.match ("^[a-zA-Z0-9_:.@/-]+$", value):
         return value
       else:
         result = ""
