@@ -859,6 +859,31 @@ def cmd_continue():
   je = journal[0]
   run_continue (repo, je)
 
+def cmd_need_continue():
+  parser = argparse.ArgumentParser (prog='bfsync need-continue')
+  parser.add_argument ("dest_dir", nargs = "?")
+  parsed_args = parser.parse_args (args)
+
+  if parsed_args.dest_dir:
+    dir = parsed_args.dest_dir
+    try:
+      os.chdir (dir)
+    except:
+      print "fatal: path '" + dir + "' does not exist"
+      sys.exit (1)
+
+  repo = cd_repo_connect_db (True)
+  journal = repo.bdb.load_journal_entries()
+
+  print "continue for " + repo.path + ":",
+
+  if len (journal) > 0:
+    print "required"
+    sys.exit (0)
+  else:
+    print "not required"
+    sys.exit (1)
+
 def cmd_debug_hash_filename():
   hash = args[0]
   repo = cd_repo_connect_db()
@@ -1022,6 +1047,7 @@ def main():
       ( "remote",                 cmd_remote, 1),
       ( "recover",                cmd_recover, 1),
       ( "need-recover",           cmd_need_recover, 1),
+      ( "need-continue",          cmd_need_continue, 1),
       ( "disk-usage",             cmd_disk_usage, 1),
       ( "debug-load-all-inodes",  cmd_debug_load_all_inodes, 0),
       ( "debug-perf-getattr",     cmd_debug_perf_getattr, 1),
