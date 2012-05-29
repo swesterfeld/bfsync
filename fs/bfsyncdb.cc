@@ -262,6 +262,12 @@ remove_db (const string& db)
     throw BDBException (BFSync::BDB_ERROR_UNKNOWN);
 }
 
+bool
+need_recover_db (const string& db)
+{
+  return BFSync::bdb_need_recover (db);
+}
+
 void
 BDBPtr::close()
 {

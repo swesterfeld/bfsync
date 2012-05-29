@@ -48,6 +48,18 @@ bdb_open (const string& path, int cache_size_mb, bool recover)
     return NULL;
 }
 
+bool
+bdb_need_recover (const string& path)
+{
+  BDB *bdb = new BDB();
+
+  bool result = bdb->need_recover (path);
+
+  delete bdb;
+
+  return result;
+}
+
 BDB::BDB() :
   transaction (NULL),
   m_history (this)

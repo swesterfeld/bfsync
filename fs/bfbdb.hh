@@ -55,6 +55,7 @@ enum BDBError
 };
 
 BDB *bdb_open (const std::string& path, int cache_size_mb, bool recover);
+bool bdb_need_recover (const std::string& path);
 
 class DataBuffer
 {
@@ -148,7 +149,6 @@ class BDB
 
   Mutex mutex;
 
-  bool need_recover (const std::string& path);
   void add_pid (const std::string& path);
   int  del_pid();
 
@@ -162,6 +162,7 @@ public:
 
   BDB();
 
+  bool  need_recover (const std::string& path);
   bool  open (const std::string& path, int cache_size_mb, bool recover);
   void  register_pid();
   void  sync();

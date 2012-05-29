@@ -234,6 +234,7 @@ public:
 
 extern BDBPtr             open_db (const std::string& db, int cache_size_mb, bool recover);
 extern void               remove_db (const std::string& db);
+extern bool               need_recover_db (const std::string& db);
 extern ID                 id_root();
 extern std::string        time_prof_result();
 extern void               time_prof_reset();

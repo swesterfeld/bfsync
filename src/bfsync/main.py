@@ -809,6 +809,32 @@ def cmd_recover():
   for filename in del_after_recover:
     os.remove (filename)
 
+def cmd_need_recover():
+  parser = argparse.ArgumentParser (prog='bfsync need-recover')
+  parser.add_argument ("dest_dir", nargs = "?")
+  parsed_args = parser.parse_args (args)
+
+  if parsed_args.dest_dir:
+    dir = parsed_args.dest_dir
+    try:
+      os.chdir (dir)
+    except:
+      print "fatal: path '" + dir + "' does not exist"
+      sys.exit (1)
+
+  repo_path = find_repo_dir()
+
+  need_recover = bfsyncdb.need_recover_db (repo_path)
+
+  print "recovery for " + repo_path + ":",
+
+  if need_recover:
+    print "required"
+    sys.exit (0)
+  else:
+    print "not required"
+    sys.exit (1)
+
 def cmd_continue():
   parser = argparse.ArgumentParser (prog='bfsync continue')
   parser.add_argument ("dest_dir", nargs = "?")
@@ -995,6 +1021,7 @@ def main():
       ( "remove",                 cmd_remove, 0),
       ( "remote",                 cmd_remote, 1),
       ( "recover",                cmd_recover, 1),
+      ( "need-recover",           cmd_need_recover, 1),
       ( "disk-usage",             cmd_disk_usage, 1),
       ( "debug-load-all-inodes",  cmd_debug_load_all_inodes, 0),
       ( "debug-perf-getattr",     cmd_debug_perf_getattr, 1),
