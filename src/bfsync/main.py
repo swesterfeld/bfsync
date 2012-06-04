@@ -897,6 +897,33 @@ def cmd_config_set():
   f.write (repo.config.to_string())
   f.close()
 
+def cmd_show_tags():
+  repo = cd_repo_connect_db()
+
+  version = int (args[0])
+
+  tags = repo.bdb.list_tags (version)
+  for t in tags:
+    values = repo.bdb.load_tag (version, t)
+    for v in values:
+      print "%s=%s" % (t, v)
+
+def cmd_debug_add_tag():
+  repo = cd_repo_connect_db()
+
+  version = int (args[0])
+  repo.bdb.begin_transaction()
+  repo.bdb.add_tag (version, args[1], args[2])
+  repo.bdb.commit_transaction()
+
+def cmd_debug_del_tag():
+  repo = cd_repo_connect_db()
+
+  version = int (args[0])
+  repo.bdb.begin_transaction()
+  repo.bdb.del_tag (version, args[1], args[2])
+  repo.bdb.commit_transaction()
+
 def cmd_debug_hash_filename():
   hash = args[0]
   repo = cd_repo_connect_db()
@@ -1063,6 +1090,9 @@ def main():
       ( "need-continue",          cmd_need_continue, 1),
       ( "disk-usage",             cmd_disk_usage, 1),
       ( "config-set",             cmd_config_set, 1),
+      ( "show-tags",              cmd_show_tags, 1),
+      ( "debug-add-tag",          cmd_debug_add_tag, 1),
+      ( "debug-del-tag",          cmd_debug_del_tag, 1),
       ( "debug-load-all-inodes",  cmd_debug_load_all_inodes, 0),
       ( "debug-perf-getattr",     cmd_debug_perf_getattr, 1),
       ( "debug-clear-cache",      cmd_debug_clear_cache, 1),

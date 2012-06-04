@@ -43,6 +43,7 @@ enum BDBTables
   BDB_TABLE_DELETED_FILES       = 9,
   BDB_TABLE_TEMP_FILES          = 10,
   BDB_TABLE_JOURNAL             = 11,
+  BDB_TABLE_TAGS                = 12,
 };
 
 enum BDBError
@@ -208,6 +209,11 @@ public:
   BDBError  load_journal_entries (std::vector<JournalEntry>& entries);
   BDBError  store_journal_entry (const JournalEntry& journal_entry);
   BDBError  clear_journal_entries();
+
+  std::vector<std::string>  list_tags (unsigned int version);
+  std::vector<std::string>  load_tag  (unsigned int version, const std::string& tag);
+  BDBError                  add_tag (unsigned int version, const std::string& tag, const std::string& value);
+  BDBError                  del_tag (unsigned int version, const std::string& tag, const std::string& value);
 };
 
 class DbcPtr // cursor smart-wrapper: automatically closes cursor in destructor

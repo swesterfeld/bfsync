@@ -221,6 +221,11 @@ public:
   void                      store_journal_entry (const JournalEntry& journal_entry);
   void                      clear_journal_entries();
 
+  std::vector<std::string>  list_tags (unsigned int version);
+  std::vector<std::string>  load_tag  (unsigned int version, const std::string& tag);
+  void                      add_tag (unsigned int version, const std::string& tag, const std::string& value);
+  void                      del_tag (unsigned int version, const std::string& tag, const std::string& value);
+
   unsigned int       gen_new_file_number();
 
   void               close();

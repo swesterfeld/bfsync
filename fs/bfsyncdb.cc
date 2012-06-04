@@ -1150,6 +1150,36 @@ BDBPtr::gen_new_file_number()
   return ptr->my_bdb->gen_new_file_number();
 }
 
+//---------------------------- BDBPtr::tags -----------------------------
+
+std::vector<std::string>
+BDBPtr::list_tags (unsigned int version)
+{
+  return ptr->my_bdb->list_tags (version);
+}
+
+std::vector<std::string>
+BDBPtr::load_tag (unsigned int version, const string& tag)
+{
+  return ptr->my_bdb->load_tag (version, tag);
+}
+
+void
+BDBPtr::add_tag (unsigned int version, const string& tag, const string& value)
+{
+  BDBError err = ptr->my_bdb->add_tag (version, tag, value);
+  if (err)
+    throw BDBException (err);
+}
+
+void
+BDBPtr::del_tag (unsigned int version, const string& tag, const string& value)
+{
+  BDBError err = ptr->my_bdb->del_tag (version, tag, value);
+  if (err)
+    throw BDBException (err);
+}
+
 /* refcounting BDB wrapper */
 
 BDBPtr::BDBPtr (BDBWrapper *wrapper) :

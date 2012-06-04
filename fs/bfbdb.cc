@@ -1441,6 +1441,148 @@ BDB::clear_journal_entries()
   return ret2error (ret);
 }
 
+vector<string>
+BDB::list_tags (unsigned int version)
+{
+  vector<string> result_tags;
+
+  Lock lock (mutex);
+
+  DataOutBuffer kbuf;
+  kbuf.write_uint32_be (version);        /* use big endian storage to make Berkeley DB sort entries properly */
+  kbuf.write_table (BDB_TABLE_TAGS);
+
+  Dbt key (kbuf.begin(), kbuf.size());
+  Dbt data;
+
+  DbcPtr dbc (this); /* Acquire a cursor for the database. */
+
+  map<string, bool> have_tag;
+
+  // iterate over all tag values
+  int ret = dbc->get (&key, &data, DB_SET);
+  while (ret == 0)
+    {
+      DataBuffer dbuffer ((char *) data.get_data(), data.get_size());
+
+      string tag = dbuffer.read_string();
+      if (!have_tag[tag])
+        {
+          result_tags.push_back (tag);
+          have_tag[tag] = true;
+        }
+
+      ret = dbc->get (&key, &data, DB_NEXT_DUP);
+    }
+  return result_tags;
+}
+
+vector<string>
+BDB::load_tag  (unsigned int version, const string& tag)
+{
+  vector<string> result_values;
+
+  Lock lock (mutex);
+
+  DataOutBuffer kbuf;
+  kbuf.write_uint32_be (version);        /* use big endian storage to make Berkeley DB sort entries properly */
+  kbuf.write_table (BDB_TABLE_TAGS);
+
+  Dbt key (kbuf.begin(), kbuf.size());
+  Dbt data;
+
+  DbcPtr dbc (this); /* Acquire a cursor for the database. */
+
+  // iterate over all tag values
+  int ret = dbc->get (&key, &data, DB_SET);
+  while (ret == 0)
+    {
+      DataBuffer dbuffer ((char *) data.get_data(), data.get_size());
+
+      string data_tag = dbuffer.read_string();
+      if (tag == data_tag)
+        {
+          string data_value = dbuffer.read_string();
+
+          result_values.push_back (data_value);
+        }
+
+      ret = dbc->get (&key, &data, DB_NEXT_DUP);
+    }
+  return result_values;
+}
+
+BDBError
+BDB::add_tag (unsigned int version, const string& tag, const string& value)
+{
+  vector<string> values = load_tag (version, tag);
+
+  for (vector<string>::iterator vi = values.begin(); vi != values.end(); vi++)
+    {
+      if (value == *vi)   /* tag already present */
+        return BDB_ERROR_NONE;
+    }
+
+  Lock lock (mutex);
+
+  if (!transaction)
+    return BDB_ERROR_NO_TRANS;
+
+  DataOutBuffer kbuf, dbuf;
+  kbuf.write_uint32_be (version);        /* use big endian storage to make Berkeley DB sort entries properly */
+  kbuf.write_table (BDB_TABLE_TAGS);
+
+  dbuf.write_string (tag);
+  dbuf.write_string (value);
+
+  Dbt key (kbuf.begin(), kbuf.size());
+  Dbt data (dbuf.begin(), dbuf.size());
+
+  int ret = db->put (transaction, &key, &data, 0);
+  return ret2error (ret);
+}
+
+BDBError
+BDB::del_tag (unsigned int version, const string& tag, const string& value)
+{
+  Lock lock (mutex);
+
+  if (!transaction)
+    return BDB_ERROR_NO_TRANS;
+
+  DataOutBuffer kbuf;
+
+  kbuf.write_uint32_be (version);        /* use big endian storage to make Berkeley DB sort entries properly */
+  kbuf.write_table (BDB_TABLE_TAGS);
+
+  Dbt tkey (kbuf.begin(), kbuf.size());
+  Dbt tdata;
+
+  DbcPtr dbc (this, DbcPtr::WRITE);
+
+  // iterate over all tags for that version
+  bool found = false;
+  int  ret = dbc->get (&tkey, &tdata, DB_SET);
+  while (ret == 0)
+    {
+      DataBuffer dbuffer ((char *) tdata.get_data(), tdata.get_size());
+
+      string data_tag = dbuffer.read_string();
+      string data_value = dbuffer.read_string();
+
+      if (data_tag == tag && data_value == value)
+        {
+          ret = dbc->del (0);
+          if (ret != 0)
+            return ret2error (ret);
+          found = true;
+        }
+
+      ret = dbc->get (&tkey, &tdata, DB_NEXT_DUP);
+    }
+  return found ? BDB_ERROR_NONE : BDB_ERROR_NOT_FOUND;
+}
+
 static inline int
 make_shm_key (int n)
 {
