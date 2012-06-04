@@ -20,6 +20,22 @@ import os
 from StatusLine import status_line, OutputSubsampler
 from utils import *
 
+def create_deleted_version_set (repo):
+  # read log, scan for deleted versions
+  deleted_versions = set()
+  VERSION = 1
+  while True:
+    hentry = repo.bdb.load_history_entry (VERSION)
+    VERSION += 1
+
+    if not hentry.valid:
+      break
+
+    tags = repo.bdb.list_tags (hentry.version)
+    if "deleted" in tags:
+      deleted_versions.add (hentry.version)
+  return deleted_versions
+
 def gc (repo):
   DEBUG_MEM = False
 
@@ -29,6 +45,7 @@ def gc (repo):
   need_files = bfsyncdb.SortedArray()
   object_count = 0
   outss = OutputSubsampler()
+  deleted_versions = create_deleted_version_set (repo)
 
   def update_status():
     status_line.update ("phase 1/4: scanning objects: %d" % object_count)
@@ -41,9 +58,19 @@ def gc (repo):
     inodes = repo.bdb.load_all_inodes (id)
     for inode in inodes:
       if len (inode.hash) == 40:
-        file_number = repo.bdb.load_hash2file (inode.hash)
-        if file_number != 0:
-          need_files.append (file_number)
+        needed = False
+        if inode.vmax == bfsyncdb.VERSION_INF:
+          needed = True
+        else:
+          for version in range (inode.vmin, inode.vmax + 1):
+            if version not in deleted_versions:
+              needed = True
+              break
+
+        if needed:           # only keep files if versions have not been tagged deleted in history
+          file_number = repo.bdb.load_hash2file (inode.hash)
+          if file_number != 0:
+            need_files.append (file_number)
       if inode.hash == "new":
         file_number = inode.new_file_number
         if file_number != 0:
