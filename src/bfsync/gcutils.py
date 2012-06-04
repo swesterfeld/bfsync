@@ -20,22 +20,6 @@ import os
 from StatusLine import status_line, OutputSubsampler
 from utils import *
 
-def create_deleted_version_set (repo):
-  # read log, scan for deleted versions
-  deleted_versions = set()
-  VERSION = 1
-  while True:
-    hentry = repo.bdb.load_history_entry (VERSION)
-    VERSION += 1
-
-    if not hentry.valid:
-      break
-
-    tags = repo.bdb.list_tags (hentry.version)
-    if "deleted" in tags:
-      deleted_versions.add (hentry.version)
-  return deleted_versions
-
 def gc (repo):
   DEBUG_MEM = False
 
@@ -45,7 +29,7 @@ def gc (repo):
   need_files = bfsyncdb.SortedArray()
   object_count = 0
   outss = OutputSubsampler()
-  deleted_versions = create_deleted_version_set (repo)
+  deleted_versions = repo.get_deleted_version_set()
 
   def update_status():
     status_line.update ("phase 1/4: scanning objects: %d" % object_count)

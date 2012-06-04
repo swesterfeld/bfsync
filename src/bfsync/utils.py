@@ -213,6 +213,22 @@ class Repo:
     else:
       return True
 
+  # return all versions which have been deleted (have a deleted tag)
+  def get_deleted_version_set (self):
+    # read log, scan for deleted versions
+    deleted_versions = set()
+    VERSION = 1
+    while True:
+      hentry = self.bdb.load_history_entry (VERSION)
+      VERSION += 1
+
+      if not hentry.valid:
+        break
+
+      tags = self.bdb.list_tags (hentry.version)
+      if "deleted" in tags:
+        deleted_versions.add (hentry.version)
+    return deleted_versions
 
 def cd_repo_connect_db (cont = False):
   repo_path = find_repo_dir()

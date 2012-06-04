@@ -968,6 +968,7 @@ def cmd_disk_usage():
 
   usage = Usage()
   hset = set()
+  deleted_versions = repo.get_deleted_version_set()
 
   def du_add (inode):
     if len (inode.hash) == 40:
@@ -992,7 +993,8 @@ def cmd_disk_usage():
   print "--------+---------------------+-----------------------"
   for hentry in versions:
     usage.mem = 0
-    repo.foreach_inode_link (hentry.version, du_add, None)
+    if hentry.version not in deleted_versions:
+      repo.foreach_inode_link (hentry.version, du_add, None)
     if parsed_args.h:
       mem_fmt = format_size1 (usage.mem)
     else:
