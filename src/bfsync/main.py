@@ -316,11 +316,20 @@ def cmd_log():
     msg     = hentry.message
     time    = hentry.time
 
+    tag_list = []
+    tags = repo.bdb.list_tags (hentry.version)
+    for t in tags:
+      values = repo.bdb.load_tag (hentry.version, t)
+      for v in values:
+        tag_list.append ("%s=%s" % (t, v))
+
     msg = msg.strip()
     print "-" * 80
     print "%4d   Hash   %s" % (version, hash)
     print "       Author %s" % author
     print "       Date   %s" % datetime.datetime.fromtimestamp (time).strftime ("%F %H:%M:%S")
+    if tag_list:
+      print "       Tags   %s" % ",".join (tag_list)
     print
     for line in msg.split ("\n"):
       print "       %s" % line
