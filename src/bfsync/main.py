@@ -299,8 +299,14 @@ def cmd_debug_inode_name():
   print repo.printable_name (inode_id, version)
 
 def cmd_log():
+  parser = argparse.ArgumentParser (prog='bfsync log')
+  parser.add_argument ("-a", action="store_true", dest="all", default=False)
+  parsed_args = parser.parse_args (args)
+
   repo = cd_repo_connect_db()
   repo_path = repo.path
+
+  deleted_versions = repo.get_deleted_version_set()
 
   VERSION = 1
   while True:
@@ -323,16 +329,17 @@ def cmd_log():
       for v in values:
         tag_list.append ("%s=%s" % (t, v))
 
-    msg = msg.strip()
-    print "-" * 80
-    print "%4d   Hash   %s" % (version, hash)
-    print "       Author %s" % author
-    print "       Date   %s" % datetime.datetime.fromtimestamp (time).strftime ("%F %H:%M:%S")
-    if tag_list:
-      print "       Tags   %s" % ",".join (tag_list)
-    print
-    for line in msg.split ("\n"):
-      print "       %s" % line
+    if version not in deleted_versions or parsed_args.all:
+      msg = msg.strip()
+      print "-" * 80
+      print "%4d   Hash   %s" % (version, hash)
+      print "       Author %s" % author
+      print "       Date   %s" % datetime.datetime.fromtimestamp (time).strftime ("%F %H:%M:%S")
+      if tag_list:
+        print "       Tags   %s" % ",".join (tag_list)
+      print
+      for line in msg.split ("\n"):
+        print "       %s" % line
   print "-" * 80
 
 def cmd_status():
@@ -1081,7 +1088,7 @@ def main():
       ( "collect",                cmd_collect, 1),
       ( "commit",                 cmd_commit, 1),
       ( "continue",               cmd_continue, 1),
-      ( "log",                    cmd_log, 0),
+      ( "log",                    cmd_log, 1),
       ( "pull",                   cmd_pull, 1),
       ( "push",                   cmd_push, 1),
       ( "gc",                     cmd_gc, 0),
