@@ -324,6 +324,7 @@ def parse_config (filename):
   bfsync_info = CfgParser.CfgParser (filename,
   [
     "default",
+    "expire",
   ],
   [
     "repo-type",
@@ -335,6 +336,7 @@ def parse_config (filename):
     "default/push",
     "default/get",
     "default/put",
+    "expire/keep_most_recent",
     "get-rate-limit",
     "put-rate-limit",
     "use-uid-gid",

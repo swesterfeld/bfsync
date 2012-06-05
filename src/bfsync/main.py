@@ -36,6 +36,7 @@ import datetime
 import random
 
 from utils import *
+from expire import expire
 from diffutils import diff
 from commitutils import commit, revert, gen_status
 from remoteutils import *
@@ -1004,6 +1005,10 @@ def cmd_undelete_version():
 
   repo.bdb.commit_transaction()
 
+def cmd_expire():
+  repo = cd_repo_connect_db()
+  expire (repo)
+
 def cmd_version():
   print "bfsync %s" % bfsyncdb.repo_version()
 
@@ -1146,6 +1151,7 @@ def main():
       ( "pull",                   cmd_pull, 1),
       ( "push",                   cmd_push, 1),
       ( "gc",                     cmd_gc, 0),
+      ( "expire",                 cmd_expire, 0),
       ( "get",                    cmd_get, 1),
       ( "put",                    cmd_put, 1),
       ( "status",                 cmd_status, 0),
