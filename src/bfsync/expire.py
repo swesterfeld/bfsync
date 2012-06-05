@@ -56,6 +56,13 @@ def expire (repo):
 
   first_unused_version = repo.first_unused_version()
 
+  ## untag candidates
+
+  for version in range (1, first_unused_version):
+    values = repo.bdb.load_tag (version, "backup-type")
+    if "weekly-candidate" in values:
+      repo.bdb.del_tag (version, "backup-type", "weekly-candidate")
+
   ## generate keep set for most recent versions
 
   keep_most_recent = cfg_number ("keep_most_recent")
