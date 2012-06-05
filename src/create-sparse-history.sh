@@ -23,5 +23,7 @@ do
   echo "run$run" > $1/run$run || die "file creation failed"
   cd $1 || die "chdir failed"
   $BFSYNC commit -m "test run $run" || die "commit failed"
+  $BFSYNC debug-change-time $((run + 1)) $((run * 24)) || die "change time failed"
 done
 
+$BFSYNC push
