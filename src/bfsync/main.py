@@ -19,6 +19,7 @@
 
 import sys
 import os
+import re
 import subprocess
 import hashlib
 import cPickle
@@ -952,23 +953,52 @@ def cmd_debug_hash_filename():
   else:
     print "not found in objects"
 
+def parse_vrange (vrange):
+  m = re.match ("([0-9]+)-([0-9]+)", vrange)
+  if m:
+    return int (m.group (1)), int (m.group (2))
+
+  m = re.match ("([0-9]+)", vrange)
+  if m:
+    return int (m.group (1)), int (m.group (1))
+
+  raise BFSyncError ("%s is not a valid version range (should be either a number <N>, or a range <MIN>-<MAX>)")
+
+def format_vrange (vmin, vmax):
+  if vmin == vmax:
+    return "version %d" % vmin
+  else:
+    return "version range %d-%d" % (vmin, vmax)
+
 def cmd_delete_version():
   repo = cd_repo_connect_db()
   lock = repo.try_lock()
+  vmin, vmax = parse_vrange (args[0])
 
-  version = int (args[0])
   repo.bdb.begin_transaction()
-  repo.bdb.add_tag (version, "deleted", "1")
+  count = 0
+  for version in range (vmin, vmax + 1):
+    if "deleted" not in repo.bdb.list_tags (version):
+      count += 1
+      repo.bdb.add_tag (version, "deleted", "1")
   repo.bdb.commit_transaction()
+
+  print "DEL: %s deleted, %d version deletion tags modified" % (format_vrange (vmin, vmax), count)
 
 def cmd_undelete_version():
   repo = cd_repo_connect_db()
   lock = repo.try_lock()
+  vmin, vmax = parse_vrange (args[0])
 
-  version = int (args[0])
   repo.bdb.begin_transaction()
-  repo.bdb.del_tag (version, "deleted", "1")
+  count = 0
+  for version in range (vmin, vmax + 1):
+    if "deleted" in repo.bdb.list_tags (version):
+      count += 1
+      repo.bdb.del_tag (version, "deleted", "1")
   repo.bdb.commit_transaction()
+
+  print "UNDEL: %s undeleted, %d version deletion tags modified" % (format_vrange (vmin, vmax), count)
 
 def cmd_version():
   print "bfsync %s" % bfsyncdb.repo_version()
