@@ -1282,6 +1282,7 @@ INodeHashIterator::INodeHashIterator (BDBPtr bdb_ptr) :
   bdb_ptr (bdb_ptr)
 {
   dbc_ret = dbc->get (&key, &data, DB_FIRST);
+  bdb_ptr.get_bdb()->history()->read();
 }
 
 INodeHashIterator::~INodeHashIterator()
@@ -1291,6 +1292,8 @@ INodeHashIterator::~INodeHashIterator()
 string
 INodeHashIterator::get_next()
 {
+  const set<unsigned int>& deleted_versions = bdb_ptr.get_bdb()->history()->deleted_versions();
+
   while (dbc_ret == 0)
     {
       string hash;
@@ -1300,13 +1303,35 @@ INodeHashIterator::get_next()
         {
           DataBuffer dbuffer ((char *) data.get_data(), data.get_size());
 
-          dbuffer.read_uint32();
-          dbuffer.read_uint32();
-          dbuffer.read_uint32();
-          dbuffer.read_uint32();
-          dbuffer.read_uint32();
-          dbuffer.read_uint32();
-          hash = dbuffer.read_string();
+          unsigned int vmin = dbuffer.read_uint32();
+          unsigned int vmax = dbuffer.read_uint32();
+
+          bool needed = false;
+          if (vmax == VERSION_INF)
+            {
+              needed = true;
+            }
+          else
+            {
+              for (unsigned int version = vmin; version <= vmax; version++)
+                {
+                  if (!deleted_versions.count (version))
+                    {
+                      needed = true;
+                      break;
+                    }
+                }
+            }
+
+          if (needed)
+            {
+              dbuffer.read_uint32();
+              dbuffer.read_uint32();
+              dbuffer.read_uint32();
+              dbuffer.read_uint32();
+
+              hash = dbuffer.read_string();
+            }
         }
       dbc_ret = dbc->get (&key, &data, DB_NEXT);
 
