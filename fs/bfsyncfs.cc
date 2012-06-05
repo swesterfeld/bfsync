@@ -334,12 +334,17 @@ version_map_path (string& path)
   int version = -1;
 
   const vector<unsigned int>& versions = INodeRepo::the()->bdb->history()->all_versions();
+  const set<unsigned int>&    deleted_versions = INodeRepo::the()->bdb->history()->deleted_versions();
+
   for (size_t i = 0; i < versions.size(); i++)
     {
-      char buffer[64];
-      sprintf (buffer, "%u", versions[i]);
-      if (buffer == p_vec[2])
-        version = versions[i];
+      if (deleted_versions.count (versions[i]) == 0)
+        {
+          char buffer[64];
+          sprintf (buffer, "%u", versions[i]);
+          if (buffer == p_vec[2])
+            version = versions[i];
+        }
     }
   if (version == -1) // not found
     return -1;
