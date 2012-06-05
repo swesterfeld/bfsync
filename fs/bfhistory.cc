@@ -25,6 +25,8 @@
 
 using std::max;
 using std::vector;
+using std::set;
+using std::string;
 
 namespace BFSync
 {
@@ -46,10 +48,17 @@ History::all_versions()
   return m_all_versions;
 }
 
+const set<unsigned int>&
+History::deleted_versions()
+{
+  return m_deleted_versions;
+}
+
 void
 History::read()
 {
   m_all_versions.clear();
+  m_deleted_versions.clear();
 
   HistoryEntry history_entry;
 
@@ -58,6 +67,13 @@ History::read()
     {
       m_current_version = max (version + 1, m_current_version);
       m_all_versions.push_back (version);
+
+      vector<string> tags = bdb->list_tags (version);
+      for (vector<string>::iterator ti = tags.begin(); ti != tags.end(); ti++)
+        {
+          if (*ti == "deleted")
+            m_deleted_versions.insert (version);
+        }
     }
   m_all_versions.push_back (m_current_version);
 

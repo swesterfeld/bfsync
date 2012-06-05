@@ -21,6 +21,7 @@
 #define BFSYNC_HISTORY_HH
 
 #include <vector>
+#include <set>
 
 namespace BFSync {
 
@@ -30,6 +31,7 @@ class History
 {
   unsigned int                m_current_version;
   std::vector<unsigned int>   m_all_versions;
+  std::set<unsigned int>      m_deleted_versions;
   BDB                        *bdb;
 public:
   History (BDB *bdb);
@@ -37,6 +39,8 @@ public:
   unsigned int            current_version();
   const std::vector<unsigned int>&
                           all_versions();
+  const std::set<unsigned int>&
+                          deleted_versions();
 
   void                    read();
 };

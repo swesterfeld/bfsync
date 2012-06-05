@@ -580,11 +580,12 @@ read_dir_contents (const Context& ctx, const string& path, vector<string>& entri
   else if (path == "/.bfsync/commits")
     {
       const vector<unsigned int>& all_versions = INodeRepo::the()->bdb->history()->all_versions();
+      const set<unsigned int>& deleted_versions = INodeRepo::the()->bdb->history()->deleted_versions();
 
       for (vector<unsigned int>::const_iterator vi = all_versions.begin(); vi != all_versions.end(); vi++)
         {
           unsigned int v = *vi;
-          if (v != INodeRepo::the()->bdb->history()->current_version())
+          if ((v != INodeRepo::the()->bdb->history()->current_version()) && (deleted_versions.count (v) == 0))
             {
               string v_str = string_printf ("%u", v);
               entries.push_back (v_str);
