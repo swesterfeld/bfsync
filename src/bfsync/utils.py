@@ -338,6 +338,7 @@ def parse_config (filename):
     "default/put",
     "expire/keep_most_recent",
     "expire/create_weekly",
+    "expire/keep_weekly",
     "get-rate-limit",
     "put-rate-limit",
     "use-uid-gid",

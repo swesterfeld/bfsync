@@ -106,6 +106,18 @@ def expire (repo):
 
   ## update keep set from weekly tags
 
+  keep_weekly = cfg_number ("keep_weekly")
+  weekly_list = []
+  for version in range (1, first_unused_version):
+    values = repo.bdb.load_tag (version, "backup-type")
+    if "weekly" in values:
+      weekly_list.append (version)
+    if "weekly-candidate" in values:
+      keep.add (version)
+
+  for version in weekly_list[-keep_weekly:]:
+    keep.add (version)
+
   ## delete all versions not in keep set
   repo.bdb.begin_transaction()
 
