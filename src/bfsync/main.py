@@ -1005,6 +1005,23 @@ def cmd_undelete_version():
 
   repo.bdb.commit_transaction()
 
+def cmd_debug_change_time():
+  repo = cd_repo_connect_db()
+  version = int (args[0])
+  time_h = int (args[1])
+
+  he1 = repo.bdb.load_history_entry (1)
+
+  repo.bdb.begin_transaction()
+
+  he = repo.bdb.load_history_entry (version)
+  repo.bdb.delete_history_entry (version)
+  he.time = he1.time + time_h * 3600
+
+  repo.bdb.store_history_entry (he.version, he.hash, he.author, he.message, he.time)
+
+  repo.bdb.commit_transaction()
+
 def cmd_expire():
   repo = cd_repo_connect_db()
   expire (repo)
@@ -1181,6 +1198,7 @@ def main():
       ( "debug-reset-prof",       cmd_debug_reset_prof, 0),
       ( "debug-inode-name",       cmd_debug_inode_name, 1),
       ( "debug-hash-filename",    cmd_debug_hash_filename, 1),
+      ( "debug-change-time",      cmd_debug_change_time, 1),
       ( "--version",              cmd_version, 0),
     ]
     parse_ok = False
