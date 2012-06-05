@@ -1045,7 +1045,8 @@ def cmd_disk_usage():
 
     if not hentry.valid:
       break
-    versions.append (hentry)
+    if hentry.version not in deleted_versions:
+      versions.append (hentry)
 
   versions.reverse()
 
@@ -1054,8 +1055,7 @@ def cmd_disk_usage():
   print "--------+---------------------+-----------------------"
   for hentry in versions:
     usage.mem = 0
-    if hentry.version not in deleted_versions:
-      repo.foreach_inode_link (hentry.version, du_add, None)
+    repo.foreach_inode_link (hentry.version, du_add, None)
     if parsed_args.h:
       mem_fmt = format_size1 (usage.mem)
     else:
