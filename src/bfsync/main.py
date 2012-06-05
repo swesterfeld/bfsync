@@ -926,6 +926,7 @@ def cmd_show_tags():
 
 def cmd_debug_add_tag():
   repo = cd_repo_connect_db()
+  lock = repo.try_lock()
 
   version = int (args[0])
   repo.bdb.begin_transaction()
@@ -934,6 +935,7 @@ def cmd_debug_add_tag():
 
 def cmd_debug_del_tag():
   repo = cd_repo_connect_db()
+  lock = repo.try_lock()
 
   version = int (args[0])
   repo.bdb.begin_transaction()
@@ -949,6 +951,24 @@ def cmd_debug_hash_filename():
     print full_name
   else:
     print "not found in objects"
+
+def cmd_delete_version():
+  repo = cd_repo_connect_db()
+  lock = repo.try_lock()
+
+  version = int (args[0])
+  repo.bdb.begin_transaction()
+  repo.bdb.add_tag (version, "deleted", "1")
+  repo.bdb.commit_transaction()
+
+def cmd_undelete_version():
+  repo = cd_repo_connect_db()
+  lock = repo.try_lock()
+
+  version = int (args[0])
+  repo.bdb.begin_transaction()
+  repo.bdb.del_tag (version, "deleted", "1")
+  repo.bdb.commit_transaction()
 
 def cmd_version():
   print "bfsync %s" % bfsyncdb.repo_version()
@@ -1109,6 +1129,8 @@ def main():
       ( "disk-usage",             cmd_disk_usage, 1),
       ( "config-set",             cmd_config_set, 1),
       ( "show-tags",              cmd_show_tags, 1),
+      ( "delete-version",         cmd_delete_version, 1),
+      ( "undelete-version",       cmd_undelete_version, 1),
       ( "debug-add-tag",          cmd_debug_add_tag, 1),
       ( "debug-del-tag",          cmd_debug_del_tag, 1),
       ( "debug-load-all-inodes",  cmd_debug_load_all_inodes, 0),

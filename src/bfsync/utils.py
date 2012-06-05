@@ -21,6 +21,7 @@ import bfsyncdb
 import resource
 import cPickle
 from tempfile import NamedTemporaryFile
+from ServerConn import ServerConn
 
 ID_ROOT = "/" + "0" * 40        # root directory id string
 
@@ -229,6 +230,17 @@ class Repo:
       if "deleted" in tags:
         deleted_versions.add (hentry.version)
     return deleted_versions
+
+  # returns an instance of ServerConn with active lock, or
+  #         None if server could not be connected
+  def try_lock (self):
+    # lock if server is running: this causes history to be reloaded in fs process
+    try:
+      server_conn = ServerConn (self.path)
+      server_conn.get_lock()
+      return server_conn
+    except IOError, e:
+      return None       # no server => no lock
 
 def cd_repo_connect_db (cont = False):
   repo_path = find_repo_dir()
