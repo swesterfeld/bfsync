@@ -135,22 +135,30 @@ def expire (repo, args):
   for version in range (recent_start, first_unused_version):
     keep.add (version)
 
+
+  ## group versions according to a given strftime format
+
+  def group_versions (versions, ftime):
+    group_dict = dict()
+    for version in versions:
+      he = repo.bdb.load_history_entry (version)
+      he_datetime = datetime.datetime.fromtimestamp (he.time)
+      group_str = he_datetime.strftime (ftime)
+      if not group_dict.has_key (group_str):
+        group_dict[group_str] = []
+      group_dict[group_str].append (version)
+    return group_dict
+
   ## tag daily backups
 
   create_daily_first = cfg_first ("create_daily")
-  day_dict = dict()
-  for version in range (1, first_unused_version):
-    he = repo.bdb.load_history_entry (version)
-    he_datetime = datetime.datetime.fromtimestamp (he.time)
-    day_str = he_datetime.strftime ("%Y%m%d")
-    if not day_dict.has_key (day_str):
-      day_dict[day_str] = []
-    day_dict[day_str].append (version)
+  day_dict = group_versions (range (1, first_unused_version), "%Y%m%d")
 
   for day_str in day_dict:
     tag_first_last_version (day_dict[day_str], create_daily_first, "daily")
 
   ## create list of daily backups
+
   daily_backups = []
   for version in range (1, first_unused_version):
     values = repo.bdb.load_tag (version, "backup-type")
@@ -160,22 +168,29 @@ def expire (repo, args):
   ## tag weekly backups
 
   create_weekly = day2index (cfg_value ("create_weekly"))
-  week_dict = dict()
-  for version in daily_backups:
-    he = repo.bdb.load_history_entry (version)
-    he_datetime = datetime.datetime.fromtimestamp (he.time)
-
-    week_nr = he_datetime.strftime ("%Y%W")
-    if not week_dict.has_key (week_nr):
-      week_dict[week_nr] = []
-    week_dict[week_nr].append (version)
+  week_dict = group_versions (daily_backups, "%Y%W")
 
   for week_nr in week_dict:
     best_time = datetime.datetime.strptime ('%d %d %d' % (int (week_nr) / 100, int (week_nr) % 100, create_weekly), '%Y %W %w')
     best_time += datetime.timedelta (seconds = 23 * 3600 + 59 * 60)
     tag_best_version (week_dict[week_nr], best_time, "weekly")
 
-  ###
+  ## tag monthly backups
+
+  create_monthly_first = cfg_first ("create_monthly")
+  month_dict = group_versions (daily_backups, "%Y%m")
+
+  for month_str in month_dict:
+    tag_first_last_version (month_dict[month_str], create_monthly_first, "monthly")
+
+  ## tag yearly backups
+
+  create_yearly_first = cfg_first ("create_yearly")
+  year_dict = group_versions (daily_backups, "%Y")
+
+  for year_str in year_dict:
+    tag_first_last_version (year_dict[year_str], create_yearly_first, "yearly")
+
 
   repo.bdb.commit_transaction()
 
