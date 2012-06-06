@@ -17,7 +17,7 @@
 * excludes
 * detect broken connections using non-blocking i/o and timeouts
 * split transactions every 15 seconds
-* allow configuring cache size on command line
+* gc should show an estimate how much db cache is used
 
 Performance:
 ============
