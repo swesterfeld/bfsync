@@ -135,7 +135,6 @@ def expire (repo, args):
   for version in range (recent_start, first_unused_version):
     keep.add (version)
 
-
   ## group versions according to a given strftime format
 
   def group_versions (versions, ftime):
@@ -149,13 +148,18 @@ def expire (repo, args):
       group_dict[group_str].append (version)
     return group_dict
 
+  ## tag backups (not weekly)
+
+  def group_and_tag (versions, ftime, tag):
+    create_first = cfg_first ("create_" + tag)
+    group_dict = group_versions (versions, ftime)
+
+    for group_str in group_dict:
+      tag_first_last_version (group_dict[group_str], create_first, tag)
+
   ## tag daily backups
 
-  create_daily_first = cfg_first ("create_daily")
-  day_dict = group_versions (range (1, first_unused_version), "%Y%m%d")
-
-  for day_str in day_dict:
-    tag_first_last_version (day_dict[day_str], create_daily_first, "daily")
+  group_and_tag (range (1, first_unused_version), "%Y%m%d", "daily")
 
   ## create list of daily backups
 
@@ -175,25 +179,12 @@ def expire (repo, args):
     best_time += datetime.timedelta (seconds = 23 * 3600 + 59 * 60)
     tag_best_version (week_dict[week_nr], best_time, "weekly")
 
-  ## tag monthly backups
+  ## tag monthly/yearly backups
 
-  create_monthly_first = cfg_first ("create_monthly")
-  month_dict = group_versions (daily_backups, "%Y%m")
-
-  for month_str in month_dict:
-    tag_first_last_version (month_dict[month_str], create_monthly_first, "monthly")
-
-  ## tag yearly backups
-
-  create_yearly_first = cfg_first ("create_yearly")
-  year_dict = group_versions (daily_backups, "%Y")
-
-  for year_str in year_dict:
-    tag_first_last_version (year_dict[year_str], create_yearly_first, "yearly")
-
+  group_and_tag (daily_backups, "%Y%m", "monthly")
+  group_and_tag (daily_backups, "%Y", "yearly")
 
   repo.bdb.commit_transaction()
-
 
   def update_keep_set (btype):
     backup_list = []
