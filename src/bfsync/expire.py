@@ -51,6 +51,25 @@ def expire (repo):
   def tag (version, tag):
     repo.bdb.add_tag (version, "backup-type", tag)
 
+  def tag_best_version (versions, best_time, backup_type):
+    if len (versions) == 0:   # empty set => no tagging
+      return
+
+    best_delta = datetime.timedelta (days = 10000)
+
+    for version in versions:
+      he = repo.bdb.load_history_entry (version)
+      he_datetime = datetime.datetime.fromtimestamp (he.time)
+      he_delta = abs (best_time - he_datetime)
+      if he_delta < best_delta:
+        best_version = version
+        best_delta = he_delta
+
+    if best_version + 1 == first_unused_version:
+      tag (best_version, "%s-candidate" % backup_type)
+    else:
+      tag (best_version, backup_type)
+
   repo.bdb.begin_transaction()
   keep = set()
 
@@ -79,7 +98,6 @@ def expire (repo):
   for version in range (1, first_unused_version):
     he = repo.bdb.load_history_entry (version)
     he_datetime = datetime.datetime.fromtimestamp (he.time)
-    print "%2d" % version, he_datetime.strftime ("%F"), "%20s" % he_datetime.strftime ("%A %H:%M:%S")
 
     week_nr = he_datetime.strftime ("%Y%W")
     if not week_dict.has_key (week_nr):
@@ -87,28 +105,9 @@ def expire (repo):
     week_dict[week_nr].append (version)
 
   for week_nr in week_dict:
-    print
-    print "------------------------------------------------------------"
-    print week_nr, create_weekly
-    print "------------------------------------------------------------"
     best_time = datetime.datetime.strptime ('%d %d %d' % (int (week_nr) / 100, int (week_nr) % 100, create_weekly), '%Y %W %w')
     best_time += datetime.timedelta (seconds = 23 * 3600 + 59 * 60)
-    best_version = None
-    best_delta = datetime.timedelta (days = 10000)
-    print best_time.strftime ("%F %A %H:%M:%S")
-    for version in week_dict[week_nr]:
-      he = repo.bdb.load_history_entry (version)
-      he_datetime = datetime.datetime.fromtimestamp (he.time)
-      he_delta = abs (best_time - he_datetime)
-      if he_delta < best_delta:
-        best_version = version
-        best_delta = he_delta
-      print version, he_datetime.strftime ("%F"), "%20s" % he_datetime.strftime ("%A %H:%M:%S")
-    if best_version + 1 == first_unused_version:
-      tag (best_version, "weekly-candidate")
-    else:
-      tag (best_version, "weekly")
-
+    tag_best_version (week_dict[week_nr], best_time, "weekly")
   repo.bdb.commit_transaction()
 
   ## update keep set from weekly tags
