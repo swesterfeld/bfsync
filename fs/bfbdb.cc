@@ -1523,6 +1523,10 @@ BDB::add_tag (unsigned int version, const string& tag, const string& value)
         return BDB_ERROR_NONE;
     }
 
+  HistoryEntry he;
+  if (!load_history_entry (version, he))
+    return BDB_ERROR_NOT_FOUND;
+
   Lock lock (mutex);
 
   if (!transaction)
@@ -1545,6 +1549,10 @@ BDB::add_tag (unsigned int version, const string& tag, const string& value)
 BDBError
 BDB::del_tag (unsigned int version, const string& tag, const string& value)
 {
+  HistoryEntry he;
+  if (!load_history_entry (version, he))
+    return BDB_ERROR_NOT_FOUND;
+
   Lock lock (mutex);
 
   if (!transaction)
