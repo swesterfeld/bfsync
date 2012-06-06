@@ -48,6 +48,14 @@ def expire (repo):
       raise BFSyncError ("expire: need exactly one expire/%s entry" % name)
     return xlist[0]
 
+  def cfg_first (name):
+    s = cfg_value (name)
+    if s == "first":
+      return True
+    if s == "last":
+      return False
+    raise BFSyncError ("expire: expire/%s entry must be first or last" % name)
+
   def tag (version, tag):
     repo.bdb.add_tag (version, "backup-type", tag)
 
@@ -64,6 +72,20 @@ def expire (repo):
       if he_delta < best_delta:
         best_version = version
         best_delta = he_delta
+
+    if best_version + 1 == first_unused_version:
+      tag (best_version, "%s-candidate" % backup_type)
+    else:
+      tag (best_version, backup_type)
+
+  def tag_first_last_version (versions, first, backup_type):
+    if len (versions) == 0:   # empty set => no tagging
+      return
+
+    if first:                 # take first or last in version list (configurable)
+      best_version = versions[0]
+    else:
+      best_version = versions[-1]
 
     if best_version + 1 == first_unused_version:
       tag (best_version, "%s-candidate" % backup_type)
@@ -91,6 +113,21 @@ def expire (repo):
   for version in range (recent_start, first_unused_version):
     keep.add (version)
 
+  ## tag daily backups
+
+  create_daily_first = cfg_first ("create_daily")
+  day_dict = dict()
+  for version in range (1, first_unused_version):
+    he = repo.bdb.load_history_entry (version)
+    he_datetime = datetime.datetime.fromtimestamp (he.time)
+    day_str = he_datetime.strftime ("%Y%m%d")
+    if not day_dict.has_key (day_str):
+      day_dict[day_str] = []
+    day_dict[day_str].append (version)
+
+  for day_str in day_dict:
+    tag_first_last_version (day_dict[day_str], create_daily_first, "daily")
+
   ## tag weekly backups
 
   create_weekly = day2index (cfg_value ("create_weekly"))
@@ -108,7 +145,24 @@ def expire (repo):
     best_time = datetime.datetime.strptime ('%d %d %d' % (int (week_nr) / 100, int (week_nr) % 100, create_weekly), '%Y %W %w')
     best_time += datetime.timedelta (seconds = 23 * 3600 + 59 * 60)
     tag_best_version (week_dict[week_nr], best_time, "weekly")
+
+  ###
+
   repo.bdb.commit_transaction()
+
+  ## update keep set from daily tags
+
+  keep_daily = cfg_number ("keep_daily")
+  daily_list = []
+  for version in range (1, first_unused_version):
+    values = repo.bdb.load_tag (version, "backup-type")
+    if "daily" in values:
+      daily_list.append (version)
+    if "daily-candidate" in values:
+      keep.add (version)
+
+  for version in daily_list[-keep_daily:]:
+    keep.add (version)
 
   ## update keep set from weekly tags
 
