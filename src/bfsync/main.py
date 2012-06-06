@@ -979,6 +979,13 @@ def cmd_delete_version():
 
   for arg in args:
     vmin, vmax = parse_vrange (arg)
+    if vmin > vmax:
+      raise BFSyncError ("version min %d is bigger than version max %d" % (vmin, vmax))
+    if vmin < 1:
+      raise BFSyncError ("version min %d is too small" % vmin)
+    if vmax >= repo.first_unused_version():
+      raise BFSyncError ("version max %d is bigger than the end of the history" % vmax)
+
     count = 0
     for version in range (vmin, vmax + 1):
       if "deleted" not in repo.bdb.list_tags (version):
@@ -996,6 +1003,13 @@ def cmd_undelete_version():
 
   for arg in args:
     vmin, vmax = parse_vrange (arg)
+    if vmin > vmax:
+      raise BFSyncError ("version min %d is bigger than version max %d" % (vmin, vmax))
+    if vmin < 1:
+      raise BFSyncError ("version min %d is too small" % vmin)
+    if vmax >= repo.first_unused_version():
+      raise BFSyncError ("version max %d is bigger than the end of the history" % vmax)
+
     count = 0
     for version in range (vmin, vmax + 1):
       if "deleted" in repo.bdb.list_tags (version):
