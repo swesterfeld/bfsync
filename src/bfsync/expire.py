@@ -101,8 +101,9 @@ def expire (repo):
 
   for version in range (1, first_unused_version):
     values = repo.bdb.load_tag (version, "backup-type")
-    if "weekly-candidate" in values:
-      repo.bdb.del_tag (version, "backup-type", "weekly-candidate")
+    for btype in [ "daily-candidate", "weekly-candidate" ]:
+      if btype in values:
+        repo.bdb.del_tag (version, "backup-type", btype)
 
   ## generate keep set for most recent versions
 
@@ -128,11 +129,18 @@ def expire (repo):
   for day_str in day_dict:
     tag_first_last_version (day_dict[day_str], create_daily_first, "daily")
 
+  ## create list of daily backups
+  daily_backups = []
+  for version in range (1, first_unused_version):
+    values = repo.bdb.load_tag (version, "backup-type")
+    if "daily" in values or "daily-candidate" in values:
+      daily_backups.append (version)
+
   ## tag weekly backups
 
   create_weekly = day2index (cfg_value ("create_weekly"))
   week_dict = dict()
-  for version in range (1, first_unused_version):
+  for version in daily_backups:
     he = repo.bdb.load_history_entry (version)
     he_datetime = datetime.datetime.fromtimestamp (he.time)
 
