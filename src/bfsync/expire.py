@@ -161,7 +161,8 @@ def expire (repo):
     if "daily-candidate" in values:
       keep.add (version)
 
-  for version in daily_list[-keep_daily:]:
+  dstart = len (daily_list) - keep_daily
+  for version in daily_list[dstart:]:
     keep.add (version)
 
   ## update keep set from weekly tags
@@ -175,7 +176,8 @@ def expire (repo):
     if "weekly-candidate" in values:
       keep.add (version)
 
-  for version in weekly_list[-keep_weekly:]:
+  wstart = len (weekly_list) - keep_weekly
+  for version in weekly_list[wstart:]:
     keep.add (version)
 
   ## delete all versions not in keep set
