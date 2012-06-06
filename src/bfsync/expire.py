@@ -29,9 +29,32 @@ def day2index (day_str):
     count += 1
   raise BFSyncError ("expire: create_weekly day name not supported")
 
-def expire (repo):
+def expire (repo, args):
+  reset_all_tags = False
+
+  if len (args) == 1:
+    if args[0] == "reset-all-tags":
+      reset_all_tags = True
+    else:
+      raise BFSyncError ("expire: unsupported command line args")
+  elif len (args) > 1:
+    raise BFSyncError ("expire: unsupported command line args")
+
   # lock: makes filesystem reread history after expire
   lock = repo.try_lock()
+
+  first_unused_version = repo.first_unused_version()
+
+  if reset_all_tags:
+    ## reset all tags that expire sets (doesn't undelete versions, though)
+
+    repo.bdb.begin_transaction()
+    for version in range (1, first_unused_version):
+      values = repo.bdb.load_tag (version, "backup-type")
+      for btype in values:
+        repo.bdb.del_tag (version, "backup-type", btype)
+    repo.bdb.commit_transaction()
+    return
 
   def cfg_number (name):
     xlist = repo.config.get ("expire/%s" % name)
@@ -95,8 +118,6 @@ def expire (repo):
   repo.bdb.begin_transaction()
   keep = set()
 
-  first_unused_version = repo.first_unused_version()
-
   ## untag candidates
 
   for version in range (1, first_unused_version):
@@ -158,35 +179,28 @@ def expire (repo):
 
   repo.bdb.commit_transaction()
 
-  ## update keep set from daily tags
 
-  keep_daily = cfg_number ("keep_daily")
-  daily_list = []
-  for version in range (1, first_unused_version):
-    values = repo.bdb.load_tag (version, "backup-type")
-    if "daily" in values:
-      daily_list.append (version)
-    if "daily-candidate" in values:
+  def update_keep_set (btype):
+    backup_list = []
+
+    for version in range (1, first_unused_version):
+      values = repo.bdb.load_tag (version, "backup-type")
+      if btype in values:
+        backup_list.append (version)
+      if btype + "-candidate" in values:
+        keep.add (version)
+
+    number_of_backups_to_keep = cfg_number ("keep_" + btype)
+    bstart = max (len (backup_list) - number_of_backups_to_keep, 0)
+    for version in backup_list[bstart:]:
       keep.add (version)
 
-  dstart = len (daily_list) - keep_daily
-  for version in daily_list[dstart:]:
-    keep.add (version)
+  ## update keep set from daily/weekly/... tags
 
-  ## update keep set from weekly tags
-
-  keep_weekly = cfg_number ("keep_weekly")
-  weekly_list = []
-  for version in range (1, first_unused_version):
-    values = repo.bdb.load_tag (version, "backup-type")
-    if "weekly" in values:
-      weekly_list.append (version)
-    if "weekly-candidate" in values:
-      keep.add (version)
-
-  wstart = len (weekly_list) - keep_weekly
-  for version in weekly_list[wstart:]:
-    keep.add (version)
+  update_keep_set ("daily")
+  update_keep_set ("weekly")
+  update_keep_set ("monthly")
+  update_keep_set ("yearly")
 
   ## delete all versions not in keep set
   repo.bdb.begin_transaction()

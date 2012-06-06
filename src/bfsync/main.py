@@ -1038,7 +1038,7 @@ def cmd_debug_change_time():
 
 def cmd_expire():
   repo = cd_repo_connect_db()
-  expire (repo)
+  expire (repo, args)
 
 def cmd_version():
   print "bfsync %s" % bfsyncdb.repo_version()
@@ -1182,7 +1182,7 @@ def main():
       ( "pull",                   cmd_pull, 1),
       ( "push",                   cmd_push, 1),
       ( "gc",                     cmd_gc, 0),
-      ( "expire",                 cmd_expire, 0),
+      ( "expire",                 cmd_expire, 1),
       ( "get",                    cmd_get, 1),
       ( "put",                    cmd_put, 1),
       ( "status",                 cmd_status, 0),
