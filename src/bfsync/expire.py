@@ -82,8 +82,19 @@ def expire (repo, args):
   def tag (version, tag):
     repo.bdb.add_tag (version, "backup-type", tag)
 
+  def find_version_tag (versions, backup_type):
+    for version in versions:
+      values = repo.bdb.load_tag (version, "backup-type")
+      if backup_type in values:
+        return True
+    return False
+
   def tag_best_version (versions, best_time, backup_type):
     if len (versions) == 0:   # empty set => no tagging
+      return
+
+    # don't tag if group already has a tag
+    if find_version_tag (versions, backup_type):
       return
 
     best_delta = datetime.timedelta (days = 10000)
@@ -103,6 +114,10 @@ def expire (repo, args):
 
   def tag_first_last_version (versions, first, backup_type):
     if len (versions) == 0:   # empty set => no tagging
+      return
+
+    # don't tag if group already has a tag
+    if find_version_tag (versions, backup_type):
       return
 
     if first:                 # take first or last in version list (configurable)
