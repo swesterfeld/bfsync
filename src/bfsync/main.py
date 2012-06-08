@@ -336,7 +336,7 @@ def cmd_log():
       print "-" * 80
       print "%4d   Hash   %s" % (version, hash)
       print "       Author %s" % author
-      print "       Date   %s" % datetime.datetime.fromtimestamp (time).strftime ("%F %H:%M:%S")
+      print "       Date   %s" % datetime.datetime.fromtimestamp (time).strftime ("%A, %F %H:%M:%S")
       if tag_list:
         print "       Tags   %s" % ",".join (tag_list)
       print
