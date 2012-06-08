@@ -122,7 +122,7 @@ def expire (repo, args):
 
   for version in range (1, first_unused_version):
     values = repo.bdb.load_tag (version, "backup-type")
-    for btype in [ "daily-candidate", "weekly-candidate" ]:
+    for btype in [ "daily-candidate", "weekly-candidate", "monthly-candidate", "yearly-candidate" ]:
       if btype in values:
         repo.bdb.del_tag (version, "backup-type", btype)
 
