@@ -50,6 +50,7 @@ from transferutils import get, put, push, pull, collect
 from xzutils import xz
 from journal import run_commands, run_continue, init_journal
 from gcutils import gc
+from transferbench import transfer_bench
 
 def find_bfsync_dir():
   old_cwd = os.getcwd()
@@ -1110,6 +1111,9 @@ def cmd_disk_usage():
   print "--------+---------------------+-----------------------"
   print "      total                   | %20s" % total_mem_fmt
 
+def cmd_transfer_bench():
+  transfer_bench (args)
+
 def cmd_new_files():
   parser = argparse.ArgumentParser (prog='bfsync new-files', add_help=False)
   parser.add_argument ('-s', action="store_true", default=False)
@@ -1202,6 +1206,7 @@ def main():
       ( "show-tags",              cmd_show_tags, 1),
       ( "delete-version",         cmd_delete_version, 1),
       ( "undelete-version",       cmd_undelete_version, 1),
+      ( "transfer-bench",         cmd_transfer_bench, 1),
       ( "debug-add-tag",          cmd_debug_add_tag, 1),
       ( "debug-del-tag",          cmd_debug_del_tag, 1),
       ( "debug-load-all-inodes",  cmd_debug_load_all_inodes, 0),
