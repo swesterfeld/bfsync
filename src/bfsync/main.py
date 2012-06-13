@@ -494,27 +494,67 @@ def cmd_remote():
       sys.stdout.flush()
 
 def cmd_pull():
+  parser = argparse.ArgumentParser (prog='bfsync pull')
+  parser.add_argument ('--rsh', help='set remote shell')
+  parser.add_argument ("url", nargs = "*")
+  parsed_args = parser.parse_args (args)
+
+  if parsed_args.rsh is not None:
+    rsh = parsed_args.rsh
+  else:
+    rsh = "ssh"
+
   repo = cd_repo_connect_db ()
   status_line.set_op ("PULL")
-  pull (repo, args)
+  pull (repo, parsed_args.url, rsh)
   run_commands (repo)
 
 def cmd_push():
+  parser = argparse.ArgumentParser (prog='bfsync push')
+  parser.add_argument ('--rsh', help='set remote shell')
+  parser.add_argument ("url", nargs = "*")
+  parsed_args = parser.parse_args (args)
+
+  if parsed_args.rsh is not None:
+    rsh = parsed_args.rsh
+  else:
+    rsh = "ssh"
+
   repo = cd_repo_connect_db()
   status_line.set_op ("PUSH")
-  push (repo, args)
+  push (repo, parsed_args.url, rsh)
 
 def cmd_get():
+  parser = argparse.ArgumentParser (prog='bfsync get')
+  parser.add_argument ('--rsh', help='set remote shell')
+  parser.add_argument ("url", nargs = "*")
+  parsed_args = parser.parse_args (args)
+
+  if parsed_args.rsh is not None:
+    rsh = parsed_args.rsh
+  else:
+    rsh = "ssh"
+
   repo = cd_repo_connect_db()
 
   status_line.set_op ("GET")
-  get (repo, args)
+  get (repo, parsed_args.url, rsh)
 
 def cmd_put():
+  parser = argparse.ArgumentParser (prog='bfsync put')
+  parser.add_argument ('--rsh', help='set remote shell')
+  parser.add_argument ("url", nargs = "*")
+  parsed_args = parser.parse_args (args)
+
+  if parsed_args.rsh is not None:
+    rsh = parsed_args.rsh
+  else:
+    rsh = "ssh"
+
   repo = cd_repo_connect_db()
 
   status_line.set_op ("PUT")
-  put (repo, args)
+  put (repo, parsed_args.url, rsh)
 
 def gen_repo_id():
   l = []
@@ -668,9 +708,15 @@ def cmd_clone():
   parser = argparse.ArgumentParser (prog='bfsync clone')
   parser.add_argument ("-u", action="store_true", dest="use_uid_gid", default=False)
   parser.add_argument ('-c', help='set cache size')
+  parser.add_argument ('--rsh', help='set remote shell')
   parser.add_argument ("repo")
   parser.add_argument ("dest_dir", nargs = "?")
   parsed_args = parser.parse_args (args)
+
+  if parsed_args.rsh is not None:
+    rsh = parsed_args.rsh
+  else:
+    rsh = "ssh"
 
   url = parsed_args.repo
   if parsed_args.dest_dir:
@@ -738,7 +784,7 @@ def cmd_clone():
   repo_path = repo.path
 
   # pull changes from master
-  pull (repo, [ url ], server = False)
+  pull (repo, [ url ], rsh, server = False)
   run_commands (repo)
 
 def cmd_repo_files():

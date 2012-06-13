@@ -52,7 +52,7 @@ def get_remote_objects (repo, remote_repo, transfer_objs, tparams):
   # do the actual copying
   remote_repo.get_objects (repo, tlist, tparams)
 
-def get (repo, urls):
+def get (repo, urls, rsh):
   repo_path = repo.path
 
   if len (urls) == 0:
@@ -63,7 +63,7 @@ def get (repo, urls):
   else:
     url = urls[0]
 
-  remote_repo = RemoteRepo (url)
+  remote_repo = RemoteRepo (url, rsh)
 
   # create list of required objects
   status_line.update ("preparing transfer list...")
@@ -85,7 +85,7 @@ def get (repo, urls):
 
   get_remote_objects (repo, remote_repo, objs, tparams)
 
-def put (repo, urls):
+def put (repo, urls, rsh):
   repo_path = repo.path
 
   if len (urls) == 0:
@@ -96,7 +96,7 @@ def put (repo, urls):
   else:
     url = urls[0]
 
-  remote_repo = RemoteRepo (url)
+  remote_repo = RemoteRepo (url, rsh)
   need_objs = remote_repo.need_objects ("inodes")
 
   tl = TransferList()
@@ -116,7 +116,7 @@ def put (repo, urls):
 
   remote_repo.put_objects (repo, tl, tparams)
 
-def push (repo, urls):
+def push (repo, urls, rsh):
   repo_path = repo.path
 
   if len (urls) == 0:
@@ -127,7 +127,7 @@ def push (repo, urls):
   else:
     url = urls[0]
 
-  remote_repo = RemoteRepo (url)
+  remote_repo = RemoteRepo (url, rsh)
   remote_history = remote_repo.get_history()
 
   local_history = []
@@ -648,11 +648,12 @@ class AutoConflictResolver:
       return ""   # could not resolve automatically
 
 class UserConflictResolver:
-  def __init__ (self, repo, common_version, master_merge_history, local_merge_history):
+  def __init__ (self, repo, common_version, master_merge_history, local_merge_history, rsh):
     self.repo = repo
     self.common_version = common_version
     self.master_merge_history = master_merge_history
     self.local_merge_history = local_merge_history
+    self.rsh = rsh
 
   def init_merge_dir (self, filename, common_hash, master_hash, local_hash):
     merge_dir = os.path.join (self.repo.path, "merge")
@@ -670,7 +671,7 @@ class UserConflictResolver:
         raise BFSyncError ("get: no repository specified and default/get config value empty")
       url = default_get[0]
 
-      remote_repo = RemoteRepo (url)
+      remote_repo = RemoteRepo (url, self.rsh)
       get_remote_objects (self.repo, remote_repo, [ master_hash ], TransferParams (0))
 
       master_file = self.repo.make_object_filename (master_hash)
@@ -1009,7 +1010,7 @@ class MergeCommand:
   def set_state (self, state):
     self.state = state
 
-def history_merge (repo, local_history, remote_history, pull_args):
+def history_merge (repo, local_history, remote_history, pull_args, rsh):
   # figure out last common version
   common_version = find_common_version (local_history, remote_history)
 
@@ -1042,7 +1043,7 @@ def history_merge (repo, local_history, remote_history, pull_args):
   use_both_versions = dict()
 
   auto_resolver = AutoConflictResolver (repo, common_version, master_merge_history, local_merge_history)
-  user_resolver = UserConflictResolver (repo, common_version, master_merge_history, local_merge_history)
+  user_resolver = UserConflictResolver (repo, common_version, master_merge_history, local_merge_history, rsh)
   conflict_ids = find_conflicts (master_merge_history, local_merge_history)
   for conflict_id in conflict_ids:
     if pull_args.always_local:
@@ -1152,7 +1153,7 @@ class FastForwardCommand:
   def set_state (self, state):
     self.state = state
 
-def pull (repo, args, server = True):
+def pull (repo, args, rsh, server = True):
   parser = argparse.ArgumentParser (prog='bfsync pull')
   parser.add_argument ('--always-local', action='store_const', const=True,
                        help='always use local version for merge conflicts')
@@ -1177,15 +1178,10 @@ def pull (repo, args, server = True):
   else:
     url = pull_args.repo
 
-  remote_repo = RemoteRepo (url)
+  remote_repo = RemoteRepo (url, rsh)
   remote_history = remote_repo.get_history()
 
   local_history = []
-
-  # c.execute ('''SELECT * FROM history WHERE hash != '' ORDER BY version''')
-  # local_history = []
-  # for row in c:
-  #   local_history += [ row ]
 
   VERSION = 1
   while True:
@@ -1239,7 +1235,7 @@ def pull (repo, args, server = True):
     cmd.start (repo, ff_apply, server)
     queue_command (cmd)
   else:
-    history_merge (repo, local_history, remote_history, pull_args)
+    history_merge (repo, local_history, remote_history, pull_args, rsh)
 
 def collect (repo, args, old_cwd):
   status_line.set_op ("COLLECT")
