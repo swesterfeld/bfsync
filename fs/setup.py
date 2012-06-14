@@ -18,7 +18,7 @@ def pkg_config(*packages):
 pkg_config_values = pkg_config ("glib-2.0")
 
 bfsyncdb_module = Extension('_bfsyncdb',
-                           depends = [ "bfbdb.hh", "bfhistory.hh", "bfdeduptable.hh" ],
+                           depends = [ "bfsyncdb.hh", "bfbdb.hh", "bfhistory.hh", "bfdeduptable.hh" ],
                            extra_compile_args = ['-D_FILE_OFFSET_BITS=64'],
                            sources=['bfsyncdb.cc', 'bfsyncdb.i'],
                            library_dirs = ['.libs'] + pkg_config_values["-L"],

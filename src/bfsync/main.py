@@ -1214,6 +1214,30 @@ def cmd_new_files():
         size_fmt = dot_format (f[0])
       print "%20s | %s" % (size_fmt, f[1])
 
+def cmd_inr_test():
+  repo = cd_repo_connect_db()
+
+  VERSION = repo.first_unused_version()
+
+  def walk (id, prefix):
+    inode = repo.bdb.load_inode (id, VERSION)
+    if inode.valid:
+      print prefix
+      # recurse into subdirs
+      if inode.type == bfsyncdb.FILE_DIR:
+        links = repo.bdb.load_links (id, VERSION)
+        for link in links:
+          inode_name = prefix + "/" + link.name
+          walk (link.inode_id, inode_name)
+
+  walk (bfsyncdb.id_root(), "")
+
+  inr = bfsyncdb.INodeRepo()
+
+  id = bfsyncdb.id_root()
+  inr_inode = inr.load_inode (id, VERSION)
+
+
 args = []
 
 def main():
@@ -1253,6 +1277,7 @@ def main():
       ( "delete-version",         cmd_delete_version, 1),
       ( "undelete-version",       cmd_undelete_version, 1),
       ( "transfer-bench",         cmd_transfer_bench, 1),
+      ( "inr-test",               cmd_inr_test, 1),
       ( "debug-add-tag",          cmd_debug_add_tag, 1),
       ( "debug-del-tag",          cmd_debug_del_tag, 1),
       ( "debug-load-all-inodes",  cmd_debug_load_all_inodes, 0),

@@ -361,6 +361,16 @@ public:
   unsigned int mem_usage();
 };
 
+class INodeRepoINode
+{
+};
+
+class INodeRepo
+{
+public:
+  INodeRepoINode load_inode (const ID& id, unsigned int version);
+};
+
 class BDBException
 {
 private:

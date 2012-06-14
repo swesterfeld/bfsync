@@ -1487,6 +1487,18 @@ SortedArray::mem_usage()
   return array.capacity() * sizeof (&array[0]);
 }
 
+//---------------------------- INodeRepo -----------------------------
+
+INodeRepoINode
+INodeRepo::load_inode (const ID& id, unsigned int version)
+{
+  Context ctx;
+  ctx.version = version;
+
+  INodePtr inode (ctx, ID::root());
+  return INodeRepoINode();
+}
+
 //---------------------------- BDBException -----------------------------
 
 BDBException::BDBException (BDBError error) :
