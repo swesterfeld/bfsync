@@ -363,11 +363,26 @@ public:
 
 class INodeRepoINode
 {
+  BFSync::INodePtr ptr;
+
+public:
+  INodeRepoINode (BFSync::INodePtr ptr);
+
+  unsigned int type();
+  bool valid();
+
+  std::vector<std::string>  get_child_names (unsigned int version);
+  INodeRepoINode            get_child (unsigned int version, const std::string& name);
 };
 
 class INodeRepo
 {
+  BFSync::INodeRepo *inode_repo;
+
 public:
+  INodeRepo (BDBPtr bdb);
+  ~INodeRepo();
+
   INodeRepoINode load_inode (const ID& id, unsigned int version);
 };
 

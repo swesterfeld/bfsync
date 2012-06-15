@@ -1230,13 +1230,21 @@ def cmd_inr_test():
           inode_name = prefix + "/" + link.name
           walk (link.inode_id, inode_name)
 
-  walk (bfsyncdb.id_root(), "")
+  # walk (bfsyncdb.id_root(), "")
 
-  inr = bfsyncdb.INodeRepo()
+  def inr_walk (inode, prefix):
+    if inode.valid():
+      print prefix
+      if inode.type() == bfsyncdb.FILE_DIR:
+        children = inode.get_child_names (VERSION)
+        for child in children:
+          inode_name = prefix + "/" + child
+          child_inode = inode.get_child (VERSION, child)
+          inr_walk (child_inode, inode_name)
 
-  id = bfsyncdb.id_root()
-  inr_inode = inr.load_inode (id, VERSION)
-
+  inr = bfsyncdb.INodeRepo (repo.bdb)
+  inode = inr.load_inode (bfsyncdb.id_root(), VERSION)
+  inr_walk (inode, "")
 
 args = []
 

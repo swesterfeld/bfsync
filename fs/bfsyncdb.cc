@@ -1489,14 +1489,67 @@ SortedArray::mem_usage()
 
 //---------------------------- INodeRepo -----------------------------
 
+INodeRepoINode::INodeRepoINode (BFSync::INodePtr ptr) :
+  ptr (ptr)
+{
+}
+
+unsigned int
+INodeRepoINode::type()
+{
+  return ptr->type;
+}
+
+bool
+INodeRepoINode::valid()
+{
+  return ptr;
+}
+
+vector<string>
+INodeRepoINode::get_child_names (unsigned int version)
+{
+  BFSync::Context ctx;
+  vector<string> result;
+
+  ctx.version = version;
+  ptr->get_child_names (ctx, result);
+  return result;
+}
+
+INodeRepoINode
+INodeRepoINode::get_child (unsigned int version, const string& name)
+{
+  BFSync::Context ctx;
+  ctx.version = version;
+
+  return INodeRepoINode (ptr->get_child (ctx, name));
+}
+
+INodeRepo::INodeRepo (BDBPtr bdb)
+{
+  assert (!BFSync::INodeRepo::the());
+  inode_repo = new BFSync::INodeRepo (bdb.get_bdb());
+  assert (BFSync::INodeRepo::the());
+}
+
+INodeRepo::~INodeRepo()
+{
+  assert (BFSync::INodeRepo::the());
+
+  delete inode_repo;
+  inode_repo = NULL;
+
+  assert (!BFSync::INodeRepo::the());
+}
+
 INodeRepoINode
 INodeRepo::load_inode (const ID& id, unsigned int version)
 {
-  Context ctx;
+  BFSync::Context ctx;
   ctx.version = version;
 
-  INodePtr inode (ctx, ID::root());
-  return INodeRepoINode();
+  return INodeRepoINode (INodePtr (ctx, id.id));
 }
 
 //---------------------------- BDBException -----------------------------
