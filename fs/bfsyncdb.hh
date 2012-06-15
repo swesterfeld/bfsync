@@ -368,8 +368,14 @@ class INodeRepoINode
 public:
   INodeRepoINode (BFSync::INodePtr ptr);
 
-  unsigned int type();
-  bool valid();
+  unsigned int              type();
+  void                      set_type (unsigned int type);
+
+  unsigned int              mode();
+  void                      set_mode (unsigned int mode);
+
+  bool                      valid();
+  void                      add_link (INodeRepoINode& child, const std::string& name, unsigned int version);
 
   std::vector<std::string>  get_child_names (unsigned int version);
   INodeRepoINode            get_child (unsigned int version, const std::string& name);
@@ -384,6 +390,8 @@ public:
   ~INodeRepo();
 
   INodeRepoINode load_inode (const ID& id, unsigned int version);
+  INodeRepoINode create_inode (const std::string& path, unsigned int version);
+  void           save_changes();
 };
 
 class BDBException

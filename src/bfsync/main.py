@@ -1244,6 +1244,18 @@ def cmd_inr_test():
 
   inr = bfsyncdb.INodeRepo (repo.bdb)
   inode = inr.load_inode (bfsyncdb.id_root(), VERSION)
+
+  foo_inode = inr.create_inode ("/foo", VERSION)
+  foo_inode.set_type (bfsyncdb.FILE_DIR)
+  foo_inode.set_mode (0755);
+  inode.add_link (foo_inode, "foo", VERSION);
+
+  bar_inode = inr.create_inode ("/foo/bar", VERSION)
+  bar_inode.set_type (bfsyncdb.FILE_DIR)
+  bar_inode.set_mode (0755);
+  foo_inode.add_link (bar_inode, "bar", VERSION);
+
+  inr.save_changes()
   inr_walk (inode, "")
 
 args = []

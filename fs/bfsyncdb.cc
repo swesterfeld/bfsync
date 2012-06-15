@@ -1500,11 +1500,39 @@ INodeRepoINode::type()
   return ptr->type;
 }
 
+void
+INodeRepoINode::set_type (unsigned int type)
+{
+  ptr.update()->type = static_cast<BFSync::FileType> (type);
+}
+
+unsigned int
+INodeRepoINode::mode()
+{
+  return ptr->mode;
+}
+
+void
+INodeRepoINode::set_mode (unsigned int mode)
+{
+  ptr.update()->mode = mode;
+}
+
 bool
 INodeRepoINode::valid()
 {
   return ptr;
 }
+
+void
+INodeRepoINode::add_link (INodeRepoINode& child, const string& name, unsigned int version)
+{
+  BFSync::Context ctx;
+  ctx.version = version;
+
+  ptr.update()->add_link (ctx, child.ptr, name);
+}
+
 
 vector<string>
 INodeRepoINode::get_child_names (unsigned int version)
@@ -1549,7 +1577,22 @@ INodeRepo::load_inode (const ID& id, unsigned int version)
   BFSync::Context ctx;
   ctx.version = version;
 
-  return INodeRepoINode (INodePtr (ctx, id.id));
+  return INodeRepoINode (BFSync::INodePtr (ctx, id.id));
+}
+
+INodeRepoINode
+INodeRepo::create_inode (const string& name, unsigned int version)
+{
+  BFSync::Context ctx;
+  ctx.version = version;
+
+  return INodeRepoINode (BFSync::INodePtr (ctx, name.c_str()));
+}
+
+void
+INodeRepo::save_changes()
+{
+  inode_repo->save_changes();
 }
 
 //---------------------------- BDBException -----------------------------
