@@ -368,11 +368,23 @@ class INodeRepoINode
 public:
   INodeRepoINode (BFSync::INodePtr ptr);
 
+  unsigned int              uid();
+  void                      set_uid (unsigned int uid);
+
+  unsigned int              gid();
+  void                      set_gid (unsigned int gid);
+
   unsigned int              type();
   void                      set_type (unsigned int type);
 
   unsigned int              mode();
   void                      set_mode (unsigned int mode);
+
+  std::string               hash();
+  void                      set_hash (const std::string& hash);
+
+  std::string               link();
+  void                      set_link (const std::string& link);
 
   bool                      valid();
   void                      add_link (INodeRepoINode& child, const std::string& name, unsigned int version);
@@ -391,6 +403,7 @@ public:
 
   INodeRepoINode load_inode (const ID& id, unsigned int version);
   INodeRepoINode create_inode (const std::string& path, unsigned int version);
+  INodeRepoINode create_inode_with_id (const ID& id, unsigned int version);
   void           save_changes();
 };
 

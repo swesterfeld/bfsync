@@ -141,6 +141,37 @@ class ApplyTool:
       inode.mtime_ns  = int (row[14])
     self.bdb.store_inode (inode)
 
+class ApplyToolNew:
+  def __init__ (self, bdb, VERSION):
+    self.bdb = bdb
+    self.VERSION = VERSION
+    self.inode_repo = bfsyncdb.INodeRepo (self.bdb)
+
+  def apply_link_plus (self, row):
+    pass
+
+  def apply_inode_plus (self, row):
+    print row[0]
+    print bfsyncdb.ID (row[0])
+    inode = self.inode_repo.create_inode_with_id (bfsyncdb.ID (row[0]), self.VERSION)
+    inode.set_uid (int (row[1]))
+    inode.set_gid (int (row[2]))
+    inode.set_mode (int (row[3]))
+    inode.set_type (int (row[4]))
+    inode.set_hash (row[5])
+    inode.set_link (row[6])
+    inode.set_size (int (row[7]))
+    inode.set_major (int (row[8]))
+    inode.set_minor (int (row[9]))
+    inode.set_nlink (int (row[10]))
+    inode.set_ctime (int (row[11]))
+    inode.set_ctime_ns (int (row[12]))
+    inode.set_mtime (int (row[13]))
+    inode.set_mtime_ns (int (row[14]))
+
+  def apply_inode_change (self, row):
+    pass
+
 class ApplyState:
   pass
 
@@ -174,7 +205,7 @@ class ApplyCommand:
     self.repo = repo
 
   def execute (self):
-    apply_tool = ApplyTool (self.repo.bdb, self.state.VERSION)
+    apply_tool = ApplyToolNew (self.repo.bdb, self.state.VERSION)
 
     OPS = 0
     self.repo.bdb.begin_transaction()

@@ -1495,6 +1495,30 @@ INodeRepoINode::INodeRepoINode (BFSync::INodePtr ptr) :
 }
 
 unsigned int
+INodeRepoINode::uid()
+{
+  return ptr->uid;
+}
+
+void
+INodeRepoINode::set_uid (unsigned int uid)
+{
+  ptr.update()->uid = uid;
+}
+
+unsigned int
+INodeRepoINode::gid()
+{
+  return ptr->gid;
+}
+
+void
+INodeRepoINode::set_gid (unsigned int gid)
+{
+  ptr.update()->gid = gid;
+}
+
+unsigned int
 INodeRepoINode::type()
 {
   return ptr->type;
@@ -1517,6 +1541,34 @@ INodeRepoINode::set_mode (unsigned int mode)
 {
   ptr.update()->mode = mode;
 }
+
+string
+INodeRepoINode::hash()
+{
+  return ptr->hash;
+}
+
+void
+INodeRepoINode::set_hash (const string& hash)
+{
+  ptr.update()->hash = hash;
+}
+
+// link field
+
+string
+INodeRepoINode::link()
+{
+  return ptr->link;
+}
+
+void
+INodeRepoINode::set_link (const string& link)
+{
+  ptr.update()->link = link;
+}
+
+// valid
 
 bool
 INodeRepoINode::valid()
@@ -1587,6 +1639,15 @@ INodeRepo::create_inode (const string& name, unsigned int version)
   ctx.version = version;
 
   return INodeRepoINode (BFSync::INodePtr (ctx, name.c_str()));
+}
+
+INodeRepoINode
+INodeRepo::create_inode_with_id (const ID& id, unsigned int version)
+{
+  BFSync::Context ctx;
+  ctx.version = version;
+
+  return INodeRepoINode (BFSync::INodePtr (ctx, NULL, &id.id));
 }
 
 void

@@ -218,12 +218,14 @@ INodePtr::INodePtr (const Context& ctx, const ID& id) :
     }
 }
 
-INodePtr::INodePtr (const Context& ctx, const char *path)
+INodePtr::INodePtr (const Context& ctx, const char *path, const ID *id)
 {
+  assert ((path && id == NULL) || (id && path == NULL));
+
   ptr = new INode();
   ptr->vmin = ctx.version;
   ptr->vmax = VERSION_INF;
-  ptr->id = ID::gen_new (path);
+  ptr->id = path ? ID::gen_new (path) : *id;
   ptr->uid = ctx.fc->uid;
   ptr->gid = ctx.fc->gid;
   ptr->size = 0;
