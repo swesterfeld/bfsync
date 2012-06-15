@@ -1242,6 +1242,9 @@ def cmd_inr_test():
           child_inode = inode.get_child (VERSION, child)
           inr_walk (child_inode, inode_name)
 
+  server_conn = ServerConn (repo.path)
+  server_conn.get_lock()
+
   inr = bfsyncdb.INodeRepo (repo.bdb)
   inode = inr.load_inode (bfsyncdb.id_root(), VERSION)
 
@@ -1257,6 +1260,12 @@ def cmd_inr_test():
 
   inr.save_changes()
   inr_walk (inode, "")
+
+  del inr
+
+  # we modified inodes -> clear fs cache
+  server_conn.clear_cache()
+  server_conn.close()
 
 args = []
 
