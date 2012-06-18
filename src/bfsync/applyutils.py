@@ -172,6 +172,9 @@ class ApplyToolNew:
   def apply_inode_change (self, row):
     pass
 
+  def save_changes_no_txn (self):
+    self.inode_repo.save_changes_no_txn()
+
 class ApplyState:
   pass
 
@@ -231,8 +234,11 @@ class ApplyCommand:
       if OPS >= 20000:
         OPS = 0
         mk_journal_entry (self.repo)
+        apply_tool.save_changes_no_txn()
         self.repo.bdb.commit_transaction()
         self.repo.bdb.begin_transaction()
+
+    apply_tool.save_changes_no_txn()
     self.repo.bdb.commit_transaction()
     return CMD_DONE
 
