@@ -156,6 +156,7 @@ INodeRepo::delete_unused_keep_count (unsigned int count)
         {
           return;
         }
+      old_count = new_count;
     }
 }
 
