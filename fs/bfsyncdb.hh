@@ -433,6 +433,7 @@ public:
   INodeRepoINode create_inode (const std::string& path, unsigned int version);
   INodeRepoINode create_inode_with_id (const ID& id, unsigned int version);
   void           save_changes();
+  void           save_changes_no_txn();
 };
 
 class BDBException

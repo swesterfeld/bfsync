@@ -1765,6 +1765,12 @@ INodeRepo::save_changes()
   inode_repo->save_changes();
 }
 
+void
+INodeRepo::save_changes_no_txn()
+{
+  inode_repo->save_changes (BFSync::INodeRepo::SC_NO_TXN);
+}
+
 //---------------------------- BDBException -----------------------------
 
 BDBException::BDBException (BDBError error) :

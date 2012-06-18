@@ -273,7 +273,7 @@ public:
   BDB                            *bdb;
   Mutex                           mutex;
 
-  enum SaveChangesMode { SC_NORMAL, SC_CLEAR_CACHE };
+  enum SaveChangesMode { SC_NORMAL, SC_CLEAR_CACHE, SC_NO_TXN };
 
   void save_changes (SaveChangesMode sc = SC_NORMAL);
   void clear_cache();

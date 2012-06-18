@@ -72,7 +72,10 @@ INodeRepo::save_changes (SaveChangesMode sc)
 {
   Lock lock (mutex);
 
-  bdb->begin_transaction();
+  if (sc != SC_NO_TXN)
+    {
+      bdb->begin_transaction();
+    }
 
   int inodes_saved = 0;
   for (map<ID, INodeVersionList>::iterator ci = cache.begin(); ci != cache.end(); ci++)
@@ -129,7 +132,11 @@ INodeRepo::save_changes (SaveChangesMode sc)
       links_cache.clear();
     }
   bdb->store_new_id2ino_entries();
-  bdb->commit_transaction();
+
+  if (sc != SC_NO_TXN)
+    {
+      bdb->commit_transaction();
+    }
   // bdb->sync();
 }
 
