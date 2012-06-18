@@ -154,6 +154,12 @@ class ApplyToolNew:
     dir_inode = self.inode_repo.load_inode (bfsyncdb.ID (row[0]), self.VERSION)
     dir_inode.add_link_raw (inode, row[1], self.VERSION)
 
+  def apply_link_change (self, row):
+    inode = self.inode_repo.load_inode (bfsyncdb.ID (row[2]), self.VERSION)
+    dir_inode = self.inode_repo.load_inode (bfsyncdb.ID (row[0]), self.VERSION)
+    dir_inode.unlink_raw (row[1], self.VERSION)
+    dir_inode.add_link_raw (inode, row[1], self.VERSION)
+
   def apply_link_minus (self, row):
     inode = self.inode_repo.load_inode (bfsyncdb.ID (row[0]), self.VERSION)
     inode.unlink_raw (row[1], self.VERSION)
