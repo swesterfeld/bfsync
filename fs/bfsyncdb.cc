@@ -1703,6 +1703,23 @@ INodeRepoINode::add_link_raw (INodeRepoINode& child, const string& name, unsigne
   ptr.update()->add_link (ctx, child.ptr, name, BFSync::INode::LM_NO_UPDATE_NLINK);
 }
 
+void
+INodeRepoINode::unlink (const string& name, unsigned int version)
+{
+  BFSync::Context ctx;
+  ctx.version = version;
+
+  ptr.update()->unlink (ctx, name);
+}
+
+void
+INodeRepoINode::unlink_raw (const string& name, unsigned int version)
+{
+  BFSync::Context ctx;
+  ctx.version = version;
+
+  ptr.update()->unlink (ctx, name, BFSync::INode::LM_NO_UPDATE_NLINK);
+}
 
 vector<string>
 INodeRepoINode::get_child_names (unsigned int version)
