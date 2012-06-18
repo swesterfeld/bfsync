@@ -206,6 +206,10 @@ class ApplyToolNew:
     if row[14] != "":
       inode.set_mtime_ns (int (row[14]))
 
+  def apply_inode_minus (self, row):
+    inode = self.inode_repo.load_inode (bfsyncdb.ID (row[0]), self.VERSION)
+    inode.set_nlink (0)        # will be omitted during save
+
   def save_changes_no_txn (self):
     self.inode_repo.save_changes_no_txn()
 
