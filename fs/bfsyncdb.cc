@@ -1568,6 +1568,115 @@ INodeRepoINode::set_link (const string& link)
   ptr.update()->link = link;
 }
 
+// size field
+
+uint64_t
+INodeRepoINode::size()
+{
+  return ptr->size;
+}
+
+void
+INodeRepoINode::set_size (uint64_t size)
+{
+  ptr.update()->size = size;
+}
+
+// major field
+
+unsigned int
+INodeRepoINode::major()
+{
+  return ptr->major;
+}
+
+void
+INodeRepoINode::set_major (unsigned int major)
+{
+  ptr.update()->major = major;
+}
+
+// minor field
+
+unsigned int
+INodeRepoINode::minor()
+{
+  return ptr->minor;
+}
+
+void
+INodeRepoINode::set_minor (unsigned int minor)
+{
+  ptr.update()->minor = minor;
+}
+
+// nlink field
+
+unsigned int
+INodeRepoINode::nlink()
+{
+  return ptr->nlink;
+}
+
+void
+INodeRepoINode::set_nlink (unsigned int nlink)
+{
+  ptr.update()->nlink = nlink;
+}
+
+// mtime + mtime_ns fields
+
+unsigned int
+INodeRepoINode::mtime()
+{
+  return ptr->mtime;
+}
+
+void
+INodeRepoINode::set_mtime (unsigned int mtime)
+{
+  ptr.update()->mtime = mtime;
+}
+
+unsigned int
+INodeRepoINode::mtime_ns()
+{
+  return ptr->mtime_ns;
+}
+
+void
+INodeRepoINode::set_mtime_ns (unsigned int mtime_ns)
+{
+  ptr.update()->mtime_ns = mtime_ns;
+}
+
+// ctime + ctime_ns fields
+
+unsigned int
+INodeRepoINode::ctime()
+{
+  return ptr->ctime;
+}
+
+void
+INodeRepoINode::set_ctime (unsigned int ctime)
+{
+  ptr.update()->ctime = ctime;
+}
+
+unsigned int
+INodeRepoINode::ctime_ns()
+{
+  return ptr->ctime_ns;
+}
+
+void
+INodeRepoINode::set_ctime_ns (unsigned int ctime_ns)
+{
+  ptr.update()->ctime_ns = ctime_ns;
+}
+
+
 // valid
 
 bool

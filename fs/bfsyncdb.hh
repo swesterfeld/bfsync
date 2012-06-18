@@ -27,6 +27,9 @@
 #include <set>
 #include <queue>
 
+#undef major
+#undef minor
+
 struct ID {
   BFSync::ID id;
 
@@ -385,6 +388,31 @@ public:
 
   std::string               link();
   void                      set_link (const std::string& link);
+
+  uint64_t                  size();
+  void                      set_size (uint64_t size);
+
+  unsigned int              major();
+  void                      set_major (unsigned int major);
+
+  unsigned int              minor();
+  void                      set_minor (unsigned int minor);
+
+  unsigned int              nlink();
+  void                      set_nlink (unsigned int nlink);
+
+  unsigned int              mtime();
+  void                      set_mtime (unsigned int mtime);
+
+  unsigned int              mtime_ns();
+  void                      set_mtime_ns (unsigned int mtime_ns);
+
+  unsigned int              ctime();
+  void                      set_ctime (unsigned int ctime);
+
+  unsigned int              ctime_ns();
+  void                      set_ctime_ns (unsigned int ctime_ns);
+
 
   bool                      valid();
   void                      add_link (INodeRepoINode& child, const std::string& name, unsigned int version);
