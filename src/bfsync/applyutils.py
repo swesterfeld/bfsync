@@ -148,8 +148,6 @@ class ApplyToolNew:
     self.inode_repo = bfsyncdb.INodeRepo (self.bdb)
 
   def apply_link_plus (self, row):
-    link = bfsyncdb.Link()
-    link.name = row[1]
     inode = self.inode_repo.load_inode (bfsyncdb.ID (row[2]), self.VERSION)
     dir_inode = self.inode_repo.load_inode (bfsyncdb.ID (row[0]), self.VERSION)
     dir_inode.add_link_raw (inode, row[1], self.VERSION)
