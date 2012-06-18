@@ -239,6 +239,7 @@ class ApplyCommand:
   def start (self, repo, diff, server, verbose, commit_args):
     self.state = ApplyState()
     self.state.change_pos = 0
+    self.state.phase = 0
     self.state.VERSION = repo.first_unused_version()
     self.repo = repo
     self.store_diff (diff)
@@ -255,20 +256,28 @@ class ApplyCommand:
     OPS = 0
     self.repo.bdb.begin_transaction()
 
-    for phase in range (3):
-      self.state.change_pos = 0
+    # apply is done in three phases:
+    #
+    # - phase == 0 - apply i+ and i! changes
+    # - phase == 1 - apply l+, l- and l! changes
+    # - phase == 2 - apply i- changes
+    #
+    # this ensures that l+, l- and l! are executed on a database that
+    # contains both, the directory inode (link src) and the inode the
+    # link points to (link dest)
+    while self.state.phase < 3:
       while self.state.change_pos < len (self.changes):
         change = self.changes[self.state.change_pos]
         self.state.change_pos += 1
 
         # apply one change
-        if phase == 0:
+        if self.state.phase == 0:
           if change[0] == "i+":
             apply_tool.apply_inode_plus (change[1:])
           if change[0] == "i!":
             apply_tool.apply_inode_change (change[1:])
 
-        if phase == 1:
+        if self.state.phase == 1:
           if change[0] == "l+":
             apply_tool.apply_link_plus (change[1:])
           if change[0] == "l!":
@@ -276,7 +285,7 @@ class ApplyCommand:
           if change[0] == "l-":
             apply_tool.apply_link_minus (change[1:])
 
-        if phase == 2:
+        if self.state.phase == 2:
           if change[0] == "i-":
             apply_tool.apply_inode_minus (change[1:])
 
@@ -287,6 +296,9 @@ class ApplyCommand:
           apply_tool.save_changes_no_txn()
           self.repo.bdb.commit_transaction()
           self.repo.bdb.begin_transaction()
+
+      self.state.change_pos = 0
+      self.state.phase += 1
 
     apply_tool.save_changes_no_txn()
     self.repo.bdb.commit_transaction()
