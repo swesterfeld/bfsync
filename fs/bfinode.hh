@@ -282,6 +282,7 @@ public:
 
   enum DeleteMode { DM_ALL, DM_SOME };
   void delete_unused_inodes (DeleteMode dmode);
+  void delete_unused_keep_count (unsigned int count);
   int  cached_inode_count();
   int  cached_dir_count();
 

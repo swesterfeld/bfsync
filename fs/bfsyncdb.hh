@@ -438,6 +438,7 @@ public:
   INodeRepoINode create_inode_with_id (const ID& id, unsigned int version);
   void           save_changes();
   void           save_changes_no_txn();
+  void           delete_unused_keep_count (unsigned int count);
 };
 
 class BDBException

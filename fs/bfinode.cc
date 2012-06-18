@@ -141,6 +141,25 @@ INodeRepo::save_changes (SaveChangesMode sc)
 }
 
 void
+INodeRepo::delete_unused_keep_count (unsigned int count)
+{
+  size_t old_count = cached_inode_count();
+
+  while (old_count > count)
+    {
+      delete_unused_inodes (DM_SOME);
+
+      size_t new_count = cached_inode_count();
+
+      // only continue if cached inode count decreased during last delete step
+      if (old_count == new_count)
+        {
+          return;
+        }
+    }
+}
+
+void
 INodeRepo::delete_unused_inodes (DeleteMode dmode)
 {
   Lock lock (mutex);

@@ -216,6 +216,7 @@ class ApplyToolNew:
 
   def save_changes_no_txn (self):
     self.inode_repo.save_changes_no_txn()
+    self.inode_repo.delete_unused_keep_count (200000)
 
 class ApplyState:
   pass

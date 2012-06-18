@@ -1800,6 +1800,12 @@ INodeRepo::save_changes_no_txn()
   inode_repo->save_changes (BFSync::INodeRepo::SC_NO_TXN);
 }
 
+void
+INodeRepo::delete_unused_keep_count (unsigned int count)
+{
+  inode_repo->delete_unused_keep_count (count);
+}
+
 //---------------------------- BDBException -----------------------------
 
 BDBException::BDBException (BDBError error) :
