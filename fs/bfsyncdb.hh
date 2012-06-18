@@ -416,6 +416,7 @@ public:
 
   bool                      valid();
   void                      add_link (INodeRepoINode& child, const std::string& name, unsigned int version);
+  void                      add_link_raw (INodeRepoINode& child, const std::string& name, unsigned int version);
 
   std::vector<std::string>  get_child_names (unsigned int version);
   INodeRepoINode            get_child (unsigned int version, const std::string& name);

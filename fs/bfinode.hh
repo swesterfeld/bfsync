@@ -158,6 +158,8 @@ public:
   INode (const INode& other);
   ~INode();
 
+  enum LinkMode { LM_UPDATE_NLINK, LM_NO_UPDATE_NLINK };
+
   bool          save();
   bool          load (const Context& ctx, const ID& id);
 
@@ -169,8 +171,8 @@ public:
   std::string   gen_new_file_path();
   std::string   file_path() const;
   void          copy_on_write();
-  void          add_link (const Context& ctx, INodePtr to, const std::string& name);
-  bool          unlink (const Context& ctx, const std::string& name);
+  void          add_link (const Context& ctx, INodePtr to, const std::string& name, LinkMode lm = LM_UPDATE_NLINK);
+  bool          unlink (const Context& ctx, const std::string& name, LinkMode lm = LM_UPDATE_NLINK);
 
   bool          read_perm_ok (const Context& ctx) const;
   bool          write_perm_ok (const Context& ctx) const;

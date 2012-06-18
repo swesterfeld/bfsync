@@ -1694,6 +1694,15 @@ INodeRepoINode::add_link (INodeRepoINode& child, const string& name, unsigned in
   ptr.update()->add_link (ctx, child.ptr, name);
 }
 
+void
+INodeRepoINode::add_link_raw (INodeRepoINode& child, const string& name, unsigned int version)
+{
+  BFSync::Context ctx;
+  ctx.version = version;
+
+  ptr.update()->add_link (ctx, child.ptr, name, BFSync::INode::LM_NO_UPDATE_NLINK);
+}
+
 
 vector<string>
 INodeRepoINode::get_child_names (unsigned int version)
@@ -1719,6 +1728,9 @@ INodeRepo::INodeRepo (BDBPtr bdb)
 {
   assert (!BFSync::INodeRepo::the());
   inode_repo = new BFSync::INodeRepo (bdb.get_bdb());
+
+  // load history - otherwise some operation will not work
+  bdb.get_bdb()->history()->read();
   assert (BFSync::INodeRepo::the());
 }
 

@@ -530,7 +530,7 @@ INode::copy_on_write()
 }
 
 void
-INode::add_link (const Context& ctx, INodePtr to, const string& name)
+INode::add_link (const Context& ctx, INodePtr to, const string& name, LinkMode lm)
 {
   Link *link = new Link();
 
@@ -540,20 +540,21 @@ INode::add_link (const Context& ctx, INodePtr to, const string& name)
   link->inode_id = to->id;
   link->name = name;
 
-  to.update()->nlink++;
+  if (lm == LM_UPDATE_NLINK)
+    to.update()->nlink++;
 
   links.update()->link_map[name].add (LinkPtr (link));
 }
 
 bool
-INode::unlink (const Context& ctx, const string& name)
+INode::unlink (const Context& ctx, const string& name, LinkMode lm)
 {
   LinkPtr& lp = links.update()->link_map[name].find_version (ctx.version);
   if (lp && lp->name == name && !lp->deleted)
     {
       INodePtr inode (ctx, lp->inode_id);
 
-      if (inode)
+      if (inode && lm == LM_UPDATE_NLINK)
         inode.update()->nlink--;
 
       lp.update()->deleted = true;

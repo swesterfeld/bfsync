@@ -152,7 +152,7 @@ class ApplyToolNew:
     link.name = row[1]
     inode = self.inode_repo.load_inode (bfsyncdb.ID (row[2]), self.VERSION)
     dir_inode = self.inode_repo.load_inode (bfsyncdb.ID (row[0]), self.VERSION)
-    dir_inode.add_link (inode, row[1], self.VERSION)
+    dir_inode.add_link_raw (inode, row[1], self.VERSION)
 
   def apply_inode_plus (self, row):
     inode = self.inode_repo.create_inode_with_id (bfsyncdb.ID (row[0]), self.VERSION)
@@ -172,7 +172,35 @@ class ApplyToolNew:
     inode.set_mtime_ns (int (row[14]))
 
   def apply_inode_change (self, row):
-    pass
+    inode = self.inode_repo.load_inode (bfsyncdb.ID (row[0]), self.VERSION)
+    if row[1] != "":
+      inode.set_uid (int (row[1]))
+    if row[2] != "":
+      inode.set_gid (int (row[2]))
+    if row[3] != "":
+      inode.set_mode (int (row[3]))
+    if row[4] != "":
+      inode.set_type (int (row[4]))
+    if row[5] != "":
+      inode.set_hash (row[5])
+    if row[6] != "":
+      inode.set_link (row[6])
+    if row[7] != "":
+      inode.set_size (int (row[7]))
+    if row[8] != "":
+      inode.set_major (int (row[8]))
+    if row[9] != "":
+      inode.set_minor (int (row[9]))
+    if row[10] != "":
+      inode.set_nlink (int (row[10]))
+    if row[11] != "":
+      inode.set_ctime (int (row[11]))
+    if row[12] != "":
+      inode.set_ctime_ns (int (row[12]))
+    if row[13] != "":
+      inode.set_mtime (int (row[13]))
+    if row[14] != "":
+      inode.set_mtime_ns (int (row[14]))
 
   def save_changes_no_txn (self):
     self.inode_repo.save_changes_no_txn()
