@@ -148,11 +148,13 @@ class ApplyToolNew:
     self.inode_repo = bfsyncdb.INodeRepo (self.bdb)
 
   def apply_link_plus (self, row):
-    pass
+    link = bfsyncdb.Link()
+    link.name = row[1]
+    inode = self.inode_repo.load_inode (bfsyncdb.ID (row[2]), self.VERSION)
+    dir_inode = self.inode_repo.load_inode (bfsyncdb.ID (row[0]), self.VERSION)
+    dir_inode.add_link (inode, row[1], self.VERSION)
 
   def apply_inode_plus (self, row):
-    print row[0]
-    print bfsyncdb.ID (row[0])
     inode = self.inode_repo.create_inode_with_id (bfsyncdb.ID (row[0]), self.VERSION)
     inode.set_uid (int (row[1]))
     inode.set_gid (int (row[2]))
@@ -212,31 +214,39 @@ class ApplyCommand:
 
     OPS = 0
     self.repo.bdb.begin_transaction()
-    while self.state.change_pos < len (self.changes):
-      change = self.changes[self.state.change_pos]
-      self.state.change_pos += 1
 
-      # apply one change
-      if change[0] == "l+":
-        apply_tool.apply_link_plus (change[1:])
-      if change[0] == "i+":
-        apply_tool.apply_inode_plus (change[1:])
-      if change[0] == "l!":
-        apply_tool.apply_link_change (change[1:])
-      if change[0] == "i!":
-        apply_tool.apply_inode_change (change[1:])
-      if change[0] == "l-":
-        apply_tool.apply_link_minus (change[1:])
-      if change[0] == "i-":
-        apply_tool.apply_inode_minus (change[1:])
+    for phase in range (3):
+      self.state.change_pos = 0
+      while self.state.change_pos < len (self.changes):
+        change = self.changes[self.state.change_pos]
+        self.state.change_pos += 1
 
-      OPS += 1
-      if OPS >= 20000:
-        OPS = 0
-        mk_journal_entry (self.repo)
-        apply_tool.save_changes_no_txn()
-        self.repo.bdb.commit_transaction()
-        self.repo.bdb.begin_transaction()
+        # apply one change
+        if phase == 0:
+          if change[0] == "i+":
+            apply_tool.apply_inode_plus (change[1:])
+          if change[0] == "i!":
+            apply_tool.apply_inode_change (change[1:])
+
+        if phase == 1:
+          if change[0] == "l+":
+            apply_tool.apply_link_plus (change[1:])
+          if change[0] == "l!":
+            apply_tool.apply_link_change (change[1:])
+          if change[0] == "l-":
+            apply_tool.apply_link_minus (change[1:])
+
+        if phase == 2:
+          if change[0] == "i-":
+            apply_tool.apply_inode_minus (change[1:])
+
+        OPS += 1
+        if OPS >= 20000:
+          OPS = 0
+          mk_journal_entry (self.repo)
+          apply_tool.save_changes_no_txn()
+          self.repo.bdb.commit_transaction()
+          self.repo.bdb.begin_transaction()
 
     apply_tool.save_changes_no_txn()
     self.repo.bdb.commit_transaction()
