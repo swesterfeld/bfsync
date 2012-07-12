@@ -69,7 +69,7 @@ bdb_need_recover (const string& path)
 {
   BDB *bdb = new BDB();
 
-  bool result = bdb->need_recover (path);
+  bool result = bdb->need_recover (path) != BDB::RECOVER_NOT_NEEDED;
 
   delete bdb;
 
@@ -112,12 +112,24 @@ BDB::open (const string& path, int cache_size_mb, bool recover)
 {
   Lock lock (mutex);
 
-  if (need_recover (path) && !recover)
+  NeedRecoverResult rec_result = need_recover (path);
+  if (rec_result != RECOVER_NOT_NEEDED && !recover)
     {
       printf ("============================================================================\n");
       printf ("%s: need to recover repository\n", path.c_str());
       printf ("============================================================================\n");
-      printf (" - some processes did not shut down properly\n");
+      if (rec_result == RECOVER_PROCS_DIED)
+        {
+          printf (" - some processes did not shut down properly\n");
+        }
+      else if (rec_result == RECOVER_LAST_OPEN_FAILED)
+        {
+          printf (" - last database open failed\n");
+        }
+      else
+        {
+          printf (" - recover reason unknown (%d)\n", rec_result);
+        }
       printf (" - use bfsync recover %s to fix this\n", path.c_str());
       printf ("============================================================================\n");
       return false;
@@ -1687,9 +1699,10 @@ BDB::shm_id (const string& path)
 }
 
 
-bool
+BDB::NeedRecoverResult
 BDB::need_recover (const string& repo_path)
 {
+  // check processes directory
   int dead_count = 0;
 
   GDir *dir = g_dir_open ((repo_path + "/processes").c_str(), 0, NULL);
@@ -1709,7 +1722,19 @@ BDB::need_recover (const string& repo_path)
         }
       g_dir_close (dir);
     }
-  return dead_count > 0;
+  if (dead_count > 0)
+    return RECOVER_PROCS_DIED;
+
+  // check last_open_failed file
+  string last_open_failed = string_printf ("%s/last_open_failed", repo_path.c_str());
+  FILE *f = fopen (last_open_failed.c_str(), "r");
+  if (f)
+    {
+      fclose (f);
+      return RECOVER_LAST_OPEN_FAILED;
+    }
+
+  return RECOVER_NOT_NEEDED;
 }
 
 void

@@ -163,7 +163,14 @@ public:
 
   BDB();
 
-  bool  need_recover (const std::string& path);
+  enum NeedRecoverResult {
+    RECOVER_NOT_NEEDED,
+    RECOVER_PROCS_DIED,
+    RECOVER_LAST_OPEN_FAILED
+  };
+
+  NeedRecoverResult need_recover (const std::string& path);
+
   bool  open (const std::string& path, int cache_size_mb, bool recover);
   void  register_pid();
   void  sync();
