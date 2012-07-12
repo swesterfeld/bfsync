@@ -42,10 +42,26 @@ bdb_open (const string& path, int cache_size_mb, bool recover)
 {
   BDB *bdb = new BDB();
 
+  string last_open_failed = string_printf ("%s/last_open_failed", path.c_str());
+
   if (bdb->open (path, cache_size_mb, recover))
-    return bdb;
+    {
+      // db open ok => unlink last_open_failed, if it exists
+      unlink (last_open_failed.c_str());
+
+      return bdb;
+    }
   else
-    return NULL;
+    {
+      // recovery might help if database open fails, so we write a file indicating
+      // that last open failed
+
+      FILE *last_open_failed_file = fopen (last_open_failed.c_str(), "w");
+      g_assert (last_open_failed_file);
+      fclose (last_open_failed_file);
+
+      return NULL;
+    }
 }
 
 bool
