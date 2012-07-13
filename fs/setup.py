@@ -29,7 +29,7 @@ bfsyncdb_module = Extension('_bfsyncdb',
                            )
 
 setup (name = 'bfsyncdb',
-       version = '0.3.1',
+       version = '0.3.2',
        author = 'Stefan Westerfeld',
        author_email = 'stefan@space.twc.de',
        description = 'Big File synchronization tool - python binding',
