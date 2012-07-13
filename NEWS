@@ -1,3 +1,19 @@
+Overview of Changes in bfsync-0.3.2:
+
+* added bfsync upgrade command: upgrade repository from previous version(s)
+* added bfsync expire command: automated deletion of old versions
+* added bfsync (un)delete-version: allows deleting old versions, so that
+  old contents will be removed during gc
+* added bfsync config-set: allows modifying repository configuration
+* added bfsync need-continue: returns true if bfsync continue needs to be run
+* added bfsync need-recover command: returns true if bfsync recover needs to be run
+* added support for tagging versions
+* improved pull/clone performance: applying link deletions are a lot faster
+* allow using other remote shells than ssh (usually rsh is faster if encryption
+  is not needed)
+* added bfsync transfer-bench, which measures transfer speed
+* allow big letters (A-Z) in config files without quoting
+
 Overview of Changes in bfsync-0.3.1:
 
 * added bfsync new-files command: show new/changed files for a given version
