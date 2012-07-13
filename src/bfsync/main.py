@@ -1267,6 +1267,42 @@ def cmd_inr_test():
   server_conn.clear_cache()
   server_conn.close()
 
+def cmd_upgrade():
+  parser = argparse.ArgumentParser (prog='bfsync upgrade')
+  parser.add_argument ("dest_dir", nargs = "?")
+  parsed_args = parser.parse_args (args)
+
+  if parsed_args.dest_dir:
+    dir = parsed_args.dest_dir
+    try:
+      os.chdir (dir)
+    except:
+      print "fatal: path '" + dir + "' does not exist"
+      sys.exit (1)
+
+  repo_path = find_repo_dir()
+  bfsync_info = parse_config (repo_path + "/info")
+
+  version = bfsync_info.get ("version")
+  if len (version) != 1:
+    raise Exception ("bad version setting")
+  version = version[0]
+
+  new_version = bfsyncdb.repo_version()
+
+  if version != "0.3.1":
+    raise BFSyncError ("can't upgrade from version %s to %s" % (version, new_version))
+
+  status_line.set_op ("UPGRADE")
+  status_line.update ("upgraded %s (old version = %s, new_version = %s)" % (repo_path, version, new_version))
+
+  bfsync_info.set ("version", [ new_version ])
+
+  # write new config file
+  f = open ("info", "w")
+  f.write (bfsync_info.to_string())
+  f.close()
+
 args = []
 
 def main():
@@ -1306,6 +1342,7 @@ def main():
       ( "delete-version",         cmd_delete_version, 1),
       ( "undelete-version",       cmd_undelete_version, 1),
       ( "transfer-bench",         cmd_transfer_bench, 1),
+      ( "upgrade",                cmd_upgrade, 1),
       ( "inr-test",               cmd_inr_test, 1),
       ( "debug-add-tag",          cmd_debug_add_tag, 1),
       ( "debug-del-tag",          cmd_debug_del_tag, 1),
