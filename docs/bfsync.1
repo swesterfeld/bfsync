@@ -1,4 +1,4 @@
-.TH "BFSYNC" "1" "2012\-07\-16" "Revision 732" "bfsync Manual Page"
+.TH "BFSYNC" "1" "2012\-07\-16" "Revision 733" "bfsync Manual Page"
 
 .SH NAME
 
@@ -100,6 +100,14 @@ The expire command was designed mainly for deleting the contents of old backups,
 .TP
 \fBupgrade\fR
 Upgrade bfsync repository contents from an old bfsync version to a new bfsync version. The repository version of a bfsync repository is initialized to the version of bfsync that created the repository. That is true for master repositories (create with bfsync init) and checkouts (created with bfsync clone). A repository can only be accessed by bfsync if the repository version and the bfsync version matches. In some cases upgrade can automatically upgrade a repository to the current bfsync version. Note that while this makes it possible to access the repository with the new bfsync, at the same time it makes it impossible to access it with the old bfsync (and there is no downgrade command). Manual repository version upgrades are described in the section UPDATING FROM AN OLD VERSION; of course if automated upgrade with bfsync upgrade are easier and should be used if bfsync upgrade supports the old version -> new version upgrade.
+.PP
+.TP
+\fBdelete-version\fR \fI<vrange1>\fR \fI<vrange2>\fR \fI...\fR
+This command tags the version(s) \fI<vrange1>\fR, \fI<vrange2>\fR, ... as deleted, where single numbers are possible (\fBbfsync delete-version 10\fR) or version ranges (\fBbfsync delete-version 10-20\fR). Once deleted, these versions become invisible (in the .commits dir, in the bfsync log and so on), and files that are only present in deleted versions are removed during \fBbfsync gc\fR, and will not be retransferred for instance during \fBbfsync get\fR.
+.PP
+.TP
+\fBundelete-version\fR \fI<vrange1>\fR \fI<vrange2>\fR \fI...\fR
+Untag versions that were previously deleted (see delete-version for complete description).
 .PP
 .TP
 \fB--version\fR
