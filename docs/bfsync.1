@@ -1,4 +1,4 @@
-.TH "BFSYNC" "1" "2012\-07\-16" "Revision 733" "bfsync Manual Page"
+.TH "BFSYNC" "1" "2012\-07\-16" "Revision 734" "bfsync Manual Page"
 
 .SH NAME
 
@@ -108,6 +108,10 @@ This command tags the version(s) \fI<vrange1>\fR, \fI<vrange2>\fR, ... as delete
 .TP
 \fBundelete-version\fR \fI<vrange1>\fR \fI<vrange2>\fR \fI...\fR
 Untag versions that were previously deleted (see delete-version for complete description).
+.PP
+.TP
+\fBconfig-set\fR \fI<key>\fR \fI<value>\fR \fI...\fR
+Modify repository configuration file. The key can either be a simple key (bfsync config-set cache-size 1024) or in <group>/<key> format (bfsync config-set expire/keep_daily 30). It is possible to assign more than one value to a key, however this only makes sense for keys that support that.
 .PP
 .TP
 \fB--version\fR
