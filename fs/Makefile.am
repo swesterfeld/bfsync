@@ -48,6 +48,9 @@ bftesthelper_SOURCES = bftesthelper.cc
 all-local: setup.py
 	$(PYTHON) setup.py build
 
+clean-local:
+	$(PYTHON) setup.py clean --all
+
 install-exec-hook: setup.py
 	$(PYTHON) setup.py install --prefix=${prefix}
 # update ldconfig cache to be able to load python module linked to libbfsync.so
