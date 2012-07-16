@@ -1,4 +1,4 @@
-.TH "BFSYNC" "1" "2012\-07\-16" "Revision 729" "bfsync Manual Page"
+.TH "BFSYNC" "1" "2012\-07\-16" "Revision 732" "bfsync Manual Page"
 
 .SH NAME
 
@@ -96,6 +96,10 @@ This command shows which files were added to the repository for a given version.
 .TP
 \fBexpire\fR
 The expire command was designed mainly for deleting the contents of old backups, although it will work on any repository. During expire, the tags \fBdaily\fR, \fBweekly\fR, \fBmonthly\fR and \fByearly\fR will be assigned to the versions that are daily, weekly, monthly or yearly backups. The expire configuration will determine which version is - for instance - a monthly backup. It could be the first backup of the month, or the last backup of the month. Finally, after all versions have been tagged according to the expire configuration, expire will mark versions deleted that shouldn't be kept. For each daily/weekly/monthly/yearly backup, expire will keep the N newest backups, where N is configurable. The expire/keep_daily setting defines how many daily backups expire will keep, the expire/keep_weekly setting defines how many weekly backups expire will keep, and so on. Finally there is a setting expire/keep_most_recent defines how many most recent backups expire will keep. Every backup that is not kept due to one of these settings will be marked deleted. The settings that affect the expire command are documented in the CONFIGURATION section. Note that while expire marks versions as deleted, it doesn't actually delete the file contents that belong to deleted versions. Running \fBbfsync gc\fR will delete all file contents that are only in deleted versions.
+.PP
+.TP
+\fBupgrade\fR
+Upgrade bfsync repository contents from an old bfsync version to a new bfsync version. The repository version of a bfsync repository is initialized to the version of bfsync that created the repository. That is true for master repositories (create with bfsync init) and checkouts (created with bfsync clone). A repository can only be accessed by bfsync if the repository version and the bfsync version matches. In some cases upgrade can automatically upgrade a repository to the current bfsync version. Note that while this makes it possible to access the repository with the new bfsync, at the same time it makes it impossible to access it with the old bfsync (and there is no downgrade command). Manual repository version upgrades are described in the section UPDATING FROM AN OLD VERSION; of course if automated upgrade with bfsync upgrade are easier and should be used if bfsync upgrade supports the old version -> new version upgrade.
 .PP
 .TP
 \fB--version\fR
@@ -449,7 +453,13 @@ If you backup more than one filesystem every day, you only need to commit once, 
 
 .SH UPDATING FROM AN OLD VERSION
 
-The repository format is not (yet) stable across bfsync versions, to you need to manually convert your old repositories to a new version. There is currently no easy way to preserve the history when updating from an old version of bfsync. But if you need only preserve the repository content, you can use the following steps:
+The repository format is not (yet) stable across bfsync versions. In some cases upgrades can be done \fBautomatically\fR by running
+.TP
+\fBserver:/path/to/files.bfsync$ bfsync upgrade\fR
+Automatically upgrade repository to current bfsync version.
+.PP
+
+This is the easiest way. If this way doesn't work, you need to \fBmanually convert your old repositories\fR to a new version. There is currently no easy way to preserve the history when manually updating from an old version of bfsync. But if you need only preserve the repository content, you can use the following steps:
 .TP
 \fBinstall the old version and the new version of bfsync in parallel on one machine\fR
 Use different prefixes to make this happen (configure --prefix=...).
