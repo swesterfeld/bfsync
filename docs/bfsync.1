@@ -1,4 +1,4 @@
-.TH "BFSYNC" "1" "2012\-07\-16" "Revision 726" "bfsync Manual Page"
+.TH "BFSYNC" "1" "2012\-07\-16" "Revision 728" "bfsync Manual Page"
 
 .SH NAME
 
@@ -144,39 +144,39 @@ The configuration keys in the \fBdefault group\fR can be set simultaneously, by 
  }
 .EE
 .TP
-\fBexpire { keep_most_recent \fI<N>\fR; }\fR
+\fBexpire { keep_most_recent\fR \fI<N>\fR; \fB}\fR
 Keep <N> most recent versions during expire.
 .PP
 .TP
-\fBexpire { create_daily \fIfirst|last\fR; }\fR
+\fBexpire { create_daily\fR \fIfirst|last\fR; \fB}\fR
 Tag first/last backup of the day as daily backup during expire.
 .PP
 .TP
-\fBexpire { keep_daily \fI<N>\fR; }\fR
+\fBexpire { keep_daily\fR \fI<N>\fR; \fB}\fR
 Keep the newest <N> daily backups during expire.
 .PP
 .TP
-\fBexpire { create_weekly \fI<weekday>\fR; }\fR
+\fBexpire { create_weekly\fR \fI<weekday>\fR; \fB}\fR
 Tag daily backup on <weekday> as weekly backup during expire.
 .PP
 .TP
-\fBexpire { keep_weekly \fI<N>\fR; }\fR
+\fBexpire { keep_weekly\fR \fI<N>\fR; \fB}\fR
 Keep the newest <N> weekly backups during expire.
 .PP
 .TP
-\fBexpire { create_monthly \fIfirst|last\fR; }\fR
+\fBexpire { create_monthly\fR \fIfirst|last\fR; \fB}\fR
 Tag first/last daily backup of the month as monthly backup during expire.
 .PP
 .TP
-\fBexpire { keep_monthly \fI<N>\fR; }\fR
+\fBexpire { keep_monthly\fR \fI<N>\fR; \fB}\fR
 Keep the newest <N> monthly backups during expire.
 .PP
 .TP
-\fBexpire { create_yearly \fIfirst|last\fR; }\fR
+\fBexpire { create_yearly\fR \fIfirst|last\fR; \fB}\fR
 Tag first/last daily backup of the year as yearly backup during expire.
 .PP
 .TP
-\fBexpire { keep_yearly \fI<N>\fR; }\fR
+\fBexpire { keep_yearly\fR \fI<N>\fR; \fB}\fR
 Keep the newest <N> yearly backups during expire.
 .PP
 

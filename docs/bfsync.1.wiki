@@ -118,31 +118,31 @@ The configuration keys in the '''default group''' can be set simultaneously, by 
     pull "...";
   }
 
-; '''expire { keep_most_recent ''<N>''; }'''
+; '''expire { keep_most_recent''' ''<N>''; '''}'''
 : Keep <N> most recent versions during expire.
 
-; '''expire { create_daily ''first|last''; }'''
+; '''expire { create_daily''' ''first|last''; '''}'''
 : Tag first/last backup of the day as daily backup during expire.
 
-; '''expire { keep_daily ''<N>''; }'''
+; '''expire { keep_daily''' ''<N>''; '''}'''
 : Keep the newest <N> daily backups during expire.
 
-; '''expire { create_weekly ''<weekday>''; }'''
+; '''expire { create_weekly''' ''<weekday>''; '''}'''
 : Tag daily backup on <weekday> as weekly backup during expire.
 
-; '''expire { keep_weekly ''<N>''; }'''
+; '''expire { keep_weekly''' ''<N>''; '''}'''
 : Keep the newest <N> weekly backups during expire.
 
-; '''expire { create_monthly ''first|last''; }'''
+; '''expire { create_monthly''' ''first|last''; '''}'''
 : Tag first/last daily backup of the month as monthly backup during expire.
 
-; '''expire { keep_monthly ''<N>''; }'''
+; '''expire { keep_monthly''' ''<N>''; '''}'''
 : Keep the newest <N> monthly backups during expire.
 
-; '''expire { create_yearly ''first|last''; }'''
+; '''expire { create_yearly''' ''first|last''; '''}'''
 : Tag first/last daily backup of the year as yearly backup during expire.
 
-; '''expire { keep_yearly ''<N>''; }'''
+; '''expire { keep_yearly''' ''<N>''; '''}'''
 : Keep the newest <N> yearly backups during expire.
 
 The configuration keys in the '''expire group''' can be set simultaneously, for instance by using
