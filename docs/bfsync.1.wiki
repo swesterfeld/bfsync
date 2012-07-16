@@ -78,6 +78,9 @@ It is possible to use bfsync for backups, in that case you only use a subset of 
 ; '''new-files''' ''[-h]'' ''[-s]'' ''<version>''
 : This command shows which files were added to the repository for a given version. It supports ''-s'', which will also print the sizes of the newly added files. The ''-h'' option will use human readable sizes, omitting it will print the sizes in bytes. When the size information is requested, the files will be sorted by size, to make it easier to find out which are the biggest additions of this version.
 
+; '''expire'''
+: The expire command was designed mainly for deleting the contents of old backups, although it will work on any repository. During expire, the tags '''daily''', '''weekly''', '''monthly''' and '''yearly''' will be assigned to the versions that are daily, weekly, monthly or yearly backups. The expire configuration will determine which version is - for instance - a monthly backup. It could be the first backup of the month, or the last backup of the month. Finally, after all versions have been tagged according to the expire configuration, expire will mark versions deleted that shouldn't be kept. For each daily/weekly/monthly/yearly backup, expire will keep the N newest backups, where N is configurable. The expire/keep_daily setting defines how many daily backups expire will keep, the expire/keep_weekly setting defines how many weekly backups expire will keep, and so on. Finally there is a setting expire/keep_most_recent defines how many most recent backups expire will keep. Every backup that is not kept due to one of these settings will be marked deleted. The settings that affect the expire command are documented in the CONFIGURATION section. Note that while expire marks versions as deleted, it doesn't actually delete the file contents that belong to deleted versions. Running '''bfsync gc''' will delete all file contents that are only in deleted versions.
+
 ; '''--version'''
 : Print bfsync version.
 
@@ -113,6 +116,42 @@ The configuration keys in the '''default group''' can be set simultaneously, by 
     put "...";
     push "...";
     pull "...";
+  }
+
+; '''expire { keep_most_recent ''<N>''; }'''
+: Keep <N> most recent versions during expire.
+
+; '''expire { create_daily ''first|last''; }'''
+: Tag first/last backup of the day as daily backup during expire.
+
+; '''expire { keep_daily ''<N>''; }'''
+: Keep the newest <N> daily backups during expire.
+
+; '''expire { create_weekly ''<weekday>''; }'''
+: Tag daily backup on <weekday> as weekly backup during expire.
+
+; '''expire { keep_weekly ''<N>''; }'''
+: Keep the newest <N> weekly backups during expire.
+
+; '''expire { create_monthly ''first|last''; }'''
+: Tag first/last daily backup of the month as monthly backup during expire.
+
+; '''expire { keep_monthly ''<N>''; }'''
+: Keep the newest <N> monthly backups during expire.
+
+; '''expire { create_yearly ''first|last''; }'''
+: Tag first/last daily backup of the year as yearly backup during expire.
+
+; '''expire { keep_yearly ''<N>''; }'''
+: Keep the newest <N> yearly backups during expire.
+
+The configuration keys in the '''expire group''' can be set simultaneously, for instance by using
+
+  expire {
+    keep_most_recent 30;
+    keep_daily 45;
+    keep_monthly 30;
+    ...
   }
 
 == SHARED MEMORY CONFIGURATION ==
