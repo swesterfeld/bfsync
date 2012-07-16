@@ -128,7 +128,7 @@ The configuration keys in the '''default group''' can be set simultaneously, by 
 : Keep the newest <N> daily backups during expire.
 
 ; '''expire { create_weekly''' ''<weekday>''; '''}'''
-: Tag daily backup on <weekday> as weekly backup during expire.
+: Tag daily backup on <weekday> as weekly backup during expire. Possible values for <weekday> are monday, tuesday, ..., sunday.
 
 ; '''expire { keep_weekly''' ''<N>''; '''}'''
 : Keep the newest <N> weekly backups during expire.
