@@ -1,4 +1,4 @@
-.TH "BFSYNC" "1" "2012\-07\-16" "Revision 735" "bfsync Manual Page"
+.TH "BFSYNC" "1" "2012\-07\-17" "Revision 740" "bfsync Manual Page"
 
 .SH NAME
 
@@ -26,28 +26,28 @@ It is possible to use bfsync for backups, in that case you only use a subset of 
 
 .SH COMMANDS
 .TP
-\fBclone\fR \fI[ -u ]\fR \fI[ -c <cache_size_mb> ] \fR<repo>\fI \fR[ <dest-dir> ]
-Initialize new cloned bfsync repo from bfsync master repo \fI<repo>\fR. If \fI<dest-dir>\fR is not specified, bfsync clone will generate a directory name from the repository name, otherwise it will clone into the directory \fI<dest-dir>\fR. If -u is given, bfsync clone will set the "use-uid-gid" option in the config file for the cloned repository to 1. This means that upon mount, the user id settings and group id settings for files/directories will be taken from the repository. This will only make sense if all machines that access the data have the same uid/gid numbers. The default (without -u) is not to use the uid/gid numbers, which should be perfect for almost every use case except for backups. The cache size is the amount of shared memory that will be used as database cache size. It defaults to 16 MB, which is fine for repositories that contain a small amount of files. For synchronizing big files between different hosts, that will usually work. If the amount of files is large (> 100.000), you need a larger cache size. At least 100 MB cache per 1.000.000 files stored should be used, more is better, if you can afford it.
+\fBclone\fR \fI[ -u ]\fR \fI[ -c <cache_size_mb> ]\fR \fI[--rsh <remote_shell>]\fR \fI<repo>\fR \fI[ <dest-dir> ]\fR
+Initialize new cloned bfsync repo from bfsync master repo \fI<repo>\fR. If \fI<dest-dir>\fR is not specified, bfsync clone will generate a directory name from the repository name, otherwise it will clone into the directory \fI<dest-dir>\fR. If -u is given, bfsync clone will set the "use-uid-gid" option in the config file for the cloned repository to 1. This means that upon mount, the user id settings and group id settings for files/directories will be taken from the repository. This will only make sense if all machines that access the data have the same uid/gid numbers. The default (without -u) is not to use the uid/gid numbers, which should be perfect for almost every use case except for backups. The cache size is the amount of shared memory that will be used as database cache size. It defaults to 16 MB, which is fine for repositories that contain a small amount of files. For synchronizing big files between different hosts, that will usually work. If the amount of files is large (> 100.000), you need a larger cache size. At least 100 MB cache per 1.000.000 files stored should be used, more is better, if you can afford it. The --rsh option can be used to set the remote shell used to connect the host; it defaults to ssh.
 .PP
 .TP
 \fBcommit\fR \fI[-m <message>]\fR \fI[-a <author>]\fR
 Commit changes to the repository. Normally, an editor will be started to allow the user to enter a commit message. If the -m option is used, the commit message is set to the <message> argument, and no editor will be started. The -a option allows to specify the author of the commit (otherwise it defaults to user@host).
 .PP
 .TP
-\fBpush\fR \fI[<repo>]\fR
-Push changes to master repository. If the <repo> argument is missing, the default from the config file will be used.
+\fBpush\fR \fI[--rsh <remote_shell>]\fR \fI[<repo>]\fR
+Push changes to master repository. If the <repo> argument is missing, the default from the config file will be used. The --rsh option can be used to set the remote shell used to connect the host; it defaults to ssh.
 .PP
 .TP
-\fBpull\fR \fI[<repo>]\fR
-Pull changes from master repository. If there are new local commits and new commits in the master repository, pull will merge the local and master history. See section \fBMERGES\fR. If the <repo> argument is missing, the default from the config file is used.
+\fBpull\fR \fI[--rsh <remote_shell>]\fR \fI[<repo>]\fR
+Pull changes from master repository. If there are new local commits and new commits in the master repository, pull will merge the local and master history. See section \fBMERGES\fR. If the <repo> argument is missing, the default from the config file is used. The --rsh option can be used to set the remote shell used to connect the host; it defaults to ssh.
 .PP
 .TP
-\fBget\fR \fI<repo>\fR
-Transfer file contents from repository - the directory should contain a bfsync checkout of the repository you're working with. A path with a ":" is interpreted as remote path, a path without ":" is a local path. Examples for remote paths are stefan@server:/repos/files.bfsync or server:some/dir. If the <repo> argument is missing, the default from the config file is used.
+\fBget\fR \fI[--rsh <remote_shell>]\fR \fI<repo>\fR
+Transfer file contents from repository - the directory should contain a bfsync checkout of the repository you're working with. A path with a ":" is interpreted as remote path, a path without ":" is a local path. Examples for remote paths are stefan@server:/repos/files.bfsync or server:some/dir. If the <repo> argument is missing, the default from the config file is used. The --rsh option can be used to set the remote shell used to connect the host; it defaults to ssh.
 .PP
 .TP
-\fBput\fR \fI<repo>\fR
-Transfer file contents from local checkout to <repo>. If the <repo> argument is missing, the default from the config file is used.
+\fBput\fR \fI[--rsh <remote_shell>]\fR \fI<repo>\fR
+Transfer file contents from local checkout to <repo>. If the <repo> argument is missing, the default from the config file is used. The --rsh option can be used to set the remote shell used to connect the host; it defaults to ssh.
 .PP
 .TP
 \fBcheck\fR
@@ -83,7 +83,7 @@ There are some operations, such as commit or revert, that must be finished compl
 .PP
 .TP
 \fBneed-continue\fR \fI[<repo>]\fR
-Returns true if running \fBbfsync continue\fR is necessary.
+Returns true if running \fBbfsync continue\fR is necessary. The repository is choosen either from the \fI<repo>\fR argument, or if that is not there, from the directory "need-continue" was started in.
 .PP
 .TP
 \fBrecover\fR \fI[<repo>]\fR
@@ -91,7 +91,7 @@ Since bfsync uses Berkeley DB to store its data, the data integrity is protected
 .PP
 .TP
 \fBneed-recover\fR \fI[<repo>]\fR
-Returns true if running \fBbfsync recover\fR is necessary.
+Returns true if running \fBbfsync recover\fR is necessary. The repository is choosen either from the \fI<repo>\fR argument, or if that is not there, from the directory "need-recover" was started in.
 .PP
 .TP
 \fBdisk-usage\fR \fI[-h]\fR
@@ -120,6 +120,10 @@ Untag versions that were previously deleted (see delete-version for complete des
 .TP
 \fBconfig-set\fR \fI<key>\fR \fI<value>\fR \fI...\fR
 Modify repository configuration file. The key can either be a simple key (bfsync config-set cache-size 1024) or in <group>/<key> format (bfsync config-set expire/keep_daily 30). It is possible to assign more than one value to a key, however this only makes sense for keys that support that.
+.PP
+.TP
+\fBtransfer-bench\fR \fI[--rsh <remote_shell>]\fR \fI<host>\fR
+Measure transfer speed when transferring data from host <host> to the local host. The --rsh option can be used to set the remote shell used to connect the host. It defaults to ssh, but other remote shells (like rsh) can provide better performance.
 .PP
 .TP
 \fB--version\fR

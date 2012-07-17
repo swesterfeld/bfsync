@@ -27,23 +27,23 @@ It is possible to use bfsync for backups, in that case you only use a subset of 
 
 == COMMANDS ==
 
-; '''clone''' ''[ -u ]'' ''[ -c <cache_size_mb> ] ''<repo>'' ''[ <dest-dir> ]''
-: Initialize new cloned bfsync repo from bfsync master repo ''<repo>''. If ''<dest-dir>'' is not specified, bfsync clone will generate a directory name from the repository name, otherwise it will clone into the directory ''<dest-dir>''. If -u is given, bfsync clone will set the "use-uid-gid" option in the config file for the cloned repository to 1. This means that upon mount, the user id settings and group id settings for files/directories will be taken from the repository. This will only make sense if all machines that access the data have the same uid/gid numbers. The default (without -u) is not to use the uid/gid numbers, which should be perfect for almost every use case except for backups. The cache size is the amount of shared memory that will be used as database cache size. It defaults to 16 MB, which is fine for repositories that contain a small amount of files. For synchronizing big files between different hosts, that will usually work. If the amount of files is large (> 100.000), you need a larger cache size. At least 100 MB cache per 1.000.000 files stored should be used, more is better, if you can afford it.
+; '''clone''' ''[ -u ]'' ''[ -c <cache_size_mb> ]'' ''[--rsh <remote_shell>]'' ''<repo>'' ''[ <dest-dir> ]''
+: Initialize new cloned bfsync repo from bfsync master repo ''<repo>''. If ''<dest-dir>'' is not specified, bfsync clone will generate a directory name from the repository name, otherwise it will clone into the directory ''<dest-dir>''. If -u is given, bfsync clone will set the "use-uid-gid" option in the config file for the cloned repository to 1. This means that upon mount, the user id settings and group id settings for files/directories will be taken from the repository. This will only make sense if all machines that access the data have the same uid/gid numbers. The default (without -u) is not to use the uid/gid numbers, which should be perfect for almost every use case except for backups. The cache size is the amount of shared memory that will be used as database cache size. It defaults to 16 MB, which is fine for repositories that contain a small amount of files. For synchronizing big files between different hosts, that will usually work. If the amount of files is large (> 100.000), you need a larger cache size. At least 100 MB cache per 1.000.000 files stored should be used, more is better, if you can afford it. The --rsh option can be used to set the remote shell used to connect the host; it defaults to ssh.
 
 ; '''commit''' ''[-m <message>]'' ''[-a <author>]''
 : Commit changes to the repository. Normally, an editor will be started to allow the user to enter a commit message. If the -m option is used, the commit message is set to the <message> argument, and no editor will be started. The -a option allows to specify the author of the commit (otherwise it defaults to user@host).
 
-; '''push''' ''[<repo>]''
-: Push changes to master repository. If the <repo> argument is missing, the default from the config file will be used.
+; '''push''' ''[--rsh <remote_shell>]'' ''[<repo>]''
+: Push changes to master repository. If the <repo> argument is missing, the default from the config file will be used. The --rsh option can be used to set the remote shell used to connect the host; it defaults to ssh.
 
-; '''pull''' ''[<repo>]''
-: Pull changes from master repository. If there are new local commits and new commits in the master repository, pull will merge the local and master history. See section '''MERGES'''. If the <repo> argument is missing, the default from the config file is used.
+; '''pull''' ''[--rsh <remote_shell>]'' ''[<repo>]''
+: Pull changes from master repository. If there are new local commits and new commits in the master repository, pull will merge the local and master history. See section '''MERGES'''. If the <repo> argument is missing, the default from the config file is used. The --rsh option can be used to set the remote shell used to connect the host; it defaults to ssh.
 
-; '''get''' ''<repo>''
-: Transfer file contents from repository - the directory should contain a bfsync checkout of the repository you're working with. A path with a ":" is interpreted as remote path, a path without ":" is a local path. Examples for remote paths are stefan@server:/repos/files.bfsync or server:some/dir. If the <repo> argument is missing, the default from the config file is used.
+; '''get''' ''[--rsh <remote_shell>]'' ''<repo>''
+: Transfer file contents from repository - the directory should contain a bfsync checkout of the repository you're working with. A path with a ":" is interpreted as remote path, a path without ":" is a local path. Examples for remote paths are stefan@server:/repos/files.bfsync or server:some/dir. If the <repo> argument is missing, the default from the config file is used. The --rsh option can be used to set the remote shell used to connect the host; it defaults to ssh.
 
-; '''put''' ''<repo>''
-: Transfer file contents from local checkout to <repo>. If the <repo> argument is missing, the default from the config file is used.
+; '''put''' ''[--rsh <remote_shell>]'' ''<repo>''
+: Transfer file contents from local checkout to <repo>. If the <repo> argument is missing, the default from the config file is used. The --rsh option can be used to set the remote shell used to connect the host; it defaults to ssh.
 
 ; '''check'''
 : Checks local repository - ideally, all file contents that are known to the history of the repository are available in the objects directory of the repository (which stores one file per SHA1 hash). If thats not the case, put/get can be used to complete the local repository.
@@ -70,13 +70,13 @@ It is possible to use bfsync for backups, in that case you only use a subset of 
 : There are some operations, such as commit or revert, that must be finished completely once they are started, to ensure that the database is in a consistent state. If such an operation is interrupted, for instance because of a power failure, user abort (^C) or because the process was killed, it needs to be completed before the repository can be used for something else. A filesystem with an unfinished command can only be used in readonly mode until that operation is finished. The "continue" command can be used to finish an unfinished operation, either with the repository directory as argument, or if that is not there, the repository will be choosen according to the directory "continue" was started in.
 
 ; '''need-continue''' ''[<repo>]''
-: Returns true if running '''bfsync continue''' is necessary.
+: Returns true if running '''bfsync continue''' is necessary. The repository is choosen either from the ''<repo>'' argument, or if that is not there, from the directory "need-continue" was started in.
 
 ; '''recover''' ''[<repo>]''
 : Since bfsync uses Berkeley DB to store its data, the data integrity is protected even against extreme failures. For instance if the process that accesses the database crashes or is killed, or if everything on the host running bfsync is interrupted due to power failure or kernel panic. After such failures, the database needs recovery. Trying to mount bfsyncfs in that situation or using the bfsync utility will fail. In this situation running "recover" will restore the database to a consistent state and after that, normal work can start again. The repository is choosen either from the ''<repo>'' argument, or if that is not there, from the directory "recover" was started in. Recovery can not be done if there are still processes that are using the database. In that case, these processes need to be terminated before recovery. Attempting recovery if it is not necessary is safe, so it won't change the database state.
 
 ; '''need-recover''' ''[<repo>]''
-: Returns true if running '''bfsync recover''' is necessary.
+: Returns true if running '''bfsync recover''' is necessary. The repository is choosen either from the ''<repo>'' argument, or if that is not there, from the directory "need-recover" was started in.
 
 ; '''disk-usage''' ''[-h]''
 : This generates disk usage information. The ''-h'' option will use human readable sizes (like 15G for 15 gigabytes), omitting it will print the sizes in bytes. The disk usage information is designed to see what could be freed when removing older versions. Therefore, it will start with the most recent version, since you'll want to keep this version in any case. This first size will be the size required to store one full backup (for the backup use case). Then, older versions are examined. Only the sizes of the files are counted that need to be kept additionally to be able to retrieve the older version completely. Since most of the files will be unchanged when compared to the current version, the increments will usually be small.
@@ -98,6 +98,9 @@ It is possible to use bfsync for backups, in that case you only use a subset of 
 
 ; '''config-set''' ''<key>'' ''<value>'' ''...''
 : Modify repository configuration file. The key can either be a simple key (bfsync config-set cache-size 1024) or in <group>/<key> format (bfsync config-set expire/keep_daily 30). It is possible to assign more than one value to a key, however this only makes sense for keys that support that.
+
+; '''transfer-bench''' ''[--rsh <remote_shell>]'' ''<host>''
+: Measure transfer speed when transferring data from host <host> to the local host. The --rsh option can be used to set the remote shell used to connect the host. It defaults to ssh, but other remote shells (like rsh) can provide better performance.
 
 ; '''--version'''
 : Print bfsync version.
