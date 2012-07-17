@@ -10,7 +10,7 @@ from StatusLine import status_line, OutputSubsampler
 
 def transfer_bench (args):
   parser = argparse.ArgumentParser (prog='bfsync transfer-bench')
-  parser.add_argument ("-r", action="store_true", dest="rsh", default=False)
+  parser.add_argument ('--rsh', help='set remote shell')
   parser.add_argument ("host")
   parsed_args = parser.parse_args (args)
 
@@ -22,8 +22,8 @@ def transfer_bench (args):
       sys.stdout.write (x)
 
   else:
-    if parsed_args.rsh:
-      remote_shell = "rsh"
+    if parsed_args.rsh is not None:
+      remote_shell = parsed_args.rsh
     else:
       remote_shell = "ssh"
 
