@@ -7,8 +7,7 @@ Overview of Changes in bfsync-0.3.2:
 * added bfsync config-set: allows modifying repository configuration
 * added bfsync need-continue: returns true if bfsync continue needs to be run
 * added bfsync need-recover command: returns true if bfsync recover needs to be run
-* added support for tagging versions
-* improved pull/clone performance: applying link deletions are a lot faster
+* improved pull/clone performance: applying link deletions is a lot faster now
 * allow using other remote shells than ssh (usually rsh is faster if encryption
   is not needed)
 * added bfsync transfer-bench, which measures transfer speed
