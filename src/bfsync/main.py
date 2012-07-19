@@ -950,16 +950,18 @@ def cmd_need_continue():
     sys.exit (1)
 
 def cmd_config_set():
-  repo = cd_repo_connect_db()
+  repo_path = find_repo_dir()
+  repo_config_filename = os.path.join (repo_path, "config")
+  repo_config = parse_config (repo_config_filename)
 
   key = args[0]
   values = args[1:]
 
-  repo.config.set (key, values)
+  repo_config.set (key, values)
 
   # write new config file
-  f = open ("config", "w")
-  f.write (repo.config.to_string())
+  f = open (repo_config_filename, "w")
+  f.write (repo_config.to_string())
   f.close()
 
 def cmd_show_tags():
