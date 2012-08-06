@@ -430,11 +430,14 @@ INode::load (const Context& ctx, const ID& id)
 
   links = cache_links;
 
-  vector<Link*> load_links;
-  INodeRepo::the()->bdb->load_links (load_links, id, ctx.version);
+  if (type == BFSync::FILE_DIR) // only directories can have children
+    {
+      vector<Link*> load_links;
+      INodeRepo::the()->bdb->load_links (load_links, id, ctx.version);
 
-  for (vector<Link*>::const_iterator li = load_links.begin(); li != load_links.end(); li++)
-    links.update()->link_map[(*li)->name].add (LinkPtr (*li));
+      for (vector<Link*>::const_iterator li = load_links.begin(); li != load_links.end(); li++)
+        links.update()->link_map[(*li)->name].add (LinkPtr (*li));
+    }
 
   load_or_alloc_ino();
   updated = false;
