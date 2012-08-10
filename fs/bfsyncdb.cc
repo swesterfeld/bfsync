@@ -1743,7 +1743,7 @@ INodeRepoINode::get_child (unsigned int version, const string& name)
 
 INodeRepo::INodeRepo (BDBPtr bdb)
 {
-  assert (!BFSync::INodeRepo::the());
+  assert (!BFSync::INodeRepo::instance_created());
   inode_repo = new BFSync::INodeRepo (bdb.get_bdb());
 
   // load history - otherwise some operation will not work
@@ -1758,7 +1758,7 @@ INodeRepo::~INodeRepo()
   delete inode_repo;
   inode_repo = NULL;
 
-  assert (!BFSync::INodeRepo::the());
+  assert (!BFSync::INodeRepo::instance_created());
 }
 
 INodeRepoINode
