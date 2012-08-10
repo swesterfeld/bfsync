@@ -372,6 +372,43 @@ Server::handle_client (int client_fd)
                       result.push_back (msg);
                     }
                 }
+              else if (request[0] == "perf-getattr-list")
+                {
+                  string filename = request[1];
+
+                  vector<string> names;
+                  FILE *f = fopen (filename.c_str(), "r");
+                  char buffer[16 * 1024];
+                  while (fgets (buffer, 16 * 1024, f))
+                    {
+                      strtok (buffer, "\n");
+                      if (buffer[0] != '#')
+                        names.push_back (buffer);
+                    }
+                  fclose (f);
+
+                  struct stat st;
+                  double time = gettime();
+                  for (int i = 0; i < names.size(); i++)
+                    {
+                      int rc = bfsync_getattr (names[i].c_str(), &st);
+                      if (rc != 0)
+                        {
+                          result.push_back ("fail");
+                          break;
+                        }
+                      if ((i % 100000) == 0)
+                        INodeRepo::the()->delete_unused_keep_count (100000);
+                    }
+                  time = gettime() - time;
+
+                  if (!result.size())
+                    {
+                      string msg = string_printf ("getattr took %.2f ms <=> %.f getattr/s",
+                                                  time * 1000, names.size() / time);
+                      result.push_back (msg);
+                    }
+                }
             }
           vector<char> rbuffer;
           encode (result, rbuffer);
