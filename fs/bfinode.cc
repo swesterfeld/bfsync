@@ -61,6 +61,12 @@ INodeRepo::the()
   return inode_repo;
 }
 
+bool
+INodeRepo::instance_created()
+{
+  return inode_repo != NULL;
+}
+
 void
 INodeRepo::clear_cache()
 {

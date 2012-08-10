@@ -287,6 +287,7 @@ public:
   int  cached_dir_count();
 
   static INodeRepo *the();
+  static bool instance_created();
 
   INodeRepo (BDB *bdb);
   ~INodeRepo();
