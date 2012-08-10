@@ -53,15 +53,54 @@ walk (BDBPtr& bdb_ptr, const ID& id, const string& prefix)
     }
 }
 
+void
+inr_walk (INodeRepo& inr, INodeRepoINode& inode, const string& prefix)
+{
+  static int OPS = 0;
+
+  if (inode.valid())
+    {
+      OPS++;
+      if (OPS > 100000)
+        {
+          inr.delete_unused_keep_count (100000);
+          OPS = 0;
+        }
+
+      if (prefix.size())
+        {
+          printf ("%s\n", prefix.c_str());
+        }
+      else
+        {
+          printf ("/\n");
+        }
+      if (inode.type() == BFSync::FILE_DIR)
+        {
+          vector<string> children = inode.get_child_names (VERSION);
+
+          for (vector<string>::const_iterator ci = children.begin(); ci != children.end(); ci++)
+            {
+              const string& inode_name = prefix + "/" + *ci;
+
+              INodeRepoINode child_inode = inode.get_child (VERSION, *ci);
+              inr_walk (inr, child_inode, inode_name);
+            }
+        }
+    }
+}
+
 int
 main (int argc, char **argv)
 {
   int opt;
-  while ((opt = getopt (argc, argv, "x")) != -1)
+  bool use_inode_repo = false;
+  while ((opt = getopt (argc, argv, "i")) != -1)
     {
       switch (opt)
         {
-          case 'x': break;
+          case 'i': use_inode_repo = true;
+                    break;
           default:  assert (false);
         }
     }
@@ -77,5 +116,17 @@ main (int argc, char **argv)
       printf ("error opening db %s\n", argv[optind]);
       exit (1);
     }
-  walk (bdb_ptr, id_root(), "");
+
+  printf ("# use_inode_repo=%s\n", use_inode_repo ? "true" : "false");
+  if (use_inode_repo)
+    {
+      INodeRepo inr (bdb_ptr);
+      INodeRepoINode inode (inr.load_inode (id_root(), VERSION));
+
+      inr_walk (inr, inode, "");
+    }
+  else
+    {
+      walk (bdb_ptr, id_root(), "");
+    }
 }
