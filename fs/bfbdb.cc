@@ -78,7 +78,8 @@ bdb_need_recover (const string& path)
 
 BDB::BDB() :
   transaction (NULL),
-  m_history (this)
+  m_history (this),
+  m_multi_data_buffer (4 * 1024)
 {
 }
 
@@ -579,33 +580,43 @@ BDB::load_links (std::vector<Link*>& links, const ID& id, guint32 version)
   Dbt lkey (kbuf.begin(), kbuf.size());
   Dbt ldata;
 
+  Dbt lmulti_data;
+  lmulti_data.set_flags (DB_DBT_USERMEM);
+  lmulti_data.set_data (&m_multi_data_buffer[0]);
+  lmulti_data.set_ulen (m_multi_data_buffer.size());
+
   DbcPtr dbc (this); /* Acquire a cursor for the database. */
 
   // iterate over key elements and delete records which are in LinkVersionList
-  int ret = dbc->get (&lkey, &ldata, DB_SET);
+  int ret = dbc->get (&lkey, &lmulti_data, DB_SET | DB_MULTIPLE);
   while (ret == 0)
     {
-      DataBuffer dbuffer ((char *) ldata.get_data(), ldata.get_size());
-
-      guint32 vmin = dbuffer.read_uint32();
-      guint32 vmax = dbuffer.read_uint32();
-      ID inode_id (dbuffer);
-      string name = dbuffer.read_string();
-
-      if (version >= vmin && version <= vmax)
+      DbMultipleDataIterator data_iterator (lmulti_data);
+      while (data_iterator.next (ldata))
         {
-          Link *l = new Link;
+          DataBuffer dbuffer ((char *) ldata.get_data(), ldata.get_size());
 
-          l->vmin = vmin;
-          l->vmax = vmax;
-          l->dir_id = id;
-          l->inode_id = inode_id;
-          l->name = name;
-          l->updated = false;
+          guint32 vmin = dbuffer.read_uint32();
+          guint32 vmax = dbuffer.read_uint32();
+          ID inode_id (dbuffer);
+          string name = dbuffer.read_string();
 
-          links.push_back (l);
+          if (version >= vmin && version <= vmax)
+            {
+              Link *l = new Link;
+
+              l->vmin = vmin;
+              l->vmax = vmax;
+              l->dir_id = id;
+              l->inode_id = inode_id;
+              l->name = name;
+              l->updated = false;
+
+              links.push_back (l);
+            }
+          assert (dbuffer.remaining() == 0);
         }
-      ret = dbc->get (&lkey, &ldata, DB_NEXT_DUP);
+      ret = dbc->get (&lkey, &lmulti_data, DB_NEXT_DUP | DB_MULTIPLE);
     }
 }
 
@@ -634,20 +645,20 @@ BDB::history()
 }
 
 DataBuffer::DataBuffer (const char *ptr, size_t size) :
-  ptr (ptr),
-  remaining (size)
+  m_ptr (ptr),
+  m_remaining (size)
 {
 }
 
 guint64
 DataBuffer::read_uint64()
 {
-  assert (remaining >= 8);
+  assert (m_remaining >= 8);
 
   guint64 result;
-  memcpy (&result, ptr, 8);
-  remaining -= 8;
-  ptr += 8;
+  memcpy (&result, m_ptr, 8);
+  m_remaining -= 8;
+  m_ptr += 8;
 
   return result;
 }
@@ -655,12 +666,12 @@ DataBuffer::read_uint64()
 guint32
 DataBuffer::read_uint32()
 {
-  assert (remaining >= 4);
+  assert (m_remaining >= 4);
 
   guint32 result;
-  memcpy (&result, ptr, 4);
-  remaining -= 4;
-  ptr += 4;
+  memcpy (&result, m_ptr, 4);
+  m_remaining -= 4;
+  m_ptr += 4;
 
   return result;
 }
@@ -674,13 +685,13 @@ DataBuffer::read_uint32_be()
 string
 DataBuffer::read_string()
 {
-  const char *begin = ptr;
-  size_t      len   = strnlen (begin, remaining);
+  const char *begin = m_ptr;
+  size_t      len   = strnlen (begin, m_remaining);
 
-  assert (len < remaining);
+  assert (len < m_remaining);
 
-  remaining -= len + 1;
-  ptr       += len + 1;
+  m_remaining -= len + 1;
+  m_ptr       += len + 1;
 
   return string (begin, begin + len);
 }
@@ -688,10 +699,10 @@ DataBuffer::read_string()
 void
 DataBuffer::read_vec_zero (vector<char>& vec)
 {
-  while (remaining)
+  while (m_remaining)
     {
-      char c = *ptr++;
-      remaining--;
+      char c = *m_ptr++;
+      m_remaining--;
 
       if (c == 0)
         return;
@@ -1772,6 +1783,12 @@ void
 BDB::register_pid()
 {
   add_pid (repo_path);
+}
+
+vector<char>&
+BDB::multi_data_buffer()
+{
+  return m_multi_data_buffer;
 }
 
 BDBError

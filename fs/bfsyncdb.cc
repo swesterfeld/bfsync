@@ -546,30 +546,43 @@ BDBPtr::load_links (const ID& id, unsigned int version)
   Dbt lkey (kbuf.begin(), kbuf.size());
   Dbt ldata;
 
+  vector<char>& multi_data_buffer = ptr->my_bdb->multi_data_buffer();
+
+  Dbt lmulti_data;
+  lmulti_data.set_flags (DB_DBT_USERMEM);
+  lmulti_data.set_data (&multi_data_buffer[0]);
+  lmulti_data.set_ulen (multi_data_buffer.size());
+
   DbcPtr dbc (ptr->my_bdb); /* Acquire a cursor for the database. */
 
   // iterate over key elements and delete records which are in LinkVersionList
-  int ret = dbc->get (&lkey, &ldata, DB_SET);
+  int ret = dbc->get (&lkey, &lmulti_data, DB_SET | DB_MULTIPLE);
   while (ret == 0)
     {
-      DataBuffer dbuffer ((char *) ldata.get_data(), ldata.get_size());
-
-      guint32 vmin = dbuffer.read_uint32();
-      guint32 vmax = dbuffer.read_uint32();
-
-      if (version >= vmin && version <= vmax)
+      DbMultipleDataIterator data_iterator (lmulti_data);
+      while (data_iterator.next (ldata))
         {
-          Link l;
+          DataBuffer dbuffer ((char *) ldata.get_data(), ldata.get_size());
 
-          l.vmin = vmin;
-          l.vmax = vmax;
-          l.dir_id = id;
-          id_load (l.inode_id, dbuffer);
-          l.name = dbuffer.read_string();
+          guint32 vmin = dbuffer.read_uint32();
+          guint32 vmax = dbuffer.read_uint32();
 
-          result.push_back (l);
+          if (version >= vmin && version <= vmax)
+            {
+              Link l;
+
+              l.vmin = vmin;
+              l.vmax = vmax;
+              l.dir_id = id;
+              id_load (l.inode_id, dbuffer);
+              l.name = dbuffer.read_string();
+
+              result.push_back (l);
+
+              assert (dbuffer.remaining() == 0);
+            }
         }
-      ret = dbc->get (&lkey, &ldata, DB_NEXT_DUP);
+      ret = dbc->get (&lkey, &lmulti_data, DB_NEXT_DUP | DB_MULTIPLE);
     }
   return result;
 }

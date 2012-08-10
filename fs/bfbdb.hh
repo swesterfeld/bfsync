@@ -60,8 +60,8 @@ bool bdb_need_recover (const std::string& path);
 
 class DataBuffer
 {
-  const char *ptr;
-  size_t      remaining;
+  const char *m_ptr;
+  size_t      m_remaining;
 
 public:
   DataBuffer (const char *ptr, size_t size);
@@ -71,6 +71,10 @@ public:
   guint32     read_uint32_be();
   std::string read_string();
   void        read_vec_zero (std::vector<char>& vec);
+  size_t      remaining() const
+  {
+    return m_remaining;
+  }
 };
 
 class DataOutBuffer
@@ -148,6 +152,8 @@ class BDB
   std::string  pid_filename;
   std::string  repo_path;
 
+  std::vector<char> m_multi_data_buffer;
+
   Mutex mutex;
 
   void add_pid (const std::string& path);
@@ -221,6 +227,8 @@ public:
   std::vector<std::string>  load_tag  (unsigned int version, const std::string& tag);
   BDBError                  add_tag (unsigned int version, const std::string& tag, const std::string& value);
   BDBError                  del_tag (unsigned int version, const std::string& tag, const std::string& value);
+
+  std::vector<char>& multi_data_buffer();
 };
 
 class DbcPtr // cursor smart-wrapper: automatically closes cursor in destructor
