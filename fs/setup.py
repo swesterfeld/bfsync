@@ -25,7 +25,8 @@ bfsyncdb_module = Extension('_bfsyncdb',
                            libraries=['bfsync'] + pkg_config_values["-l"],
                            include_dirs=['..'] + pkg_config_values["-I"],
                            language='c++',
-                           swig_opts=['-c++']
+                           swig_opts=['-c++'],
+                           undef_macros=['NDEBUG']
                            )
 
 setup (name = 'bfsyncdb',
