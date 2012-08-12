@@ -168,6 +168,7 @@ struct Options {
   bool         mount_debug;
   bool         mount_all;
   bool         mount_fg;
+  bool         cache_attributes;
   bool         use_uid_gid;
   int          cache_size_mb;
 

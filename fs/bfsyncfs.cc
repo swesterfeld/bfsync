@@ -1450,9 +1450,10 @@ bfsyncfs_main (int argc, char **argv)
   options.mount_debug = false;
   options.mount_all = false;
   options.mount_fg = false;
+  options.cache_attributes = false;
 
   int opt;
-  while ((opt = getopt (argc, argv, "daf")) != -1)
+  while ((opt = getopt (argc, argv, "dafc")) != -1)
     {
       switch (opt)
         {
@@ -1461,6 +1462,8 @@ bfsyncfs_main (int argc, char **argv)
           case 'f': options.mount_fg = true;
                     break;
           case 'a': options.mount_all = true;
+                    break;
+          case 'c': options.cache_attributes = true;
                     break;
           default:  exit_usage();
                     exit (1);
@@ -1584,7 +1587,8 @@ bfsyncfs_main (int argc, char **argv)
     my_argv[my_argc++] = g_strdup ("-f");
   if (options.mount_all)
     my_argv[my_argc++] = g_strdup ("-oallow_other");
-  my_argv[my_argc++] = g_strdup ("-oattr_timeout=0");
+  if (!options.cache_attributes)
+    my_argv[my_argc++] = g_strdup ("-oattr_timeout=0");
   my_argv[my_argc++] = g_strdup ("-ouse_ino");
   my_argv[my_argc] = NULL;
 
