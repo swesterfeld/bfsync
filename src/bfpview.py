@@ -71,7 +71,7 @@ class DiffIterator:
 
     result = [ change_type ]
     for i in range (fcount - 1):
-      result += [ self.next_field() ]
+      result.append (self.next_field())
     return result
 
 #print_mem_usage ("x")
