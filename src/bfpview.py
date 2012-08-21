@@ -34,22 +34,30 @@ if len (sys.argv) == 2:
   if file_number != 0:
     full_name = repo.make_number_filename (file_number)
     diff = xzcat (full_name)
+  diff_file = None # FIXME
 else:
-  diff = sys.stdin.read()
+  diff_file = sys.stdin
 
 class DiffIterator:
   def __init__ (self, diff):
     self.diff = diff
     self.start = 0
+    self.data = ""
 
   def next_field (self):
-    end = self.diff.find ("\0", self.start)
-    if end == -1:
-      return None
-
-    result = self.diff[self.start:end]
-    self.start = end + 1
-    return result
+    while True:
+      end = self.data.find ("\0", self.start)
+      if end == -1:
+        new_data = self.diff.read (4096)
+        if len (new_data) == 0: # eof
+          return None
+        else:
+          self.data = self.data[self.start:] + new_data
+          self.start = 0
+      else:
+        result = self.data[self.start:end]
+        self.start = end + 1
+        return result
 
   def next (self):
     change_type = self.next_field()
@@ -76,7 +84,7 @@ class DiffIterator:
 
 #print_mem_usage ("x")
 
-di = DiffIterator (diff)
+di = DiffIterator (diff_file)
 
 while True:
   change = di.next()
