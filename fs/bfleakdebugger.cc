@@ -50,7 +50,7 @@ LeakDebugger::ptr_del (void *p)
     {
       Lock lock (mutex);
 
-      map<void *, int>::iterator pi = ptr_map.find (p);
+      boost::unordered_map<void *, int>::iterator pi = ptr_map.find (p);
       if (pi == ptr_map.end())
         {
           g_critical ("LeakDebugger: invalid deletion of object type %s detected; ptr_map entry not found\n",
@@ -78,7 +78,7 @@ LeakDebugger::~LeakDebugger()
     {
       int alive = 0;
 
-      for (map<void *, int>::iterator pi = ptr_map.begin(); pi != ptr_map.end(); pi++)
+      for (boost::unordered_map<void *, int>::iterator pi = ptr_map.begin(); pi != ptr_map.end(); pi++)
         {
           if (pi->second != 0)
             {

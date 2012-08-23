@@ -21,16 +21,16 @@
 #include "bfsyncfs.hh"
 
 #include <string>
-#include <map>
+#include <boost/unordered_map.hpp>
 
 namespace BFSync
 {
 
 class LeakDebugger
 {
-  Mutex                    mutex;
-  std::map<void *, int>    ptr_map;
-  std::string              type;
+  Mutex                              mutex;
+  boost::unordered_map<void *, int>  ptr_map;
+  std::string                        type;
 
   void ptr_add (void *p);
   void ptr_del (void *p);
