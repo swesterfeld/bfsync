@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from utils import parse_diff
+from diffutils import DiffIterator
 from commitutils import commit
 from journal import mk_journal_entry, queue_command, CMD_DONE, CMD_AGAIN
 from StatusLine import status_line, OutputSubsampler
@@ -112,11 +112,9 @@ class ApplyCommand:
     diff_file.write (diff)
     diff_file.close()
 
-  def load_diff (self):
-    diff_file = open (self.state.diff_filename, "r")
-    diff = diff_file.read()
-    diff_file.close()
-    return diff
+  def open_diff (self):
+    self.diff_file = open (self.state.diff_filename, "r")
+    self.diff_iterator = DiffIterator (self.diff_file)
 
   def start (self, repo, diff, server, verbose, commit_args):
     self.state = ApplyState()
@@ -125,12 +123,11 @@ class ApplyCommand:
     self.state.VERSION = repo.first_unused_version()
     self.repo = repo
     self.store_diff (diff)
-    self.changes = parse_diff (diff)
+    self.open_diff()
 
   def restart (self, repo):
-    diff = self.load_diff()
-    self.changes = parse_diff (diff)
     self.repo = repo
+    self.open_diff()
 
   def execute (self):
     apply_tool = ApplyTool (self.repo.bdb, self.state.VERSION)
@@ -148,8 +145,12 @@ class ApplyCommand:
     # contains both, the directory inode (link src) and the inode the
     # link points to (link dest)
     while self.state.phase < 3:
-      while self.state.change_pos < len (self.changes):
-        change = self.changes[self.state.change_pos]
+      self.diff_iterator.seek (self.state.change_pos)
+      while True:
+        change = self.diff_iterator.next()
+        if change is None:
+          break
+
         self.state.change_pos += 1
 
         # apply one change
@@ -184,6 +185,7 @@ class ApplyCommand:
 
     apply_tool.save_changes_no_txn()
     self.repo.bdb.commit_transaction()
+    self.diff_file.close()
     return CMD_DONE
 
   def get_operation (self):

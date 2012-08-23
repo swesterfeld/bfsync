@@ -39,6 +39,15 @@ class DiffIterator:
     self.start = 0
     self.data = ""
 
+  def seek (self, pos):
+    self.data = ""
+    self.start = 0
+    self.diff_file.seek (0)
+    for i in xrange (0, pos):
+      change = self.next()
+      if change is None:
+        raise Exception ("DiffIterator: seek to position %d failed" % pos)
+
   def next_field (self):
     while True:
       end = self.data.find ("\0", self.start)
