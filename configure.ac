@@ -106,6 +106,8 @@ MC_PROG_CC_SUPPORTS_OPTION([-Wall], [
   CXXFLAGS="$CXXFLAGS -Wall"
 ])
 
+BOOST_REQUIRE([1.34])
+
 AC_CONFIG_FILES([
   Makefile
   fs/Makefile
