@@ -84,7 +84,7 @@ INodeRepo::save_changes (SaveChangesMode sc)
     }
 
   int inodes_saved = 0;
-  for (map<ID, INodeVersionList>::iterator ci = cache.begin(); ci != cache.end(); ci++)
+  for (boost::unordered_map<ID, INodeVersionList>::iterator ci = cache.begin(); ci != cache.end(); ci++)
     {
       INodeVersionList& ivlist = ci->second;
       bool need_save = false;
@@ -171,13 +171,13 @@ INodeRepo::delete_unused_inodes (DeleteMode dmode)
 {
   Lock lock (mutex);
 
-  map<ID, INodeVersionList>::iterator ci = cache.begin();
+  boost::unordered_map<ID, INodeVersionList>::iterator ci = cache.begin();
   while (ci != cache.end())
     {
       INodeVersionList& ivlist = ci->second;
       const ID& id = ci->first;
 
-      map<ID, INodeVersionList>::iterator nexti = ci;
+      boost::unordered_map<ID, INodeVersionList>::iterator nexti = ci;
       nexti++;
 
       bool del = true;                          // dmode == DM_ALL <-> delete all
@@ -196,7 +196,7 @@ INodeRepo::delete_unused_inodes (DeleteMode dmode)
             }
           if (del)
             {
-              map<ID, INodeLinksPtr>::iterator lci = links_cache.find (id);
+              boost::unordered_map<ID, INodeLinksPtr>::iterator lci = links_cache.find (id);
               if (lci != links_cache.end())
                 links_cache.erase (lci);
 

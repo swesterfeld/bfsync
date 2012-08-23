@@ -110,6 +110,12 @@ ID::operator= (const ID& id)
   return *this;
 }
 
+inline size_t
+hash_value (const ID& id)
+{
+  return id.a;
+}
+
 inline unsigned char
 from_hex_nibble (char c)
 {

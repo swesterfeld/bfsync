@@ -24,6 +24,8 @@
 #include <vector>
 #include <map>
 
+#include <boost/unordered_map.hpp>
+
 #include "bfsyncfs.hh"
 #include "bfidhash.hh"
 
@@ -269,11 +271,11 @@ public:
 class INodeRepo
 {
 public:
-  std::map<ID, INodeVersionList>  cache;
-  std::map<ino_t, ID>             new_inodes;
-  std::map<ID, INodeLinksPtr>     links_cache;
-  BDB                            *bdb;
-  Mutex                           mutex;
+  boost::unordered_map<ID, INodeVersionList>  cache;
+  std::map<ino_t, ID>                         new_inodes;
+  boost::unordered_map<ID, INodeLinksPtr>     links_cache;
+  BDB                                        *bdb;
+  Mutex                                       mutex;
 
   enum SaveChangesMode { SC_NORMAL, SC_CLEAR_CACHE, SC_NO_TXN };
 
