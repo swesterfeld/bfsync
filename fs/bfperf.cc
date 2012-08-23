@@ -24,12 +24,14 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <vector>
 #include <map>
 
 #include "bfsyncfs.hh"
 #include "bfidhash.hh"
 #include "bfbdb.hh"
+#include "bfleakdebugger.hh"
 
 using std::string;
 using std::vector;
@@ -270,6 +272,31 @@ perf_read_string()
   print_result ("read_str/sec", N / (end_t - start_t));
 }
 
+static LeakDebugger x_leak_debugger ("test");
+
+void
+perf_leak_debugger()
+{
+  const size_t N = 1000 * 1000;
+
+  vector<void *> ptrs;
+  for (size_t i = 0; i < N; i++)
+    {
+      void *ptr = (void *) (size_t) (i * 16);
+      ptrs.push_back (ptr);
+    }
+  std::random_shuffle (ptrs.begin(), ptrs.end());
+
+  const double start_t = gettime();
+  for (vector<void *>::iterator pi = ptrs.begin(); pi != ptrs.end(); pi++)
+    x_leak_debugger.add (*pi);
+  for (vector<void *>::iterator pi = ptrs.begin(); pi != ptrs.end(); pi++)
+    x_leak_debugger.del (*pi);
+  const double end_t = gettime();
+
+  print_result ("leak_deb/sec", N / (end_t - start_t));
+}
+
 int
 main()
 {
@@ -280,6 +307,7 @@ main()
   perf_str2id();
   perf_id2str();
   perf_read_string();
+  perf_leak_debugger();
   FILE *test = fopen ("mnt/.bfsync/info", "r");
   if (!test)
     {
