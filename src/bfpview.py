@@ -22,6 +22,7 @@ import os
 import subprocess
 from bfsync.utils import *
 from bfsync.xzutils import xzcat
+from bfsync.diffutils import DiffIterator
 
 if len (sys.argv) == 2:
   repo = cd_repo_connect_db()
@@ -37,50 +38,6 @@ if len (sys.argv) == 2:
   diff_file = None # FIXME
 else:
   diff_file = sys.stdin
-
-class DiffIterator:
-  def __init__ (self, diff):
-    self.diff = diff
-    self.start = 0
-    self.data = ""
-
-  def next_field (self):
-    while True:
-      end = self.data.find ("\0", self.start)
-      if end == -1:
-        new_data = self.diff.read (4096)
-        if len (new_data) == 0: # eof
-          return None
-        else:
-          self.data = self.data[self.start:] + new_data
-          self.start = 0
-      else:
-        result = self.data[self.start:end]
-        self.start = end + 1
-        return result
-
-  def next (self):
-    change_type = self.next_field()
-    if change_type is None:
-      return None
-
-    fcount = 0
-
-    if change_type == "l+" or change_type == "l!":
-      fcount = 4
-    elif change_type == "l-":
-      fcount = 3
-    elif change_type == "i+" or change_type == "i!":
-      fcount = 16
-    elif change_type == "i-":
-      fcount = 2
-
-    assert (fcount != 0)
-
-    result = [ change_type ]
-    for i in range (fcount - 1):
-      result.append (self.next_field())
-    return result
 
 #print_mem_usage ("x")
 

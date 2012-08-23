@@ -31,3 +31,48 @@ def diff (repo, outfile):
       return
 
     write1change (change, outfile)
+
+# parser to read changes from \0 seperated diff file
+class DiffIterator:
+  def __init__ (self, diff_file):
+    self.diff_file = diff_file
+    self.start = 0
+    self.data = ""
+
+  def next_field (self):
+    while True:
+      end = self.data.find ("\0", self.start)
+      if end == -1:
+        new_data = self.diff_file.read (64 * 1024)
+        if len (new_data) == 0: # eof
+          return None
+        else:
+          self.data = self.data[self.start:] + new_data
+          self.start = 0
+      else:
+        result = self.data[self.start:end]
+        self.start = end + 1
+        return result
+
+  def next (self):
+    change_type = self.next_field()
+    if change_type is None:
+      return None
+
+    fcount = 0
+
+    if change_type == "l+" or change_type == "l!":
+      fcount = 4
+    elif change_type == "l-":
+      fcount = 3
+    elif change_type == "i+" or change_type == "i!":
+      fcount = 16
+    elif change_type == "i-":
+      fcount = 2
+
+    assert (fcount != 0)
+
+    result = [ change_type ]
+    for i in range (fcount - 1):
+      result.append (self.next_field())
+    return result
