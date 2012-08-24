@@ -15,6 +15,7 @@ bfproftest
 bflockcheck
 bflocktest
 bftestidsort
+bfwalktest
 mnt
 test
 fs.log
