@@ -28,7 +28,9 @@ class Server
   bool        socket_ok;
   int         socket_fd;
   std::string socket_path;
+  int         wakeup_pipe_fds[2];
   pthread_t   thread;
+  bool        thread_running;
 
 public:
   Server();
@@ -36,6 +38,7 @@ public:
 
   bool init_socket (const std::string& repo_path);
   void start_thread();
+  void stop_thread();
 
   // server thread:
   void run();

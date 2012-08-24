@@ -49,12 +49,15 @@ using std::vector;
 
 Server::Server() :
   socket_ok (false),
-  socket_fd (-1)
+  socket_fd (-1),
+  thread_running (false)
 {
 }
 
 Server::~Server()
 {
+  assert (!thread_running);
+
   if (socket_ok)
     {
       close (socket_fd);
@@ -134,8 +137,31 @@ Server::init_socket (const string& repo_path)
 void
 Server::start_thread()
 {
+  assert (!thread_running);
+
   if (socket_ok)
-    pthread_create (&thread, NULL, thread_start, this);
+    {
+      pthread_create (&thread, NULL, thread_start, this);
+
+      int pipe_ok = pipe (wakeup_pipe_fds);
+      assert (pipe_ok == 0);
+
+      thread_running = true;
+    }
+}
+
+void
+Server::stop_thread()
+{
+  if (thread_running)
+    {
+      while (write (wakeup_pipe_fds[1], "W", 1) != 1)
+        ;
+
+      void *result;
+      pthread_join (thread, &result);
+      thread_running = false;
+    }
 }
 
 void
@@ -150,24 +176,37 @@ Server::run()
       fclose (pid_file);
     }
 
-  struct pollfd poll_fds[1];
+  struct pollfd poll_fds[2];
 
   poll_fds[0].fd = socket_fd;
   poll_fds[0].events = POLLIN;
   poll_fds[0].revents = 0;
 
+  poll_fds[1].fd = wakeup_pipe_fds[0];
+  poll_fds[1].events = POLLIN;
+  poll_fds[1].revents = 0;
+
   while (1)
     {
-      if (poll (poll_fds, 1, 5000) > 0)
+      if (poll (poll_fds, 2, 5000) > 0)
         {
-          struct sockaddr_un incoming;
-          socklen_t size_in = sizeof (struct sockaddr_un);
-
-          int client_fd = accept (socket_fd, (struct sockaddr*) &incoming, &size_in);
-          if (client_fd > 0)
+          if (poll_fds[1].revents)
             {
-              debug ("Server: handle_client (%d)\n", client_fd);
-              handle_client (client_fd);
+              // filesystem is terminating -> exit from this thread
+              return;
+            }
+
+          if (poll_fds[0].revents)
+            {
+              struct sockaddr_un incoming;
+              socklen_t size_in = sizeof (struct sockaddr_un);
+
+              int client_fd = accept (socket_fd, (struct sockaddr*) &incoming, &size_in);
+              if (client_fd > 0)
+                {
+                  debug ("Server: handle_client (%d)\n", client_fd);
+                  handle_client (client_fd);
+                }
             }
         }
       else  // timeout

@@ -1615,6 +1615,8 @@ bfsyncfs_main (int argc, char **argv)
 
   int fuse_rc = fuse_main (my_argc, my_argv, &bfsync_oper, NULL);
 
+  server.stop_thread();
+
   inode_repo.save_changes();
   inode_repo.delete_unused_inodes (INodeRepo::DM_ALL);
 
