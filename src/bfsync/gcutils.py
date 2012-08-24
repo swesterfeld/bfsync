@@ -168,3 +168,8 @@ def gc (repo):
 
   if DEBUG_MEM:
     print_mem_usage ("after remove files loop")
+
+  # ideal cache setting: at least 100 Mb per 1.000.000 files
+  cache_size = int (repo.config.get ("cache-size")[0])
+  status_line.update ("db cache size: %d Mb, %d files => about %.2f%% cache is currently in use" % (cache_size, file_count, (file_count * 100 / 1000000.0) / cache_size * 100))
+  status_line.cleanup()
