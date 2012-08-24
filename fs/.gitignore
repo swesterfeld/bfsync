@@ -8,6 +8,7 @@ Makefile.in
 *.la
 bfperf
 bfsyncfs
+bfsyncca
 bfsyncstat
 bftesthelper
 bfdbdump
