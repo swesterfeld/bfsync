@@ -52,3 +52,30 @@ def xzcat (filename):
   f.close()
 
   return lzma.decompress (xz_data)
+
+decompressor = None
+
+def xzcat2 (in_filename, out_filename):
+  global decompressor
+
+  if decompressor is None:
+    decompressor = lzma.LZMADecompressor()
+  else:
+    decompressor.reset()
+
+  f = open (in_filename, "r")
+  uncompressed_f = open (out_filename, "w")
+
+  # decompress data block-by-block until eof
+  while True:
+    xz_data = f.read (256 * 1024)
+    if (len (xz_data) == 0):
+      break
+
+    uncompressed_f.write (decompressor.decompress (xz_data))
+
+  # write remaining compressed data
+  uncompressed_f.write (decompressor.flush())
+
+  f.close()
+  uncompressed_f.close()

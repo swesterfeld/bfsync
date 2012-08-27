@@ -103,26 +103,17 @@ class ApplyState:
   pass
 
 class ApplyCommand:
-  def store_diff (self, diff):
-    self.repo.bdb.begin_transaction()
-    self.state.diff_filename = self.repo.make_temp_name()
-    self.repo.bdb.commit_transaction()
-
-    diff_file = open (self.state.diff_filename, "w")
-    diff_file.write (diff)
-    diff_file.close()
-
   def open_diff (self):
     self.diff_file = open (self.state.diff_filename, "r")
     self.diff_iterator = DiffIterator (self.diff_file)
 
-  def start (self, repo, diff, server, verbose, commit_args):
+  def start (self, repo, diff_filename, server, verbose, commit_args):
     self.state = ApplyState()
     self.state.change_pos = 0
     self.state.phase = 0
     self.state.VERSION = repo.first_unused_version()
+    self.state.diff_filename = diff_filename
     self.repo = repo
-    self.store_diff (diff)
     self.open_diff()
 
   def restart (self, repo):
@@ -197,13 +188,13 @@ class ApplyCommand:
   def set_state (self, state):
     self.state = state
 
-def apply (repo, diff, expected_hash = None, server = True, verbose = True, commit_args = None):
+def apply (repo, diff_filename, expected_hash = None, server = True, verbose = True, commit_args = None):
   if verbose:
     raise Exception ("apply with verbose = True no longer supported")
 
   cmd = ApplyCommand()
 
-  cmd.start (repo, diff, server, verbose, commit_args)
+  cmd.start (repo, diff_filename, server, verbose, commit_args)
   queue_command (cmd)
   commit (repo, commit_args, server = server, verbose = verbose)
 

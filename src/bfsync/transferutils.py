@@ -22,7 +22,7 @@ import sys
 from utils import *
 from applyutils import apply
 from commitutils import revert
-from xzutils import xzcat
+from xzutils import xzcat, xzcat2
 from StatusLine import status_line, OutputSubsampler
 from HashCache import hash_cache
 from journal import queue_command, mk_journal_entry, CMD_AGAIN, CMD_DONE
@@ -809,12 +809,6 @@ class UserConflictResolver:
 
 ################################# MERGE ######################################
 
-def cat (filename):
-  f = open (filename, "r")
-  result = f.read()
-  f.close()
-  return result
-
 class MergeState:
   pass
 
@@ -875,8 +869,15 @@ class MergeCommand:
             "time" : rh[4]
           }
 
+          # unxz diff file for apply
+          self.repo.bdb.begin_transaction()
+          uncompressed_diff_file = self.repo.make_temp_name()
+          self.repo.bdb.commit_transaction()
+
+          xzcat2 (diff_file, uncompressed_diff_file)
+
           #=> spawn apply sub-command
-          apply (self.repo, xzcat (diff_file), diff, verbose = False, commit_args = commit_args)
+          apply (self.repo, uncompressed_diff_file, diff, verbose = False, commit_args = commit_args)
           self.state.current_version = rh[0]
 
           status_line.update ("patch %d/%d" % (self.state.patch_count, self.state.total_patch_count))
@@ -980,9 +981,8 @@ class MergeCommand:
         diff_file, commit_args = self.state.local_diffs[0]
 
         #=> spawn apply sub-command
-        diff = cat (diff_file)
-        if diff != "":
-          apply (self.repo, diff, verbose = False, commit_args = commit_args)
+        if os.path.getsize (diff_file) != 0:
+          apply (self.repo, diff_file, verbose = False, commit_args = commit_args)
         status_line.update ("patch %d/%d" % (self.state.patch_count, self.state.total_patch_count))
         self.state.patch_count += 1
 
@@ -1132,7 +1132,15 @@ class FastForwardCommand:
     diff, commit_args = self.state.ff_apply[self.state.count]
     diff_file = self.repo.make_object_filename (diff)
     status_line.update ("patch %d/%d - fast forward" % (self.state.count + 1, len (self.state.ff_apply)))
-    apply (self.repo, xzcat (diff_file), diff, server = self.state.server, verbose = False, commit_args = commit_args)
+
+    # unxz diff file for apply
+    self.repo.bdb.begin_transaction()
+    uncompressed_diff_file = self.repo.make_temp_name()
+    self.repo.bdb.commit_transaction()
+
+    xzcat2 (diff_file, uncompressed_diff_file)
+
+    apply (self.repo, uncompressed_diff_file, diff, server = self.state.server, verbose = False, commit_args = commit_args)
 
     # FIXME: this could fail if
     #  - some apply commands are already spawned, but self.state.count is not updated
