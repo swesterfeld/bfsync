@@ -32,7 +32,14 @@ def xz (filename):
   f = open (filename, "r")
   xz_f = open ("%s.xz" % filename, "w")
 
-  xz_f.write (compressor.compress (f.read()))
+  # compress data block-by-block until eof
+  while True:
+    data = f.read (256 * 1024)
+    if (len (data) == 0):
+      break
+    xz_f.write (compressor.compress (data))
+
+  # write remaining compressed data
   xz_f.write (compressor.flush())
 
   xz_f.close()
