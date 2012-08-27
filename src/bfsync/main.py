@@ -1391,6 +1391,7 @@ def main():
       sys.exit (1)
 
   if command_func != None:
+    init_mem_usage_time()
     try:
       if False: # profiling
         import cProfile

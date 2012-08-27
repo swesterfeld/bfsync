@@ -20,6 +20,7 @@ import CfgParser
 import bfsyncdb
 import resource
 import cPickle
+import time
 from tempfile import NamedTemporaryFile
 from ServerConn import ServerConn
 
@@ -409,6 +410,14 @@ def init_bfsync_file (dir):
   f.write ("# do not delete: this file allows bfsync recognizing this directory as repository\n")
   f.close()
 
+class MemUsageTime:
+  pass
+
+mem_usage_time = MemUsageTime()
+
+def init_mem_usage_time():
+  mem_usage_time.start = time.time()
+
 def print_mem_usage (comment):
   f = open ("/proc/self/smaps")
   mem_smaps = 0
@@ -421,8 +430,8 @@ def print_mem_usage (comment):
       inode = int (fields[4])
   f.close()
   print
-  print "** %s ** memory usage: %d K" % (comment, resource.getrusage (resource.RUSAGE_SELF).ru_maxrss)
-  print "** %s ** memory smaps: %d K" % (comment, mem_smaps)
+  print "** %.2f ** %s ** memory usage: %d K" % (time.time() - mem_usage_time.start, comment, resource.getrusage (resource.RUSAGE_SELF).ru_maxrss)
+  print "** %.2f ** %s ** memory smaps: %d K" % (time.time() - mem_usage_time.start, comment, mem_smaps)
   print
 
 class TransactionSplitter:
