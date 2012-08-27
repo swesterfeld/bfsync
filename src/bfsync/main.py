@@ -736,7 +736,7 @@ def cmd_clone():
   if parsed_args.dest_dir:
     dir = parsed_args.dest_dir
   else:
-    dir = guess_dir_name (args[0])
+    dir = guess_dir_name (url)
   if os.path.exists (dir):
     print "fatal: destination path '" + dir + "' already exists"
     sys.exit (1)
