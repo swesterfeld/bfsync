@@ -1443,11 +1443,16 @@ Hash2FileIterator::get_next()
       const unsigned char *kptr = (unsigned char *) key.get_data();
       DataBuffer dbuffer ((char *) data.get_data(), data.get_size());
 
-      string hash;
-      for (size_t i = 0; i < key.get_size(); i++)
-        hash += string_printf ("%02x", kptr[i]); // slow!
+      assert (key.get_size() == 20);
 
-      h2f.hash = hash;
+      char hash_str[41];
+
+      for (size_t i = 0; i < 20; i++)
+        BFSync::uint8_hex (kptr[i], hash_str + i * 2);
+
+      hash_str[40] = 0;
+
+      h2f.hash = hash_str;
       h2f.file_number = dbuffer.read_uint32();
       h2f.valid = true;
 

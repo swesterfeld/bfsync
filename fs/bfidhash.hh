@@ -128,6 +128,30 @@ from_hex_nibble (char c)
   return 16;    // error
 }
 
+inline void
+uint8_hex (guint8 value, char *dest)
+{
+  const char *hex_nibble = "0123456789abcdef";
+
+  dest[0] = hex_nibble [(value >> 4) & 0xf];
+  dest[1] = hex_nibble [value  & 0xf];
+}
+
+inline void
+uint32_hex (guint32 value, char *dest)
+{
+  const char *hex_nibble = "0123456789abcdef";
+
+  dest[0] = hex_nibble [(value >> 28) & 0xf];
+  dest[1] = hex_nibble [(value >> 24) & 0xf];
+  dest[2] = hex_nibble [(value >> 20) & 0xf];
+  dest[3] = hex_nibble [(value >> 16) & 0xf];
+  dest[4] = hex_nibble [(value >> 12) & 0xf];
+  dest[5] = hex_nibble [(value >> 8) & 0xf];
+  dest[6] = hex_nibble [(value >> 4) & 0xf];
+  dest[7] = hex_nibble [value  & 0xf];
+}
+
 }
 
 #endif
