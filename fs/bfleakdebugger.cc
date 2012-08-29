@@ -63,7 +63,7 @@ LeakDebugger::ptr_del (void *p)
         g_critical ("LeakDebugger: invalid deletion of object type %s detected; ptr_map[p] is %d\n",
                     type.c_str(), p_map_entry);
 
-      ptr_map.erase (pi);
+      ptr_map.quick_erase (pi);
     }
 }
 

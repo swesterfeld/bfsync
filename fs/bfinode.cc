@@ -198,9 +198,9 @@ INodeRepo::delete_unused_inodes (DeleteMode dmode)
             {
               boost::unordered_map<ID, INodeLinksPtr>::iterator lci = links_cache.find (id);
               if (lci != links_cache.end())
-                links_cache.erase (lci);
+                links_cache.quick_erase (lci);
 
-              cache.erase (ci);
+              cache.quick_erase (ci);
               // do not access id after this point (deleted)
             }
         }
