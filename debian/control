@@ -1,0 +1,16 @@
+Source: bfsync
+Section: unknown
+Priority: extra
+Maintainer: root <root@unknown>
+Build-Depends: debhelper (>= 8.0.0), autotools-dev, build-essential, python-dev, libfuse-dev, libglib2.0-dev, libdb++-dev, python-setuptools, python-lzma, swig
+Standards-Version: 3.9.2
+Homepage: <insert the upstream URL, if relevant>
+#Vcs-Git: git://git.debian.org/collab-maint/bfsync.git
+#Vcs-Browser: http://git.debian.org/?p=collab-maint/bfsync.git;a=summary
+
+Package: bfsync
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Shallalalala in the morning
+ bla bla bla bla bla
+
