@@ -1362,9 +1362,15 @@ INodeHashIterator::get_next()
 
 AllINodesIterator::AllINodesIterator (BDBPtr bdb_ptr) :
   dbc (bdb_ptr.get_bdb()),
-  bdb_ptr (bdb_ptr)
+  bdb_ptr (bdb_ptr),
+  current_id_idx (0),
+  multi_data_buffer (64 * 1024)
 {
-  dbc_ret = dbc->get (&key, &data, DB_FIRST);
+  multi_data.set_flags (DB_DBT_USERMEM);
+  multi_data.set_data (&multi_data_buffer[0]);
+  multi_data.set_ulen (multi_data_buffer.size());
+
+  dbc_ret = dbc->get (&key, &multi_data, DB_FIRST | DB_MULTIPLE_KEY);
 }
 
 AllINodesIterator::~AllINodesIterator()
@@ -1375,36 +1381,57 @@ AllINodesIterator::~AllINodesIterator()
 ID
 AllINodesIterator::get_next()
 {
-  while (dbc_ret == 0)
+  if (current_id_idx == ids.size())
     {
-      char table = ((char *) key.get_data()) [key.get_size() - 1];
-      ID id;
-      bool rid = false;
+      ids.clear();
 
-      if (table == BDB_TABLE_INODES)
+      ID            id;
+      DataOutBuffer id_buf;
+
+      while (dbc_ret == 0)
         {
-          DataBuffer kbuffer ((char *) key.get_data(), key.get_size());
-          id_load (id, kbuffer);
+          DbMultipleKeyDataIterator data_iterator (multi_data);
 
-          DataOutBuffer id_buf;
-          /* we don't store the prefix part, because a..e should be enough to figure out
-           * duplicates reliably - this results in a slightly reduced memory usage and
-           * it should be a bit faster (because now all known IDs have the same size) */
-          id_buf.write_uint32 (id.id.a);
-          id_buf.write_uint32 (id.id.b);
-          id_buf.write_uint32 (id.id.c);
-          id_buf.write_uint32 (id.id.d);
-          id_buf.write_uint32 (id.id.e);
-          if (!known_ids.insert ((unsigned char *) id_buf.begin()))
-            rid = true;
+          while (data_iterator.next (key, data))
+            {
+              char table = ((char *) key.get_data()) [key.get_size() - 1];
+              if (table == BDB_TABLE_INODES)
+                {
+                  DataBuffer kbuffer ((char *) key.get_data(), key.get_size());
+                  id_load (id, kbuffer);
+
+                  /* we don't store the prefix part, because a..e should be enough to figure out
+                   * duplicates reliably - this results in a slightly reduced memory usage and
+                   * it should be a bit faster (because now all known IDs have the same size) */
+                  id_buf.clear();
+                  id_buf.write_uint32 (id.id.a);
+                  id_buf.write_uint32 (id.id.b);
+                  id_buf.write_uint32 (id.id.c);
+                  id_buf.write_uint32 (id.id.d);
+                  id_buf.write_uint32 (id.id.e);
+
+                  if (!known_ids.insert ((unsigned char *) id_buf.begin()))
+                    ids.push_back (id);
+                }
+            }
+          dbc_ret = dbc->get (&key, &multi_data, DB_NEXT | DB_MULTIPLE_KEY);
+
+          if (ids.size() >= 256)
+            break;
         }
-      dbc_ret = dbc->get (&key, &data, DB_NEXT);
-      if (rid)
-        return id;
+      current_id_idx = 0;
     }
-  ID xid;
-  xid.valid = false;
-  return xid;
+
+  if (current_id_idx < ids.size())
+    {
+      return ids[current_id_idx++];
+    }
+  else
+    {
+      ID xid;
+      xid.valid = false;
+      return xid;
+    }
 }
 
 Hash2FileIterator::Hash2FileIterator (BDBPtr bdb_ptr) :

@@ -325,7 +325,12 @@ class AllINodesIterator
   BDBPtr bdb_ptr;
 
   DedupTable<IDHash> known_ids;
-  Dbt key, data;
+  std::vector<ID>    ids;
+  size_t             current_id_idx;
+
+  Dbt key, data, multi_data;
+
+  std::vector<char>  multi_data_buffer;
 public:
   AllINodesIterator (BDBPtr bdb_ptr);
   ~AllINodesIterator();
