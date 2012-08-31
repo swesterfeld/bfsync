@@ -58,7 +58,7 @@ clean-local:
 	$(PYTHON) setup.py clean --all
 
 install-exec-hook: setup.py
-	$(PYTHON) setup.py install --prefix=${prefix}
+	$(PYTHON) setup.py install --root $(DESTDIR) --prefix=${prefix}
 # update ldconfig cache to be able to load python module linked to libbfsync.so
 # don't bother if this fails (maybe installing as user into user defined prefix)
 #
