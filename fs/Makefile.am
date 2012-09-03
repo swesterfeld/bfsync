@@ -4,7 +4,7 @@ AM_CFLAGS = $(GLIB_CFLAGS) $(FUSE_CFLAGS)
 BDB_LIBS = -ldb_cxx
 
 bin_PROGRAMS = bfsyncfs bfsyncca
-noinst_PROGRAMS = bftesthelper bfdbdump bfproftest bflocktest bflockcheck bftestidsort bfperf bfwalktest
+noinst_PROGRAMS = bftesthelper bfdbdump bfproftest bflocktest bflockcheck bftestidsort bfperf bfwalktest bfdefrag
 
 lib_LTLIBRARIES = libbfsync.la
 
@@ -27,6 +27,9 @@ bfsyncfs_LDADD = $(GLIB_LIBS) $(FUSE_LIBS) libbfsync.la
 
 bfsyncca_SOURCES = bfsyncca.cc
 bfsyncca_LDADD = $(GLIB_LIBS)
+
+bfdefrag_SOURCES = bfdefrag.cc
+bfdefrag_LDADD = $(GLIB_LIBS) $(FUSE_LIBS) libbfsync.la
 
 bfperf_SOURCES = bfperf.cc
 bfperf_LDADD = $(GLIB_LIBS) $(FUSE_LIBS) libbfsync.la
