@@ -252,27 +252,52 @@ restore_db (BDB *bdb, const string& dump_filename)
 int
 main (int argc, char **argv)
 {
-  if (argc != 2)
+  bool continue_defrag = false;
+
+  int opt;
+  while ((opt = getopt (argc, argv, "c")) != -1)
     {
-      printf ("usage: bfdefrag <db>\n");
+      switch (opt)
+        {
+          case 'c': continue_defrag = true;
+                    break;
+          default:  assert (false);
+        }
+    }
+  if (argc - optind != 1)
+    {
+      printf ("usage: bfdefrag [ -c ] <db>\n");
       exit (1);
     }
 
-  BDB *bdb = bdb_open (argv[1], 16, false);
+  string bdb_name = argv[optind];
+
+  BDB *bdb = bdb_open (bdb_name, 16, false);
   if (!bdb)
     {
-      printf ("error opening db %s\n", argv[1]);
+      printf ("error opening db %s\n", bdb_name.c_str());
       exit (1);
     }
 
-  string dump_filename = string_printf ("%s/bdb/defrag.dump", argv[1]);
+  string dump_filename = string_printf ("%s/bdb/defrag.dump", bdb_name.c_str());
 
   int rc;
 
-  rc = dump_db (bdb, dump_filename);
-  if (rc != 0)
+  if (!continue_defrag)
     {
-      exit (1);
+      FILE *test_dump = fopen (dump_filename.c_str(), "r");
+      if (test_dump)
+        {
+          printf ("dump file %s already exists, exiting.\n", dump_filename.c_str());
+          fclose (test_dump);
+          exit (1);
+        }
+
+      rc = dump_db (bdb, dump_filename);
+      if (rc != 0)
+        {
+          exit (1);
+        }
     }
 
   rc = verify_dump (dump_filename);
@@ -289,7 +314,7 @@ main (int argc, char **argv)
 
   if (!bdb->close())
     {
-      printf ("error closing db %s\n", argv[1]);
+      printf ("error closing db %s\n", bdb_name.c_str());
       exit (1);
     }
 }
