@@ -26,11 +26,30 @@ using namespace BFSync;
 using std::string;
 using std::vector;
 
+bool
+output_needs_update()
+{
+  static int last_time = 0;
+  int t = time (NULL);
+  if (t != last_time)
+    {
+      last_time = t;
+      return true;
+    }
+  return false;
+}
+
+void
+dump_update_status (const string& dump_filename, int n_records)
+{
+  printf ("\rDumping database to %s: %d records ... ", dump_filename.c_str(), n_records);
+  fflush (stdout);
+}
+
 int
 dump_db (BDB *bdb, const string& dump_filename)
 {
-  printf ("Dumping database to %s... ", dump_filename.c_str());
-  fflush (stdout);
+  dump_update_status (dump_filename, 0);
 
   FILE *dump_file = fopen (dump_filename.c_str(), "w");
 
@@ -50,6 +69,8 @@ dump_db (BDB *bdb, const string& dump_filename)
   DataOutBuffer out;
   GChecksum *sum = g_checksum_new (G_CHECKSUM_SHA1);
 
+  int n_records = 0;
+
   ret = dbcp->get (&key, &data, DB_FIRST);
   while (ret == 0)
     {
@@ -66,8 +87,14 @@ dump_db (BDB *bdb, const string& dump_filename)
       fwrite (data.get_data(), data.get_size(), 1, dump_file);
       g_checksum_update (sum, (guchar *) data.get_data(), data.get_size());
 
+      n_records++;
+
+      if (output_needs_update())
+        dump_update_status (dump_filename, n_records);
+
       ret = dbcp->get (&key, &data, DB_NEXT);
     }
+  dump_update_status (dump_filename, n_records);
 
   out.clear();
   out.write_uint32 (0);
@@ -88,15 +115,23 @@ dump_db (BDB *bdb, const string& dump_filename)
   return 0;
 }
 
+void
+verify_update_status (int n_records)
+{
+  printf ("\rVerifying dump: %d records ... ", n_records);
+  fflush (stdout);
+}
+
 int
 verify_dump (const string& dump_filename)
 {
-  printf ("Verifying dump ... ");
-  fflush (stdout);
+  verify_update_status (0);
 
   FILE *file = fopen (dump_filename.c_str(), "r");
 
   GChecksum *sum = g_checksum_new (G_CHECKSUM_SHA1);
+
+  int n_records = 0;
 
   const int HEADER_SIZE = 8;
   char header[HEADER_SIZE];
@@ -114,10 +149,17 @@ verify_dump (const string& dump_filename)
           break;
         }
 
+      n_records++;
+
+      if (output_needs_update())
+        verify_update_status (n_records);
+
       guchar data[klen + dlen];
       fread (&data, klen + dlen, 1, file);
       g_checksum_update (sum, data, klen + dlen);
     }
+
+  verify_update_status (n_records);
 
   vector<guint8> dump_sha1 (g_checksum_type_get_length (G_CHECKSUM_SHA1));
   vector<guint8> sha1 (g_checksum_type_get_length (G_CHECKSUM_SHA1));
@@ -142,12 +184,17 @@ verify_dump (const string& dump_filename)
     }
 }
 
+void
+restore_update_status (const string& dump_filename, int n_records)
+{
+  printf ("\rRestoring dump %s: %d records ... ", dump_filename.c_str(), n_records);
+  fflush (stdout);
+}
+
 int
 restore_db (BDB *bdb, const string& dump_filename)
 {
-  printf ("Restoring dump %s ... ", dump_filename.c_str());
-  fflush (stdout);
-
+  restore_update_status (dump_filename, 0);
 
   FILE *file = fopen (dump_filename.c_str(), "r");
   Db *db = bdb->get_db();
@@ -159,6 +206,7 @@ restore_db (BDB *bdb, const string& dump_filename)
   db->compact (NULL, NULL, NULL, NULL, DB_FREE_SPACE, NULL);
 
   // db->compact (NULL, NULL, 0);
+  int n_records = 0;
 
   bdb->begin_transaction();
 
@@ -184,9 +232,18 @@ restore_db (BDB *bdb, const string& dump_filename)
 
       int ret = db->put (bdb->get_transaction(), &key, &data, 0);
       assert (ret == 0);
+
+      n_records++;
+
+      if (output_needs_update())
+        restore_update_status (dump_filename, n_records);
     }
   fclose (file);
   bdb->commit_transaction();
+
+  restore_update_status (dump_filename, n_records);
+
+  unlink (dump_filename.c_str());
 
   printf ("done.\n");
   return 0;
