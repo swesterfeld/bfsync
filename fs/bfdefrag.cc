@@ -148,6 +148,9 @@ dump_db (BDB *bdb, const string& dump_filename)
       return 1;
     }
 
+  sync();
+  sleep (5);
+
   printf ("done.\n");
   return 0;
 }
