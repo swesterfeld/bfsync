@@ -305,7 +305,7 @@ BDB::open (const string& path, int cache_size_mb, bool recover)
 }
 
 bool
-BDB::close()
+BDB::close (CloseFlags flags)
 {
   assert (db_env != 0);
   assert (db != 0);
@@ -316,6 +316,17 @@ BDB::close()
   db = NULL;
 
   assert (ret == 0);
+
+  if (flags == CLOSE_TRUNCATE)
+    {
+      db = new Db (db_env, 0);
+      ret = db->remove ("db", NULL, 0);
+
+      delete db;
+      db = NULL;
+
+      assert (ret == 0);
+    }
 
   ret = db_hash2file->close (0);
   delete db_hash2file;

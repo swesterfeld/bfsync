@@ -175,12 +175,17 @@ public:
     RECOVER_LAST_OPEN_FAILED
   };
 
+  enum CloseFlags {
+    CLOSE_NORMAL,
+    CLOSE_TRUNCATE
+  };
+
   NeedRecoverResult need_recover (const std::string& path);
 
   bool  open (const std::string& path, int cache_size_mb, bool recover);
   void  register_pid();
   void  sync();
-  bool  close();
+  bool  close (CloseFlags flags = CLOSE_NORMAL);
 
   BDBError  begin_transaction();
   BDBError  commit_transaction();

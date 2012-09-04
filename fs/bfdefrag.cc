@@ -199,13 +199,6 @@ restore_db (BDB *bdb, const string& dump_filename)
   FILE *file = fopen (dump_filename.c_str(), "r");
   Db *db = bdb->get_db();
 
-  // get rid of old contents
-  db->truncate (NULL, NULL, 0);
-
-  // return unused pages to file system
-  db->compact (NULL, NULL, NULL, NULL, DB_FREE_SPACE, NULL);
-
-  // db->compact (NULL, NULL, 0);
   int n_records = 0;
   int OPS = 0;
 
@@ -313,6 +306,17 @@ main (int argc, char **argv)
   rc = verify_dump (dump_filename);
   if (rc != 0)
     {
+      exit (1);
+    }
+
+  // get rid of old data
+  bdb->close (BDB::CLOSE_TRUNCATE);
+  delete bdb;
+
+  bdb = bdb_open (bdb_name, 16, false);
+  if (!bdb)
+    {
+      printf ("error opening db %s\n", bdb_name.c_str());
       exit (1);
     }
 
