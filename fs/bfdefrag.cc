@@ -142,7 +142,11 @@ dump_db (BDB *bdb, const string& dump_filename)
   if (!dump_write (&sha1[0], sha1.size(), dump_file))
     return 1;
 
-  fclose (dump_file);
+  if (fclose (dump_file) != 0)
+    {
+      printf ("\nDump: error closing dump file\n");
+      return 1;
+    }
 
   printf ("done.\n");
   return 0;
