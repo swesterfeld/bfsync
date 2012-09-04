@@ -57,9 +57,12 @@ dump_update_status (const string& dump_filename, int n_records)
 int
 dump_db (BDB *bdb, const string& dump_filename)
 {
-  dump_update_status (dump_filename, 0);
-
   FILE *dump_file = fopen (dump_filename.c_str(), "w");
+  if (!dump_file)
+    {
+      printf ("Dump: can't open file '%s' for writing.\n", dump_filename.c_str());
+      return 1;
+    }
 
   DbcPtr dbc (bdb);
 
@@ -69,6 +72,8 @@ dump_db (BDB *bdb, const string& dump_filename)
   GChecksum *sum = g_checksum_new (G_CHECKSUM_SHA1);
 
   int n_records = 0;
+
+  dump_update_status (dump_filename, 0);
 
   int ret = dbc->get (&key, &data, DB_FIRST);
   while (ret == 0)
@@ -128,13 +133,18 @@ verify_update_status (int n_records)
 int
 verify_dump (const string& dump_filename)
 {
-  verify_update_status (0);
-
   FILE *file = fopen (dump_filename.c_str(), "r");
+  if (!file)
+    {
+      printf ("Verify: can't open file '%s' for reading.\n", dump_filename.c_str());
+      return 1;
+    }
 
   GChecksum *sum = g_checksum_new (G_CHECKSUM_SHA1);
 
   int n_records = 0;
+
+  verify_update_status (0);
 
   const int HEADER_SIZE = 8;
   char header[HEADER_SIZE];
@@ -203,13 +213,19 @@ restore_update_status (const string& dump_filename, int n_records)
 int
 restore_db (BDB *bdb, const string& dump_filename)
 {
-  restore_update_status (dump_filename, 0);
-
   FILE *file = fopen (dump_filename.c_str(), "r");
+  if (!file)
+    {
+      printf ("Restore: can't open file '%s' for reading.\n", dump_filename.c_str());
+      return 1;
+    }
+
   Db *db = bdb->get_db();
 
   int n_records = 0;
   int OPS = 0;
+
+  restore_update_status (dump_filename, 0);
 
   bdb->begin_transaction();
 
