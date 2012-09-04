@@ -72,7 +72,7 @@ dump_write (const void *ptr, size_t size, FILE *file)
 int
 dump_db (BDB *bdb, const string& dump_filename)
 {
-  FILE *dump_file = fopen (dump_filename.c_str(), "w");
+  FILE *dump_file = fopen ((dump_filename + ".part").c_str(), "w");
   if (!dump_file)
     {
       printf ("Dump: can't open file '%s' for writing.\n", dump_filename.c_str());
@@ -145,6 +145,12 @@ dump_db (BDB *bdb, const string& dump_filename)
   if (fclose (dump_file) != 0)
     {
       printf ("\nDump: error closing dump file\n");
+      return 1;
+    }
+
+  if (rename ((dump_filename + ".part").c_str(), dump_filename.c_str()) != 0)
+    {
+      printf ("\nDump: error renaming dump file to final name\n");
       return 1;
     }
 
@@ -400,7 +406,9 @@ main (int argc, char **argv)
           FILE *test_dump = fopen (dump_filename.c_str(), "r");
           if (test_dump)
             {
-              printf ("dump file %s already exists, exiting.\n", dump_filename.c_str());
+              printf ("Dump file %s already exists, exiting.\n", dump_filename.c_str());
+              printf ("\n");
+              printf ("Use the -c option to continue defragmentation with existing dump file.\n");
               fclose (test_dump);
               rc = 1;
             }
