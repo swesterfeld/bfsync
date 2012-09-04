@@ -203,7 +203,6 @@ verify_dump (const string& dump_filename)
       size_t klen = hbuf.read_uint32();
       size_t dlen = hbuf.read_uint32();
 
-      //printf ("%zd %zd\n", klen, dlen);
       if (klen == 0 && dlen == 0)
         {
           break;
@@ -308,7 +307,6 @@ restore_db (BDB *bdb, const string& dump_filename)
       size_t klen = hbuf.read_uint32();
       size_t dlen = hbuf.read_uint32();
 
-      //printf ("%zd %zd\n", klen, dlen);
       if (klen == 0 && dlen == 0)
         {
           break;
