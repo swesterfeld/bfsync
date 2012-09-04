@@ -26,6 +26,14 @@ using namespace BFSync;
 using std::string;
 using std::vector;
 
+static int signal_received = 0;
+
+static void
+signal_handler (int signum)
+{
+  signal_received = 1;
+}
+
 bool
 output_needs_update()
 {
@@ -92,6 +100,11 @@ dump_db (BDB *bdb, const string& dump_filename)
       if (output_needs_update())
         dump_update_status (dump_filename, n_records);
 
+      if (signal_received)
+        {
+          printf ("\nTerminated during dump.\n");
+          return 1;
+        }
       ret = dbcp->get (&key, &data, DB_NEXT);
     }
   dump_update_status (dump_filename, n_records);
@@ -157,6 +170,12 @@ verify_dump (const string& dump_filename)
       guchar data[klen + dlen];
       fread (&data, klen + dlen, 1, file);
       g_checksum_update (sum, data, klen + dlen);
+
+      if (signal_received)
+        {
+          printf ("\nTerminated during verify.\n");
+          return 1;
+        }
     }
 
   verify_update_status (n_records);
@@ -240,6 +259,12 @@ restore_db (BDB *bdb, const string& dump_filename)
 
       if (output_needs_update())
         restore_update_status (dump_filename, n_records);
+
+      if (signal_received)
+        {
+          printf ("\nTerminated during restore.\n");
+          return 1;
+        }
     }
   fclose (file);
   bdb->commit_transaction();
@@ -273,6 +298,9 @@ main (int argc, char **argv)
       exit (1);
     }
 
+  /* handle interruptions */
+  signal (SIGINT, signal_handler);
+
   string bdb_name = argv[optind];
 
   BDB *bdb = bdb_open (bdb_name, 16, false);
@@ -284,46 +312,48 @@ main (int argc, char **argv)
 
   string dump_filename = string_printf ("%s/bdb/defrag.dump", bdb_name.c_str());
 
-  int rc;
+  int rc = 0;
 
   if (!continue_defrag)
     {
-      FILE *test_dump = fopen (dump_filename.c_str(), "r");
-      if (test_dump)
+      if (rc == 0)
         {
-          printf ("dump file %s already exists, exiting.\n", dump_filename.c_str());
-          fclose (test_dump);
+          FILE *test_dump = fopen (dump_filename.c_str(), "r");
+          if (test_dump)
+            {
+              printf ("dump file %s already exists, exiting.\n", dump_filename.c_str());
+              fclose (test_dump);
+              rc = 1;
+            }
+        }
+      if (rc == 0)
+        {
+          rc = dump_db (bdb, dump_filename);
+        }
+    }
+
+  if (rc == 0)
+    {
+      rc = verify_dump (dump_filename);
+    }
+
+  if (rc == 0)
+    {
+      // get rid of old data
+      bdb->close (BDB::CLOSE_TRUNCATE);
+      delete bdb;
+
+      bdb = bdb_open (bdb_name, 16, false);
+      if (!bdb)
+        {
+          printf ("error opening db %s\n", bdb_name.c_str());
           exit (1);
         }
-
-      rc = dump_db (bdb, dump_filename);
-      if (rc != 0)
-        {
-          exit (1);
-        }
     }
 
-  rc = verify_dump (dump_filename);
-  if (rc != 0)
+  if (rc == 0)
     {
-      exit (1);
-    }
-
-  // get rid of old data
-  bdb->close (BDB::CLOSE_TRUNCATE);
-  delete bdb;
-
-  bdb = bdb_open (bdb_name, 16, false);
-  if (!bdb)
-    {
-      printf ("error opening db %s\n", bdb_name.c_str());
-      exit (1);
-    }
-
-  rc = restore_db (bdb, dump_filename);
-  if (rc != 0)
-    {
-      exit (1);
+      rc = restore_db (bdb, dump_filename);
     }
 
   if (!bdb->close())
@@ -331,4 +361,6 @@ main (int argc, char **argv)
       printf ("error closing db %s\n", bdb_name.c_str());
       exit (1);
     }
+
+  return rc;
 }
