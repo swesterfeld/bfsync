@@ -61,16 +61,7 @@ dump_db (BDB *bdb, const string& dump_filename)
 
   FILE *dump_file = fopen (dump_filename.c_str(), "w");
 
-  Db *db = bdb->get_db();
-  Dbc *dbcp;
-
-  /* Acquire a cursor for the database. */
-  int ret;
-  if ((ret = db->cursor (NULL, &dbcp, 0)) != 0)
-    {
-      db->err (ret, "DB->cursor");
-      return 1;
-    }
+  DbcPtr dbc (bdb);
 
   Dbt key;
   Dbt data;
@@ -79,7 +70,7 @@ dump_db (BDB *bdb, const string& dump_filename)
 
   int n_records = 0;
 
-  ret = dbcp->get (&key, &data, DB_FIRST);
+  int ret = dbc->get (&key, &data, DB_FIRST);
   while (ret == 0)
     {
       out.clear();
@@ -105,7 +96,7 @@ dump_db (BDB *bdb, const string& dump_filename)
           printf ("\nTerminated during dump.\n");
           return 1;
         }
-      ret = dbcp->get (&key, &data, DB_NEXT);
+      ret = dbc->get (&key, &data, DB_NEXT);
     }
   dump_update_status (dump_filename, n_records);
 
@@ -123,7 +114,6 @@ dump_db (BDB *bdb, const string& dump_filename)
   fwrite (&sha1[0], sha1.size(), 1, dump_file);
   fclose (dump_file);
 
-  dbcp->close();
   printf ("done.\n");
   return 0;
 }
