@@ -1,6 +1,8 @@
 AM_CXXFLAGS = $(GLIB_CFLAGS) $(FUSE_CFLAGS)
 AM_CFLAGS = $(GLIB_CFLAGS) $(FUSE_CFLAGS)
 
+DESTDIR = /
+
 BDB_LIBS = -ldb_cxx
 
 bin_PROGRAMS = bfsyncfs bfsyncca

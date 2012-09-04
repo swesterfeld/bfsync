@@ -5,6 +5,7 @@ PYTHON_FILES = setup.py
 
 SUBDIRS = docs fs src
 EXTRA_DIST = TODO $(PYTHON_FILES)
+DESTDIR = /
 
 install-exec-hook:
 	$(PYTHON) setup.py install --root $(DESTDIR) --prefix=${prefix}
