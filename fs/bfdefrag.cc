@@ -207,6 +207,7 @@ restore_db (BDB *bdb, const string& dump_filename)
 
   // db->compact (NULL, NULL, 0);
   int n_records = 0;
+  int OPS = 0;
 
   bdb->begin_transaction();
 
@@ -234,6 +235,15 @@ restore_db (BDB *bdb, const string& dump_filename)
       assert (ret == 0);
 
       n_records++;
+      OPS++;
+
+      if (OPS >= 20000)
+        {
+          /* keep number of locks limited by splitting transactions every once in a while */
+          bdb->commit_transaction();
+          bdb->begin_transaction();
+          OPS = 0;
+        }
 
       if (output_needs_update())
         restore_update_status (dump_filename, n_records);
