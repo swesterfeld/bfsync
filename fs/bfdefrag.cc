@@ -48,10 +48,25 @@ output_needs_update()
 }
 
 void
-dump_update_status (const string& dump_filename, int n_records)
+dump_update_status (int n_records)
 {
-  printf ("\rDumping database to %s: %d records ... ", dump_filename.c_str(), n_records);
+  printf ("\rDumping database: %d records ... ", n_records);
   fflush (stdout);
+}
+
+bool
+dump_write (const void *ptr, size_t size, FILE *file)
+{
+  size_t result = fwrite (ptr, size, 1, file);
+  if (result == 1)
+    {
+      return true;
+    }
+  else
+    {
+      printf ("\nDump: error writing data to dump file.\n");
+      return false;
+    }
 }
 
 int
@@ -73,7 +88,7 @@ dump_db (BDB *bdb, const string& dump_filename)
 
   int n_records = 0;
 
-  dump_update_status (dump_filename, 0);
+  dump_update_status (0);
 
   int ret = dbc->get (&key, &data, DB_FIRST);
   while (ret == 0)
@@ -82,19 +97,25 @@ dump_db (BDB *bdb, const string& dump_filename)
       out.write_uint32 (key.get_size());
       out.write_uint32 (data.get_size());
 
-      fwrite (out.begin(), out.size(), 1, dump_file);
+      if (!dump_write (out.begin(), out.size(), dump_file))
+        return 1;
+
       g_checksum_update (sum, (guchar *) out.begin(), out.size());
 
-      fwrite (key.get_data(), key.get_size(), 1, dump_file);
+      if (!dump_write (key.get_data(), key.get_size(), dump_file))
+        return 1;
+
       g_checksum_update (sum, (guchar *) key.get_data(), key.get_size());
 
-      fwrite (data.get_data(), data.get_size(), 1, dump_file);
+      if (!dump_write (data.get_data(), data.get_size(), dump_file))
+        return 1;
+
       g_checksum_update (sum, (guchar *) data.get_data(), data.get_size());
 
       n_records++;
 
       if (output_needs_update())
-        dump_update_status (dump_filename, n_records);
+        dump_update_status (n_records);
 
       if (signal_received)
         {
@@ -103,20 +124,24 @@ dump_db (BDB *bdb, const string& dump_filename)
         }
       ret = dbc->get (&key, &data, DB_NEXT);
     }
-  dump_update_status (dump_filename, n_records);
+  dump_update_status (n_records);
 
   out.clear();
   out.write_uint32 (0);
   out.write_uint32 (0);
 
-  fwrite (out.begin(), out.size(), 1, dump_file);
+  if (!dump_write (out.begin(), out.size(), dump_file))
+    return 1;
+
   g_checksum_update (sum, (guchar *) out.begin(), out.size());
 
   vector<guint8> sha1 (g_checksum_type_get_length (G_CHECKSUM_SHA1));
   gsize digest_len = sha1.size();
   g_checksum_get_digest (sum, &sha1[0], &digest_len);
 
-  fwrite (&sha1[0], sha1.size(), 1, dump_file);
+  if (!dump_write (&sha1[0], sha1.size(), dump_file))
+    return 1;
+
   fclose (dump_file);
 
   printf ("done.\n");
@@ -126,8 +151,23 @@ dump_db (BDB *bdb, const string& dump_filename)
 void
 verify_update_status (int n_records)
 {
-  printf ("\rVerifying dump: %d records ... ", n_records);
+  printf ("\rVerifying dump:   %d records ... ", n_records);
   fflush (stdout);
+}
+
+bool
+verify_read (void *ptr, size_t size, FILE *file)
+{
+  size_t result = fread (ptr, size, 1, file);
+  if (result == 1)
+    {
+      return true;
+    }
+  else
+    {
+      printf ("\nVerify: error reading data from dump file.\n");
+      return false;
+    }
 }
 
 int
@@ -148,8 +188,11 @@ verify_dump (const string& dump_filename)
 
   const int HEADER_SIZE = 8;
   char header[HEADER_SIZE];
-  while (fread (header, HEADER_SIZE, 1, file) == 1)
+  while (!feof (file))
     {
+      if (!verify_read (header, HEADER_SIZE, file))
+        return 1;
+
       g_checksum_update (sum, (guchar *) header, HEADER_SIZE);
 
       DataBuffer hbuf (header, HEADER_SIZE);
@@ -168,7 +211,10 @@ verify_dump (const string& dump_filename)
         verify_update_status (n_records);
 
       guchar data[klen + dlen];
-      fread (&data, klen + dlen, 1, file);
+
+      if (!verify_read (&data, klen + dlen, file))
+        return 1;
+
       g_checksum_update (sum, data, klen + dlen);
 
       if (signal_received)
@@ -186,7 +232,9 @@ verify_dump (const string& dump_filename)
   gsize digest_len = dump_sha1.size();
   g_checksum_get_digest (sum, &sha1[0], &digest_len);
 
-  fread (&dump_sha1[0], dump_sha1.size(), 1, file);
+  if (!verify_read (&dump_sha1[0], dump_sha1.size(), file))
+    return 1;
+
   fclose (file);
 
   assert (sha1.size() == dump_sha1.size());
@@ -204,11 +252,27 @@ verify_dump (const string& dump_filename)
 }
 
 void
-restore_update_status (const string& dump_filename, int n_records)
+restore_update_status (int n_records)
 {
-  printf ("\rRestoring dump %s: %d records ... ", dump_filename.c_str(), n_records);
+  printf ("\rRestoring dump:   %d records ... ", n_records);
   fflush (stdout);
 }
+
+bool
+restore_read (void *ptr, size_t size, FILE *file)
+{
+  size_t result = fread (ptr, size, 1, file);
+  if (result == 1)
+    {
+      return true;
+    }
+  else
+    {
+      printf ("\nRestore: error reading data from dump file.\n");
+      return false;
+    }
+}
+
 
 int
 restore_db (BDB *bdb, const string& dump_filename)
@@ -225,14 +289,17 @@ restore_db (BDB *bdb, const string& dump_filename)
   int n_records = 0;
   int OPS = 0;
 
-  restore_update_status (dump_filename, 0);
+  restore_update_status (0);
 
   bdb->begin_transaction();
 
   const int HEADER_SIZE = 8;
   char header[HEADER_SIZE];
-  while (fread (header, HEADER_SIZE, 1, file) == 1)
+  while (!feof (file))
     {
+      if (!restore_read (header, HEADER_SIZE, file))
+        return 1;
+
       DataBuffer hbuf (header, HEADER_SIZE);
       size_t klen = hbuf.read_uint32();
       size_t dlen = hbuf.read_uint32();
@@ -244,7 +311,8 @@ restore_db (BDB *bdb, const string& dump_filename)
         }
 
       guchar dump_data[klen + dlen];
-      fread (&dump_data, klen + dlen, 1, file);
+      if (!restore_read (&dump_data, klen + dlen, file))
+        return 1;
 
       Dbt key (dump_data, klen);
       Dbt data (dump_data + klen, dlen);
@@ -264,7 +332,7 @@ restore_db (BDB *bdb, const string& dump_filename)
         }
 
       if (output_needs_update())
-        restore_update_status (dump_filename, n_records);
+        restore_update_status (n_records);
 
       if (signal_received)
         {
@@ -275,7 +343,7 @@ restore_db (BDB *bdb, const string& dump_filename)
   fclose (file);
   bdb->commit_transaction();
 
-  restore_update_status (dump_filename, n_records);
+  restore_update_status (n_records);
 
   unlink (dump_filename.c_str());
 
