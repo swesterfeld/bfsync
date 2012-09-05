@@ -1,3 +1,12 @@
+Overview of Changes in bfsync-0.3.3:
+
+* fixed crash that could sometimes occur during bfsyncfs umount
+* improved memory usage of bfsync clone/pull
+* various performance optimizations
+* new bfsyncfs -c option: enables FUSE cacheing
+* added bfsyncca utility to set cpu affinity
+* bfsync config-set: allow changing config even if db needs recovery
+
 Overview of Changes in bfsync-0.3.2:
 
 * added bfsync upgrade command: upgrade repository from previous version(s)
