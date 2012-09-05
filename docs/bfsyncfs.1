@@ -1,4 +1,4 @@
-.TH "BFSYNCFS" "1" "2011\-12\-21" "Revision 676" "bfsync Manual Page"
+.TH "BFSYNCFS" "1" "2012\-09\-05" "Revision 776" "bfsync Manual Page"
 
 .SH NAME
 
@@ -26,6 +26,10 @@ The mount point should be an empty directory.
 .TP
 \fB-a\fR
 Allows other users to access the mounted filesystem (this sets the -oallow_other option). Without this option, the contents of the filesystem will only be readable/writeable by the user that mounted it.
+.PP
+.TP
+\fB-c\fR
+Enable FUSE attribute caching. This improves the overall performance of bfsyncfs somewhat. However, in some rare cases the filesystem will no longer return the correct result to the userspace process, therefore it is not enabled by default.
 .PP
 .TP
 \fB-f\fR
