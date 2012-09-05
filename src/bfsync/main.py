@@ -1306,7 +1306,7 @@ def cmd_upgrade():
 
   new_version = bfsyncdb.repo_version()
 
-  if version != "0.3.1":
+  if version != "0.3.1" and version != "0.3.2":
     raise BFSyncError ("can't upgrade from version %s to %s" % (version, new_version))
 
   status_line.set_op ("UPGRADE")
