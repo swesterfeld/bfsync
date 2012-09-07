@@ -11,6 +11,7 @@ cur.execute ("DROP TABLE IF EXISTS links")
 cur.execute ("DROP TABLE IF EXISTS inodes")
 cur.execute ("DROP TABLE IF EXISTS history")
 cur.execute ("DROP TABLE IF EXISTS tags")
+cur.execute ("DROP TABLE IF EXISTS hash2file")
 cur.execute ("""
   CREATE TABLE links (
     dir_id    varchar,
@@ -57,6 +58,12 @@ cur.execute ("""
     version   integer,
     tag       varchar,
     value     varchar
+  );
+""")
+cur.execute ("""
+  CREATE TABLE hash2file (
+    hash        varchar PRIMARY KEY,
+    file_number integer
   );
 """)
 
@@ -120,6 +127,16 @@ while True:
     for v in values:
       fields = (hentry.version, t, v)
       cur.execute ("INSERT INTO tags (version, tag, value) VALUES (%s, %s, %s)", fields)
+
+# import hash2file table
+
+hi = bfsyncdb.Hash2FileIterator (repo.bdb)
+while True:
+  h2f = hi.get_next()
+  if not h2f.valid:
+    break
+  cur.execute ("INSERT INTO hash2file (hash, file_number) VALUES (%s, %s)", (h2f.hash, h2f.file_number))
+del hi
 
 update_status()
 
