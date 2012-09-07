@@ -16,19 +16,53 @@ cur.execute ("""
   );
 """)
 
+cur.execute ("DROP INDEX IF EXISTS i1")
+#cur.execute ("CREATE INDEX i1 ON links (inode_id)")
+cur.execute ("DROP INDEX IF EXISTS i2")
+#cur.execute ("CREATE INDEX i2 ON inodes (id)")
+cur.execute ("DROP INDEX IF EXISTS i3")
+#cur.execute ("CREATE INDEX i3 ON links (dir_id)")
+
+recs = 0
 def walk (dir_id, path):
+  global recs
+  parent = dict()
   cury = conn.cursor()
-  curz = conn.cursor()
-  cury.execute ("""SELECT inode_id, name, size FROM links, inodes WHERE links.inode_id = inodes.id AND 
+  cury.execute ("""SELECT dir_id, inode_id, name FROM links, inodes WHERE links.inode_id = inodes.id AND inodes.type = 3 AND
                    inodes.vmin <= %s AND inodes.vmax >= %s AND
-                   links.vmin  <= %s AND links.vmax >= %s AND dir_id=%s""", (version, version, version, version, dir_id))
+                   links.vmin  <= %s AND links.vmax >= %s""", (version, version, version, version))
   while True:
     row = cury.fetchone()
     if not row:
       break
-    name = os.path.join (path, row[1])
-    curz.execute ("INSERT INTO files VALUES (%s, %s, %s)", (version, version, name))
-    walk (row[0], os.path.join (path, row[1]))
+
+    dir_id = row[0]
+    inode_id = row[1]
+    name = row[2]
+    parent[inode_id] = (name, dir_id)
+
+  curz = conn.cursor()
+  cury.execute ("""SELECT dir_id, name, size FROM links, inodes WHERE links.inode_id = inodes.id AND
+                   inodes.vmin <= %s AND inodes.vmax >= %s AND
+                   links.vmin  <= %s AND links.vmax >= %s""", (version, version, version, version))
+  while True:
+    row = cury.fetchone()
+    if not row:
+      break
+
+    dir_id = row[0]
+    name = row[1]
+    size = row[2]
+
+    root_id = "/" + "0" * 40
+    path = name
+    while dir_id != root_id:
+      path = os.path.join (parent[dir_id][0], path)
+      dir_id = parent[dir_id][1]
+    recs += 1
+    curz.execute ("INSERT INTO files VALUES (%s, %s, %s)", (version, version, path))
+  print recs
+  return
 
 cur.execute ("SELECT version FROM history")
 while True:
