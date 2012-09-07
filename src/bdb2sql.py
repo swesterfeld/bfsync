@@ -136,6 +136,10 @@ while True:
   if not h2f.valid:
     break
   cur.execute ("INSERT INTO hash2file (hash, file_number) VALUES (%s, %s)", (h2f.hash, h2f.file_number))
+  ops += 1
+  if outss.need_update():
+    update_status()
+
 del hi
 
 update_status()
