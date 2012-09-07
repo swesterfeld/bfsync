@@ -9,6 +9,8 @@ conn = dbapi2.connect (database="bfsync", user="postgres", host="bigraidn1", por
 cur = conn.cursor()
 cur.execute ("DROP TABLE IF EXISTS links")
 cur.execute ("DROP TABLE IF EXISTS inodes")
+cur.execute ("DROP TABLE IF EXISTS history")
+cur.execute ("DROP TABLE IF EXISTS tags")
 cur.execute ("""
   CREATE TABLE links (
     dir_id    varchar,
@@ -39,6 +41,22 @@ cur.execute ("""
     mtime     bigint,
     mtime_ns  integer,
     new_file_number   integer
+  );
+""")
+cur.execute ("""
+  CREATE TABLE history (
+    version   integer,
+    hash      varchar,
+    author    varchar,
+    message   varchar,
+    time      bigint
+  );
+""")
+cur.execute ("""
+  CREATE TABLE tags (
+    version   integer,
+    tag       varchar,
+    value     varchar
   );
 """)
 
@@ -81,6 +99,27 @@ while True:
     ops += 1
     if outss.need_update():
       update_status()
+
+# import history table & tags table
+VERSION = 1
+while True:
+  hentry = repo.bdb.load_history_entry (VERSION)
+  VERSION += 1
+
+  if not hentry.valid:
+    break
+
+  fields = ( hentry.version, hentry.hash, hentry.author, hentry.message, hentry.time )
+  # print "H", fields
+
+  cur.execute ("INSERT INTO history (version, hash, author, message, time) VALUES (%s, %s, %s, %s, %s)", fields)
+
+  tags = repo.bdb.list_tags (hentry.version)
+  for t in tags:
+    values = repo.bdb.load_tag (hentry.version, t)
+    for v in values:
+      fields = (hentry.version, t, v)
+      cur.execute ("INSERT INTO tags (version, tag, value) VALUES (%s, %s, %s)", fields)
 
 update_status()
 
