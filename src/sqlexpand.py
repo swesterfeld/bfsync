@@ -12,19 +12,17 @@ cur.execute ("""
   CREATE TABLE files (
     vmin      bigint,
     vmax      bigint,
-    name      varchar
+    name      varchar,
+    uid       integer,
+    gid       integer,
+    hash      varchar,
+    size      bigint
   );
 """)
 
-cur.execute ("DROP INDEX IF EXISTS i1")
-#cur.execute ("CREATE INDEX i1 ON links (inode_id)")
-cur.execute ("DROP INDEX IF EXISTS i2")
-#cur.execute ("CREATE INDEX i2 ON inodes (id)")
-cur.execute ("DROP INDEX IF EXISTS i3")
-#cur.execute ("CREATE INDEX i3 ON links (dir_id)")
+files_dict = dict()
 
-recs = 0
-def walk (dir_id, path):
+def build_files (dir_id, path):
   global recs
   parent = dict()
   cury = conn.cursor()
@@ -42,27 +40,42 @@ def walk (dir_id, path):
     parent[inode_id] = (name, dir_id)
 
   curz = conn.cursor()
-  cury.execute ("""SELECT dir_id, name, size FROM links, inodes WHERE links.inode_id = inodes.id AND
+  cury.execute ("""SELECT dir_id, name, uid, gid, hash, size FROM links, inodes WHERE links.inode_id = inodes.id AND
                    inodes.vmin <= %s AND inodes.vmax >= %s AND
                    links.vmin  <= %s AND links.vmax >= %s""", (version, version, version, version))
+
+  root_id = "/" + "0" * 40
+
   while True:
     row = cury.fetchone()
     if not row:
       break
 
-    dir_id = row[0]
-    name = row[1]
-    size = row[2]
+    (dir_id, name, uid, gid, hash, size) = row
 
-    root_id = "/" + "0" * 40
     path = name
     while dir_id != root_id:
       path = os.path.join (parent[dir_id][0], path)
       dir_id = parent[dir_id][1]
-    recs += 1
-    curz.execute ("INSERT INTO files VALUES (%s, %s, %s)", (version, version, path))
-  print recs
+
+    if files_dict.has_key (path):
+      if files_dict[path][3:] == row[2:]:
+        vmin = files_dict[path][0]
+        files_dict[path] = (vmin, version) + files_dict[path][2:]
+      else:
+        dump_one_record (files_dict[path])
+        files_dict[path] = (version, version, path) + row[2:]
+    else:
+      files_dict[path] = (version, version, path) + row[2:]
   return
+
+def dump_one_record (record):
+  cur = conn.cursor()
+  cur.execute ("INSERT INTO files VALUES (%s, %s, %s, %s, %s, %s, %s)", record)
+
+def dump_remaining_records():
+  for path in files_dict:
+    dump_one_record (files_dict[path])
 
 cur.execute ("SELECT version FROM history")
 while True:
@@ -71,9 +84,10 @@ while True:
     break
 
   version = row[0]
-  print "version:", version
 
   inode_id = "/" + "0" * 40
-  walk (inode_id, "/")
+  build_files (inode_id, "/")
+
+dump_remaining_records()
 
 conn.commit()
