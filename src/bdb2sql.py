@@ -34,9 +34,9 @@ cur.execute ("""
     major     integer,
     minor     integer,
     nlink     integer,
-    ctime     integer,
+    ctime     bigint,
     ctime_ns  integer,
-    mtime     integer,
+    mtime     bigint,
     mtime_ns  integer,
     new_file_number   integer
   );
@@ -60,18 +60,24 @@ while True:
   links = repo.bdb.load_all_links (id)
 
   for link in links:
-    cur.execute("INSERT INTO links (dir_id, vmin, vmax, inode_id, name) VALUES (%s, %s, %s, %s, %s)",  (
-                link.dir_id.str(), link.vmin, link.vmax, link.inode_id.str(), link.name))
+    fields = ( link.dir_id.str(), link.vmin, link.vmax, link.inode_id.str(), link.name )
+    # print "L", fields
+
+    cur.execute ("INSERT INTO links (dir_id, vmin, vmax, inode_id, name) VALUES (%s, %s, %s, %s, %s)", fields)
     ops += 1
     if outss.need_update():
       update_status()
   for inode in inodes:
+    fields = (
+      inode.id.str(), inode.vmin, inode.vmax, inode.uid, inode.gid, inode.mode, inode.type, inode.hash, inode.link,
+      inode.size, inode.major, inode.minor, inode.nlink, inode.ctime, inode.ctime_ns, inode.mtime, inode.mtime_ns,
+      inode.new_file_number
+    )
+    # print "I", fields
+
     cur.execute ("""INSERT INTO inodes (id, vmin, vmax, uid, gid, mode, type, hash, link, size, major, minor, nlink, ctime, ctime_ns,
                                         mtime, mtime_ns, new_file_number)
-                           VALUES      (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""", (
-                 inode.id.str(), inode.vmin, inode.vmax, inode.uid, inode.gid, inode.mode, inode.type, inode.hash, inode.link,
-                 inode.size, inode.major, inode.minor, inode.nlink, inode.ctime, inode.ctime_ns, inode.mtime, inode.mtime_ns,
-                 inode.new_file_number))
+                           VALUES      (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""", fields)
     ops += 1
     if outss.need_update():
       update_status()
@@ -85,14 +91,14 @@ while True:
   row = cur.fetchone()
   if not row:
     break
-  print "LINKS:", row
+  print "LINKS:", row[0]
 
 cur.execute("SELECT COUNT (*) FROM inodes;")
 while True:
   row = cur.fetchone()
   if not row:
     break
-  print "INODES:", row
+  print "INODES:", row[0]
 
 
 conn.commit()
