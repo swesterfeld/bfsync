@@ -13,10 +13,22 @@ cur.execute ("""
     vmin      bigint,
     vmax      bigint,
     name      varchar,
+    id        varchar,
     uid       integer,
     gid       integer,
+    mode      integer,
+    type      integer,
     hash      varchar,
-    size      bigint
+    link      varchar,
+    size      bigint,
+    major     integer,
+    minor     integer,
+    nlink     integer,
+    ctime     bigint,
+    ctime_ns  integer,
+    mtime     bigint,
+    mtime_ns  integer,
+    new_file_number   integer
   );
 """)
 
@@ -40,7 +52,7 @@ def build_files (dir_id, path):
     parent[inode_id] = (name, dir_id)
 
   curz = conn.cursor()
-  cury.execute ("""SELECT dir_id, name, uid, gid, hash, size FROM links, inodes WHERE links.inode_id = inodes.id AND
+  cury.execute ("""SELECT dir_id, name, inodes.id, uid, gid, mode, type, hash, link, size, major, minor, nlink, ctime, ctime_ns, mtime, mtime_ns, new_file_number FROM links, inodes WHERE links.inode_id = inodes.id AND
                    inodes.vmin <= %s AND inodes.vmax >= %s AND
                    links.vmin  <= %s AND links.vmax >= %s""", (version, version, version, version))
 
@@ -51,7 +63,7 @@ def build_files (dir_id, path):
     if not row:
       break
 
-    (dir_id, name, uid, gid, hash, size) = row
+    (dir_id, name) = row[:2]
 
     path = name
     while dir_id != root_id:
@@ -71,7 +83,7 @@ def build_files (dir_id, path):
 
 def dump_one_record (record):
   cur = conn.cursor()
-  cur.execute ("INSERT INTO files VALUES (%s, %s, %s, %s, %s, %s, %s)", record)
+  cur.execute ("INSERT INTO files VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", record)
 
 def dump_remaining_records():
   for path in files_dict:
