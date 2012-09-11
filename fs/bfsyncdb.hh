@@ -132,6 +132,23 @@ struct Hash2FileEntry {
   unsigned int  file_number;
 };
 
+struct SQLExportData
+{
+  SQLExportData();
+  SQLExportData (const SQLExportData& data);
+  ~SQLExportData();
+
+  bool          valid;
+
+  std::string   filename;
+  unsigned int  type;
+  std::string   hash;
+  uint64_t      size;
+
+  unsigned int  export_version; // only used during export, not stored in db
+};
+
+
 class BDBWrapper
 {
   unsigned int ref_count;
@@ -230,6 +247,10 @@ public:
   void                      del_tag (unsigned int version, const std::string& tag, const std::string& value);
 
   unsigned int       gen_new_file_number();
+
+  void               sql_export_set (const SQLExportData& sql_export_data);
+  SQLExportData      sql_export_get (const std::string& filename);
+  void               sql_export_delete (const std::string& filename);
 
   void               close();
 
@@ -349,6 +370,17 @@ public:
   ~Hash2FileIterator();
 
   Hash2FileEntry get_next();
+};
+
+class SQLExportIterator
+{
+  BDBPtr          bdb_ptr;
+  std::map<std::string, SQLExportData>::iterator it;
+public:
+  SQLExportIterator (BDBPtr bdb_ptr);
+  ~SQLExportIterator();
+
+  SQLExportData get_next();
 };
 
 class SortedArray

@@ -236,6 +236,35 @@ Hash2FileEntry::~Hash2FileEntry()
   hash2file_entry_leak_debugger.del (this);
 }
 
+//---------------------------- SQLExportData -----------------------------
+
+static BFSync::LeakDebugger sql_export_data_leak_debugger ("(Python)BFSync::SQLExportData");
+
+SQLExportData::SQLExportData() :
+  valid (false),
+  type (0),
+  size (0),
+  export_version (0)
+{
+  sql_export_data_leak_debugger.add (this);
+}
+
+SQLExportData::SQLExportData (const SQLExportData& data) :
+  valid (data.valid),
+  filename (data.filename),
+  type (data.type),
+  hash (data.hash),
+  size (data.size),
+  export_version (data.export_version)
+{
+  sql_export_data_leak_debugger.add (this);
+}
+
+SQLExportData::~SQLExportData()
+{
+  sql_export_data_leak_debugger.del (this);
+}
+
 //---------------------------------------------------------------
 
 BDBPtr
@@ -1191,6 +1220,57 @@ BDBPtr::del_tag (unsigned int version, const string& tag, const string& value)
   BDBError err = ptr->my_bdb->del_tag (version, tag, value);
   if (err)
     throw BDBException (err);
+}
+
+//--------------------------- BDBPtr::SQLExportData -----------------------------
+
+map<string, SQLExportData> xxx_sql_export_map;
+
+void
+BDBPtr::sql_export_set (const SQLExportData& data)
+{
+  xxx_sql_export_map[data.filename] = data;
+}
+
+SQLExportData
+BDBPtr::sql_export_get (const std::string& filename)
+{
+  return xxx_sql_export_map[filename];
+}
+
+void
+BDBPtr::sql_export_delete (const std::string& filename)
+{
+  map<string, SQLExportData>::iterator i = xxx_sql_export_map.find (filename);
+  g_return_if_fail (i != xxx_sql_export_map.end());
+
+  xxx_sql_export_map.erase (i);
+}
+
+SQLExportIterator::SQLExportIterator (BDBPtr bdb) :
+  bdb_ptr (bdb)
+{
+  it = xxx_sql_export_map.begin();
+}
+
+SQLExportData
+SQLExportIterator::get_next()
+{
+  if (it != xxx_sql_export_map.end())
+    {
+      const SQLExportData& data = it->second;
+      it++;
+      return data;
+    }
+  else
+    {
+      SQLExportData eof_data;
+      return eof_data;
+    }
+}
+
+SQLExportIterator::~SQLExportIterator()
+{
 }
 
 /* refcounting BDB wrapper */
