@@ -242,6 +242,8 @@ static BFSync::LeakDebugger sql_export_data_leak_debugger ("(Python)BFSync::SQLE
 
 SQLExportData::SQLExportData() :
   valid (false),
+  vmin (0),
+  vmax (0),
   type (0),
   size (0),
   export_version (0)
@@ -252,6 +254,8 @@ SQLExportData::SQLExportData() :
 SQLExportData::SQLExportData (const SQLExportData& data) :
   valid (data.valid),
   filename (data.filename),
+  vmin (data.vmin),
+  vmax (data.vmax),
   type (data.type),
   hash (data.hash),
   size (data.size),

@@ -141,6 +141,8 @@ struct SQLExportData
   bool          valid;
 
   std::string   filename;
+  unsigned int  vmin;
+  unsigned int  vmax;
   unsigned int  type;
   std::string   hash;
   uint64_t      size;
