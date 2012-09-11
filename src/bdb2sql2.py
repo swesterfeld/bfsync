@@ -18,6 +18,17 @@ cur.execute ("""
     time      bigint
   );
 """)
+cur.execute ("DROP TABLE IF EXISTS files")
+cur.execute ("""
+  CREATE TABLE files (
+    filename  varchar,
+    vmin      bigint,
+    vmax      bigint,
+    type      integer,
+    hash      varchar,
+    size      bigint
+  );
+""")
 
 sql_max_version = 0
 
@@ -41,6 +52,12 @@ while True:
 
 #print bdb_max_version, sql_max_version
 
+ops = 0
+outss = OutputSubsampler()
+
+def update_status():
+  status_line.update ("Imported changes: %d" % ops)
+
 def same_data (d1, d2):
   return (d1.filename == d2.filename and d1.type == d2.type and d1.size == d2.size and d1.hash == d2.hash)
 
@@ -50,11 +67,15 @@ for version in range (sql_max_version + 1, bdb_max_version + 1):
   assert (hentry.valid)
 
   def walk (inode, filename):
+    global ops
+
     if inode.valid:
       old_data = repo.bdb.sql_export_get (filename)
       data = bfsyncdb.SQLExportData()
       data.valid = True
       data.filename = filename
+      data.vmin = old_data.vmin
+      data.vmax = old_data.vmax
       data.type = inode.type
       data.size = inode.size
       data.hash = inode.hash
@@ -65,11 +86,27 @@ for version in range (sql_max_version + 1, bdb_max_version + 1):
           status = "same"
         else:
           status = "changed"
+          cur.execute ("UPDATE files SET vmax = %s WHERE filename = %s AND vmin = %s", (version - 1, filename, old_data.vmin))
+          fields = (filename, version, bfsyncdb.VERSION_INF, data.type, data.hash, data.size)
+          cur.execute ("INSERT INTO files (filename, vmin, vmax, type, hash, size) VALUES (%s, %s, %s, %s, %s, %s)", fields)
+          data.vmin = version
+          data.vmax = bfsyncdb.VERSION_INF
+          ops += 1
+          if outss.need_update():
+            update_status()
       else:
+        fields = (filename, version, bfsyncdb.VERSION_INF, data.type, data.hash, data.size)
+        cur.execute ("INSERT INTO files (filename, vmin, vmax, type, hash, size) VALUES (%s, %s, %s, %s, %s, %s)", fields)
+        data.vmin = version
+        data.vmax = bfsyncdb.VERSION_INF
         status = "new"
+        ops += 1
+        if outss.need_update():
+          update_status()
 
-      print "%-60s%-12d%42s -- %s" % (data.filename, data.size, data.hash, status)
       repo.bdb.sql_export_set (data)
+
+      #print "%-60s%-12d%42s -- %s" % (data.filename, data.size, data.hash, status)
 
       # recurse into subdirs
       if inode.type == bfsyncdb.FILE_DIR:
@@ -80,16 +117,27 @@ for version in range (sql_max_version + 1, bdb_max_version + 1):
           walk (child_inode, inode_name)
 
   def check_deleted():
+    global ops
+
     sxi = bfsyncdb.SQLExportIterator (repo.bdb)
     while True:
-      entry = sxi.get_next()
-      if not entry.valid:
+      data = sxi.get_next()
+      if not data.valid:
         break
-      if entry.export_version != version:
-        print "%-60s%-12d%42s -- %s" % (entry.filename, entry.size, entry.hash, "del")
-        repo.bdb.sql_export_delete (entry.filename)
+      if data.export_version != version:
+        #print "%-60s%-12d%42s -- %s" % (data.filename, data.size, data.hash, "del")
+        cur.execute ("UPDATE files SET vmax = %s WHERE filename = %s AND vmin = %s", (version - 1, data.filename, data.vmin))
+        repo.bdb.sql_export_delete (data.filename)
+        ops += 1
+      if outss.need_update():
+        update_status()
 
   id = bfsyncdb.id_root()
   inode = repo.bdb.load_inode (id, version)
   walk (inode, "/")
   check_deleted()
+  status_line.cleanup()
+
+conn.commit()
+cur.close()
+conn.close()
