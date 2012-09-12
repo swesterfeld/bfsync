@@ -1252,8 +1252,6 @@ BDBPtr::sql_export_set (const SQLExportData& data)
   DbTxn *txn = ptr->my_bdb->get_transaction();
   g_assert (txn);
 
-  ptr->my_bdb->get_db_sql_export()->del (txn, &skey, 0); // FIXME
-
   int ret = ptr->my_bdb->get_db_sql_export()->put (txn, &skey, &sdata, 0);
   g_assert (ret == 0);
 }
