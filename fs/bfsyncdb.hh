@@ -143,6 +143,8 @@ struct SQLExportData
   std::string   filename;
   unsigned int  vmin;
   unsigned int  vmax;
+  ID            id;
+  ID            parent_id;
   unsigned int  type;
   std::string   hash;
   uint64_t      size;

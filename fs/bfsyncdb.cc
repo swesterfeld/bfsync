@@ -256,6 +256,8 @@ SQLExportData::SQLExportData (const SQLExportData& data) :
   filename (data.filename),
   vmin (data.vmin),
   vmax (data.vmax),
+  id (data.id),
+  parent_id (data.parent_id),
   type (data.type),
   hash (data.hash),
   size (data.size),
@@ -1241,6 +1243,10 @@ BDBPtr::sql_export_set (const SQLExportData& data)
 
   dbuf.write_uint32 (data.vmin);
   dbuf.write_uint32 (data.vmax);
+
+  id_store (data.id, dbuf);
+  id_store (data.parent_id, dbuf);
+
   dbuf.write_uint32 (data.type);
   dbuf.write_string (data.hash);
   dbuf.write_uint64 (data.size);
@@ -1265,6 +1271,10 @@ load_sql_export_data (const string& filename, DataBuffer& dbuffer)
   data.filename = filename;
   data.vmin = dbuffer.read_uint32();
   data.vmax = dbuffer.read_uint32();
+
+  id_load (data.id, dbuffer);
+  id_load (data.parent_id, dbuffer);
+
   data.type = dbuffer.read_uint32();
   data.hash = dbuffer.read_string();
   data.size = dbuffer.read_uint64();

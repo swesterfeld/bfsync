@@ -24,6 +24,8 @@ cur.execute ("""
     filename  varchar,
     vmin      bigint,
     vmax      bigint,
+    id        varchar,
+    parent_id varchar,
     type      integer,
     hash      varchar,
     size      bigint
@@ -63,7 +65,9 @@ def update_status():
   ))
 
 def same_data (d1, d2):
-  return (d1.filename == d2.filename and d1.type == d2.type and d1.size == d2.size and d1.hash == d2.hash)
+  return (d1.filename == d2.filename and
+          d1.id.str() == d2.id.str() and d1.parent_id.str() == d2.parent_id.str() and
+          d1.type == d2.type and d1.size == d2.size and d1.hash == d2.hash)
 
 ## clear old sql export entries
 while True:
@@ -88,7 +92,13 @@ for version in range (sql_max_version + 1, bdb_max_version + 1):
   hentry = repo.bdb.load_history_entry (version)
   assert (hentry.valid)
 
-  def walk (inode, filename):
+  def get_parent (data):
+    if data.parent_id.str() == id_none.str():
+      return None
+    else:
+      return data.parent_id.str()
+
+  def walk (inode, filename, parent_id):
     global ops
 
     if inode.valid:
@@ -98,6 +108,8 @@ for version in range (sql_max_version + 1, bdb_max_version + 1):
       data.filename = filename
       data.vmin = old_data.vmin
       data.vmax = old_data.vmax
+      data.id = inode.id
+      data.parent_id = parent_id
       data.type = inode.type
       data.size = inode.size
       data.hash = inode.hash
@@ -109,16 +121,18 @@ for version in range (sql_max_version + 1, bdb_max_version + 1):
         else:
           status = "changed"
           cur.execute ("UPDATE files SET vmax = %s WHERE filename = %s AND vmin = %s", (version - 1, filename, old_data.vmin))
-          fields = (filename, version, bfsyncdb.VERSION_INF, data.type, data.hash, data.size)
-          cur.execute ("INSERT INTO files (filename, vmin, vmax, type, hash, size) VALUES (%s, %s, %s, %s, %s, %s)", fields)
+          fields = (filename, version, bfsyncdb.VERSION_INF, data.id.str(), get_parent (data), data.type, data.hash, data.size)
+          cur.execute ("""INSERT INTO files (filename, vmin, vmax, id, parent_id, type, hash, size)
+                          VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""", fields)
           data.vmin = version
           data.vmax = bfsyncdb.VERSION_INF
           ops += 1
           if outss.need_update():
             update_status()
       else:
-        fields = (filename, version, bfsyncdb.VERSION_INF, data.type, data.hash, data.size)
-        cur.execute ("INSERT INTO files (filename, vmin, vmax, type, hash, size) VALUES (%s, %s, %s, %s, %s, %s)", fields)
+        fields = (filename, version, bfsyncdb.VERSION_INF, data.id.str(), get_parent (data), data.type, data.hash, data.size)
+        cur.execute ("""INSERT INTO files (filename, vmin, vmax, id, parent_id, type, hash, size)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""", fields)
         data.vmin = version
         data.vmax = bfsyncdb.VERSION_INF
         status = "new"
@@ -137,7 +151,7 @@ for version in range (sql_max_version + 1, bdb_max_version + 1):
         for link in links:
           inode_name = os.path.join (filename, link.name)
           child_inode = repo.bdb.load_inode (link.inode_id, version)
-          walk (child_inode, inode_name)
+          walk (child_inode, inode_name, inode.id)
 
   def check_deleted():
     global ops
@@ -182,8 +196,9 @@ for version in range (sql_max_version + 1, bdb_max_version + 1):
 
   repo.bdb.begin_transaction()
   id = bfsyncdb.id_root()
+  id_none = bfsyncdb.ID ("/" + 40 * "f")
   inode = repo.bdb.load_inode (id, version)
-  walk (inode, "/")
+  walk (inode, "/", id_none)
   check_deleted()
   repo.bdb.commit_transaction()
 update_status()
