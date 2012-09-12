@@ -54,15 +54,37 @@ while True:
 
 ops = 0
 outss = OutputSubsampler()
+start_time = time.time()
 
 def update_status():
-  status_line.update ("Imported changes: %d" % ops)
+  now_time = time.time()
+  status_line.update ("version %d/%d - imported changes: %d - rate %.2f changes/sec" % (
+    version, bdb_max_version, ops, ops / (now_time - start_time)
+  ))
 
 def same_data (d1, d2):
   return (d1.filename == d2.filename and d1.type == d2.type and d1.size == d2.size and d1.hash == d2.hash)
 
+## clear old sql export entries
+while True:
+  repo.bdb.begin_transaction()
+  deleted = repo.bdb.sql_export_clear (20000)
+  repo.bdb.commit_transaction()
+
+  if deleted == 0: # sql export table empty
+    break
+
+TRANS_OPS = 0
+def maybe_split_transaction():
+  global TRANS_OPS
+
+  TRANS_OPS += 1
+  if TRANS_OPS >= 20000:
+    TRANS_OPS = 0
+    repo.bdb.commit_transaction()
+    repo.bdb.begin_transaction()
+
 for version in range (sql_max_version + 1, bdb_max_version + 1):
-  print "*** importing version %d ***" % version
   hentry = repo.bdb.load_history_entry (version)
   assert (hentry.valid)
 
@@ -105,6 +127,7 @@ for version in range (sql_max_version + 1, bdb_max_version + 1):
           update_status()
 
       repo.bdb.sql_export_set (data)
+      maybe_split_transaction()
 
       #print "%-60s%-12d%42s -- %s" % (data.filename, data.size, data.hash, status)
 
@@ -129,14 +152,18 @@ for version in range (sql_max_version + 1, bdb_max_version + 1):
         cur.execute ("UPDATE files SET vmax = %s WHERE filename = %s AND vmin = %s", (version - 1, data.filename, data.vmin))
         repo.bdb.sql_export_delete (data.filename)
         ops += 1
+        maybe_split_transaction()
+
       if outss.need_update():
         update_status()
 
+  repo.bdb.begin_transaction()
   id = bfsyncdb.id_root()
   inode = repo.bdb.load_inode (id, version)
   walk (inode, "/")
   check_deleted()
-  status_line.cleanup()
+  repo.bdb.commit_transaction()
+update_status()
 
 conn.commit()
 cur.close()
