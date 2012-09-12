@@ -253,6 +253,7 @@ public:
   void               sql_export_set (const SQLExportData& sql_export_data);
   SQLExportData      sql_export_get (const std::string& filename);
   void               sql_export_delete (const std::string& filename);
+  unsigned int       sql_export_clear (unsigned int max_entries);
 
   void               close();
 
@@ -377,7 +378,9 @@ public:
 class SQLExportIterator
 {
   BDBPtr          bdb_ptr;
-  std::map<std::string, SQLExportData>::iterator it;
+  Dbc            *cursor;
+  int             dbc_ret;
+  Dbt             key, data;
 public:
   SQLExportIterator (BDBPtr bdb_ptr);
   ~SQLExportIterator();

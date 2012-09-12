@@ -1228,43 +1228,162 @@ BDBPtr::del_tag (unsigned int version, const string& tag, const string& value)
 
 //--------------------------- BDBPtr::SQLExportData -----------------------------
 
-map<string, SQLExportData> xxx_sql_export_map;
+TimeProfSection tp_sql_export_set ("bfsyncdb.sql_export_set");
 
 void
 BDBPtr::sql_export_set (const SQLExportData& data)
 {
-  xxx_sql_export_map[data.filename] = data;
+  TimeProfHandle h (tp_sql_export_set);
+
+  DataOutBuffer kbuf, dbuf;
+
+  kbuf.write_string (data.filename);
+
+  dbuf.write_uint32 (data.vmin);
+  dbuf.write_uint32 (data.vmax);
+  dbuf.write_uint32 (data.type);
+  dbuf.write_string (data.hash);
+  dbuf.write_uint64 (data.size);
+  dbuf.write_uint32 (data.export_version);
+
+  Dbt skey (kbuf.begin(), kbuf.size());
+  Dbt sdata (dbuf.begin(), dbuf.size());
+
+  DbTxn *txn = ptr->my_bdb->get_transaction();
+  g_assert (txn);
+
+  ptr->my_bdb->get_db_sql_export()->del (txn, &skey, 0); // FIXME
+
+  int ret = ptr->my_bdb->get_db_sql_export()->put (txn, &skey, &sdata, 0);
+  g_assert (ret == 0);
 }
+
+static inline SQLExportData
+load_sql_export_data (const string& filename, DataBuffer& dbuffer)
+{
+  SQLExportData data;
+
+  data.valid = true;
+  data.filename = filename;
+  data.vmin = dbuffer.read_uint32();
+  data.vmax = dbuffer.read_uint32();
+  data.type = dbuffer.read_uint32();
+  data.hash = dbuffer.read_string();
+  data.size = dbuffer.read_uint64();
+  data.export_version = dbuffer.read_uint32();
+
+  return data;
+}
+
+TimeProfSection tp_sql_export_get ("bfsyncdb.sql_export_get");
 
 SQLExportData
 BDBPtr::sql_export_get (const std::string& filename)
 {
-  return xxx_sql_export_map[filename];
+  TimeProfHandle h (tp_sql_export_get);
+
+  DataOutBuffer kbuf;
+
+  kbuf.write_string (filename);
+
+  Dbt skey (kbuf.begin(), kbuf.size());
+  Dbt sdata;
+
+  DbTxn *txn = ptr->my_bdb->get_transaction();
+
+  int ret = ptr->my_bdb->get_db_sql_export()->get (txn, &skey, &sdata, 0);
+  if (ret == 0)
+    {
+      DataBuffer dbuffer ((char *) sdata.get_data(), sdata.get_size());
+
+      return load_sql_export_data (filename, dbuffer);
+    }
+  else
+    {
+      return SQLExportData(); // <- valid is false
+    }
 }
 
 void
 BDBPtr::sql_export_delete (const std::string& filename)
 {
-  map<string, SQLExportData>::iterator i = xxx_sql_export_map.find (filename);
-  g_return_if_fail (i != xxx_sql_export_map.end());
+  DbTxn *txn = ptr->my_bdb->get_transaction();
+  Db    *db  = get_bdb()->get_db_sql_export();
 
-  xxx_sql_export_map.erase (i);
+  DataOutBuffer kbuf;
+  kbuf.write_string (filename);
+
+  Dbt key (kbuf.begin(), kbuf.size());
+  int ret = db->del (txn, &key, 0);
+  g_return_if_fail (ret == 0);
+}
+
+unsigned int
+BDBPtr::sql_export_clear (unsigned int max_entries)
+{
+  DbTxn *txn = get_bdb()->get_transaction();
+
+  int ret;
+
+  /* Acquire a cursor for the database. */
+  Dbc *cursor;
+  if ((ret = get_bdb()->get_db_sql_export()->cursor (txn, &cursor, 0)) != 0)
+    {
+      get_bdb()->get_db_sql_export()->err (ret, "DB->cursor");
+      return 0;
+    }
+
+  unsigned int clear_count = 0;
+
+  Dbt key, data;
+
+  ret = cursor->get (&key, &data, DB_FIRST);
+  while (ret == 0 && clear_count < max_entries)
+    {
+      clear_count++;
+
+      cursor->del (0);
+      ret = cursor->get (&key, &data, DB_NEXT);
+    }
+
+  cursor->close();
+  return clear_count;
 }
 
 SQLExportIterator::SQLExportIterator (BDBPtr bdb) :
   bdb_ptr (bdb)
 {
-  it = xxx_sql_export_map.begin();
+  DbTxn *txn = bdb_ptr.get_bdb()->get_transaction();
+
+  int ret;
+
+  /* Acquire a cursor for the database. */
+  if ((ret = bdb_ptr.get_bdb()->get_db_sql_export()->cursor (txn, &cursor, 0)) != 0)
+    {
+      bdb_ptr.get_bdb()->get_db_sql_export()->err (ret, "DB->cursor");
+      cursor = 0;
+      dbc_ret = ret;
+      return;
+    }
+  dbc_ret = cursor->get (&key, &data, DB_FIRST);
 }
 
 SQLExportData
 SQLExportIterator::get_next()
 {
-  if (it != xxx_sql_export_map.end())
+  if (dbc_ret == 0)
     {
-      const SQLExportData& data = it->second;
-      it++;
-      return data;
+      SQLExportData export_data;
+
+      DataBuffer kbuffer ((char *) key.get_data(), key.get_size());
+      DataBuffer dbuffer ((char *) data.get_data(), data.get_size());
+
+      string filename = kbuffer.read_string();
+
+      export_data = load_sql_export_data (filename, dbuffer);
+
+      dbc_ret = cursor->get (&key, &data, DB_NEXT);
+      return export_data;
     }
   else
     {
@@ -1275,6 +1394,11 @@ SQLExportIterator::get_next()
 
 SQLExportIterator::~SQLExportIterator()
 {
+  if (cursor)
+    {
+      cursor->close();
+      cursor = 0;
+    }
 }
 
 /* refcounting BDB wrapper */
