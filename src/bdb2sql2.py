@@ -79,7 +79,7 @@ def maybe_split_transaction():
   global TRANS_OPS
 
   TRANS_OPS += 1
-  if TRANS_OPS >= 20000:
+  if TRANS_OPS >= 10000:
     TRANS_OPS = 0
     repo.bdb.commit_transaction()
     repo.bdb.begin_transaction()
@@ -142,6 +142,15 @@ for version in range (sql_max_version + 1, bdb_max_version + 1):
   def check_deleted():
     global ops
 
+    delete_list_filename = repo.make_temp_name()
+    delete_list = open (delete_list_filename, "w")
+
+    # prepare list of deleted files (and update sql db)
+    #
+    # We can not modify the Berkeley DB table containing SQLExportData entries in this
+    # loop, because transaction splitting might invalidate the cursor SQLExportIterator
+    # uses. Therefore we use a temp file to store all entries that should be deleted
+    # later on.
     sxi = bfsyncdb.SQLExportIterator (repo.bdb)
     while True:
       data = sxi.get_next()
@@ -150,12 +159,26 @@ for version in range (sql_max_version + 1, bdb_max_version + 1):
       if data.export_version != version:
         #print "%-60s%-12d%42s -- %s" % (data.filename, data.size, data.hash, "del")
         cur.execute ("UPDATE files SET vmax = %s WHERE filename = %s AND vmin = %s", (version - 1, data.filename, data.vmin))
-        repo.bdb.sql_export_delete (data.filename)
         ops += 1
-        maybe_split_transaction()
+        if outss.need_update():
+          update_status()
+
+        # string escaping ensures that lines will never contain newline chars, even if the filename does
+        delete_list.write (data.filename.encode ("string-escape") + "\n")
 
       if outss.need_update():
         update_status()
+    delete_list.close()
+
+    del sxi # close cursor
+
+    # remove deleted files from sql export table
+    delete_list = open (delete_list_filename, "r")
+    for filename in delete_list:
+      filename = filename.rstrip ("\n").decode ("string-escape")
+      repo.bdb.sql_export_delete (filename)
+      maybe_split_transaction()
+    delete_list.close()
 
   repo.bdb.begin_transaction()
   id = bfsyncdb.id_root()
