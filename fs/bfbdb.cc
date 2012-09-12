@@ -168,6 +168,7 @@ BDB::open (const string& path, int cache_size_mb, bool recover)
         0);
       if (ret == 0)
         {
+          // DB: main database
           db = new Db (db_env, 0);
           db->set_flags (DB_DUP);       // allow duplicate keys
 
@@ -186,7 +187,7 @@ BDB::open (const string& path, int cache_size_mb, bool recover)
               result = false;
             }
 
-
+          // DB: hash2file
           db_hash2file = new Db (db_env, 0);
           ret = db_hash2file->open (NULL,
                                     "db_hash2file",
@@ -200,6 +201,7 @@ BDB::open (const string& path, int cache_size_mb, bool recover)
               result = false;
             }
 
+          // DB: seq
           db_seq = new Db (db_env, 0);
           ret = db_seq->open (NULL,
                               "db_seq",
@@ -212,6 +214,7 @@ BDB::open (const string& path, int cache_size_mb, bool recover)
               db_seq->err (ret, "open database 'db_seq' failed");
               result = false;
             }
+
           if (db_seq)
             {
               DataOutBuffer kbuf;
@@ -228,6 +231,20 @@ BDB::open (const string& path, int cache_size_mb, bool recover)
 
               ret = new_file_number_seq->open (NULL, &key, DB_CREATE);
               g_assert (ret == 0);
+            }
+
+          // DB: sql export
+          db_sql_export = new Db (db_env, 0);
+          ret = db_sql_export->open (NULL,
+                                    "db_sql_export",
+                                    NULL,
+                                    DB_BTREE,
+                                    oFlags,
+                                    0);
+          if (ret != 0)
+            {
+              db_sql_export->err (ret, "open database 'db_sql_export' failed");
+              result = false;
             }
         }
       else
@@ -266,6 +283,7 @@ BDB::open (const string& path, int cache_size_mb, bool recover)
           db = NULL;
           db_hash2file = NULL;
           db_seq = NULL;
+          db_sql_export = NULL;
           result = false;
         }
 
@@ -288,6 +306,12 @@ BDB::open (const string& path, int cache_size_mb, bool recover)
               db_seq->close (0);
               delete db_seq;
               db_seq = NULL;
+            }
+          if (db_sql_export)
+            {
+              db_sql_export->close (0);
+              delete db_sql_export;
+              db_sql_export = NULL;
             }
           if (db_env)
             {
@@ -337,6 +361,12 @@ BDB::close (CloseFlags flags)
   ret = db_seq->close (0);
   delete db_seq;
   db_seq = NULL;
+
+  assert (ret == 0);
+
+  ret = db_sql_export->close (0);
+  delete db_sql_export;
+  db_sql_export = NULL;
 
   assert (ret == 0);
 
@@ -647,6 +677,12 @@ Db*
 BDB::get_db_hash2file()
 {
   return db_hash2file;
+}
+
+Db*
+BDB::get_db_sql_export()
+{
+  return db_sql_export;
 }
 
 History*

@@ -142,6 +142,7 @@ class BDB
   Db      *db;
   Db      *db_hash2file;
   Db      *db_seq;
+  Db      *db_sql_export;
   DbSequence *new_file_number_seq;
 
   std::map<ino_t, ID> new_id2ino_entries;
@@ -164,6 +165,7 @@ class BDB
 public:
   Db*       get_db();
   Db*       get_db_hash2file();
+  Db*       get_db_sql_export();
   DbEnv*    get_db_env();
   History*  history();
 
