@@ -168,10 +168,6 @@ for version in range (sql_max_version + 1, bdb_max_version + 1):
   def check_deleted():
     global ops, del_scan_ops
 
-    repo.bdb.begin_transaction()
-    delete_list_filename = repo.make_temp_name()
-    repo.bdb.commit_transaction()
-
     delete_list = open (delete_list_filename, "w")
 
     # prepare list of deleted files (and update sql db)
@@ -200,7 +196,7 @@ for version in range (sql_max_version + 1, bdb_max_version + 1):
 
     del sxi # close cursor
 
-    repo.bdb.begin_transaction()
+  def remove_deleted():
     # remove deleted files from sql export table
     delete_list = open (delete_list_filename, "r")
     for filename in delete_list:
@@ -208,15 +204,23 @@ for version in range (sql_max_version + 1, bdb_max_version + 1):
       repo.bdb.sql_export_delete (filename)
       maybe_split_transaction()
     delete_list.close()
-    repo.bdb.commit_transaction()
 
   repo.bdb.begin_transaction()
+
   id = bfsyncdb.id_root()
   id_none = bfsyncdb.ID ("/" + 40 * "f")
   inode = repo.bdb.load_inode (id, version)
   walk (inode, "/", id_none)
+
+  delete_list_filename = repo.make_temp_name()
   repo.bdb.commit_transaction()
+
   check_deleted()
+
+  repo.bdb.begin_transaction()
+  remove_deleted()
+  repo.bdb.commit_transaction()
+
 update_status()
 
 conn.commit()
