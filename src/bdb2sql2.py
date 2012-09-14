@@ -31,6 +31,10 @@ cur.execute ("""
     size      bigint
   );
 """)
+cur.execute ("""
+  DROP INDEX IF EXISTS files_fn_idx;
+  CREATE INDEX files_fn_idx ON files (filename, vmin);
+""")
 
 sql_max_version = 0
 
