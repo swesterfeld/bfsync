@@ -66,10 +66,11 @@ start_time = time.time()
 
 def update_status():
   now_time = time.time()
-  status_line.update ("version %d/%d - %d | %d - imported changes: %d - rate %.2f | %.2f changes/sec" % (
+  print "version %d/%d - %d | %d - imported changes: %d - rate %.2f | %.2f changes/sec" % (
     version, bdb_max_version, scan_ops, del_scan_ops, ops, ops / (now_time - start_time),
                               scan_ops / (now_time - start_time)
-  ))
+  )
+  bfsyncdb.print_leak_debugger_stats()
 
 def same_data (d1, d2):
   return (d1.filename == d2.filename and
