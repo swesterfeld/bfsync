@@ -220,9 +220,9 @@ for version in range (sql_max_version + 1, bdb_max_version + 1):
   repo.bdb.begin_transaction()
   remove_deleted()
   repo.bdb.commit_transaction()
+  conn.commit()
 
 update_status()
 
-conn.commit()
 cur.close()
 conn.close()
