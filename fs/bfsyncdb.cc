@@ -1358,6 +1358,12 @@ BDBPtr::sql_export_clear (unsigned int max_entries)
   return clear_count;
 }
 
+void
+print_leak_debugger_stats()
+{
+  BFSync::LeakDebugger::print_stats();
+}
+
 SQLExportIterator::SQLExportIterator (BDBPtr bdb) :
   bdb_ptr (bdb)
 {

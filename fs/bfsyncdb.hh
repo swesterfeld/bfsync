@@ -272,6 +272,7 @@ extern bool               need_recover_db (const std::string& db);
 extern ID                 id_root();
 extern std::string        time_prof_result();
 extern void               time_prof_reset();
+extern void               print_leak_debugger_stats();
 
 class DiffGenerator
 {

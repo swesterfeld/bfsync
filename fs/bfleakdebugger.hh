@@ -41,6 +41,7 @@ public:
 
   template<class T> void add (T *instance) { ptr_add (static_cast<void *> (instance)); }
   template<class T> void del (T *instance) { ptr_del (static_cast<void *> (instance)); }
+  static void print_stats();
 };
 
 }

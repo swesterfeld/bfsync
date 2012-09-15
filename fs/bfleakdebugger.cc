@@ -25,6 +25,7 @@ using namespace BFSync;
 
 using std::string;
 using std::map;
+using std::vector;
 
 void
 LeakDebugger::ptr_add (void *p)
@@ -67,9 +68,12 @@ LeakDebugger::ptr_del (void *p)
     }
 }
 
+vector<LeakDebugger*> leak_debuggers;
+
 LeakDebugger::LeakDebugger (const string& name) :
   type (name)
 {
+  leak_debuggers.push_back (this);
 }
 
 LeakDebugger::~LeakDebugger()
@@ -90,5 +94,15 @@ LeakDebugger::~LeakDebugger()
         {
           g_printerr ("LeakDebugger (%s) => %d objects remaining\n", type.c_str(), alive);
         }
+    }
+}
+
+void
+LeakDebugger::print_stats()
+{
+  for (vector<LeakDebugger*>::iterator ldi = leak_debuggers.begin(); ldi != leak_debuggers.end(); ldi++)
+    {
+      Lock lock ((*ldi)->mutex);
+      printf ("%s: %zd\n", (*ldi)->type.c_str(), (*ldi)->ptr_map.size());
     }
 }
