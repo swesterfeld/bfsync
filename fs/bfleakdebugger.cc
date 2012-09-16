@@ -65,6 +65,13 @@ LeakDebugger::ptr_del (void *p)
                     type.c_str(), p_map_entry);
 
       ptr_map.quick_erase (pi);
+      /*
+       * hashmap erase performance is poor if the hashmap has a huge number
+       * of buckets and only a small part of all buckets is used, so we rehash
+       * if the load factor is four times smaller than the maximum load factor
+       */
+      if (ptr_map.load_factor() / ptr_map.max_load_factor() < 0.25)
+        ptr_map.rehash (0);
     }
 }
 
