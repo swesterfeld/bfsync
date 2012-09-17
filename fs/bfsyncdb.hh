@@ -491,9 +491,13 @@ class SQLExport
   unsigned int version;
   BDBPtr       bdb_ptr;
   int          transaction_ops;
+  int          scan_ops;
+  double       last_status_time;
+  double       start_time;
 
   void walk (const ID& id, const std::string& name);
   void maybe_split_transaction();
+  void update_status();
 
 public:
   SQLExport (BDBPtr bdb);

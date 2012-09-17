@@ -73,6 +73,9 @@ SQLExport::walk (const ID& id, const string& prefix)
 
       maybe_split_transaction();
 
+      scan_ops++;
+      update_status();
+
       if (inode.type == BFSync::FILE_DIR)
         {
           vector<Link> links = bdb_ptr.load_links (id, version);
@@ -99,16 +102,29 @@ SQLExport::maybe_split_transaction()
 }
 
 void
+SQLExport::update_status()
+{
+  const double time = gettime();
+  if (fabs (time - last_status_time) > 1)
+    {
+      last_status_time = time;
+      printf ("%d | %.2f scan_ops/sec\n", scan_ops, scan_ops / (time - start_time));
+    }
+}
+
+void
 SQLExport::export_version (unsigned int version)
 {
   this->version = version;
   transaction_ops = 0;
+  scan_ops = 0;
+  last_status_time = 0;
+  start_time = gettime();
 
-  const double start_t = gettime();
   bdb_ptr.begin_transaction();
   walk (id_root(), "");
   bdb_ptr.commit_transaction();
-  const double end_t = gettime();
+  const double end_time = gettime();
 
-  printf ("### time: %.2f\n", (end_t - start_t));
+  printf ("### time: %.2f\n", (end_time - start_time));
 }
