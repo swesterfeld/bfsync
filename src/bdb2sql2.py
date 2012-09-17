@@ -9,8 +9,8 @@ import sys
 
 conn = dbapi2.connect (database="bfsync", user="postgres") # , host="bigraidn1", port=5410) #, password="python")
 cur = conn.cursor ()
-cur.execute ("DROP TABLE IF EXISTS history")
 cur.execute ("""
+  DROP TABLE IF EXISTS history;
   CREATE TABLE history (
     version   integer,
     hash      varchar,
@@ -18,9 +18,15 @@ cur.execute ("""
     message   varchar,
     time      bigint
   );
-""")
-cur.execute ("DROP TABLE IF EXISTS files")
-cur.execute ("""
+
+  DROP TABLE IF EXISTS tags;
+  CREATE TABLE tags (
+    version   integer,
+    tag       varchar,
+    value     varchar
+  );
+
+  DROP TABLE IF EXISTS files;
   CREATE TABLE files (
     filename  varchar,
     vmin      bigint,
@@ -31,15 +37,14 @@ cur.execute ("""
     hash      varchar,
     size      bigint
   );
-""")
-cur.execute ("""
+
   DROP INDEX IF EXISTS files_fn_idx;
   CREATE INDEX files_fn_idx ON files (filename, vmin);
 """)
 
 sql_max_version = 0
 
-cur.execute("SELECT (version) FROM history;")
+cur.execute ("SELECT (version) FROM history;")
 while True:
   row = cur.fetchone()
   if not row:
@@ -103,9 +108,24 @@ def maybe_split_transaction():
     repo.bdb.commit_transaction()
     repo.bdb.begin_transaction()
 
+def import_history_entry (hentry):
+  fields = ( hentry.version, hentry.hash, hentry.author, hentry.message, hentry.time )
+  # print "H", fields
+
+  cur.execute ("INSERT INTO history (version, hash, author, message, time) VALUES (%s, %s, %s, %s, %s)", fields)
+
+  tags = repo.bdb.list_tags (hentry.version)
+  for t in tags:
+    values = repo.bdb.load_tag (hentry.version, t)
+    for v in values:
+      fields = (hentry.version, t, v)
+      cur.execute ("INSERT INTO tags (version, tag, value) VALUES (%s, %s, %s)", fields)
+
 for version in range (sql_max_version + 1, bdb_max_version + 1):
   hentry = repo.bdb.load_history_entry (version)
   assert (hentry.valid)
+
+  import_history_entry (hentry)
 
   def get_parent (data):
     if data.parent_id.str() == id_none.str():
