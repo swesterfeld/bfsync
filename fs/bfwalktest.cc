@@ -30,7 +30,7 @@ using std::vector;
 void
 walk (BDBPtr& bdb_ptr, const ID& id, const string& prefix)
 {
-  INode inode = bdb_ptr.load_inode (id_root(), VERSION);
+  INode inode = bdb_ptr.load_inode (id, VERSION);
   if (inode.valid)
     {
       if (prefix.size())
