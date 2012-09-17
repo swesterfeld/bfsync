@@ -486,6 +486,21 @@ public:
   void           delete_unused_keep_count (unsigned int count);
 };
 
+class SQLExport
+{
+  unsigned int version;
+  BDBPtr       bdb_ptr;
+  int          transaction_ops;
+
+  void walk (const ID& id, const std::string& name);
+  void maybe_split_transaction();
+
+public:
+  SQLExport (BDBPtr bdb);
+
+  void export_version (unsigned int version);
+};
+
 class BDBException
 {
 private:
