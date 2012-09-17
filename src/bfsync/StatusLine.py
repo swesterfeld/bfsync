@@ -1,5 +1,3 @@
-import sys
-
 # bfsync: Big File synchronization tool
 
 # Copyright (C) 2011 Stefan Westerfeld
@@ -18,6 +16,7 @@ import sys
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import time
+import sys
 
 # helper class to update output only once per second
 class OutputSubsampler:
