@@ -5,6 +5,7 @@ from bfsync.xzutils import xzcat2
 from bfsync.diffutils import DiffIterator
 import psycopg2 as dbapi2
 from bfsync.StatusLine import status_line, OutputSubsampler
+import sys
 
 conn = dbapi2.connect (database="bfsync", user="postgres") # , host="bigraidn1", port=5410) #, password="python")
 cur = conn.cursor ()
@@ -70,7 +71,7 @@ def update_status():
     version, bdb_max_version, scan_ops, del_scan_ops, ops, ops / (now_time - start_time),
                               scan_ops / (now_time - start_time)
   )
-  bfsyncdb.print_leak_debugger_stats()
+  sys.stdout.flush()
 
 def same_data (d1, d2):
   return (d1.filename == d2.filename and
