@@ -38,7 +38,7 @@ SQLExport::SQLExport (BDBPtr bdb_ptr) :
 bool
 same_data (const SQLExportData& d1, const SQLExportData& d2)
 {
-  return d1.filename == d2.filename;
+  return d1.filename == d2.filename && d1.type == d2.type && d1.size == d2.size && d1.hash == d2.hash;
 }
 
 bool
@@ -56,7 +56,12 @@ SQLExport::walk (const ID& id, const string& prefix, FILE *out_file)
       string filename = prefix.size() ? prefix : "/";
 
       DataOutBuffer out_buffer, len_buffer;
+      // write data
       out_buffer.write_string (filename);
+      out_buffer.write_uint32 (inode.type);
+      out_buffer.write_string (inode.hash);
+      out_buffer.write_uint64 (inode.size);
+      // write prefix len
       len_buffer.write_uint32 (out_buffer.size());
 
       fwrite (len_buffer.begin(), len_buffer.size(), 1, out_file);
@@ -149,7 +154,11 @@ read_sxd (FILE *file, SQLExportData& data)
       if (fread (data_data, len, 1, file) == 1)
         {
           DataBuffer data_buffer (data_data, len);
+
           data.filename = data_buffer.read_string();
+          data.type = data_buffer.read_uint32();
+          data.hash = data_buffer.read_string();
+          data.size = data_buffer.read_uint64();
           return false;
         }
       else
@@ -172,6 +181,7 @@ SQLExport::export_version (unsigned int version)
   vector<string> new_set;
   vector<string> keep_set;
   vector<string> deleted_set;
+  vector<string> modified_set;
 
   FILE *old_f = fopen (old_files.c_str(), "r");
   FILE *new_f = fopen (new_files.c_str(), "r");
@@ -214,7 +224,14 @@ SQLExport::export_version (unsigned int version)
             }
           else if (old_data.filename == new_data.filename)
             {
-              keep_set.push_back (old_data.filename);
+              if (same_data (old_data, new_data))
+                {
+                  keep_set.push_back (old_data.filename);
+                }
+              else
+                {
+                  modified_set.push_back (old_data.filename);
+                }
               next_read = BOTH;
             }
           else  // new_data.filename < old_data.filename
@@ -224,10 +241,14 @@ SQLExport::export_version (unsigned int version)
             }
         }
     }
+#if 0
   for (size_t i = 0; i < deleted_set.size(); i++)
     printf ("- %s\n", deleted_set[i].c_str());
+  for (size_t i = 0; i < modified_set.size(); i++)
+    printf ("! %s\n", modified_set[i].c_str());
   for (size_t i = 0; i < new_set.size(); i++)
     printf ("+ %s\n", new_set[i].c_str());
   for (size_t i = 0; i < keep_set.size(); i++)
     printf ("= %s\n", keep_set[i].c_str());
+#endif
 }
