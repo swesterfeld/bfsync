@@ -498,6 +498,7 @@ class SQLExport
   void walk (const ID& id, const std::string& name, FILE *file);
   void maybe_split_transaction();
   void update_status();
+  std::string build_filelist (unsigned int version);
 
 public:
   SQLExport (BDBPtr bdb);

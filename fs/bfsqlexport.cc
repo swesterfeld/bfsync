@@ -106,14 +106,16 @@ SQLExport::update_status()
     }
 }
 
-void
-SQLExport::export_version (unsigned int version)
+string
+SQLExport::build_filelist (unsigned int version)
 {
+  string filelist_name = string_printf ("/tmp/bdb2sql.%d", version);
+
   this->version = version;
   transaction_ops = 0;
   last_status_time = 0;
 
-  FILE *file = fopen (string_printf ("/tmp/bdb2sql.%d", version).c_str(), "w");
+  FILE *file = fopen (filelist_name.c_str(), "w");
   assert (file);
 
   const double version_start_time = gettime();
@@ -124,4 +126,92 @@ SQLExport::export_version (unsigned int version)
   fclose (file);
 
   printf ("### time: %.2f\n", (version_end_time - version_start_time));
+  return filelist_name;
+}
+
+bool
+read_sxd (FILE *file, SQLExportData& data)
+{
+  if (feof (file))
+    return true;
+
+  string fn;
+  int c;
+  while ((c = fgetc (file)) != 0)
+    {
+      if (c == EOF)
+        return true;
+      fn += c;
+    }
+  data.filename = fn;
+  return false;
+}
+
+void
+SQLExport::export_version (unsigned int version)
+{
+  string old_files = build_filelist (version - 1);
+  string new_files = build_filelist (version);
+
+  vector<string> new_set;
+  vector<string> keep_set;
+  vector<string> deleted_set;
+
+  FILE *old_f = fopen (old_files.c_str(), "r");
+  FILE *new_f = fopen (new_files.c_str(), "r");
+
+  bool old_eof = false;
+  bool new_eof = false;
+
+  SQLExportData old_data, new_data;
+  enum { OLD, NEW, BOTH } next_read = BOTH;
+
+  while (1)
+    {
+      if (next_read == OLD || next_read == BOTH)
+        {
+          old_eof = read_sxd (old_f, old_data);
+        }
+      if (next_read == NEW || next_read == BOTH)
+        {
+          new_eof = read_sxd (new_f, new_data);
+        }
+      if (old_eof && new_eof)
+        break;
+
+      if (old_eof)
+        {
+          new_set.push_back (new_data.filename);
+          next_read = NEW;
+        }
+      else if (new_eof)
+        {
+          deleted_set.push_back (old_data.filename);
+          next_read = OLD;
+        }
+      else
+        {
+          if (old_data.filename < new_data.filename)
+            {
+              deleted_set.push_back (old_data.filename);
+              next_read = OLD;
+            }
+          else if (old_data.filename == new_data.filename)
+            {
+              keep_set.push_back (old_data.filename);
+              next_read = BOTH;
+            }
+          else  // new_data.filename < old_data.filename
+            {
+              new_set.push_back (new_data.filename);
+              next_read = NEW;
+            }
+        }
+    }
+  for (size_t i = 0; i < deleted_set.size(); i++)
+    printf ("- %s\n", deleted_set[i].c_str());
+  for (size_t i = 0; i < new_set.size(); i++)
+    printf ("+ %s\n", new_set[i].c_str());
+  for (size_t i = 0; i < keep_set.size(); i++)
+    printf ("= %s\n", keep_set[i].c_str());
 }
