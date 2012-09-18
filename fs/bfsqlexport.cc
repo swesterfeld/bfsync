@@ -25,6 +25,7 @@ using std::vector;
 
 using BFSync::gettime;
 using BFSync::string_printf;
+using BFSync::DataBuffer;
 using BFSync::DataOutBuffer;
 
 SQLExport::SQLExport (BDBPtr bdb_ptr) :
@@ -54,8 +55,11 @@ SQLExport::walk (const ID& id, const string& prefix, FILE *out_file)
     {
       string filename = prefix.size() ? prefix : "/";
 
-      DataOutBuffer out_buffer;
+      DataOutBuffer out_buffer, len_buffer;
       out_buffer.write_string (filename);
+      len_buffer.write_uint32 (out_buffer.size());
+
+      fwrite (len_buffer.begin(), len_buffer.size(), 1, out_file);
       fwrite (out_buffer.begin(), out_buffer.size(), 1, out_file);
 
       maybe_split_transaction();
@@ -135,16 +139,28 @@ read_sxd (FILE *file, SQLExportData& data)
   if (feof (file))
     return true;
 
-  string fn;
-  int c;
-  while ((c = fgetc (file)) != 0)
+  char len_data[sizeof (guint32)];
+  if (fread (len_data, sizeof (guint32), 1, file) == 1)
     {
-      if (c == EOF)
-        return true;
-      fn += c;
+      DataBuffer len_buffer (len_data, sizeof (guint32));
+      guint32 len = len_buffer.read_uint32();
+
+      char data_data[len];
+      if (fread (data_data, len, 1, file) == 1)
+        {
+          DataBuffer data_buffer (data_data, len);
+          data.filename = data_buffer.read_string();
+          return false;
+        }
+      else
+        {
+          return true;
+        }
     }
-  data.filename = fn;
-  return false;
+  else
+    {
+      return true;
+    }
 }
 
 void
