@@ -18,15 +18,20 @@
 */
 
 #include "bfsyncdb.hh"
+#include "bfsyncfs.hh"
 
 using std::string;
 using std::vector;
 
 using BFSync::gettime;
+using BFSync::string_printf;
+using BFSync::DataOutBuffer;
 
 SQLExport::SQLExport (BDBPtr bdb_ptr) :
   bdb_ptr (bdb_ptr)
 {
+  scan_ops = 0;
+  start_time = gettime();
 }
 
 bool
@@ -36,13 +41,17 @@ same_data (const SQLExportData& d1, const SQLExportData& d2)
 }
 
 void
-SQLExport::walk (const ID& id, const string& prefix)
+SQLExport::walk (const ID& id, const string& prefix, FILE *out_file)
 {
   INode inode = bdb_ptr.load_inode (id, version);
   if (inode.valid)
     {
       string filename = prefix.size() ? prefix : "/";
 
+      DataOutBuffer out_buffer;
+      out_buffer.write_string (filename);
+      fwrite (out_buffer.begin(), out_buffer.size(), 1, out_file);
+#if 0
       SQLExportData old_data = bdb_ptr.sql_export_get (filename);
 
       SQLExportData data;
@@ -70,9 +79,9 @@ SQLExport::walk (const ID& id, const string& prefix)
 
       if (need_write)
         bdb_ptr.sql_export_set (data);
+#endif
 
       maybe_split_transaction();
-
       scan_ops++;
       update_status();
 
@@ -82,7 +91,7 @@ SQLExport::walk (const ID& id, const string& prefix)
           for (vector<Link>::const_iterator li = links.begin(); li != links.end(); li++)
             {
               const string& inode_name = prefix + "/" + li->name;
-              walk (li->inode_id, inode_name);
+              walk (li->inode_id, inode_name, out_file);
             }
         }
     }
@@ -117,14 +126,17 @@ SQLExport::export_version (unsigned int version)
 {
   this->version = version;
   transaction_ops = 0;
-  scan_ops = 0;
   last_status_time = 0;
-  start_time = gettime();
 
+  FILE *file = fopen (string_printf ("/tmp/bdb2sql.%d", version).c_str(), "w");
+  assert (file);
+
+  const double version_start_time = gettime();
   bdb_ptr.begin_transaction();
-  walk (id_root(), "");
+  walk (id_root(), "", file);
   bdb_ptr.commit_transaction();
-  const double end_time = gettime();
+  const double version_end_time = gettime();
+  fclose (file);
 
-  printf ("### time: %.2f\n", (end_time - start_time));
+  printf ("### time: %.2f\n", (version_end_time - version_start_time));
 }
