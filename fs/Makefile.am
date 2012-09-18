@@ -6,7 +6,7 @@ DESTDIR = /
 BDB_LIBS = -ldb_cxx
 
 bin_PROGRAMS = bfsyncfs bfsyncca
-noinst_PROGRAMS = bftesthelper bfdbdump bfproftest bflocktest bflockcheck bftestidsort bfperf bfwalktest bfdefrag
+noinst_PROGRAMS = bftesthelper bfdbdump bfproftest bflocktest bflockcheck bftestidsort bfperf bfwalktest bfdefrag bfrandomize
 
 lib_LTLIBRARIES = libbfsync.la
 
@@ -32,6 +32,9 @@ bfsyncca_LDADD = $(GLIB_LIBS)
 
 bfdefrag_SOURCES = bfdefrag.cc
 bfdefrag_LDADD = $(GLIB_LIBS) $(FUSE_LIBS) libbfsync.la
+
+bfrandomize_SOURCES = bfrandomize.cc
+bfrandomize_LDADD = $(GLIB_LIBS) $(FUSE_LIBS) libbfsync.la
 
 bfperf_SOURCES = bfperf.cc
 bfperf_LDADD = $(GLIB_LIBS) $(FUSE_LIBS) libbfsync.la
