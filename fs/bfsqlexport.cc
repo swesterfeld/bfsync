@@ -40,6 +40,12 @@ same_data (const SQLExportData& d1, const SQLExportData& d2)
   return d1.filename == d2.filename;
 }
 
+bool
+cmp_link_name (Link *l1, Link *l2)
+{
+  return l1->name < l2->name;
+}
+
 void
 SQLExport::walk (const ID& id, const string& prefix, FILE *out_file)
 {
@@ -88,10 +94,18 @@ SQLExport::walk (const ID& id, const string& prefix, FILE *out_file)
       if (inode.type == BFSync::FILE_DIR)
         {
           vector<Link> links = bdb_ptr.load_links (id, version);
-          for (vector<Link>::const_iterator li = links.begin(); li != links.end(); li++)
+
+          // sort links before recursion
+          vector<Link*> sorted_links (links.size());
+          for (size_t l = 0; l < links.size(); l++)
+            sorted_links[l] = &links[l];
+          std::sort (sorted_links.begin(), sorted_links.end(), cmp_link_name);
+
+          for (vector<Link*>::const_iterator li = sorted_links.begin(); li != sorted_links.end(); li++)
             {
-              const string& inode_name = prefix + "/" + li->name;
-              walk (li->inode_id, inode_name, out_file);
+              const Link* link = *li;
+              const string& inode_name = prefix + "/" + link->name;
+              walk (link->inode_id, inode_name, out_file);
             }
         }
     }
