@@ -57,35 +57,6 @@ SQLExport::walk (const ID& id, const string& prefix, FILE *out_file)
       DataOutBuffer out_buffer;
       out_buffer.write_string (filename);
       fwrite (out_buffer.begin(), out_buffer.size(), 1, out_file);
-#if 0
-      SQLExportData old_data = bdb_ptr.sql_export_get (filename);
-
-      SQLExportData data;
-      data.valid = true;
-      data.filename = filename;
-
-      bool need_write = false;
-      if (old_data.valid)
-        {
-          if (same_data (data, old_data))
-            {
-              // printf ("%-50s - same\n", filename.c_str());
-            }
-          else
-            {
-              need_write = true;
-              // printf ("%-50s - changed\n", filename.c_str());
-            }
-        }
-      else
-        {
-          need_write = true;
-          // printf ("%-50s - new\n", filename.c_str());
-        }
-
-      if (need_write)
-        bdb_ptr.sql_export_set (data);
-#endif
 
       maybe_split_transaction();
       scan_ops++;
