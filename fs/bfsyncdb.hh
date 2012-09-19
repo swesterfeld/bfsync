@@ -495,6 +495,8 @@ class SQLExport
   double       last_status_time;
   double       start_time;
 
+  std::map<unsigned int, std::string> filelist_map;
+
   void walk (const ID& id, const std::string& name, FILE *file);
   void maybe_split_transaction();
   void update_status();

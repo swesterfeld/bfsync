@@ -118,7 +118,11 @@ SQLExport::update_status()
 string
 SQLExport::build_filelist (unsigned int version)
 {
+  if (filelist_map[version] != "")
+    return filelist_map[version];
+
   string filelist_name = string_printf ("/tmp/bdb2sql.%d", version);
+  filelist_map[version] = filelist_name;
 
   this->version = version;
   transaction_ops = 0;
