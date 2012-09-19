@@ -55,13 +55,14 @@ SQLExport::walk (const ID& id, const string& prefix, FILE *out_file)
     {
       string filename = prefix.size() ? prefix : "/";
 
-      DataOutBuffer out_buffer, len_buffer;
       // write data
+      out_buffer.clear();
       out_buffer.write_string (filename);
       out_buffer.write_uint32 (inode.type);
       out_buffer.write_string (inode.hash);
       out_buffer.write_uint64 (inode.size);
       // write prefix len
+      len_buffer.clear();
       len_buffer.write_uint32 (out_buffer.size());
 
       fwrite (len_buffer.begin(), len_buffer.size(), 1, out_file);

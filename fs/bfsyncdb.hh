@@ -495,6 +495,8 @@ class SQLExport
   double       last_status_time;
   double       start_time;
 
+  BFSync::DataOutBuffer               out_buffer;
+  BFSync::DataOutBuffer               len_buffer;
   std::map<unsigned int, std::string> filelist_map;
 
   void walk (const ID& id, const std::string& name, FILE *file);
