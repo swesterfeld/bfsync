@@ -572,6 +572,7 @@ BDBPtr::load_links (const ID& id, unsigned int version)
   TimeProfHandle h (tp_load_links);
 
   vector<Link> result;
+  Link link;
 
   DataOutBuffer kbuf;
 
@@ -604,15 +605,13 @@ BDBPtr::load_links (const ID& id, unsigned int version)
 
           if (version >= vmin && version <= vmax)
             {
-              Link l;
+              link.vmin = vmin;
+              link.vmax = vmax;
+              link.dir_id = id;
+              id_load (link.inode_id, dbuffer);
+              link.name = dbuffer.read_string();
 
-              l.vmin = vmin;
-              l.vmax = vmax;
-              l.dir_id = id;
-              id_load (l.inode_id, dbuffer);
-              l.name = dbuffer.read_string();
-
-              result.push_back (l);
+              result.push_back (link);
 
               assert (dbuffer.remaining() == 0);
             }
