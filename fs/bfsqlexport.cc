@@ -151,7 +151,7 @@ SQLExport::build_filelist (unsigned int version)
   const double version_end_time = gettime();
   fclose (file);
 
-  printf ("### time: %.2f\n", (version_end_time - version_start_time));
+  printf ("### filelist time: %.2f\n", (version_end_time - version_start_time));
   return filelist_name;
 }
 
@@ -200,6 +200,8 @@ SQLExport::export_version (unsigned int version)
   string new_files = build_filelist (version);
   if (sig_interrupted)
     throw BDBException (BFSync::BDB_ERROR_INTR);
+
+  const double check_start_time = gettime();
 
   vector<string> new_set;
   vector<string> keep_set;
@@ -264,6 +266,8 @@ SQLExport::export_version (unsigned int version)
             }
         }
     }
+  const double check_end_time = gettime();
+  printf ("### check time: %.2f\n", (check_end_time - check_start_time));
 #if 0
   for (size_t i = 0; i < deleted_set.size(); i++)
     printf ("- %s\n", deleted_set[i].c_str());
