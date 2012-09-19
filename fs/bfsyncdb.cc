@@ -2075,14 +2075,20 @@ INodeRepo::delete_unused_keep_count (unsigned int count)
 //---------------------------- BDBException -----------------------------
 
 BDBException::BDBException (BDBError error) :
-  error (error)
+  m_error (error)
 {
 }
 
-string
-BDBException::error_string()
+BDBError
+BDBException::error() const
 {
-  switch (error)
+  return m_error;
+}
+
+string
+BDBException::error_string() const
+{
+  switch (m_error)
     {
       case BFSync::BDB_ERROR_NONE:
         return "no error";
@@ -2098,6 +2104,9 @@ BDBException::error_string()
 
       case BFSync::BDB_ERROR_NOT_FOUND:
         return "key not found";
+
+      case BFSync::BDB_ERROR_INTR:
+        return "operation interrupted by signal";
     }
   return "unknown error";
 }

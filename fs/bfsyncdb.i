@@ -23,7 +23,10 @@ namespace std {
     $action
   }
   catch (BDBException& e) {
-    PyErr_SetString (PyExc_Exception, ("BDB Exception: " + e.error_string()).c_str());
+    if (e.error() != BFSync::BDB_ERROR_INTR)
+      PyErr_SetString (PyExc_Exception, ("BDB Exception: " + e.error_string()).c_str());
+
+    // INTR error is already handled by python signal handling code
     return NULL;
   }
 }

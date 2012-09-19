@@ -20,6 +20,11 @@
 #include "bfsyncdb.hh"
 #include "bfsyncfs.hh"
 
+extern "C" {
+// #include <Python.h>
+extern int PyErr_CheckSignals();
+}
+
 using std::string;
 using std::vector;
 
@@ -50,6 +55,9 @@ cmp_link_name (Link *l1, Link *l2)
 void
 SQLExport::walk (const ID& id, const string& prefix, FILE *out_file)
 {
+  if (sig_interrupted)
+    return;
+
   INode inode = bdb_ptr.load_inode (id, version);
   if (inode.valid)
     {
@@ -86,6 +94,7 @@ SQLExport::walk (const ID& id, const string& prefix, FILE *out_file)
             {
               const Link* link = *li;
               const string& inode_name = prefix + "/" + link->name;
+
               walk (link->inode_id, inode_name, out_file);
             }
         }
@@ -113,6 +122,9 @@ SQLExport::update_status()
     {
       last_status_time = time;
       printf ("%d | %.2f scan_ops/sec\n", scan_ops, scan_ops / (time - start_time));
+
+      if (!sig_interrupted && PyErr_CheckSignals())
+        sig_interrupted = true;
     }
 }
 
@@ -180,8 +192,14 @@ read_sxd (FILE *file, SQLExportData& data)
 void
 SQLExport::export_version (unsigned int version)
 {
+  sig_interrupted = false;
   string old_files = build_filelist (version - 1);
+  if (sig_interrupted)
+    throw BDBException (BFSync::BDB_ERROR_INTR);
+
   string new_files = build_filelist (version);
+  if (sig_interrupted)
+    throw BDBException (BFSync::BDB_ERROR_INTR);
 
   vector<string> new_set;
   vector<string> keep_set;

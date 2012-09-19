@@ -494,6 +494,7 @@ class SQLExport
   int          scan_ops;
   double       last_status_time;
   double       start_time;
+  bool         sig_interrupted;
 
   BFSync::DataOutBuffer               out_buffer;
   BFSync::DataOutBuffer               len_buffer;
@@ -513,12 +514,13 @@ public:
 class BDBException
 {
 private:
-  BFSync::BDBError error;
+  BFSync::BDBError m_error;
 
 public:
   BDBException (BFSync::BDBError error);
 
-  std::string error_string();
+  BFSync::BDBError  error() const;
+  std::string       error_string() const;
 };
 
 std::string repo_version();
