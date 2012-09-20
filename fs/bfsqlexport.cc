@@ -268,6 +268,7 @@ SQLExport::update_status()
     {
       last_status_time = time;
       printf ("%d | %.2f scan_ops/sec\n", scan_ops, scan_ops / (time - start_time));
+      fflush (stdout);
 
       if (!sig_interrupted && PyErr_CheckSignals())
         sig_interrupted = true;
@@ -298,6 +299,8 @@ SQLExport::build_filelist (unsigned int version)
   fclose (file);
 
   printf ("### filelist time: %.2f\n", (version_end_time - version_start_time));
+  fflush (stdout);
+
   return filelist_name;
 }
 

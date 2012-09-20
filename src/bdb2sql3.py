@@ -75,7 +75,9 @@ start_time = time.time()
 sql_export = bfsyncdb.SQLExport (repo.bdb)
 
 for version in range (sql_max_version + 1, bdb_max_version + 1):
-  print "exporting version %d/%d" % (version, bdb_max_version)
+  print "\n::: exporting version %d/%d :::" % (version, bdb_max_version)
+  sys.stdout.flush()
+
   sxi = sql_export.export_version (version)
   sql_start_time = time.time()
   while True:
@@ -94,7 +96,9 @@ for version in range (sql_max_version + 1, bdb_max_version + 1):
                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""", fields)
   conn.commit()
   sql_end_time = time.time()
+
   print "### sql time: %.2f" % (sql_end_time - sql_start_time)
+  sys.stdout.flush()
 
 cur.close()
 conn.close()
