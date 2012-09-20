@@ -62,21 +62,6 @@ while True:
   bdb_max_version = version
   version += 1
 
-## clear old sql export entries
-n_clear = 0
-while True:
-  repo.bdb.begin_transaction()
-  deleted = repo.bdb.sql_export_clear (20000)
-  repo.bdb.commit_transaction()
-  n_clear += deleted
-  status_line.update ("clear old sql export table... %d" % n_clear)
-
-  if deleted == 0: # sql export table empty
-    break
-
-status_line.update ("clear old sql export table... done.")
-status_line.cleanup()
-
 outss = OutputSubsampler()
 start_time = time.time()
 
