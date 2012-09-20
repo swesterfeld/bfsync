@@ -62,6 +62,13 @@ while True:
   bdb_max_version = version
   version += 1
 
+def get_parent (data):
+  if data.id.str() == bfsyncdb.id_root().str():
+    # root always has no parent
+    return None
+  else:
+    return data.parent_id.str()
+
 outss = OutputSubsampler()
 start_time = time.time()
 
@@ -76,13 +83,15 @@ for version in range (sql_max_version + 1, bdb_max_version + 1):
     if data.status == data.NONE:
       break
 
+    # continue
+
     if data.status == data.DEL or data.status == data.MOD:
       cur.execute ("UPDATE files SET vmax = %s WHERE filename = %s AND vmax = %s", (version - 1, data.filename, bfsyncdb.VERSION_INF))
 
     if data.status == data.ADD or data.status == data.MOD:
-      fields = (data.filename, version, bfsyncdb.VERSION_INF, data.type, data.hash, data.size)
-      cur.execute ("""INSERT INTO files (filename, vmin, vmax, type, hash, size)
-                      VALUES (%s, %s, %s, %s, %s, %s)""", fields)
+      fields = (data.filename, version, bfsyncdb.VERSION_INF, data.id.str(), get_parent (data), data.type, data.hash, data.size)
+      cur.execute ("""INSERT INTO files (filename, vmin, vmax, id, parent_id, type, hash, size)
+                      VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""", fields)
   conn.commit()
   sql_end_time = time.time()
   print "### sql time: %.2f" % (sql_end_time - sql_start_time)
