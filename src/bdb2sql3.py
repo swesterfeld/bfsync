@@ -70,6 +70,7 @@ sql_export = bfsyncdb.SQLExport (repo.bdb)
 for version in range (sql_max_version + 1, bdb_max_version + 1):
   print "exporting version %d/%d" % (version, bdb_max_version)
   sxi = sql_export.export_version (version)
+  sql_start_time = time.time()
   while True:
     data = sxi.get_next()
     if data.status == data.NONE:
@@ -83,6 +84,8 @@ for version in range (sql_max_version + 1, bdb_max_version + 1):
       cur.execute ("""INSERT INTO files (filename, vmin, vmax, type, hash, size)
                       VALUES (%s, %s, %s, %s, %s, %s)""", fields)
   conn.commit()
+  sql_end_time = time.time()
+  print "### sql time: %.2f" % (sql_end_time - sql_start_time)
 
 cur.close()
 conn.close()
