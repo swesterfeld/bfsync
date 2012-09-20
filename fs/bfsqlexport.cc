@@ -34,6 +34,13 @@ using BFSync::string_printf;
 using BFSync::DataBuffer;
 using BFSync::DataOutBuffer;
 
+static void
+id_load (ID& id, DataBuffer& dbuf)
+{
+  id.id = BFSync::ID (dbuf);
+  id.valid = true;
+}
+
 static bool
 read_sxd (FILE *file, SQLExportData& data)
 {
@@ -52,6 +59,8 @@ read_sxd (FILE *file, SQLExportData& data)
           DataBuffer data_buffer (data_data, len);
 
           data.filename = data_buffer.read_string();
+          id_load (data.id, data_buffer);
+          id_load (data.parent_id, data_buffer);
           data.type = data_buffer.read_uint32();
           data.hash = data_buffer.read_string();
           data.size = data_buffer.read_uint64();
@@ -71,7 +80,9 @@ read_sxd (FILE *file, SQLExportData& data)
 static bool
 same_data (const SQLExportData& d1, const SQLExportData& d2)
 {
-  return d1.filename == d2.filename && d1.type == d2.type && d1.size == d2.size && d1.hash == d2.hash;
+  return d1.filename == d2.filename &&
+         d1.id == d2.id && d1.parent_id == d2.parent_id &&
+         d1.type == d2.type && d1.size == d2.size && d1.hash == d2.hash;
 }
 
 //##############################################################################
@@ -186,7 +197,7 @@ cmp_link_name (Link *l1, Link *l2)
 }
 
 void
-SQLExport::walk (const ID& id, const string& prefix, FILE *out_file)
+SQLExport::walk (const ID& id, const ID& parent_id, const string& prefix, FILE *out_file)
 {
   if (sig_interrupted)
     return;
@@ -199,6 +210,8 @@ SQLExport::walk (const ID& id, const string& prefix, FILE *out_file)
       // write data
       out_buffer.clear();
       out_buffer.write_string (filename);
+      inode.id.id.store (out_buffer);
+      parent_id.id.store (out_buffer);
       out_buffer.write_uint32 (inode.type);
       out_buffer.write_string (inode.hash);
       out_buffer.write_uint64 (inode.size);
@@ -228,7 +241,7 @@ SQLExport::walk (const ID& id, const string& prefix, FILE *out_file)
               const Link* link = *li;
               const string& inode_name = prefix + "/" + link->name;
 
-              walk (link->inode_id, inode_name, out_file);
+              walk (link->inode_id, id, inode_name, out_file);
             }
         }
     }
@@ -279,7 +292,7 @@ SQLExport::build_filelist (unsigned int version)
 
   const double version_start_time = gettime();
   bdb_ptr.begin_transaction();
-  walk (id_root(), "", file);
+  walk (id_root(), id_root(), "", file);
   bdb_ptr.commit_transaction();
   const double version_end_time = gettime();
   fclose (file);

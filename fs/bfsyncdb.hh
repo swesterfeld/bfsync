@@ -501,7 +501,7 @@ class SQLExport
   BFSync::DataOutBuffer               len_buffer;
   std::map<unsigned int, std::string> filelist_map;
 
-  void walk (const ID& id, const std::string& name, FILE *file);
+  void walk (const ID& id, const ID& parent_id, const std::string& name, FILE *file);
   void maybe_split_transaction();
   void update_status();
   std::string build_filelist (unsigned int version);
