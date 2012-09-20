@@ -69,7 +69,20 @@ sql_export = bfsyncdb.SQLExport (repo.bdb)
 
 for version in range (sql_max_version + 1, bdb_max_version + 1):
   print "exporting version %d/%d" % (version, bdb_max_version)
-  sql_export.export_version (version)
+  sxi = sql_export.export_version (version)
+  while True:
+    data = sxi.get_next()
+    if data.status == data.NONE:
+      break
+
+    if data.status == data.DEL or data.status == data.MOD:
+      cur.execute ("UPDATE files SET vmax = %s WHERE filename = %s AND vmax = %s", (version - 1, data.filename, bfsyncdb.VERSION_INF))
+
+    if data.status == data.ADD or data.status == data.MOD:
+      fields = (data.filename, version, bfsyncdb.VERSION_INF, data.type, data.hash, data.size)
+      cur.execute ("""INSERT INTO files (filename, vmin, vmax, type, hash, size)
+                      VALUES (%s, %s, %s, %s, %s, %s)""", fields)
+  conn.commit()
 
 cur.close()
 conn.close()

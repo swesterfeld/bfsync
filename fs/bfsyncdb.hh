@@ -132,27 +132,6 @@ struct Hash2FileEntry {
   unsigned int  file_number;
 };
 
-struct SQLExportData
-{
-  SQLExportData();
-  SQLExportData (const SQLExportData& data);
-  ~SQLExportData();
-
-  bool          valid;
-
-  std::string   filename;
-  unsigned int  vmin;
-  unsigned int  vmax;
-  ID            id;
-  ID            parent_id;
-  unsigned int  type;
-  std::string   hash;
-  uint64_t      size;
-
-  unsigned int  export_version; // only used during export, not stored in db
-};
-
-
 class BDBWrapper
 {
   unsigned int ref_count;
@@ -251,11 +230,6 @@ public:
   void                      del_tag (unsigned int version, const std::string& tag, const std::string& value);
 
   unsigned int       gen_new_file_number();
-
-  void               sql_export_set (const SQLExportData& sql_export_data);
-  SQLExportData      sql_export_get (const std::string& filename);
-  void               sql_export_delete (const std::string& filename);
-  unsigned int       sql_export_clear (unsigned int max_entries);
 
   void               close();
 
@@ -378,19 +352,6 @@ public:
   Hash2FileEntry get_next();
 };
 
-class SQLExportIterator
-{
-  BDBPtr          bdb_ptr;
-  Dbc            *cursor;
-  int             dbc_ret;
-  Dbt             key, data;
-public:
-  SQLExportIterator (BDBPtr bdb_ptr);
-  ~SQLExportIterator();
-
-  SQLExportData get_next();
-};
-
 class SortedArray
 {
 private:
@@ -486,6 +447,46 @@ public:
   void           delete_unused_keep_count (unsigned int count);
 };
 
+struct SQLExportData
+{
+  SQLExportData();
+  SQLExportData (const SQLExportData& data);
+  ~SQLExportData();
+
+  enum { NONE, ADD, DEL, MOD } status;
+
+  std::string   filename;
+  unsigned int  vmin;
+  unsigned int  vmax;
+  ID            id;
+  ID            parent_id;
+  unsigned int  type;
+  std::string   hash;
+  uint64_t      size;
+};
+
+
+class SQLExportIterator
+{
+  FILE         *old_f;
+  bool          old_eof;
+  SQLExportData old_data;
+
+  FILE         *new_f;
+  bool          new_eof;
+  SQLExportData new_data;
+
+  std::string   old_files;
+  std::string   new_files;
+
+  enum { OLD, NEW, BOTH } next_read;
+public:
+  SQLExportIterator (const std::string& old_files, const std::string& new_files);
+  ~SQLExportIterator();
+
+  SQLExportData get_next();
+};
+
 class SQLExport
 {
   unsigned int version;
@@ -508,7 +509,7 @@ class SQLExport
 public:
   SQLExport (BDBPtr bdb);
 
-  void export_version (unsigned int version);
+  SQLExportIterator export_version (unsigned int version);
 };
 
 class BDBException

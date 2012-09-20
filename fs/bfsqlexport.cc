@@ -19,6 +19,7 @@
 
 #include "bfsyncdb.hh"
 #include "bfsyncfs.hh"
+#include "bfleakdebugger.hh"
 
 extern "C" {
 // #include <Python.h>
@@ -33,17 +34,149 @@ using BFSync::string_printf;
 using BFSync::DataBuffer;
 using BFSync::DataOutBuffer;
 
+static bool
+read_sxd (FILE *file, SQLExportData& data)
+{
+  if (feof (file))
+    return true;
+
+  char len_data[sizeof (guint32)];
+  if (fread (len_data, sizeof (guint32), 1, file) == 1)
+    {
+      DataBuffer len_buffer (len_data, sizeof (guint32));
+      guint32 len = len_buffer.read_uint32();
+
+      char data_data[len];
+      if (fread (data_data, len, 1, file) == 1)
+        {
+          DataBuffer data_buffer (data_data, len);
+
+          data.filename = data_buffer.read_string();
+          data.type = data_buffer.read_uint32();
+          data.hash = data_buffer.read_string();
+          data.size = data_buffer.read_uint64();
+          return false;
+        }
+      else
+        {
+          return true;
+        }
+    }
+  else
+    {
+      return true;
+    }
+}
+
+static bool
+same_data (const SQLExportData& d1, const SQLExportData& d2)
+{
+  return d1.filename == d2.filename && d1.type == d2.type && d1.size == d2.size && d1.hash == d2.hash;
+}
+
+//##############################################################################
+
+SQLExportIterator::SQLExportIterator (const string& old_files, const string& new_files) :
+  old_f (0),
+  new_f (0),
+  old_files (old_files),
+  new_files (new_files)
+{
+}
+
+SQLExportData
+SQLExportIterator::get_next()
+{
+  /* open files and initialize, if this wasn't done already */
+  if (!old_f)
+    {
+      old_f = fopen (old_files.c_str(), "r");
+      new_f = fopen (new_files.c_str(), "r");
+
+      old_eof = false;
+      new_eof = false;
+
+      next_read = BOTH;
+    }
+
+  SQLExportData eof_data;
+  while (1)
+    {
+      if (next_read == OLD || next_read == BOTH)
+        {
+          old_eof = read_sxd (old_f, old_data);
+        }
+      if (next_read == NEW || next_read == BOTH)
+        {
+          new_eof = read_sxd (new_f, new_data);
+        }
+      if (old_eof && new_eof)
+        {
+          eof_data.status = SQLExportData::NONE;
+          return eof_data;
+        }
+
+      if (old_eof)
+        {
+          next_read = NEW;
+          new_data.status = SQLExportData::ADD;
+          return new_data;
+        }
+      else if (new_eof)
+        {
+          next_read = OLD;
+          old_data.status = SQLExportData::DEL;
+          return old_data;
+        }
+      else
+        {
+          if (old_data.filename < new_data.filename)
+            {
+              next_read = OLD;
+              old_data.status = SQLExportData::DEL;
+              return old_data;
+            }
+          else if (old_data.filename == new_data.filename)
+            {
+              next_read = BOTH;
+              if (!same_data (old_data, new_data))
+                {
+                  old_data.status = SQLExportData::MOD;
+                  return old_data;
+                }
+            }
+          else  // new_data.filename < old_data.filename
+            {
+              next_read = NEW;
+              new_data.status = SQLExportData::ADD;
+              return new_data;
+            }
+        }
+    }
+}
+
+SQLExportIterator::~SQLExportIterator()
+{
+  if (old_f)
+    {
+      fclose (old_f);
+      old_f = 0;
+    }
+
+  if (new_f)
+    {
+      fclose (new_f);
+      new_f = 0;
+    }
+}
+
+//##############################################################################
+
 SQLExport::SQLExport (BDBPtr bdb_ptr) :
   bdb_ptr (bdb_ptr)
 {
   scan_ops = 0;
   start_time = gettime();
-}
-
-bool
-same_data (const SQLExportData& d1, const SQLExportData& d2)
-{
-  return d1.filename == d2.filename && d1.type == d2.type && d1.size == d2.size && d1.hash == d2.hash;
 }
 
 bool
@@ -155,41 +288,7 @@ SQLExport::build_filelist (unsigned int version)
   return filelist_name;
 }
 
-bool
-read_sxd (FILE *file, SQLExportData& data)
-{
-  if (feof (file))
-    return true;
-
-  char len_data[sizeof (guint32)];
-  if (fread (len_data, sizeof (guint32), 1, file) == 1)
-    {
-      DataBuffer len_buffer (len_data, sizeof (guint32));
-      guint32 len = len_buffer.read_uint32();
-
-      char data_data[len];
-      if (fread (data_data, len, 1, file) == 1)
-        {
-          DataBuffer data_buffer (data_data, len);
-
-          data.filename = data_buffer.read_string();
-          data.type = data_buffer.read_uint32();
-          data.hash = data_buffer.read_string();
-          data.size = data_buffer.read_uint64();
-          return false;
-        }
-      else
-        {
-          return true;
-        }
-    }
-  else
-    {
-      return true;
-    }
-}
-
-void
+SQLExportIterator
 SQLExport::export_version (unsigned int version)
 {
   sig_interrupted = false;
@@ -201,81 +300,38 @@ SQLExport::export_version (unsigned int version)
   if (sig_interrupted)
     throw BDBException (BFSync::BDB_ERROR_INTR);
 
-  const double check_start_time = gettime();
+  return SQLExportIterator (old_files, new_files);
+}
 
-  vector<string> new_set;
-  vector<string> keep_set;
-  vector<string> deleted_set;
-  vector<string> modified_set;
+//---------------------------- SQLExportData -----------------------------
 
-  FILE *old_f = fopen (old_files.c_str(), "r");
-  FILE *new_f = fopen (new_files.c_str(), "r");
+static BFSync::LeakDebugger sql_export_data_leak_debugger ("(Python)BFSync::SQLExportData");
 
-  bool old_eof = false;
-  bool new_eof = false;
+SQLExportData::SQLExportData() :
+  status (NONE),
+  vmin (0),
+  vmax (0),
+  type (0),
+  size (0)
+{
+  sql_export_data_leak_debugger.add (this);
+}
 
-  SQLExportData old_data, new_data;
-  enum { OLD, NEW, BOTH } next_read = BOTH;
+SQLExportData::SQLExportData (const SQLExportData& data) :
+  status (data.status),
+  filename (data.filename),
+  vmin (data.vmin),
+  vmax (data.vmax),
+  id (data.id),
+  parent_id (data.parent_id),
+  type (data.type),
+  hash (data.hash),
+  size (data.size)
+{
+  sql_export_data_leak_debugger.add (this);
+}
 
-  while (1)
-    {
-      if (next_read == OLD || next_read == BOTH)
-        {
-          old_eof = read_sxd (old_f, old_data);
-        }
-      if (next_read == NEW || next_read == BOTH)
-        {
-          new_eof = read_sxd (new_f, new_data);
-        }
-      if (old_eof && new_eof)
-        break;
-
-      if (old_eof)
-        {
-          new_set.push_back (new_data.filename);
-          next_read = NEW;
-        }
-      else if (new_eof)
-        {
-          deleted_set.push_back (old_data.filename);
-          next_read = OLD;
-        }
-      else
-        {
-          if (old_data.filename < new_data.filename)
-            {
-              deleted_set.push_back (old_data.filename);
-              next_read = OLD;
-            }
-          else if (old_data.filename == new_data.filename)
-            {
-              if (same_data (old_data, new_data))
-                {
-                  keep_set.push_back (old_data.filename);
-                }
-              else
-                {
-                  modified_set.push_back (old_data.filename);
-                }
-              next_read = BOTH;
-            }
-          else  // new_data.filename < old_data.filename
-            {
-              new_set.push_back (new_data.filename);
-              next_read = NEW;
-            }
-        }
-    }
-  const double check_end_time = gettime();
-  printf ("### check time: %.2f\n", (check_end_time - check_start_time));
-#if 0
-  for (size_t i = 0; i < deleted_set.size(); i++)
-    printf ("- %s\n", deleted_set[i].c_str());
-  for (size_t i = 0; i < modified_set.size(); i++)
-    printf ("! %s\n", modified_set[i].c_str());
-  for (size_t i = 0; i < new_set.size(); i++)
-    printf ("+ %s\n", new_set[i].c_str());
-  for (size_t i = 0; i < keep_set.size(); i++)
-    printf ("= %s\n", keep_set[i].c_str());
-#endif
+SQLExportData::~SQLExportData()
+{
+  sql_export_data_leak_debugger.del (this);
 }
