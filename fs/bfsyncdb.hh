@@ -519,6 +519,7 @@ class SQLExport
 
 public:
   SQLExport (BDBPtr bdb);
+  ~SQLExport();
 
   SQLExportIterator export_version (unsigned int version);
 };
