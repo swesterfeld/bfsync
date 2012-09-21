@@ -28,6 +28,7 @@ extern int PyErr_CheckSignals();
 
 using std::string;
 using std::vector;
+using std::map;
 
 using BFSync::gettime;
 using BFSync::get_basename;
@@ -358,6 +359,17 @@ SQLExport::export_version (unsigned int version)
   if (sig_interrupted)
     throw BDBException (BFSync::BDB_ERROR_INTR);
 
+  // delete tempfiles we no longer need
+  for (map<unsigned int, string>::iterator fli = filelist_map.begin(); fli != filelist_map.end(); fli++)
+    {
+      string& filename = fli->second;
+
+      if (filename != old_files && filename != new_files)
+        {
+          unlink (filename.c_str());
+          filename = "";
+        }
+    }
   return SQLExportIterator (old_files, new_files);
 }
 
