@@ -51,6 +51,7 @@ from xzutils import xz
 from journal import run_commands, run_continue, init_journal
 from gcutils import gc
 from transferbench import transfer_bench
+from sqlexport import sql_export
 
 def find_bfsync_dir():
   old_cwd = os.getcwd()
@@ -1319,6 +1320,10 @@ def cmd_upgrade():
   f.write (bfsync_info.to_string())
   f.close()
 
+def cmd_sql_export():
+  repo = cd_repo_connect_db()
+  sql_export (repo)
+
 args = []
 
 def main():
@@ -1359,6 +1364,7 @@ def main():
       ( "undelete-version",       cmd_undelete_version, 1),
       ( "transfer-bench",         cmd_transfer_bench, 1),
       ( "upgrade",                cmd_upgrade, 1),
+      ( "sql-export",             cmd_sql_export, 1),
       ( "inr-test",               cmd_inr_test, 1),
       ( "debug-add-tag",          cmd_debug_add_tag, 1),
       ( "debug-del-tag",          cmd_debug_del_tag, 1),
