@@ -193,7 +193,7 @@ public:
   BDBError  begin_transaction();
   BDBError  commit_transaction();
   BDBError  abort_transaction();
-  DbTxn*get_transaction();
+  DbTxn*    get_transaction();
 
   void  store_link (const LinkPtr& link);
   void  delete_links (const ID& dir_id, const std::map<std::string, LinkVersionList>& links);
