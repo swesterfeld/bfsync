@@ -112,6 +112,22 @@ for version in range (sql_max_version + 1, bdb_max_version + 1):
                               %s, %s, %s, %s, %s,
                               %s, %s, %s, %s, %s,
                               %s, %s, %s, %s)""", fields)
+
+  # import history entry
+
+  hentry = repo.bdb.load_history_entry (version)
+  fields = ( hentry.version, hentry.hash, hentry.author, hentry.message, hentry.time )
+  cur.execute ("INSERT INTO history (version, hash, author, message, time) VALUES (%s, %s, %s, %s, %s)", fields)
+
+  # import tags
+
+  tags = repo.bdb.list_tags (hentry.version)
+  for t in tags:
+    values = repo.bdb.load_tag (hentry.version, t)
+    for v in values:
+      fields = (hentry.version, t, v)
+      cur.execute ("INSERT INTO tags (version, tag, value) VALUES (%s, %s, %s)", fields)
+
   conn.commit()
   sql_end_time = time.time()
 
