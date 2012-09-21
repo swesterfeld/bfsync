@@ -312,8 +312,16 @@ SQLExport::build_filelist (unsigned int version)
 
   // create temp name and register it for later cleanup
   bdb_ptr.begin_transaction();
-  string filelist_name = string_printf ("%s/bdb2sql.%d", bdb_ptr.get_bdb()->get_temp_dir().c_str(), version);
+
+  string filelist_tmpl = string_printf ("%s/sql_export_XXXXXX", bdb_ptr.get_bdb()->get_temp_dir().c_str());
+  char filelist_name_c[filelist_tmpl.size() + 1];
+  strcpy (filelist_name_c, filelist_tmpl.c_str());
+  int fd = mkstemp (filelist_name_c);
+  assert (fd >= 0);
+  close (fd);
+  string filelist_name = filelist_name_c;
   bdb_ptr.add_temp_file (get_basename (filelist_name), getpid());
+
   bdb_ptr.commit_transaction();
 
   filelist_map[version] = filelist_name;
