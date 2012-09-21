@@ -463,6 +463,11 @@ struct SQLExportData
   unsigned int  type;
   std::string   hash;
   uint64_t      size;
+  unsigned int  nlink;
+  unsigned int  ctime;
+  unsigned int  ctime_ns;
+  unsigned int  mtime;
+  unsigned int  mtime_ns;
 };
 
 

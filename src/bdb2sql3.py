@@ -35,7 +35,12 @@ cur.execute ("""
     parent_id varchar,
     type      integer,
     hash      varchar,
-    size      bigint
+    size      bigint,
+    nlink     integer,
+    ctime     bigint,
+    ctime_ns  integer,
+    mtime     bigint,
+    mtime_ns  integer
   );
 
   DROP INDEX IF EXISTS files_fn_idx;
@@ -91,9 +96,11 @@ for version in range (sql_max_version + 1, bdb_max_version + 1):
       cur.execute ("UPDATE files SET vmax = %s WHERE filename = %s AND vmax = %s", (version - 1, data.filename, bfsyncdb.VERSION_INF))
 
     if data.status == data.ADD or data.status == data.MOD:
-      fields = (data.filename, version, bfsyncdb.VERSION_INF, data.id.str(), get_parent (data), data.type, data.hash, data.size)
-      cur.execute ("""INSERT INTO files (filename, vmin, vmax, id, parent_id, type, hash, size)
-                      VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""", fields)
+      fields = (data.filename, version, bfsyncdb.VERSION_INF, data.id.str(), get_parent (data), data.type, data.hash, data.size,
+                data.nlink, data.ctime, data.ctime_ns, data.mtime, data.mtime_ns)
+      cur.execute ("""INSERT INTO files (filename, vmin, vmax, id, parent_id, type, hash, size, nlink,
+                                         ctime, ctime_ns, mtime, mtime_ns)
+                      VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""", fields)
   conn.commit()
   sql_end_time = time.time()
 

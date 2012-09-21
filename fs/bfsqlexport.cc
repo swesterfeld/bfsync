@@ -64,6 +64,11 @@ read_sxd (FILE *file, SQLExportData& data)
           data.type = data_buffer.read_uint32();
           data.hash = data_buffer.read_string();
           data.size = data_buffer.read_uint64();
+          data.nlink = data_buffer.read_uint32();
+          data.ctime = data_buffer.read_uint32();
+          data.ctime_ns = data_buffer.read_uint32();
+          data.mtime = data_buffer.read_uint32();
+          data.mtime_ns = data_buffer.read_uint32();
           return false;
         }
       else
@@ -82,7 +87,10 @@ same_data (const SQLExportData& d1, const SQLExportData& d2)
 {
   return d1.filename == d2.filename &&
          d1.id == d2.id && d1.parent_id == d2.parent_id &&
-         d1.type == d2.type && d1.size == d2.size && d1.hash == d2.hash;
+         d1.type == d2.type && d1.size == d2.size && d1.hash == d2.hash &&
+         d1.nlink == d2.nlink &&
+         d1.ctime == d2.ctime && d1.ctime_ns == d2.ctime_ns &&
+         d1.mtime == d2.mtime && d1.mtime_ns == d2.mtime_ns;
 }
 
 //##############################################################################
@@ -215,6 +223,12 @@ SQLExport::walk (const ID& id, const ID& parent_id, const string& prefix, FILE *
       out_buffer.write_uint32 (inode.type);
       out_buffer.write_string (inode.hash);
       out_buffer.write_uint64 (inode.size);
+      out_buffer.write_uint32 (inode.nlink);
+      out_buffer.write_uint32 (inode.ctime);
+      out_buffer.write_uint32 (inode.ctime_ns);
+      out_buffer.write_uint32 (inode.mtime);
+      out_buffer.write_uint32 (inode.mtime_ns);
+
       // write prefix len
       len_buffer.clear();
       len_buffer.write_uint32 (out_buffer.size());
@@ -328,7 +342,12 @@ SQLExportData::SQLExportData() :
   vmin (0),
   vmax (0),
   type (0),
-  size (0)
+  size (0),
+  nlink (0),
+  ctime (0),
+  ctime_ns (0),
+  mtime (0),
+  mtime_ns (0)
 {
   sql_export_data_leak_debugger.add (this);
 }
@@ -342,7 +361,12 @@ SQLExportData::SQLExportData (const SQLExportData& data) :
   parent_id (data.parent_id),
   type (data.type),
   hash (data.hash),
-  size (data.size)
+  size (data.size),
+  nlink (data.nlink),
+  ctime (data.ctime),
+  ctime_ns (data.ctime_ns),
+  mtime (data.mtime),
+  mtime_ns (data.mtime_ns)
 {
   sql_export_data_leak_debugger.add (this);
 }
