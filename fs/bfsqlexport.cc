@@ -30,6 +30,7 @@ using std::string;
 using std::vector;
 
 using BFSync::gettime;
+using BFSync::get_basename;
 using BFSync::string_printf;
 using BFSync::DataBuffer;
 using BFSync::DataOutBuffer;
@@ -309,7 +310,12 @@ SQLExport::build_filelist (unsigned int version)
   if (filelist_map[version] != "")
     return filelist_map[version];
 
-  string filelist_name = string_printf ("/tmp/bdb2sql.%d", version);
+  // create temp name and register it for later cleanup
+  bdb_ptr.begin_transaction();
+  string filelist_name = string_printf ("%s/bdb2sql.%d", bdb_ptr.get_bdb()->get_temp_dir().c_str(), version);
+  bdb_ptr.add_temp_file (get_basename (filelist_name), getpid());
+  bdb_ptr.commit_transaction();
+
   filelist_map[version] = filelist_name;
 
   this->version = version;

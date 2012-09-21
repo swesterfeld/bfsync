@@ -114,6 +114,7 @@ enum
 
 std::string make_object_filename (const std::string& hash);
 std::string get_dirname (const std::string& filename);
+std::string get_basename (const std::string& filename);
 
 class SplitPath
 {

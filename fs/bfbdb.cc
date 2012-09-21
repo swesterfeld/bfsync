@@ -1456,6 +1456,14 @@ BDB::delete_temp_file (const string& name)
     }
 }
 
+string
+BDB::get_temp_dir()
+{
+  Lock lock (mutex);
+
+  return string_printf ("%s/tmp", repo_path.c_str());
+}
+
 BDBError
 BDB::load_journal_entries (std::vector<JournalEntry>& entries)
 {

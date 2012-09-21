@@ -226,6 +226,7 @@ public:
   std::vector<TempFile> load_temp_files();
   BDBError  add_temp_file (const TempFile& temp_file);
   void  delete_temp_file (const std::string& filename);
+  std::string get_temp_dir();
 
   BDBError  load_journal_entries (std::vector<JournalEntry>& entries);
   BDBError  store_journal_entry (const JournalEntry& journal_entry);
