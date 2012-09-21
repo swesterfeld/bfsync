@@ -1322,7 +1322,7 @@ def cmd_upgrade():
 
 def cmd_sql_export():
   repo = cd_repo_connect_db()
-  sql_export (repo)
+  sql_export (repo, args)
 
 args = []
 

@@ -20,14 +20,33 @@ from bfsync.xzutils import xzcat2
 from bfsync.diffutils import DiffIterator
 import psycopg2 as dbapi2
 from bfsync.StatusLine import status_line, OutputSubsampler
+import argparse
 import sys
 
-def sql_export (repo):
+def sql_export (repo, args):
+  parser = argparse.ArgumentParser (prog='bfsync sql-export')
+  parser.add_argument ('-u', help='set user')
+  parser.add_argument ('-w', help='set password')
+  parser.add_argument ('-d', help='set database')
+  parser.add_argument ('-p', help='set port')
+  parser.add_argument ('-H', help='set host')
+  parser.add_argument ("-r", action="store_true", dest="initial", default=False, help='reset all database tables')
+  parsed_args = parser.parse_args (args)
+
   conn = dbapi2.connect (database="bfsync", user="postgres") # , host="bigraidn1", port=5410) #, password="python")
   cur = conn.cursor ()
+
+  if (parsed_args.initial):
+    cur.execute ("""
+      DROP TABLE IF EXISTS history;
+      DROP TABLE IF EXISTS tags;
+      DROP TABLE IF EXISTS files;
+    """)
+    conn.commit()
+    print "Reset: reinitialized all database tables."
+
   cur.execute ("""
-    DROP TABLE IF EXISTS history;
-    CREATE TABLE history (
+    CREATE TABLE IF NOT EXISTS history (
       version   integer,
       hash      varchar,
       author    varchar,
@@ -35,15 +54,13 @@ def sql_export (repo):
       time      bigint
     );
 
-    DROP TABLE IF EXISTS tags;
-    CREATE TABLE tags (
+    CREATE TABLE IF NOT EXISTS tags (
       version   integer,
       tag       varchar,
       value     varchar
     );
 
-    DROP TABLE IF EXISTS files;
-    CREATE TABLE files (
+    CREATE TABLE IF NOT EXISTS files (
       filename  varchar,
       vmin      bigint,
       vmax      bigint,
@@ -69,6 +86,7 @@ def sql_export (repo):
     CREATE INDEX files_fn_idx ON files (filename, vmin);
   """)
 
+  # compute max version that was already imported earlier
   sql_max_version = 0
 
   cur.execute ("SELECT (version) FROM history;")
@@ -76,9 +94,10 @@ def sql_export (repo):
     row = cur.fetchone()
     if not row:
       break
-    print "V:", row[0]
+    version = row[0]
+    sql_max_version = max (sql_max_version, version)
 
-
+  # compute max version in the Repository repo
   bdb_max_version = 0
   version = 1
   while True:
