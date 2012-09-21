@@ -25,15 +25,27 @@ import sys
 
 def sql_export (repo, args):
   parser = argparse.ArgumentParser (prog='bfsync sql-export')
+  parser.add_argument ('-d', help='set database')
   parser.add_argument ('-u', help='set user')
   parser.add_argument ('-w', help='set password')
-  parser.add_argument ('-d', help='set database')
-  parser.add_argument ('-p', help='set port')
   parser.add_argument ('-H', help='set host')
+  parser.add_argument ('-p', help='set port')
   parser.add_argument ("-r", action="store_true", dest="initial", default=False, help='reset all database tables')
   parsed_args = parser.parse_args (args)
 
-  conn = dbapi2.connect (database="bfsync", user="postgres") # , host="bigraidn1", port=5410) #, password="python")
+  connection_args = dict()
+  if (parsed_args.d):
+    connection_args["database"] = parsed_args.d
+  if (parsed_args.u):
+    connection_args["user"] = parsed_args.u
+  if (parsed_args.w):
+    connection_args["password"] = parsed_args.w
+  if (parsed_args.H):
+    connection_args["host"] = parsed_args.H
+  if (parsed_args.p):
+    connection_args["port"] = parsed_args.p
+
+  conn = dbapi2.connect (**connection_args)
   cur = conn.cursor ()
 
   if (parsed_args.initial):
