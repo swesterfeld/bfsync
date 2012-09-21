@@ -208,6 +208,18 @@ SQLExport::SQLExport (BDBPtr bdb_ptr) :
   start_time = gettime();
 }
 
+SQLExport::~SQLExport()
+{
+  // delete remaining tempfiles
+  for (map<unsigned int, string>::iterator fli = filelist_map.begin(); fli != filelist_map.end(); fli++)
+    {
+      const string& filename = fli->second;
+
+      if (filename != "")
+        unlink (filename.c_str());
+    }
+}
+
 bool
 cmp_link_name (Link *l1, Link *l2)
 {
@@ -364,7 +376,7 @@ SQLExport::export_version (unsigned int version)
     {
       string& filename = fli->second;
 
-      if (filename != old_files && filename != new_files)
+      if (filename != "" && filename != old_files && filename != new_files)
         {
           unlink (filename.c_str());
           filename = "";
