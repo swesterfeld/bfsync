@@ -61,9 +61,15 @@ read_sxd (FILE *file, SQLExportData& data)
           data.filename = data_buffer.read_string();
           id_load (data.id, data_buffer);
           id_load (data.parent_id, data_buffer);
+          data.uid  = data_buffer.read_uint32();
+          data.gid  = data_buffer.read_uint32();
+          data.mode = data_buffer.read_uint32();
           data.type = data_buffer.read_uint32();
           data.hash = data_buffer.read_string();
+          data.link = data_buffer.read_string();
           data.size = data_buffer.read_uint64();
+          data.major = data_buffer.read_uint32();
+          data.minor = data_buffer.read_uint32();
           data.nlink = data_buffer.read_uint32();
           data.ctime = data_buffer.read_uint32();
           data.ctime_ns = data_buffer.read_uint32();
@@ -87,7 +93,9 @@ same_data (const SQLExportData& d1, const SQLExportData& d2)
 {
   return d1.filename == d2.filename &&
          d1.id == d2.id && d1.parent_id == d2.parent_id &&
-         d1.type == d2.type && d1.size == d2.size && d1.hash == d2.hash &&
+         d1.uid == d2.uid && d1.gid == d2.gid && d1.mode == d2.mode &&
+         d1.type == d2.type && d1.hash == d2.hash && d1.link == d2.link &&
+         d1.size == d2.size && d1.major == d2.major && d1.minor == d2.minor &&
          d1.nlink == d2.nlink &&
          d1.ctime == d2.ctime && d1.ctime_ns == d2.ctime_ns &&
          d1.mtime == d2.mtime && d1.mtime_ns == d2.mtime_ns;
@@ -220,9 +228,15 @@ SQLExport::walk (const ID& id, const ID& parent_id, const string& prefix, FILE *
       out_buffer.write_string (filename);
       inode.id.id.store (out_buffer);
       parent_id.id.store (out_buffer);
+      out_buffer.write_uint32 (inode.uid);
+      out_buffer.write_uint32 (inode.gid);
+      out_buffer.write_uint32 (inode.mode);
       out_buffer.write_uint32 (inode.type);
       out_buffer.write_string (inode.hash);
+      out_buffer.write_string (inode.link);
       out_buffer.write_uint64 (inode.size);
+      out_buffer.write_uint32 (inode.major);
+      out_buffer.write_uint32 (inode.minor);
       out_buffer.write_uint32 (inode.nlink);
       out_buffer.write_uint32 (inode.ctime);
       out_buffer.write_uint32 (inode.ctime_ns);
@@ -341,8 +355,13 @@ SQLExportData::SQLExportData() :
   status (NONE),
   vmin (0),
   vmax (0),
+  uid (0),
+  gid (0),
+  mode (0),
   type (0),
   size (0),
+  major (0),
+  minor (0),
   nlink (0),
   ctime (0),
   ctime_ns (0),
@@ -359,9 +378,15 @@ SQLExportData::SQLExportData (const SQLExportData& data) :
   vmax (data.vmax),
   id (data.id),
   parent_id (data.parent_id),
+  uid (data.uid),
+  gid (data.gid),
+  mode (data.mode),
   type (data.type),
   hash (data.hash),
+  link (data.link),
   size (data.size),
+  major (data.major),
+  minor (data.minor),
   nlink (data.nlink),
   ctime (data.ctime),
   ctime_ns (data.ctime_ns),

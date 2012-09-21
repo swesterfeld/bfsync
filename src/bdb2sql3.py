@@ -33,9 +33,15 @@ cur.execute ("""
     vmax      bigint,
     id        varchar,
     parent_id varchar,
+    uid       integer,
+    gid       integer,
+    mode      integer,
     type      integer,
     hash      varchar,
+    link      varchar,
     size      bigint,
+    major     integer,
+    minor     integer,
     nlink     integer,
     ctime     bigint,
     ctime_ns  integer,
@@ -96,11 +102,16 @@ for version in range (sql_max_version + 1, bdb_max_version + 1):
       cur.execute ("UPDATE files SET vmax = %s WHERE filename = %s AND vmax = %s", (version - 1, data.filename, bfsyncdb.VERSION_INF))
 
     if data.status == data.ADD or data.status == data.MOD:
-      fields = (data.filename, version, bfsyncdb.VERSION_INF, data.id.str(), get_parent (data), data.type, data.hash, data.size,
+      fields = (data.filename, version, bfsyncdb.VERSION_INF, data.id.str(), get_parent (data),
+                data.uid, data.gid, data.mode, data.type, data.hash, data.link, data.size, data.major, data.minor,
                 data.nlink, data.ctime, data.ctime_ns, data.mtime, data.mtime_ns)
-      cur.execute ("""INSERT INTO files (filename, vmin, vmax, id, parent_id, type, hash, size, nlink,
+      cur.execute ("""INSERT INTO files (filename, vmin, vmax, id, parent_id, uid, gid, mode, type,
+                                         hash, link, size, major, minor, nlink,
                                          ctime, ctime_ns, mtime, mtime_ns)
-                      VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""", fields)
+                      VALUES (%s, %s, %s, %s, %s,
+                              %s, %s, %s, %s, %s,
+                              %s, %s, %s, %s, %s,
+                              %s, %s, %s, %s)""", fields)
   conn.commit()
   sql_end_time = time.time()
 

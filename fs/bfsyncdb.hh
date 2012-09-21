@@ -460,9 +460,15 @@ struct SQLExportData
   unsigned int  vmax;
   ID            id;
   ID            parent_id;
+  unsigned int  uid;
+  unsigned int  gid;
+  unsigned int  mode;
   unsigned int  type;
   std::string   hash;
+  std::string   link;
   uint64_t      size;
+  unsigned int  major;
+  unsigned int  minor;
   unsigned int  nlink;
   unsigned int  ctime;
   unsigned int  ctime_ns;
