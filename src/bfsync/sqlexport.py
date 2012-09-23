@@ -119,15 +119,13 @@ def sql_export (repo, args):
     bdb_max_version = version
     version += 1
 
-  def get_parent (data):
-    if data.id.str() == bfsyncdb.id_root().str():
-      # root always has no parent
-      return None
-    else:
-      return data.parent_id.str()
-
   outss = OutputSubsampler()
   start_time = time.time()
+
+  # create temp name for inserts
+  repo.bdb.begin_transaction()
+  insert_filename = repo.make_temp_name()
+  repo.bdb.commit_transaction()
 
   sql_export = bfsyncdb.SQLExport (repo.bdb)
 
@@ -135,6 +133,7 @@ def sql_export (repo, args):
     print "\n::: exporting version %d/%d :::" % (version, bdb_max_version)
     sys.stdout.flush()
 
+    insert_file = open (insert_filename, "w")
     sxi = sql_export.export_version (version)
     sql_start_time = time.time()
     while True:
@@ -148,16 +147,14 @@ def sql_export (repo, args):
         cur.execute ("UPDATE files SET vmax = %s WHERE filename = %s AND vmax = %s", (version - 1, data.filename, bfsyncdb.VERSION_INF))
 
       if data.status == data.ADD or data.status == data.MOD:
-        fields = (data.filename, version, bfsyncdb.VERSION_INF, data.id.str(), get_parent (data),
-                  data.uid, data.gid, data.mode, data.type, data.hash, data.link, data.size, data.major, data.minor,
-                  data.nlink, data.ctime, data.ctime_ns, data.mtime, data.mtime_ns)
-        cur.execute ("""INSERT INTO files (filename, vmin, vmax, id, parent_id, uid, gid, mode, type,
-                                           hash, link, size, major, minor, nlink,
-                                           ctime, ctime_ns, mtime, mtime_ns)
-                        VALUES (%s, %s, %s, %s, %s,
-                                %s, %s, %s, %s, %s,
-                                %s, %s, %s, %s, %s,
-                                %s, %s, %s, %s)""", fields)
+        data.vmin = version
+        data.vmax = bfsyncdb.VERSION_INF
+        insert_file.write (data.copy_from_line())
+
+    insert_file.close()
+    insert_file = open (insert_filename, "r")
+    cur.copy_from (insert_file, "files")
+    insert_file.close()
 
     # import history entry
 

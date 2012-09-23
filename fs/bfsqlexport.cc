@@ -17,9 +17,13 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#define __STDC_FORMAT_MACROS 1
+
 #include "bfsyncdb.hh"
 #include "bfsyncfs.hh"
 #include "bfleakdebugger.hh"
+
+#include <inttypes.h>
 
 extern "C" {
 // #include <Python.h>
@@ -437,4 +441,70 @@ SQLExportData::SQLExportData (const SQLExportData& data) :
 SQLExportData::~SQLExportData()
 {
   sql_export_data_leak_debugger.del (this);
+}
+
+static void
+pg_str (string& result, const string& str, bool first = false)
+{
+  if (!first)
+    result += "\t";
+  for (string::const_iterator si = str.begin(); si != str.end(); si++)
+    {
+      if (*si == '\\')
+        result += "\\\\";
+      else if (*si == '\n')
+        result += "\\n";
+      else if (*si == '\r')
+        result += "\\r";
+      else if (*si == '\t')
+        result += "\\t";
+      else
+        result += *si;
+    }
+}
+
+static void
+pg_int (string& result, uint64_t i)
+{
+  result += string_printf ("\t%" PRIu64, i);
+}
+
+static void
+pg_null (string& result)
+{
+  result += "\t\\N";
+}
+
+string
+SQLExportData::copy_from_line() const
+{
+  string result;
+
+  pg_str (result, filename, true);
+  pg_int (result, vmin);
+  pg_int (result, vmax);
+  pg_str (result, id.str());
+
+  if (id == id_root())
+    pg_null (result);
+  else
+    pg_str (result, parent_id.str());
+
+  pg_int (result, uid);
+  pg_int (result, gid);
+  pg_int (result, mode);
+  pg_int (result, type);
+  pg_str (result, hash);
+  pg_str (result, link);
+  pg_int (result, size);
+  pg_int (result, major);
+  pg_int (result, minor);
+  pg_int (result, nlink);
+  pg_int (result, ctime);
+  pg_int (result, ctime_ns);
+  pg_int (result, mtime);
+  pg_int (result, mtime_ns);
+
+  result += "\n";
+  return result;
 }
