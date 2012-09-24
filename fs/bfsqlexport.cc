@@ -508,3 +508,11 @@ SQLExportData::copy_from_line() const
   result += "\n";
   return result;
 }
+
+string
+SQLExportData::delete_copy_from_line() const
+{
+  string result;
+  pg_str (result, filename, true);
+  return result + "\n";
+}

@@ -93,9 +93,15 @@ def sql_export (repo, args):
       mtime     bigint,
       mtime_ns  integer
     );
+    CREATE TABLE IF NOT EXISTS temp_delete (
+      filename  varchar
+    );
 
     DROP INDEX IF EXISTS files_fn_idx;
     CREATE INDEX files_fn_idx ON files (filename, vmin);
+
+    DROP INDEX IF EXISTS temp_delete_fn_idx;
+    CREATE INDEX temp_delete_fn_idx ON temp_delete (filename);
   """)
 
   # compute max version that was already imported earlier
@@ -125,6 +131,7 @@ def sql_export (repo, args):
   # create temp name for inserts
   repo.bdb.begin_transaction()
   insert_filename = repo.make_temp_name()
+  delete_filename = repo.make_temp_name()
   repo.bdb.commit_transaction()
 
   sql_export = bfsyncdb.SQLExport (repo.bdb)
@@ -134,6 +141,7 @@ def sql_export (repo, args):
     sys.stdout.flush()
 
     insert_file = open (insert_filename, "w")
+    delete_file = open (delete_filename, "w")
     sxi = sql_export.export_version (version)
     sql_start_time = time.time()
     while True:
@@ -144,7 +152,7 @@ def sql_export (repo, args):
       # continue
 
       if data.status == data.DEL or data.status == data.MOD:
-        cur.execute ("UPDATE files SET vmax = %s WHERE filename = %s AND vmax = %s", (version - 1, data.filename, bfsyncdb.VERSION_INF))
+        delete_file.write (data.delete_copy_from_line())
 
       if data.status == data.ADD or data.status == data.MOD:
         data.vmin = version
@@ -152,6 +160,18 @@ def sql_export (repo, args):
         insert_file.write (data.copy_from_line())
 
     insert_file.close()
+    delete_file.close()
+
+    cur.execute ("DELETE FROM temp_delete")
+
+    delete_file = open (delete_filename, "r")
+    cur.copy_from (delete_file, "temp_delete")
+    delete_file.close()
+
+    cur.execute ("UPDATE files SET vmax = %s FROM temp_delete WHERE files.filename = temp_delete.filename AND vmax = %s",
+                 (version - 1, bfsyncdb.VERSION_INF))
+    cur.execute ("DELETE FROM temp_delete")
+
     insert_file = open (insert_filename, "r")
     cur.copy_from (insert_file, "files")
     insert_file.close()

@@ -454,6 +454,7 @@ struct SQLExportData
   ~SQLExportData();
 
   std::string copy_from_line() const;
+  std::string delete_copy_from_line() const;
 
   enum { NONE, ADD, DEL, MOD } status;
 
