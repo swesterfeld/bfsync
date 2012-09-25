@@ -464,9 +464,26 @@ pg_str (string& result, const string& str, bool first = false)
 }
 
 static void
-pg_int (string& result, uint64_t i)
+pg_int (string& out_str, uint64_t i)
 {
-  result += string_printf ("\t%" PRIu64, i);
+  // out_str += string_printf ("\t%" PRIu64, i);
+
+  // since string_printf is slow, we use an optimized version:
+  char result[64], *rp = &result[62];
+  rp[1] = 0;
+  for (;;)
+    {
+      *rp = i % 10 + '0';
+      i /= 10;
+      if (!i)
+        {
+          rp--;
+          *rp = '\t';
+          out_str += rp;
+          return;
+        }
+      rp--;
+    }
 }
 
 static void
