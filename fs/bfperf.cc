@@ -17,6 +17,8 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#define __STDC_FORMAT_MACROS 1
+
 #include <sys/time.h>
 #include <assert.h>
 #include <stdlib.h>
@@ -27,6 +29,8 @@
 #include <algorithm>
 #include <vector>
 #include <map>
+#include <sstream>
+#include <boost/lexical_cast.hpp>
 
 #include "bfsyncfs.hh"
 #include "bfidhash.hh"
@@ -36,6 +40,7 @@
 using std::string;
 using std::vector;
 using std::map;
+using std::stringstream;
 
 using namespace BFSync;
 
@@ -297,6 +302,96 @@ perf_leak_debugger()
   print_result ("leak_deb/sec", N / (end_t - start_t));
 }
 
+string
+int2str (uint64_t i)
+{
+  return string_printf ("%" PRIu64, i);
+}
+
+stringstream ss;
+
+string
+int2str2 (uint64_t i)
+{
+  ss.str("");
+  ss << i;
+  return ss.str();
+}
+
+string
+int2str3 (uint64_t i)
+{
+  return boost::lexical_cast<string> (i);
+}
+
+string
+int2str4 (uint64_t i)
+{
+  char result[64], *rp = &result[62];
+  rp[1] = 0;
+  for (;;)
+    {
+      *rp = i % 10 + '0';
+      i /= 10;
+      if (!i)
+        return rp;
+      rp--;
+    }
+}
+
+void
+perf_int2str()
+{
+  const uint64_t N = 1000 * 1000;
+  double start_t, end_t;
+  string s;
+
+  // int2str
+  start_t = gettime();
+  for (uint64_t i = 0; i < N; i++)
+    {
+      s = int2str (i);
+    }
+  assert (int2str (12345678) == "12345678");
+  end_t = gettime();
+
+  print_result ("int2str/sec", N / (end_t - start_t));
+
+  // int2str2
+  start_t = gettime();
+  for (uint64_t i = 0; i < N; i++)
+    {
+      s = int2str2 (i);
+    }
+  assert (int2str2 (12345678) == "12345678");
+  end_t = gettime();
+
+  print_result ("int2str2/sec", N / (end_t - start_t));
+
+  // int2str3
+  start_t = gettime();
+  for (uint64_t i = 0; i < N; i++)
+    {
+      s = int2str3 (i);
+    }
+  assert (int2str3 (12345678) == "12345678");
+  end_t = gettime();
+
+  print_result ("int2str3/sec", N / (end_t - start_t));
+
+  // int2str4
+  start_t = gettime();
+  for (uint64_t i = 0; i < N; i++)
+    {
+      s = int2str4 (i);
+    }
+  assert (int2str4 (12345678) == "12345678");
+  assert (int2str4 (18446744073709551615ULL) == "18446744073709551615");
+  end_t = gettime();
+
+  print_result ("int2str4/sec", N / (end_t - start_t));
+}
+
 int
 main()
 {
@@ -308,6 +403,7 @@ main()
   perf_id2str();
   perf_read_string();
   perf_leak_debugger();
+  perf_int2str();
   FILE *test = fopen ("mnt/.bfsync/info", "r");
   if (!test)
     {
