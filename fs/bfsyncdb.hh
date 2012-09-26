@@ -447,39 +447,6 @@ public:
   void           delete_unused_keep_count (unsigned int count);
 };
 
-struct SQLExportData
-{
-  SQLExportData();
-  SQLExportData (const SQLExportData& data);
-  ~SQLExportData();
-
-  std::string copy_from_line() const;
-  std::string delete_copy_from_line() const;
-
-  enum { NONE, ADD, DEL, MOD } status;
-
-  std::string   filename;
-  unsigned int  vmin;
-  unsigned int  vmax;
-  ID            id;
-  ID            parent_id;
-  unsigned int  uid;
-  unsigned int  gid;
-  unsigned int  mode;
-  unsigned int  type;
-  std::string   hash;
-  std::string   link;
-  uint64_t      size;
-  unsigned int  major;
-  unsigned int  minor;
-  unsigned int  nlink;
-  unsigned int  ctime;
-  unsigned int  ctime_ns;
-  unsigned int  mtime;
-  unsigned int  mtime_ns;
-};
-
-
 class SQLExport
 {
   unsigned int version;
