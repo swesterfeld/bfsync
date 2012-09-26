@@ -94,17 +94,12 @@ def sql_export (repo, args):
         ctime     bigint,
         ctime_ns  integer,
         mtime     bigint,
-        mtime_ns  integer
+        mtime_ns  integer,
+        CONSTRAINT name_vmin PRIMARY KEY (filename, vmin)
       );
-      CREATE TABLE IF NOT EXISTS temp_delete (
-        filename  varchar
+      CREATE TEMPORARY TABLE IF NOT EXISTS temp_delete (
+        filename  varchar PRIMARY KEY
       );
-
-      DROP INDEX IF EXISTS files_fn_idx;
-      CREATE INDEX files_fn_idx ON files (filename, vmin);
-
-      DROP INDEX IF EXISTS temp_delete_fn_idx;
-      CREATE INDEX temp_delete_fn_idx ON temp_delete (filename);
     """)
 
   # compute max version that was already imported earlier
