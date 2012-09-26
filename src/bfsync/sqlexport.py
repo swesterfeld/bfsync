@@ -23,6 +23,8 @@ from bfsync.StatusLine import status_line, OutputSubsampler
 import argparse
 import sys
 
+WITH_SQL = True
+
 def sql_export (repo, args):
   parser = argparse.ArgumentParser (prog='bfsync sql-export')
   parser.add_argument ('-d', help='set database')
@@ -48,72 +50,74 @@ def sql_export (repo, args):
   conn = dbapi2.connect (**connection_args)
   cur = conn.cursor ()
 
-  if (parsed_args.initial):
+  if WITH_SQL:
+    if (parsed_args.initial):
+      cur.execute ("""
+        DROP TABLE IF EXISTS history;
+        DROP TABLE IF EXISTS tags;
+        DROP TABLE IF EXISTS files;
+      """)
+      conn.commit()
+      print "Reset: reinitialized all database tables."
+
     cur.execute ("""
-      DROP TABLE IF EXISTS history;
-      DROP TABLE IF EXISTS tags;
-      DROP TABLE IF EXISTS files;
+      CREATE TABLE IF NOT EXISTS history (
+        version   integer,
+        hash      varchar,
+        author    varchar,
+        message   varchar,
+        time      bigint
+      );
+
+      CREATE TABLE IF NOT EXISTS tags (
+        version   integer,
+        tag       varchar,
+        value     varchar
+      );
+
+      CREATE TABLE IF NOT EXISTS files (
+        filename  varchar,
+        vmin      bigint,
+        vmax      bigint,
+        id        varchar,
+        parent_id varchar,
+        uid       integer,
+        gid       integer,
+        mode      integer,
+        type      integer,
+        hash      varchar,
+        link      varchar,
+        size      bigint,
+        major     integer,
+        minor     integer,
+        nlink     integer,
+        ctime     bigint,
+        ctime_ns  integer,
+        mtime     bigint,
+        mtime_ns  integer
+      );
+      CREATE TABLE IF NOT EXISTS temp_delete (
+        filename  varchar
+      );
+
+      DROP INDEX IF EXISTS files_fn_idx;
+      CREATE INDEX files_fn_idx ON files (filename, vmin);
+
+      DROP INDEX IF EXISTS temp_delete_fn_idx;
+      CREATE INDEX temp_delete_fn_idx ON temp_delete (filename);
     """)
-    conn.commit()
-    print "Reset: reinitialized all database tables."
-
-  cur.execute ("""
-    CREATE TABLE IF NOT EXISTS history (
-      version   integer,
-      hash      varchar,
-      author    varchar,
-      message   varchar,
-      time      bigint
-    );
-
-    CREATE TABLE IF NOT EXISTS tags (
-      version   integer,
-      tag       varchar,
-      value     varchar
-    );
-
-    CREATE TABLE IF NOT EXISTS files (
-      filename  varchar,
-      vmin      bigint,
-      vmax      bigint,
-      id        varchar,
-      parent_id varchar,
-      uid       integer,
-      gid       integer,
-      mode      integer,
-      type      integer,
-      hash      varchar,
-      link      varchar,
-      size      bigint,
-      major     integer,
-      minor     integer,
-      nlink     integer,
-      ctime     bigint,
-      ctime_ns  integer,
-      mtime     bigint,
-      mtime_ns  integer
-    );
-    CREATE TABLE IF NOT EXISTS temp_delete (
-      filename  varchar
-    );
-
-    DROP INDEX IF EXISTS files_fn_idx;
-    CREATE INDEX files_fn_idx ON files (filename, vmin);
-
-    DROP INDEX IF EXISTS temp_delete_fn_idx;
-    CREATE INDEX temp_delete_fn_idx ON temp_delete (filename);
-  """)
 
   # compute max version that was already imported earlier
   sql_max_version = 0
 
-  cur.execute ("SELECT (version) FROM history;")
-  while True:
-    row = cur.fetchone()
-    if not row:
-      break
-    version = row[0]
-    sql_max_version = max (sql_max_version, version)
+  if WITH_SQL:
+    cur.execute ("SELECT (version) FROM history;")
+    while True:
+      row = cur.fetchone()
+      if not row:
+        break
+      version = row[0]
+      sql_max_version = max (sql_max_version, version)
 
   # compute max version in the Repository repo
   bdb_max_version = 0
@@ -142,41 +146,43 @@ def sql_export (repo, args):
 
     sql_export.export_version (version, insert_filename, delete_filename)
 
-    sql_start_time = time.time()
-    cur.execute ("DELETE FROM temp_delete")
+    if WITH_SQL:
+      sql_start_time = time.time()
+      cur.execute ("DELETE FROM temp_delete")
 
-    delete_file = open (delete_filename, "r")
-    cur.copy_from (delete_file, "temp_delete")
-    delete_file.close()
+      delete_file = open (delete_filename, "r")
+      cur.copy_from (delete_file, "temp_delete")
+      delete_file.close()
 
-    cur.execute ("UPDATE files SET vmax = %s FROM temp_delete WHERE files.filename = temp_delete.filename AND vmax = %s",
-                 (version - 1, bfsyncdb.VERSION_INF))
-    cur.execute ("DELETE FROM temp_delete")
+      cur.execute ("UPDATE files SET vmax = %s FROM temp_delete WHERE files.filename = temp_delete.filename AND vmax = %s",
+                   (version - 1, bfsyncdb.VERSION_INF))
+      cur.execute ("DELETE FROM temp_delete")
 
-    insert_file = open (insert_filename, "r")
-    cur.copy_from (insert_file, "files")
-    insert_file.close()
+      insert_file = open (insert_filename, "r")
+      cur.copy_from (insert_file, "files")
+      insert_file.close()
 
-    # import history entry
+      # import history entry
 
-    hentry = repo.bdb.load_history_entry (version)
-    fields = ( hentry.version, hentry.hash, hentry.author, hentry.message, hentry.time )
-    cur.execute ("INSERT INTO history (version, hash, author, message, time) VALUES (%s, %s, %s, %s, %s)", fields)
+      hentry = repo.bdb.load_history_entry (version)
+      fields = ( hentry.version, hentry.hash, hentry.author, hentry.message, hentry.time )
+      if WITH_SQL:
+        cur.execute ("INSERT INTO history (version, hash, author, message, time) VALUES (%s, %s, %s, %s, %s)", fields)
 
-    # import tags
+      # import tags
 
-    tags = repo.bdb.list_tags (hentry.version)
-    for t in tags:
-      values = repo.bdb.load_tag (hentry.version, t)
-      for v in values:
-        fields = (hentry.version, t, v)
-        cur.execute ("INSERT INTO tags (version, tag, value) VALUES (%s, %s, %s)", fields)
+      tags = repo.bdb.list_tags (hentry.version)
+      for t in tags:
+        values = repo.bdb.load_tag (hentry.version, t)
+        for v in values:
+          fields = (hentry.version, t, v)
+          cur.execute ("INSERT INTO tags (version, tag, value) VALUES (%s, %s, %s)", fields)
 
-    conn.commit()
-    sql_end_time = time.time()
+      conn.commit()
+      sql_end_time = time.time()
 
-    print "### sql time: %.2f" % (sql_end_time - sql_start_time)
-    sys.stdout.flush()
+      print "### sql time: %.2f" % (sql_end_time - sql_start_time)
+      sys.stdout.flush()
 
   cur.close()
   conn.close()
