@@ -141,49 +141,63 @@ same_data (const SQLExportData& d1, const SQLExportData& d2)
 
 class SQLExportIterator
 {
-  FILE         *old_f;
-  bool          old_eof;
-  SQLExportData old_data;
-
-  FILE         *new_f;
-  bool          new_eof;
-  SQLExportData new_data;
-
   std::string   old_files;
   std::string   new_files;
 
-  enum { OLD, NEW, BOTH } next_read;
+  FILE         *insert_file;
+  FILE         *delete_file;
+
+  void write_insert (const SQLExportData& data, unsigned int version);
+  void write_modify (const SQLExportData& data, unsigned int version);
+  void write_delete (const SQLExportData& data);
 public:
   SQLExportIterator (const std::string& old_files, const std::string& new_files);
-  ~SQLExportIterator();
 
-  SQLExportData get_next();
+  void gen_files (unsigned int version, const string& insert_filename, const string& delete_filename);
 };
 
 SQLExportIterator::SQLExportIterator (const string& old_files, const string& new_files) :
-  old_f (0),
-  new_f (0),
   old_files (old_files),
   new_files (new_files)
 {
 }
 
-SQLExportData
-SQLExportIterator::get_next()
+void
+SQLExportIterator::write_insert (const SQLExportData& data, unsigned int version)
 {
-  /* open files and initialize, if this wasn't done already */
-  if (!old_f)
-    {
-      old_f = fopen (old_files.c_str(), "r");
-      new_f = fopen (new_files.c_str(), "r");
+  fputs (data.copy_from_line (version).c_str(), insert_file);
+}
 
-      old_eof = false;
-      new_eof = false;
+void
+SQLExportIterator::write_delete (const SQLExportData& data)
+{
+  fputs (data.delete_copy_from_line().c_str(), delete_file);
+}
 
-      next_read = BOTH;
-    }
+void
+SQLExportIterator::write_modify (const SQLExportData& data, unsigned int version)
+{
+  write_delete (data);
+  write_insert (data, version);
+}
 
-  SQLExportData eof_data;
+void
+SQLExportIterator::gen_files (unsigned int version, const string& insert_filename, const string& delete_filename)
+{
+  SQLExportData old_data;
+  SQLExportData new_data;
+
+  enum { OLD, NEW, BOTH } next_read = BOTH;
+
+  FILE *old_f = fopen (old_files.c_str(), "r");
+  FILE *new_f = fopen (new_files.c_str(), "r");
+
+  bool old_eof = false;
+  bool new_eof = false;
+
+  insert_file = fopen (insert_filename.c_str(), "w");
+  delete_file = fopen (delete_filename.c_str(), "w");
+
   while (1)
     {
       if (next_read == OLD || next_read == BOTH)
@@ -196,51 +210,44 @@ SQLExportIterator::get_next()
         }
       if (old_eof && new_eof)
         {
-          eof_data.status = SQLExportData::NONE;
-          return eof_data;
+          break;
         }
 
       if (old_eof)
         {
           next_read = NEW;
-          new_data.status = SQLExportData::ADD;
-          return new_data;
+          write_insert (new_data, version);
         }
       else if (new_eof)
         {
           next_read = OLD;
-          old_data.status = SQLExportData::DEL;
-          return old_data;
+          write_delete (old_data);
         }
       else
         {
           if (old_data.filename < new_data.filename)
             {
               next_read = OLD;
-              old_data.status = SQLExportData::DEL;
-              return old_data;
+              write_delete (old_data);
             }
           else if (old_data.filename == new_data.filename)
             {
               next_read = BOTH;
               if (!same_data (old_data, new_data))
                 {
-                  old_data.status = SQLExportData::MOD;
-                  return old_data;
+                  write_modify (old_data, version);
                 }
             }
           else  // new_data.filename < old_data.filename
             {
               next_read = NEW;
-              new_data.status = SQLExportData::ADD;
-              return new_data;
+              write_insert (new_data, version);
             }
         }
     }
-}
+  fclose (delete_file);
+  fclose (insert_file);
 
-SQLExportIterator::~SQLExportIterator()
-{
   if (old_f)
     {
       fclose (old_f);
@@ -438,28 +445,7 @@ SQLExport::export_version (unsigned int version, const string& insert_filename, 
         }
     }
   SQLExportIterator sxi = SQLExportIterator (old_files, new_files);
-  FILE *insert_file = fopen (insert_filename.c_str(), "w");
-  FILE *delete_file = fopen (delete_filename.c_str(), "w");
-
-  for (;;)
-    {
-      SQLExportData data = sxi.get_next();
-      if (data.status == SQLExportData::NONE)
-        break;
-
-      if (data.status == SQLExportData::DEL || data.status == SQLExportData::MOD)
-        {
-          fputs (data.delete_copy_from_line().c_str(), delete_file);
-        }
-
-      if (data.status == SQLExportData::ADD || data.status == SQLExportData::MOD)
-        {
-          fputs (data.copy_from_line (version).c_str(), insert_file);
-        }
-    }
-
-  fclose (delete_file);
-  fclose (insert_file);
+  sxi.gen_files (version, insert_filename, delete_filename);
 }
 
 //---------------------------- SQLExportData -----------------------------
