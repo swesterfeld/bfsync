@@ -46,14 +46,12 @@ struct SQLExportData
   SQLExportData (const SQLExportData& data);
   ~SQLExportData();
 
-  std::string copy_from_line() const;
+  std::string copy_from_line (unsigned int vmin) const;
   std::string delete_copy_from_line() const;
 
   enum { NONE, ADD, DEL, MOD } status;
 
   std::string   filename;
-  unsigned int  vmin;
-  unsigned int  vmax;
   ID            id;
   ID            parent_id;
   unsigned int  uid;
@@ -456,9 +454,7 @@ SQLExport::export_version (unsigned int version, const string& insert_filename, 
 
       if (data.status == SQLExportData::ADD || data.status == SQLExportData::MOD)
         {
-          data.vmin = version;
-          data.vmax = VERSION_INF;
-          fputs (data.copy_from_line().c_str(), insert_file);
+          fputs (data.copy_from_line (version).c_str(), insert_file);
         }
     }
 
@@ -472,8 +468,6 @@ static BFSync::LeakDebugger sql_export_data_leak_debugger ("(Python)BFSync::SQLE
 
 SQLExportData::SQLExportData() :
   status (NONE),
-  vmin (0),
-  vmax (0),
   uid (0),
   gid (0),
   mode (0),
@@ -493,8 +487,6 @@ SQLExportData::SQLExportData() :
 SQLExportData::SQLExportData (const SQLExportData& data) :
   status (data.status),
   filename (data.filename),
-  vmin (data.vmin),
-  vmax (data.vmax),
   id (data.id),
   parent_id (data.parent_id),
   uid (data.uid),
@@ -570,13 +562,13 @@ pg_null (string& result)
 }
 
 string
-SQLExportData::copy_from_line() const
+SQLExportData::copy_from_line (unsigned int vmin) const
 {
   string result;
 
   pg_str (result, filename, true);
   pg_int (result, vmin);
-  pg_int (result, vmax);
+  pg_int (result, VERSION_INF);
   pg_str (result, id.str());
 
   if (id == id_root())
