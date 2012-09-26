@@ -326,6 +326,7 @@ def parse_config (filename):
   [
     "default",
     "expire",
+    "sql_export",
   ],
   [
     "repo-type",
@@ -346,6 +347,11 @@ def parse_config (filename):
     "expire/keep_monthly",
     "expire/create_yearly",
     "expire/keep_yearly",
+    "sql_export/database",
+    "sql_export/user",
+    "sql_export/password",
+    "sql_export/host",
+    "sql_export/port",
     "get-rate-limit",
     "put-rate-limit",
     "use-uid-gid",
