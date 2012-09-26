@@ -444,8 +444,14 @@ SQLExport::export_version (unsigned int version, const string& insert_filename, 
           filename = "";
         }
     }
+
+  const double export_start_time = gettime();
   SQLExportIterator sxi = SQLExportIterator (old_files, new_files);
   sxi.gen_files (version, insert_filename, delete_filename);
+  const double export_end_time = gettime();
+
+  printf ("### export time: %.2f\n", (export_end_time - export_start_time));
+  fflush (stdout);
 }
 
 //---------------------------- SQLExportData -----------------------------
