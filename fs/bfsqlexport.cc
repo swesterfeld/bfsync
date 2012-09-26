@@ -363,8 +363,8 @@ SQLExport::build_filelist (unsigned int version)
   return filelist_name;
 }
 
-SQLExportIterator
-SQLExport::export_version (unsigned int version)
+void
+SQLExport::export_version (unsigned int version, const string& insert_filename, const string& delete_filename)
 {
   sig_interrupted = false;
   string old_files = build_filelist (version - 1);
@@ -386,7 +386,31 @@ SQLExport::export_version (unsigned int version)
           filename = "";
         }
     }
-  return SQLExportIterator (old_files, new_files);
+  SQLExportIterator sxi = SQLExportIterator (old_files, new_files);
+  FILE *insert_file = fopen (insert_filename.c_str(), "w");
+  FILE *delete_file = fopen (delete_filename.c_str(), "w");
+
+  for (;;)
+    {
+      SQLExportData data = sxi.get_next();
+      if (data.status == SQLExportData::NONE)
+        break;
+
+      if (data.status == SQLExportData::DEL || data.status == SQLExportData::MOD)
+        {
+          fputs (data.delete_copy_from_line().c_str(), delete_file);
+        }
+
+      if (data.status == SQLExportData::ADD || data.status == SQLExportData::MOD)
+        {
+          data.vmin = version;
+          data.vmax = VERSION_INF;
+          fputs (data.copy_from_line().c_str(), insert_file);
+        }
+    }
+
+  fclose (delete_file);
+  fclose (insert_file);
 }
 
 //---------------------------- SQLExportData -----------------------------

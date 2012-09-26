@@ -140,28 +140,9 @@ def sql_export (repo, args):
     print "\n::: exporting version %d/%d :::" % (version, bdb_max_version)
     sys.stdout.flush()
 
-    insert_file = open (insert_filename, "w")
-    delete_file = open (delete_filename, "w")
-    sxi = sql_export.export_version (version)
+    sql_export.export_version (version, insert_filename, delete_filename)
+
     sql_start_time = time.time()
-    while True:
-      data = sxi.get_next()
-      if data.status == data.NONE:
-        break
-
-      # continue
-
-      if data.status == data.DEL or data.status == data.MOD:
-        delete_file.write (data.delete_copy_from_line())
-
-      if data.status == data.ADD or data.status == data.MOD:
-        data.vmin = version
-        data.vmax = bfsyncdb.VERSION_INF
-        insert_file.write (data.copy_from_line())
-
-    insert_file.close()
-    delete_file.close()
-
     cur.execute ("DELETE FROM temp_delete")
 
     delete_file = open (delete_filename, "r")

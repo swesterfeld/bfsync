@@ -524,7 +524,7 @@ public:
   SQLExport (BDBPtr bdb);
   ~SQLExport();
 
-  SQLExportIterator export_version (unsigned int version);
+  void export_version (unsigned int version, const std::string& insert_filename, const std::string& delete_filename);
 };
 
 class BDBException
