@@ -501,21 +501,42 @@ SQLExportData::~SQLExportData()
 static void
 pg_str (string& result, const string& str, bool first = false)
 {
+  // escaping will at most produce twice as many chars
+  // + 1 for tab
+  // + 1 for \0 at end
+  char buffer[str.size() * 2 + 1 + 1], *bp = buffer;
   if (!first)
-    result += "\t";
-  for (string::const_iterator si = str.begin(); si != str.end(); si++)
+    {
+      *bp++ = '\t';
+    }
+  for (const char *si = str.c_str(); *si; si++)
     {
       if (*si == '\\')
-        result += "\\\\";
+        {
+          *bp++ = '\\';
+          *bp++ = '\\';
+        }
       else if (*si == '\n')
-        result += "\\n";
+        {
+          *bp++ = '\\';
+          *bp++ = 'n';
+        }
       else if (*si == '\r')
-        result += "\\r";
+        {
+          *bp++ = '\\';
+          *bp++ = 'r';
+        }
       else if (*si == '\t')
-        result += "\\t";
+        {
+          *bp++ = '\\';
+          *bp++ = 't';
+        }
       else
-        result += *si;
+        {
+          *bp++ = *si;
+        }
     }
+  result.append (buffer, bp - buffer);
 }
 
 static void
