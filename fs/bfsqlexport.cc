@@ -109,6 +109,27 @@ same_data (const SQLExportData& d1, const SQLExportData& d2)
 
 //##############################################################################
 
+class SQLExportIterator
+{
+  FILE         *old_f;
+  bool          old_eof;
+  SQLExportData old_data;
+
+  FILE         *new_f;
+  bool          new_eof;
+  SQLExportData new_data;
+
+  std::string   old_files;
+  std::string   new_files;
+
+  enum { OLD, NEW, BOTH } next_read;
+public:
+  SQLExportIterator (const std::string& old_files, const std::string& new_files);
+  ~SQLExportIterator();
+
+  SQLExportData get_next();
+};
+
 SQLExportIterator::SQLExportIterator (const string& old_files, const string& new_files) :
   old_f (0),
   new_f (0),

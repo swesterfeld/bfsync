@@ -480,27 +480,6 @@ struct SQLExportData
 };
 
 
-class SQLExportIterator
-{
-  FILE         *old_f;
-  bool          old_eof;
-  SQLExportData old_data;
-
-  FILE         *new_f;
-  bool          new_eof;
-  SQLExportData new_data;
-
-  std::string   old_files;
-  std::string   new_files;
-
-  enum { OLD, NEW, BOTH } next_read;
-public:
-  SQLExportIterator (const std::string& old_files, const std::string& new_files);
-  ~SQLExportIterator();
-
-  SQLExportData get_next();
-};
-
 class SQLExport
 {
   unsigned int version;
