@@ -36,16 +36,52 @@ def sql_export (repo, args):
   parsed_args = parser.parse_args (args)
 
   connection_args = dict()
+  have_cmdline_args = False
   if (parsed_args.d):
     connection_args["database"] = parsed_args.d
+    have_cmdline_args = True
   if (parsed_args.u):
     connection_args["user"] = parsed_args.u
+    have_cmdline_args = True
   if (parsed_args.w):
     connection_args["password"] = parsed_args.w
+    have_cmdline_args = True
   if (parsed_args.H):
     connection_args["host"] = parsed_args.H
+    have_cmdline_args = True
   if (parsed_args.p):
     connection_args["port"] = parsed_args.p
+    have_cmdline_args = True
+
+  def cfg_value (name):
+    xlist = repo.config.get ("sql-export/%s" % name)
+    print name, xlist
+    if len (xlist) > 1:
+      raise BFSyncError ("sql-export: need at most sql-export/%s entry" % name)
+    if len (xlist) == 0:
+      return None
+    else:
+      return xlist[0]
+
+  if not have_cmdline_args:
+    have_config_args = False
+    if cfg_value ("database"):
+      connection_args["database"] = cfg_value ("database")
+      have_config_args = True
+    if cfg_value ("user"):
+      connection_args["user"] = cfg_value ("user")
+      have_config_args = True
+    if cfg_value ("password"):
+      connection_args["password"] = cfg_value ("password")
+      have_config_args = True
+    if cfg_value ("host"):
+      connection_args["host"] = cfg_value ("host")
+      have_config_args = True
+    if cfg_value ("port"):
+      connection_args["port"] = cfg_value ("port")
+      have_config_args = True
+    if not have_config_args:
+      raise BFSyncError ("sql-export: no commandline arguments given and no sql-export config values found")
 
   conn = dbapi2.connect (**connection_args)
   cur = conn.cursor ()
