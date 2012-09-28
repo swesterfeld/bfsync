@@ -55,7 +55,6 @@ def sql_export (repo, args):
 
   def cfg_value (name):
     xlist = repo.config.get ("sql-export/%s" % name)
-    print name, xlist
     if len (xlist) > 1:
       raise BFSyncError ("sql-export: need at most sql-export/%s entry" % name)
     if len (xlist) == 0:
