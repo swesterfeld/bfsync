@@ -153,6 +153,12 @@ class CfgParser:
       raise Exception ("unsupported key %s" % key)
     self.values[key] = values
 
+  def unset (self, key):
+    if key not in self.allow_keys:
+      raise Exception ("unsupported key %s" % key)
+    if key in self.values:
+      del self.values[key]
+
   def to_string (self):
     def maybe_quote (value):
       if re.match ("^[a-zA-Z0-9_:.@/-]+$", value):

@@ -979,6 +979,20 @@ def cmd_config_set():
   f.write (repo_config.to_string())
   f.close()
 
+def cmd_config_unset():
+  repo_path = find_repo_dir()
+  repo_config_filename = os.path.join (repo_path, "config")
+  repo_config = parse_config (repo_config_filename)
+
+  key = args[0]
+
+  repo_config.unset (key)
+
+  # write new config file
+  f = open (repo_config_filename, "w")
+  f.write (repo_config.to_string())
+  f.close()
+
 def cmd_show_tags():
   repo = cd_repo_connect_db()
 
@@ -1359,6 +1373,7 @@ def main():
       ( "need-continue",          cmd_need_continue, 1),
       ( "disk-usage",             cmd_disk_usage, 1),
       ( "config-set",             cmd_config_set, 1),
+      ( "config-unset",           cmd_config_unset, 1),
       ( "show-tags",              cmd_show_tags, 1),
       ( "delete-version",         cmd_delete_version, 1),
       ( "undelete-version",       cmd_undelete_version, 1),
