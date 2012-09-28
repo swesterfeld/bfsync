@@ -106,7 +106,10 @@ FILE*
 debug_file()
 {
   if (!bf_debug_file)
-    bf_debug_file = fopen ("/tmp/bfsyncfs.log", "w");
+    {
+      string debug_filename = string_printf ("/tmp/bfsyncfs.log.%d", getpid());
+      bf_debug_file = fopen (debug_filename.c_str(), "w");
+    }
 
   return bf_debug_file;
 }
@@ -751,7 +754,8 @@ bfsync_release (const char *path, struct fuse_file_info *fi)
 
   FSLock lock (fh->open_for_write ? FSLock::WRITE : FSLock::READ);
 
-  close (fh->fd);
+  if (fh->fd != -1)
+    close (fh->fd);
   delete fh;
   return 0;
 }
