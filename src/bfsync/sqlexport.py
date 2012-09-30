@@ -91,6 +91,10 @@ def sql_export (repo, args):
         DROP TABLE IF EXISTS history;
         DROP TABLE IF EXISTS tags;
         DROP TABLE IF EXISTS files;
+        DROP TABLE IF EXISTS temp_delete;
+
+        DROP INDEX IF EXISTS files_fn_idx;
+        DROP INDEX IF EXISTS temp_delete_fn_idx;
       """)
       conn.commit()
       print "Reset: reinitialized all database tables."
@@ -131,15 +135,13 @@ def sql_export (repo, args):
         mtime     bigint,
         mtime_ns  integer
       );
+
       CREATE TABLE IF NOT EXISTS temp_delete (
         filename  varchar
       );
 
-      DROP INDEX IF EXISTS files_fn_idx;
-      CREATE INDEX files_fn_idx ON files (filename, vmin);
-
-      DROP INDEX IF EXISTS temp_delete_fn_idx;
-      CREATE INDEX temp_delete_fn_idx ON temp_delete (filename);
+      CREATE INDEX IF NOT EXISTS files_fn_idx ON files (filename, vmin);
+      CREATE INDEX IF NOT EXISTS temp_delete_fn_idx ON temp_delete (filename);
     """)
 
   # compute max version that was already imported earlier
