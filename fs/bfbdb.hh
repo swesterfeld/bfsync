@@ -153,6 +153,7 @@ class BDB
 
   std::string  pid_filename;
   std::string  repo_path;
+  std::string  m_repo_id;
 
   std::vector<char> m_multi_data_buffer;
 
@@ -164,11 +165,12 @@ class BDB
   BDBError ret2error (int ret);
 
 public:
-  Db*       get_db();
-  Db*       get_db_hash2file();
-  Db*       get_db_sql_export();
-  DbEnv*    get_db_env();
-  History*  history();
+  Db*         get_db();
+  Db*         get_db_hash2file();
+  Db*         get_db_sql_export();
+  DbEnv*      get_db_env();
+  History*    history();
+  std::string repo_id();
 
   BDB();
 

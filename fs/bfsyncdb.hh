@@ -460,6 +460,7 @@ class SQLExport
   BFSync::DataOutBuffer               out_buffer;
   BFSync::DataOutBuffer               len_buffer;
   std::map<unsigned int, std::string> filelist_map;
+  std::string                         m_repo_id;
 
   void walk (const ID& id, const ID& parent_id, const std::string& name, FILE *file);
   void maybe_split_transaction();
@@ -471,6 +472,7 @@ public:
   ~SQLExport();
 
   void export_version (unsigned int version, const std::string& insert_filename, const std::string& delete_filename);
+  std::string repo_id();
 };
 
 class BDBException

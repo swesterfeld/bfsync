@@ -47,7 +47,7 @@ struct SQLExportData
   SQLExportData (const SQLExportData& data);
   ~SQLExportData();
 
-  std::string copy_from_line (unsigned int vmin) const;
+  std::string copy_from_line (const string& repo_id, unsigned int vmin) const;
   std::string delete_copy_from_line() const;
 
   enum { NONE, ADD, DEL, MOD } status;
@@ -142,22 +142,24 @@ same_data (const SQLExportData& d1, const SQLExportData& d2)
 
 class SQLExportIterator
 {
-  std::string   old_files;
-  std::string   new_files;
+  string   repo_id_stripped;
+  string   old_files;
+  string   new_files;
 
-  FILE         *insert_file;
-  FILE         *delete_file;
+  FILE    *insert_file;
+  FILE    *delete_file;
 
   void write_insert (const SQLExportData& data, unsigned int version);
   void write_modify (const SQLExportData& data, unsigned int version);
   void write_delete (const SQLExportData& data);
 public:
-  SQLExportIterator (const std::string& old_files, const std::string& new_files);
+  SQLExportIterator (const string& repo_id_stripped, const string& old_files, const string& new_files);
 
   void gen_files (unsigned int version, const string& insert_filename, const string& delete_filename);
 };
 
-SQLExportIterator::SQLExportIterator (const string& old_files, const string& new_files) :
+SQLExportIterator::SQLExportIterator (const string& repo_id_stripped, const string& old_files, const string& new_files) :
+  repo_id_stripped (repo_id_stripped),
   old_files (old_files),
   new_files (new_files)
 {
@@ -166,7 +168,7 @@ SQLExportIterator::SQLExportIterator (const string& old_files, const string& new
 void
 SQLExportIterator::write_insert (const SQLExportData& data, unsigned int version)
 {
-  fputs (data.copy_from_line (version).c_str(), insert_file);
+  fputs (data.copy_from_line (repo_id_stripped, version).c_str(), insert_file);
 }
 
 void
@@ -269,6 +271,13 @@ SQLExport::SQLExport (BDBPtr bdb_ptr) :
 {
   scan_ops = 0;
   start_time = gettime();
+
+  string repo_id = bdb_ptr.get_bdb()->repo_id();
+  for (string::const_iterator ri = repo_id.begin(); ri != repo_id.end(); ri++)
+    {
+      if (*ri != '-')
+        m_repo_id += *ri;
+    }
 }
 
 SQLExport::~SQLExport()
@@ -447,12 +456,18 @@ SQLExport::export_version (unsigned int version, const string& insert_filename, 
     }
 
   const double export_start_time = gettime();
-  SQLExportIterator sxi = SQLExportIterator (old_files, new_files);
+  SQLExportIterator sxi = SQLExportIterator (repo_id(), old_files, new_files);
   sxi.gen_files (version, insert_filename, delete_filename);
   const double export_end_time = gettime();
 
   printf ("### export time: %.2f\n", (export_end_time - export_start_time));
   fflush (stdout);
+}
+
+string
+SQLExport::repo_id()
+{
+  return m_repo_id;
 }
 
 //---------------------------- SQLExportData -----------------------------
@@ -585,11 +600,12 @@ x_basename (const string& filename)
 }
 
 string
-SQLExportData::copy_from_line (unsigned int vmin) const
+SQLExportData::copy_from_line (const string& repo_id_stripped, unsigned int vmin) const
 {
   string result;
 
-  pg_str (result, get_dirname (filename), true);
+  pg_str (result, repo_id_stripped, true);
+  pg_str (result, get_dirname (filename));
   pg_str (result, x_basename (filename));
   pg_int (result, vmin);
   pg_int (result, VERSION_INF);

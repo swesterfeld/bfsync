@@ -118,6 +118,7 @@ def sql_export (repo, args):
       cur.execute ("""
         DROP TABLE IF EXISTS history;
         CREATE TABLE history (
+          repo_id   varchar,
           version   integer,
           hash      varchar,
           author    varchar,
@@ -127,6 +128,7 @@ def sql_export (repo, args):
 
         DROP TABLE IF EXISTS tags;
         CREATE TABLE tags (
+          repo_id   varchar,
           version   integer,
           tag       varchar,
           value     varchar
@@ -134,6 +136,7 @@ def sql_export (repo, args):
 
         DROP TABLE IF EXISTS files;
         CREATE TABLE files (
+          repo_id   varchar,
           pathname  varchar,
           filename  varchar,
           vmin      bigint,
@@ -163,7 +166,7 @@ def sql_export (repo, args):
         );
 
         DROP INDEX IF EXISTS files_fn_idx;
-        CREATE INDEX files_fn_idx ON files (pathname, filename, vmin);
+        CREATE INDEX files_fn_idx ON files (repo_id, pathname, filename, vmin);
 
         DROP INDEX IF EXISTS temp_delete_fn_idx;
         CREATE INDEX temp_delete_fn_idx ON temp_delete (pathname, filename);
@@ -218,9 +221,10 @@ def sql_export (repo, args):
       cur.copy_from (delete_file, "temp_delete")
       delete_file.close()
 
-      cur.execute ("""UPDATE files SET vmax = %s FROM temp_delete WHERE files.pathname = temp_delete.pathname AND
+      cur.execute ("""UPDATE files SET vmax = %s FROM temp_delete WHERE files.repo_id = %s AND
+                                                                        files.pathname = temp_delete.pathname AND
                                                                         files.filename = temp_delete.filename AND vmax = %s""",
-                   (version - 1, bfsyncdb.VERSION_INF))
+                   (version - 1, sql_export.repo_id(), bfsyncdb.VERSION_INF))
       cur.execute ("DELETE FROM temp_delete")
 
       insert_file = open (insert_filename, "r")
@@ -230,9 +234,9 @@ def sql_export (repo, args):
       # import history entry
 
       hentry = repo.bdb.load_history_entry (version)
-      fields = ( hentry.version, hentry.hash, hentry.author, hentry.message, hentry.time )
+      fields = ( sql_export.repo_id(), hentry.version, hentry.hash, hentry.author, hentry.message, hentry.time )
       if WITH_SQL:
-        cur.execute ("INSERT INTO history (version, hash, author, message, time) VALUES (%s, %s, %s, %s, %s)", fields)
+        cur.execute ("INSERT INTO history (repo_id, version, hash, author, message, time) VALUES (%s, %s, %s, %s, %s, %s)", fields)
 
       # import tags
 
@@ -240,8 +244,8 @@ def sql_export (repo, args):
       for t in tags:
         values = repo.bdb.load_tag (hentry.version, t)
         for v in values:
-          fields = (hentry.version, t, v)
-          cur.execute ("INSERT INTO tags (version, tag, value) VALUES (%s, %s, %s)", fields)
+          fields = (sql_export.repo_id(), hentry.version, t, v)
+          cur.execute ("INSERT INTO tags (repo_id, version, tag, value) VALUES (%s, %s, %s, %s)", fields)
 
       conn.commit()
       sql_end_time = time.time()

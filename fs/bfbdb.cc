@@ -148,6 +148,27 @@ BDB::open (const string& path, int cache_size_mb, bool recover)
 
       repo_path = path;
 
+      /* load repo id */
+      CfgParser repo_info_parser;
+      if (!repo_info_parser.parse (path + "/info"))
+        {
+          printf ("parse error in repo info:\n%s\n", repo_info_parser.error().c_str());
+          return false;
+        }
+
+      map<string, vector<string> > info_values = repo_info_parser.values();
+      const vector<string>& repo_id = info_values["repo-id"];
+      if (repo_id.size() == 1)
+        {
+          m_repo_id = repo_id[0];
+        }
+      else
+        {
+          printf ("No repo-id entry found in '%s/info'.\n", path.c_str());
+          return false;
+        }
+
+      /* open environment */
       db_env = new DbEnv (DB_CXX_NO_EXCEPTIONS);
 
       db_env->set_shm_key (shm_id (path));
@@ -689,6 +710,12 @@ History*
 BDB::history()
 {
   return &m_history;
+}
+
+string
+BDB::repo_id()
+{
+  return m_repo_id;
 }
 
 DataBuffer::DataBuffer (const char *ptr, size_t size) :
@@ -1707,60 +1734,46 @@ make_shm_key (int n)
 int
 BDB::shm_id (const string& path)
 {
-  CfgParser repo_info_parser;
-  if (!repo_info_parser.parse (path + "/info"))
-    {
-      printf ("parse error in repo info:\n%s\n", repo_info_parser.error().c_str());
-      exit (1);
-    }
+  assert (m_repo_id != "");
 
   int new_key = 1;
 
-  map<string, vector<string> > info_values = repo_info_parser.values();
-  const vector<string>& repo_id = info_values["repo-id"];
-  if (repo_id.size() == 1)
+  string keys_filename = string_printf ("%s/%s", g_get_home_dir(), ".bfsync_keys");
+  if (g_file_test (keys_filename.c_str(), GFileTest (G_FILE_TEST_IS_REGULAR | G_FILE_TEST_EXISTS)))
     {
-      string keys_filename = string_printf ("%s/%s", g_get_home_dir(), ".bfsync_keys");
-      if (g_file_test (keys_filename.c_str(), GFileTest (G_FILE_TEST_IS_REGULAR | G_FILE_TEST_EXISTS)))
+      CfgParser keys_parser;
+      if (keys_parser.parse (keys_filename))
         {
-          CfgParser keys_parser;
-          if (keys_parser.parse (keys_filename))
+          map<string, vector<string> > keys_values = keys_parser.values();
+          for (map<string, vector<string> >::iterator i = keys_values.begin(); i != keys_values.end(); i++)
             {
-              map<string, vector<string> > keys_values = keys_parser.values();
-              for (map<string, vector<string> >::iterator i = keys_values.begin(); i != keys_values.end(); i++)
-                {
-                  for (size_t k = 0; k < i->second.size(); k++)
-                    new_key = std::max (atoi (i->second[k].c_str()) + 1, new_key);
-                }
-
-              vector<string>& v = keys_values["key-" + repo_id[0]];
-              if (v.size() == 1)
-                {
-                  return make_shm_key (atoi (v[0].c_str()));
-                }
+              for (size_t k = 0; k < i->second.size(); k++)
+                new_key = std::max (atoi (i->second[k].c_str()) + 1, new_key);
             }
-          else
+
+          vector<string>& v = keys_values["key-" + m_repo_id];
+          if (v.size() == 1)
             {
-              printf ("parse error in %s:\n%s\n", keys_filename.c_str(), keys_parser.error().c_str());
+              return make_shm_key (atoi (v[0].c_str()));
             }
         }
-      string apath;
-
-      if (!g_path_is_absolute (path.c_str()))
-        apath = g_get_current_dir() + string (G_DIR_SEPARATOR + path);
       else
-        apath = path;
+        {
+          printf ("parse error in %s:\n%s\n", keys_filename.c_str(), keys_parser.error().c_str());
+        }
+    }
+  string apath;
 
-      FILE *keys_file = fopen (keys_filename.c_str(), "a");
-      assert (keys_file);
-      fprintf (keys_file, "key-%s %d; # path \"%s\"\n", repo_id[0].c_str(), new_key, apath.c_str());
-      fclose (keys_file);
-    }
+  if (!g_path_is_absolute (path.c_str()))
+    apath = g_get_current_dir() + string (G_DIR_SEPARATOR + path);
   else
-    {
-      printf ("No repo-id entry found in '%s/info'.\n", path.c_str());
-      exit (1);
-    }
+    apath = path;
+
+  FILE *keys_file = fopen (keys_filename.c_str(), "a");
+  assert (keys_file);
+  fprintf (keys_file, "key-%s %d; # path \"%s\"\n", m_repo_id.c_str(), new_key, apath.c_str());
+  fclose (keys_file);
+
   return make_shm_key (new_key);
 }
 
