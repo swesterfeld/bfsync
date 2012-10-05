@@ -238,20 +238,22 @@ def sql_export (repo, args):
       if WITH_SQL:
         cur.execute ("INSERT INTO history (repo_id, version, hash, author, message, time) VALUES (%s, %s, %s, %s, %s, %s)", fields)
 
-      # import tags
-
-      tags = repo.bdb.list_tags (hentry.version)
-      for t in tags:
-        values = repo.bdb.load_tag (hentry.version, t)
-        for v in values:
-          fields = (sql_export.repo_id(), hentry.version, t, v)
-          cur.execute ("INSERT INTO tags (repo_id, version, tag, value) VALUES (%s, %s, %s, %s)", fields)
-
       conn.commit()
       sql_end_time = time.time()
 
       print "### sql time: %.2f" % (sql_end_time - sql_start_time)
       sys.stdout.flush()
+
+  # import tags
+  cur.execute ("DELETE FROM tags WHERE repo_id = %s", (sql_export.repo_id(), ))
+  for version in range (1, bdb_max_version + 1):
+    tags = repo.bdb.list_tags (version)
+    for t in tags:
+      values = repo.bdb.load_tag (version, t)
+      for v in values:
+        fields = (sql_export.repo_id(), version, t, v)
+        cur.execute ("INSERT INTO tags (repo_id, version, tag, value) VALUES (%s, %s, %s, %s)", fields)
+  conn.commit()
 
   cur.close()
   conn.close()
