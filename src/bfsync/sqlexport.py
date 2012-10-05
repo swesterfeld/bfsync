@@ -174,11 +174,13 @@ def sql_export (repo, args):
       conn.commit()
       print "Reset: reinitialized all database tables."
 
+  sql_export = bfsyncdb.SQLExport (repo.bdb)
+
   # compute max version that was already imported earlier
   sql_max_version = 0
 
   if WITH_SQL:
-    cur.execute ("SELECT (version) FROM history;")
+    cur.execute ("SELECT (version) FROM history WHERE repo_id = %s;", (sql_export.repo_id(), ))
     while True:
       row = cur.fetchone()
       if not row:
@@ -204,8 +206,6 @@ def sql_export (repo, args):
   insert_filename = repo.make_temp_name()
   delete_filename = repo.make_temp_name()
   repo.bdb.commit_transaction()
-
-  sql_export = bfsyncdb.SQLExport (repo.bdb)
 
   for version in range (sql_max_version + 1, bdb_max_version + 1):
     print "\n::: exporting version %d/%d :::" % (version, bdb_max_version)
