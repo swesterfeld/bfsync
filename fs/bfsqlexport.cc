@@ -36,6 +36,7 @@ using std::map;
 
 using BFSync::gettime;
 using BFSync::get_basename;
+using BFSync::get_dirname;
 using BFSync::string_printf;
 using BFSync::DataBuffer;
 using BFSync::DataOutBuffer;
@@ -574,12 +575,22 @@ pg_null (string& result)
   result += "\t\\N";
 }
 
+static string
+x_basename (const string& filename)
+{
+  if (filename == "/")
+    return "";
+  else
+    return get_basename (filename);
+}
+
 string
 SQLExportData::copy_from_line (unsigned int vmin) const
 {
   string result;
 
-  pg_str (result, filename, true);
+  pg_str (result, get_dirname (filename), true);
+  pg_str (result, x_basename (filename));
   pg_int (result, vmin);
   pg_int (result, VERSION_INF);
   pg_str (result, id.str());
@@ -612,6 +623,7 @@ string
 SQLExportData::delete_copy_from_line() const
 {
   string result;
-  pg_str (result, filename, true);
+  pg_str (result, get_dirname (filename), true);
+  pg_str (result, x_basename (filename));
   return result + "\n";
 }

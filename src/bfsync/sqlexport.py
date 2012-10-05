@@ -92,7 +92,7 @@ def sql_export (repo, args):
         version   integer
       )""")
     db_sql_export_version = 0
-    my_sql_export_version = 1     # bump this version if db layout changes
+    my_sql_export_version = 2     # bump this version if db layout changes
     reset = False
 
     if WITH_SQL:
@@ -134,6 +134,7 @@ def sql_export (repo, args):
 
         DROP TABLE IF EXISTS files;
         CREATE TABLE files (
+          pathname  varchar,
           filename  varchar,
           vmin      bigint,
           vmax      bigint,
@@ -157,14 +158,15 @@ def sql_export (repo, args):
 
         DROP TABLE IF EXISTS temp_delete;
         CREATE TABLE temp_delete (
+          pathname  varchar,
           filename  varchar
         );
 
         DROP INDEX IF EXISTS files_fn_idx;
-        CREATE INDEX files_fn_idx ON files (filename, vmin);
+        CREATE INDEX files_fn_idx ON files (pathname, filename, vmin);
 
         DROP INDEX IF EXISTS temp_delete_fn_idx;
-        CREATE INDEX temp_delete_fn_idx ON temp_delete (filename);
+        CREATE INDEX temp_delete_fn_idx ON temp_delete (pathname, filename);
         """)
       conn.commit()
       print "Reset: reinitialized all database tables."
@@ -216,7 +218,8 @@ def sql_export (repo, args):
       cur.copy_from (delete_file, "temp_delete")
       delete_file.close()
 
-      cur.execute ("UPDATE files SET vmax = %s FROM temp_delete WHERE files.filename = temp_delete.filename AND vmax = %s",
+      cur.execute ("""UPDATE files SET vmax = %s FROM temp_delete WHERE files.pathname = temp_delete.pathname AND
+                                                                        files.filename = temp_delete.filename AND vmax = %s""",
                    (version - 1, bfsyncdb.VERSION_INF))
       cur.execute ("DELETE FROM temp_delete")
 
