@@ -290,6 +290,7 @@ def cd_repo_connect_db (cont = False):
 
   repo.path = repo_path
   repo.config = bfsync_config
+  repo.info = bfsync_info
 
   if not cont:
     # wipe old temp files (only if we're not starting in "continue" mode)

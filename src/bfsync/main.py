@@ -316,6 +316,12 @@ def cmd_debug_inode_name():
   version = int (args[1])
   print repo.printable_name (inode_id, version)
 
+def cmd_get_repo_id():
+  repo = cd_repo_connect_db()
+  rid = repo.info.get ("repo-id")
+  assert (len (rid) == 1)
+  print rid[0]
+
 def cmd_log():
   parser = argparse.ArgumentParser (prog='bfsync log')
   parser.add_argument ("-a", action="store_true", dest="all", default=False)
@@ -1380,6 +1386,7 @@ def main():
       ( "transfer-bench",         cmd_transfer_bench, 1),
       ( "upgrade",                cmd_upgrade, 1),
       ( "sql-export",             cmd_sql_export, 1),
+      ( "get-repo-id",            cmd_get_repo_id, 0),
       ( "inr-test",               cmd_inr_test, 1),
       ( "debug-add-tag",          cmd_debug_add_tag, 1),
       ( "debug-del-tag",          cmd_debug_del_tag, 1),
