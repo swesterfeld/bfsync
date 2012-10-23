@@ -1251,6 +1251,34 @@ def cmd_new_files():
         size_fmt = dot_format (f[0])
       print "%20s | %s" % (size_fmt, f[1])
 
+def cmd_find_missing():
+  parser = argparse.ArgumentParser (prog='bfsync find-missing')
+  parser.add_argument ("-0", "--null",
+                  action="store_true", dest="null", default=False)
+  find_missing_args = parser.parse_args (args)
+  null = find_missing_args.null
+
+  repo = cd_repo_connect_db()
+  VERSION = repo.first_unused_version()
+
+  def walk (id, prefix):
+    inode = repo.bdb.load_inode (id, VERSION)
+    if inode.valid:
+      if inode.type == bfsyncdb.FILE_REGULAR and len (inode.hash) == 40:
+        if not repo.validate_object (inode.hash):
+          if null:
+            sys.stdout.write (prefix + '\0')
+          else:
+            print prefix
+      # recurse into subdirs
+      if inode.type == bfsyncdb.FILE_DIR:
+        links = repo.bdb.load_links (id, VERSION)
+        for link in links:
+          inode_name = prefix + "/" + link.name
+          walk (link.inode_id, inode_name)
+
+  walk (bfsyncdb.id_root(), "")
+
 def cmd_inr_test():
   repo = cd_repo_connect_db()
 
@@ -1387,6 +1415,7 @@ def main():
       ( "upgrade",                cmd_upgrade, 1),
       ( "sql-export",             cmd_sql_export, 1),
       ( "get-repo-id",            cmd_get_repo_id, 0),
+      ( "find-missing",           cmd_find_missing, 1),
       ( "inr-test",               cmd_inr_test, 1),
       ( "debug-add-tag",          cmd_debug_add_tag, 1),
       ( "debug-del-tag",          cmd_debug_del_tag, 1),
