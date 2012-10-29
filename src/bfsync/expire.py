@@ -143,7 +143,7 @@ def expire (repo, args):
 
   ## generate keep set for most recent versions
 
-  keep_most_recent = cfg_number ("keep_most_recent")
+  keep_most_recent = cfg_number ("keep-most-recent")
   recent_start = first_unused_version - keep_most_recent
   recent_start = max (1, recent_start)
 
@@ -166,7 +166,7 @@ def expire (repo, args):
   ## tag backups (not weekly)
 
   def group_and_tag (versions, ftime, tag):
-    create_first = cfg_first ("create_" + tag)
+    create_first = cfg_first ("create-" + tag)
     group_dict = group_versions (versions, ftime)
 
     for group_str in group_dict:
@@ -186,7 +186,7 @@ def expire (repo, args):
 
   ## tag weekly backups
 
-  create_weekly = day2index (cfg_value ("create_weekly"))
+  create_weekly = day2index (cfg_value ("create-weekly"))
   week_dict = group_versions (daily_backups, "%Y%W")
 
   for week_nr in week_dict:
@@ -211,7 +211,7 @@ def expire (repo, args):
       if btype + "-candidate" in values:
         keep.add (version)
 
-    number_of_backups_to_keep = cfg_number ("keep_" + btype)
+    number_of_backups_to_keep = cfg_number ("keep-" + btype)
     bstart = max (len (backup_list) - number_of_backups_to_keep, 0)
     for version in backup_list[bstart:]:
       keep.add (version)
