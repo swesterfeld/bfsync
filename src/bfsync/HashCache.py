@@ -96,10 +96,11 @@ class HashCache:
     stat = os.stat (filename)
     l = [
       filename,
-      stat.st_mode, stat.st_ino, stat.st_dev, stat.st_nlink,
+      stat.st_mode, stat.st_ino, stat.st_nlink,
       stat.st_uid, stat.st_gid, stat.st_size,
       stat.st_mtime, stat.st_ctime,
       # stat.st_atime, - we keep out atime to allow reading file without changing the hash value
+      # stat.st_dev    - we keep out device since usb devices can change device stat entry
     ]
     stat_hash = hashlib.sha1 (cPickle.dumps (l)).hexdigest()
     return stat_hash
