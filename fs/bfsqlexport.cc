@@ -419,11 +419,11 @@ SQLExport::build_filelist (unsigned int version)
   FILE *file = fopen (filelist_name.c_str(), "w");
   assert (file);
 
-  const double version_start_time = gettime();
+  // const double version_start_time = gettime();
   bdb_ptr.begin_transaction();
   walk (id_root(), id_root(), "", file);
   bdb_ptr.commit_transaction();
-  const double version_end_time = gettime();
+  // const double version_end_time = gettime();
   fclose (file);
 
   // printf ("### filelist time: %.2f\n", (version_end_time - version_start_time));
@@ -461,10 +461,10 @@ SQLExport::export_version (unsigned int version, unsigned int max_version,
         }
     }
 
-  const double export_start_time = gettime();
+  // const double export_start_time = gettime();
   SQLExportIterator sxi = SQLExportIterator (repo_id(), old_files, new_files);
   sxi.gen_files (version, insert_filename, delete_filename);
-  const double export_end_time = gettime();
+  // const double export_end_time = gettime();
 
   // printf ("### export time: %.2f\n", (export_end_time - export_start_time));
   // fflush (stdout);
