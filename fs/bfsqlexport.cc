@@ -338,7 +338,7 @@ SQLExport::walk (const ID& id, const ID& parent_id, const string& prefix, FILE *
 
       maybe_split_transaction();
       scan_ops++;
-      update_status();
+      update_status ("scanning", false);
 
       if (inode.type == BFSync::FILE_DIR)
         {
@@ -375,14 +375,15 @@ SQLExport::maybe_split_transaction()
 }
 
 void
-SQLExport::update_status()
+SQLExport::update_status (const string& op_name, bool force_update)
 {
   const double time = gettime();
-  if (fabs (time - last_status_time) > 1)
+  if (fabs (time - last_status_time) > 1 || force_update)
     {
       last_status_time = time;
-      printf ("%d | %.2f scan_ops/sec\n", scan_ops, scan_ops / (time - start_time));
+      printf ("\rEXPORT: version %d/%d (scanned %d entries) - %s ", status_version, status_max_version, scan_ops, op_name.c_str());
       fflush (stdout);
+      // printf ("%d | %.2f scan_ops/sec\n", scan_ops, scan_ops / (time - start_time));
 
       if (!sig_interrupted && PyErr_CheckSignals())
         sig_interrupted = true;
@@ -425,15 +426,20 @@ SQLExport::build_filelist (unsigned int version)
   const double version_end_time = gettime();
   fclose (file);
 
-  printf ("### filelist time: %.2f\n", (version_end_time - version_start_time));
-  fflush (stdout);
+  // printf ("### filelist time: %.2f\n", (version_end_time - version_start_time));
+  // fflush (stdout);
 
   return filelist_name;
 }
 
 void
-SQLExport::export_version (unsigned int version, const string& insert_filename, const string& delete_filename)
+SQLExport::export_version (unsigned int version, unsigned int max_version,
+                           const string& insert_filename, const string& delete_filename)
 {
+  status_version = version;
+  status_max_version = max_version;
+  update_status ("scanning", true);
+
   sig_interrupted = false;
   string old_files = build_filelist (version - 1);
   if (sig_interrupted)
@@ -460,8 +466,8 @@ SQLExport::export_version (unsigned int version, const string& insert_filename, 
   sxi.gen_files (version, insert_filename, delete_filename);
   const double export_end_time = gettime();
 
-  printf ("### export time: %.2f\n", (export_end_time - export_start_time));
-  fflush (stdout);
+  // printf ("### export time: %.2f\n", (export_end_time - export_start_time));
+  // fflush (stdout);
 }
 
 string

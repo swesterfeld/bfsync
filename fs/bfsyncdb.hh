@@ -457,6 +457,9 @@ class SQLExport
   double       start_time;
   bool         sig_interrupted;
 
+  unsigned int status_version;
+  unsigned int status_max_version;
+
   BFSync::DataOutBuffer               out_buffer;
   BFSync::DataOutBuffer               len_buffer;
   std::map<unsigned int, std::string> filelist_map;
@@ -464,15 +467,16 @@ class SQLExport
 
   void walk (const ID& id, const ID& parent_id, const std::string& name, FILE *file);
   void maybe_split_transaction();
-  void update_status();
   std::string build_filelist (unsigned int version);
 
 public:
   SQLExport (BDBPtr bdb);
   ~SQLExport();
 
-  void export_version (unsigned int version, const std::string& insert_filename, const std::string& delete_filename);
+  void export_version (unsigned int version, unsigned int max_version,
+                       const std::string& insert_filename, const std::string& delete_filename);
   std::string repo_id();
+  void update_status (const std::string& op_name, bool force_update);
 };
 
 class BDBException
