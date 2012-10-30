@@ -180,12 +180,15 @@ def sql_export (repo, args):
   sql_max_version = 0
 
   if WITH_SQL:
-    cur.execute ("SELECT (version) FROM history WHERE repo_id = %s;", (sql_export.repo_id(), ))
+    cur.execute ("SELECT version, hash, author, message, time FROM history WHERE repo_id = %s;", (sql_export.repo_id(), ))
     while True:
       row = cur.fetchone()
       if not row:
         break
       version = row[0]
+      hentry = repo.bdb.load_history_entry (version)
+      if not hentry.valid or hentry.hash != row[1] or hentry.author != row[2] or hentry.message != row[3] or hentry.time != row[4]:
+        raise BFSyncError ("export failed: history entry %d of sql table doesn't match repo history" % version)
       sql_max_version = max (sql_max_version, version)
 
   # compute max version in the Repository repo
@@ -207,8 +210,11 @@ def sql_export (repo, args):
   delete_filename = repo.make_temp_name()
   repo.bdb.commit_transaction()
 
+  need_clean_status = False
+
   for version in range (sql_max_version + 1, bdb_max_version + 1):
     sql_export.export_version (version, bdb_max_version, insert_filename, delete_filename)
+    need_clean_status = True
 
     if WITH_SQL:
       sql_export.update_status ("updating", True)
@@ -253,8 +259,10 @@ def sql_export (repo, args):
         fields = (sql_export.repo_id(), version, t, v)
         cur.execute ("INSERT INTO tags (repo_id, version, tag, value) VALUES (%s, %s, %s, %s)", fields)
   conn.commit()
-  sql_export.update_status ("done.    ", True)
-  print
+
+  if need_clean_status:
+    sql_export.update_status ("done.    ", True)
+    print
 
   cur.close()
   conn.close()
