@@ -208,12 +208,11 @@ def sql_export (repo, args):
   repo.bdb.commit_transaction()
 
   for version in range (sql_max_version + 1, bdb_max_version + 1):
-    print "\n::: exporting version %d/%d :::" % (version, bdb_max_version)
-    sys.stdout.flush()
-
-    sql_export.export_version (version, insert_filename, delete_filename)
+    sql_export.export_version (version, bdb_max_version, insert_filename, delete_filename)
 
     if WITH_SQL:
+      sql_export.update_status ("updating", True)
+
       sql_start_time = time.time()
       cur.execute ("DELETE FROM temp_delete")
 
@@ -241,8 +240,8 @@ def sql_export (repo, args):
       conn.commit()
       sql_end_time = time.time()
 
-      print "### sql time: %.2f" % (sql_end_time - sql_start_time)
-      sys.stdout.flush()
+      # print "### sql time: %.2f" % (sql_end_time - sql_start_time)
+      # sys.stdout.flush()
 
   # import tags
   cur.execute ("DELETE FROM tags WHERE repo_id = %s", (sql_export.repo_id(), ))
@@ -254,6 +253,8 @@ def sql_export (repo, args):
         fields = (sql_export.repo_id(), version, t, v)
         cur.execute ("INSERT INTO tags (repo_id, version, tag, value) VALUES (%s, %s, %s, %s)", fields)
   conn.commit()
+  sql_export.update_status ("done.    ", True)
+  print
 
   cur.close()
   conn.close()
