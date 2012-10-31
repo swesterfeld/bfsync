@@ -18,7 +18,6 @@
 from bfsync.utils import *
 from bfsync.xzutils import xzcat2
 from bfsync.diffutils import DiffIterator
-import psycopg2 as dbapi2
 from bfsync.StatusLine import status_line, OutputSubsampler
 import argparse
 import sys
@@ -26,6 +25,9 @@ import sys
 WITH_SQL = True
 
 def sql_export (repo, args):
+  # we don't want a dependency on psycopg2, so we only import it if we need it
+  import psycopg2 as dbapi2
+
   parser = argparse.ArgumentParser (prog='bfsync sql-export')
   parser.add_argument ('-d', help='set database')
   parser.add_argument ('-u', help='set user')
