@@ -233,7 +233,11 @@ SQLExportIterator::gen_files (unsigned int version, const string& insert_filenam
 
   BDBError err;
 
-  while (1)
+  bool open_ok = old_f && new_f && insert_file && delete_file;
+  if (!open_ok)
+    err = BFSync::BDB_ERROR_IO;
+
+  while (open_ok)
     {
       if (next_read == OLD || next_read == BOTH)
         {
@@ -295,9 +299,16 @@ SQLExportIterator::gen_files (unsigned int version, const string& insert_filenam
             }
         }
     }
-  fclose (delete_file);
-  fclose (insert_file);
-
+  if (delete_file)
+    {
+      fclose (delete_file);
+      delete_file = 0;
+    }
+  if (insert_file)
+    {
+      fclose (insert_file);
+      insert_file = 0;
+    }
   if (old_f)
     {
       fclose (old_f);
