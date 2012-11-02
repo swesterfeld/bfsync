@@ -477,7 +477,10 @@ SQLExport::build_filelist (unsigned int version, string& filename)
   last_status_time = 0;
 
   FILE *file = fopen (filelist_name.c_str(), "w");
-  assert (file);
+  if (!file)
+    {
+      return BFSync::BDB_ERROR_IO;
+    }
 
   // const double version_start_time = gettime();
   bdb_ptr.begin_transaction();
