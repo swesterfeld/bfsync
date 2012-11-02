@@ -165,9 +165,9 @@ class SQLExportIterator
   FILE    *insert_file;
   FILE    *delete_file;
 
-  void write_insert (const SQLExportData& data, unsigned int version);
-  void write_modify (const SQLExportData& data, unsigned int version);
-  void write_delete (const SQLExportData& data);
+  BDBError write_insert (const SQLExportData& data, unsigned int version);
+  BDBError write_modify (const SQLExportData& data, unsigned int version);
+  BDBError write_delete (const SQLExportData& data);
 public:
   SQLExportIterator (const string& repo_id_stripped, const string& old_files, const string& new_files);
 
@@ -181,23 +181,37 @@ SQLExportIterator::SQLExportIterator (const string& repo_id_stripped, const stri
 {
 }
 
-void
+BDBError
 SQLExportIterator::write_insert (const SQLExportData& data, unsigned int version)
 {
-  fputs (data.copy_from_line (repo_id_stripped, version).c_str(), insert_file);
+  int rc = fputs (data.copy_from_line (repo_id_stripped, version).c_str(), insert_file);
+  if (rc > 0)
+    return BFSync::BDB_ERROR_NONE;
+  else
+    return BFSync::BDB_ERROR_IO;
 }
 
-void
+BDBError
 SQLExportIterator::write_delete (const SQLExportData& data)
 {
-  fputs (data.delete_copy_from_line().c_str(), delete_file);
+  int rc = fputs (data.delete_copy_from_line().c_str(), delete_file);
+  if (rc > 0)
+    return BFSync::BDB_ERROR_NONE;
+  else
+    return BFSync::BDB_ERROR_IO;
 }
 
-void
+BDBError
 SQLExportIterator::write_modify (const SQLExportData& data, unsigned int version)
 {
-  write_delete (data);
-  write_insert (data, version);
+  BDBError err;
+
+  err = write_delete (data);
+  if (err)
+    return err;
+
+  err = write_insert (data, version);
+  return err;
 }
 
 BDBError
@@ -242,12 +256,16 @@ SQLExportIterator::gen_files (unsigned int version, const string& insert_filenam
       if (old_eof)
         {
           next_read = NEW;
-          write_insert (new_data, version);
+          err = write_insert (new_data, version);
+          if (err)
+            break;
         }
       else if (new_eof)
         {
           next_read = OLD;
-          write_delete (old_data);
+          err = write_delete (old_data);
+          if (err)
+            break;
         }
       else
         {
@@ -255,19 +273,25 @@ SQLExportIterator::gen_files (unsigned int version, const string& insert_filenam
             {
               next_read = OLD;
               write_delete (old_data);
+              if (err)
+                break;
             }
           else if (old_data.filename == new_data.filename)
             {
               next_read = BOTH;
               if (!same_data (old_data, new_data))
                 {
-                  write_modify (old_data, version);
+                  err = write_modify (old_data, version);
+                  if (err)
+                    break;
                 }
             }
           else  // new_data.filename < old_data.filename
             {
               next_read = NEW;
-              write_insert (new_data, version);
+              err = write_insert (new_data, version);
+              if (err)
+                break;
             }
         }
     }
