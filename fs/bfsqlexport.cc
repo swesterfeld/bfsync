@@ -80,10 +80,13 @@ id_load (ID& id, DataBuffer& dbuf)
 }
 
 static bool
-read_sxd (FILE *file, SQLExportData& data)
+read_sxd (FILE *file, SQLExportData& data, BDBError& err)
 {
   if (feof (file))
-    return true;
+    {
+      err = BFSync::BDB_ERROR_NONE;
+      return true;
+    }
 
   char len_data[sizeof (guint32)];
   if (fread (len_data, sizeof (guint32), 1, file) == 1)
@@ -113,17 +116,29 @@ read_sxd (FILE *file, SQLExportData& data)
           data.ctime_ns = data_buffer.read_uint32();
           data.mtime = data_buffer.read_uint32();
           data.mtime_ns = data_buffer.read_uint32();
+
+          err = BFSync::BDB_ERROR_NONE;
           return false;
         }
       else
         {
+          err = BFSync::BDB_ERROR_IO;
           return true;
         }
     }
   else
     {
+      if (ferror (file))
+        {
+          err = BFSync::BDB_ERROR_IO;
+        }
+      else
+        {
+          err = BFSync::BDB_ERROR_NONE;
+        }
       return true;
     }
+  g_assert_not_reached();
 }
 
 static bool
@@ -156,7 +171,7 @@ class SQLExportIterator
 public:
   SQLExportIterator (const string& repo_id_stripped, const string& old_files, const string& new_files);
 
-  void gen_files (unsigned int version, const string& insert_filename, const string& delete_filename);
+  BDBError gen_files (unsigned int version, const string& insert_filename, const string& delete_filename);
 };
 
 SQLExportIterator::SQLExportIterator (const string& repo_id_stripped, const string& old_files, const string& new_files) :
@@ -185,7 +200,7 @@ SQLExportIterator::write_modify (const SQLExportData& data, unsigned int version
   write_insert (data, version);
 }
 
-void
+BDBError
 SQLExportIterator::gen_files (unsigned int version, const string& insert_filename, const string& delete_filename)
 {
   SQLExportData old_data;
@@ -202,18 +217,25 @@ SQLExportIterator::gen_files (unsigned int version, const string& insert_filenam
   insert_file = fopen (insert_filename.c_str(), "w");
   delete_file = fopen (delete_filename.c_str(), "w");
 
+  BDBError err;
+
   while (1)
     {
       if (next_read == OLD || next_read == BOTH)
         {
-          old_eof = read_sxd (old_f, old_data);
+          old_eof = read_sxd (old_f, old_data, err);
+          if (err)
+            break;
         }
       if (next_read == NEW || next_read == BOTH)
         {
-          new_eof = read_sxd (new_f, new_data);
+          new_eof = read_sxd (new_f, new_data, err);
+          if (err)
+            break;
         }
       if (old_eof && new_eof)
         {
+          err = BFSync::BDB_ERROR_NONE;
           break;
         }
 
@@ -263,6 +285,7 @@ SQLExportIterator::gen_files (unsigned int version, const string& insert_filenam
       fclose (new_f);
       new_f = 0;
     }
+  return err;
 }
 
 //##############################################################################
@@ -484,7 +507,9 @@ SQLExport::export_version (unsigned int version, unsigned int max_version,
 
   // const double export_start_time = gettime();
   SQLExportIterator sxi = SQLExportIterator (repo_id(), old_files, new_files);
-  sxi.gen_files (version, insert_filename, delete_filename);
+  err = sxi.gen_files (version, insert_filename, delete_filename);
+  if (err)
+    throw BDBException (err);
   // const double export_end_time = gettime();
 
   // printf ("### export time: %.2f\n", (export_end_time - export_start_time));
