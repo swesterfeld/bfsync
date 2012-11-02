@@ -465,9 +465,9 @@ class SQLExport
   std::map<unsigned int, std::string> filelist_map;
   std::string                         m_repo_id;
 
-  void walk (const ID& id, const ID& parent_id, const std::string& name, FILE *file);
+  BFSync::BDBError walk (const ID& id, const ID& parent_id, const std::string& name, FILE *file);
   void maybe_split_transaction();
-  std::string build_filelist (unsigned int version);
+  BFSync::BDBError build_filelist (unsigned int version, std::string& filename);
 
 public:
   SQLExport (BDBPtr bdb);

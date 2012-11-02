@@ -40,6 +40,7 @@ using BFSync::get_dirname;
 using BFSync::string_printf;
 using BFSync::DataBuffer;
 using BFSync::DataOutBuffer;
+using BFSync::BDBError;
 
 struct SQLExportData
 {
@@ -298,15 +299,16 @@ cmp_link_name (Link *l1, Link *l2)
   return l1->name < l2->name;
 }
 
-void
+BDBError
 SQLExport::walk (const ID& id, const ID& parent_id, const string& prefix, FILE *out_file)
 {
   if (sig_interrupted)
-    return;
+    return BFSync::BDB_ERROR_INTR;
 
   INode inode = bdb_ptr.load_inode (id, version);
   if (inode.valid)
     {
+      size_t written;
       string filename = prefix.size() ? prefix : "/";
 
       // write data
@@ -333,8 +335,13 @@ SQLExport::walk (const ID& id, const ID& parent_id, const string& prefix, FILE *
       len_buffer.clear();
       len_buffer.write_uint32 (out_buffer.size());
 
-      fwrite (len_buffer.begin(), len_buffer.size(), 1, out_file);
-      fwrite (out_buffer.begin(), out_buffer.size(), 1, out_file);
+      written = fwrite (len_buffer.begin(), len_buffer.size(), 1, out_file);
+      if (written != 1)
+        return BFSync::BDB_ERROR_IO;
+
+      written = fwrite (out_buffer.begin(), out_buffer.size(), 1, out_file);
+      if (written != 1)
+        return BFSync::BDB_ERROR_IO;
 
       maybe_split_transaction();
       scan_ops++;
@@ -355,10 +362,13 @@ SQLExport::walk (const ID& id, const ID& parent_id, const string& prefix, FILE *
               const Link* link = *li;
               const string& inode_name = prefix + "/" + link->name;
 
-              walk (link->inode_id, id, inode_name, out_file);
+              BDBError err = walk (link->inode_id, id, inode_name, out_file);
+              if (err)
+                return err;
             }
         }
     }
+  return BFSync::BDB_ERROR_NONE;
 }
 
 void
@@ -390,11 +400,14 @@ SQLExport::update_status (const string& op_name, bool force_update)
     }
 }
 
-string
-SQLExport::build_filelist (unsigned int version)
+BDBError
+SQLExport::build_filelist (unsigned int version, string& filename)
 {
   if (filelist_map[version] != "")
-    return filelist_map[version];
+    {
+      filename = filelist_map[version];
+      return BFSync::BDB_ERROR_NONE;
+    }
 
   // create temp name and register it for later cleanup
   bdb_ptr.begin_transaction();
@@ -421,7 +434,7 @@ SQLExport::build_filelist (unsigned int version)
 
   // const double version_start_time = gettime();
   bdb_ptr.begin_transaction();
-  walk (id_root(), id_root(), "", file);
+  BDBError err = walk (id_root(), id_root(), "", file);
   bdb_ptr.commit_transaction();
   // const double version_end_time = gettime();
   fclose (file);
@@ -429,7 +442,8 @@ SQLExport::build_filelist (unsigned int version)
   // printf ("### filelist time: %.2f\n", (version_end_time - version_start_time));
   // fflush (stdout);
 
-  return filelist_name;
+  filename = filelist_name;
+  return err;
 }
 
 void
@@ -440,12 +454,19 @@ SQLExport::export_version (unsigned int version, unsigned int max_version,
   status_max_version = max_version;
   update_status ("scanning", true);
 
+  string old_files, new_files;
+  BDBError err;
+
   sig_interrupted = false;
-  string old_files = build_filelist (version - 1);
+  err = build_filelist (version - 1, old_files);
+  if (err)
+    throw BDBException (err);
   if (sig_interrupted)
     throw BDBException (BFSync::BDB_ERROR_INTR);
 
-  string new_files = build_filelist (version);
+  err = build_filelist (version, new_files);
+  if (err)
+    throw BDBException (err);
   if (sig_interrupted)
     throw BDBException (BFSync::BDB_ERROR_INTR);
 

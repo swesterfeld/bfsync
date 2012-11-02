@@ -1891,6 +1891,9 @@ BDBException::error_string() const
 
       case BFSync::BDB_ERROR_INTR:
         return "operation interrupted by signal";
+
+      case BFSync::BDB_ERROR_IO:
+        return "input/output error";
     }
   return "unknown error";
 }
