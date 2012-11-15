@@ -16,6 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from utils import *
+from RemoteRepo import RemoteRepo
 import re
 import datetime
 import time
@@ -235,3 +236,40 @@ def expire (repo, args):
 
   repo.bdb.commit_transaction()
   print "EXPIRE: %d versions deleted during expire" % count
+
+def copy_expire (repo, urls, rsh):
+  if len (urls) == 0:
+    default_copy_expire = repo.config.get ("default/copy-expire")
+    if len (default_copy_expire) == 0:
+      raise BFSyncError ("copy-expire: no repository specified and default/copy-expire config value empty")
+    url = default_copy_expire[0]
+  else:
+    url = urls[0]
+
+  remote_repo = RemoteRepo (url, rsh)
+  remote_history = remote_repo.get_history()
+  remote_tags = remote_repo.get_tags()
+
+  repo.bdb.begin_transaction()
+
+  for version_idx in range (len (remote_tags)):
+    (version, hash) = remote_history[version_idx][0:2]
+    hentry = repo.bdb.load_history_entry (version)
+    if hentry.valid:
+      assert (version == hentry.version and hash == hentry.hash)
+
+      # delete old tags in local history
+      for tag in repo.bdb.list_tags (hentry.version):
+        if tag == "deleted" or tag == "backup-type":
+          values = repo.bdb.load_tag (hentry.version, tag)
+          for value in values:
+            repo.bdb.del_tag (hentry.version, tag, value)
+
+      # set new tags from remote_tags
+      for tag_list in remote_tags[version_idx][1:]:
+        (tag, values) = tag_list[0], tag_list[1:]
+        if tag == "deleted" or tag == "backup-type":
+          for value in values:
+            repo.bdb.add_tag (version, tag, value)
+
+  repo.bdb.commit_transaction()

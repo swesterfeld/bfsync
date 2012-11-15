@@ -339,6 +339,7 @@ def parse_config (filename):
     "default/push",
     "default/get",
     "default/put",
+    "default/copy-expire",
     "expire/keep-most-recent",
     "expire/create-daily",
     "expire/keep-daily",

@@ -36,7 +36,7 @@ import datetime
 import random
 
 from utils import *
-from expire import expire
+from expire import expire, copy_expire
 from diffutils import diff
 from commitutils import commit, revert, gen_status
 from remoteutils import *
@@ -576,6 +576,20 @@ def cmd_put():
 
   status_line.set_op ("PUT")
   put (repo, parsed_args.url, rsh)
+
+def cmd_copy_expire():
+  parser = argparse.ArgumentParser (prog='bfsync copy-expire')
+  parser.add_argument ('--rsh', help='set remote shell')
+  parser.add_argument ("url", nargs = "*")
+  parsed_args = parser.parse_args (args)
+
+  if parsed_args.rsh is not None:
+    rsh = parsed_args.rsh
+  else:
+    rsh = "ssh"
+
+  repo = cd_repo_connect_db()
+  copy_expire (repo, parsed_args.url, rsh)
 
 def gen_repo_id():
   l = []
@@ -1386,6 +1400,7 @@ def main():
       ( "collect",                cmd_collect, 1),
       ( "commit",                 cmd_commit, 1),
       ( "continue",               cmd_continue, 1),
+      ( "copy-expire",            cmd_copy_expire, 1),
       ( "log",                    cmd_log, 1),
       ( "pull",                   cmd_pull, 1),
       ( "push",                   cmd_push, 1),

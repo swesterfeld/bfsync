@@ -59,6 +59,14 @@ class RemoteRepo:
       result_len = int (self.remote_p.stdout.readline())
       return cPickle.loads (self.remote_p.stdout.read (result_len))
 
+  def get_tags (self):
+    if self.conn == LOCAL:
+      return remote_tags (self.repo)
+    else:
+      self.remote_p.stdin.write ("tags\n")
+      result_len = int (self.remote_p.stdout.readline())
+      return cPickle.loads (self.remote_p.stdout.read (result_len))
+
   def update_history (self, delta_history):
     if self.conn == LOCAL:
       remote_update_history (self.repo, delta_history)

@@ -89,6 +89,30 @@ def remote_history (repo):
 
   return hlist
 
+def remote_tags (repo):
+  result_tags = []
+
+  VERSION = 1
+  while True:
+    hentry = repo.bdb.load_history_entry (VERSION)
+    VERSION += 1
+
+    if not hentry.valid:
+      break
+
+    row = [ hentry.version ]
+    tags = repo.bdb.list_tags (hentry.version)
+    for tag in tags:
+      tvlist = [ tag ]
+      values = repo.bdb.load_tag (hentry.version, tag)
+      for value in values:
+        tvlist += [ value ]
+      row.append (tvlist)
+
+    result_tags += [ row ]
+
+  return result_tags
+
 def remote_need_objects (repo, table):
   repo_path = repo.path
 
