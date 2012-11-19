@@ -485,6 +485,8 @@ def cmd_remote():
     result = None
     if command == "history":
       result = cPickle.dumps (remote_history (repo))
+    elif command == "tags":
+      result = cPickle.dumps (remote_tags (repo))
     elif command == "version":
       result = cPickle.dumps (bfsyncdb.repo_version())
     elif command == "ls":
