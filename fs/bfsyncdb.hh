@@ -479,6 +479,12 @@ public:
   void update_status (const std::string& op_name, bool force_update);
 };
 
+class HashCacheDict
+{
+public:
+  void insert (const std::string& file_hash, const std::string& stat_hash, unsigned int expire_time);
+};
+
 class BDBException
 {
 private:

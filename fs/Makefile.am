@@ -21,7 +21,7 @@ BFSYNC_HDRS = bfinode.hh bfidhash.hh bfsyncfs.hh bflink.hh bfsyncserver.hh bfhis
               bfdeduptable.hh
 
 libbfsync_la_SOURCES = bfsyncfs.cc bflink.cc bfinode.cc bfleakdebugger.cc bfsyncserver.cc bfidhash.cc \
-                       bfhistory.cc bfcfgparser.cc bfbdb.cc bftimeprof.cc $(BFSYNC_HDRS)
+                       bfhistory.cc bfcfgparser.cc bfbdb.cc bftimeprof.cc bfhashcache.cc $(BFSYNC_HDRS)
 libbfsync_la_LIBADD = $(GLIB_LIBS) $(FUSE_LIBS) $(BDB_LIBS)
 
 bfsyncfs_SOURCES = bfmain.cc
