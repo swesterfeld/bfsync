@@ -24,3 +24,11 @@ assert (e.expire_time == T)
 e = hcdict.lookup ("bf" * 20)
 assert (e.valid == False)
 print "expect false: ", e.valid
+
+hci = bfsyncdb.HashCacheIterator (hcdict)
+
+while True:
+  e = hci.get_next()
+  if not e.valid:
+    break
+  print e.stat_hash, "=", e.file_hash, e.expire_time

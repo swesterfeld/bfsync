@@ -58,12 +58,6 @@ operator== (const HashCacheDict::DictKey& x, const HashCacheDict::DictKey& y)
   return (x.a == y.a) && (x.b == y.b) && (x.c == y.c) && (x.d == y.d) && (x.e == y.e);
 }
 
-static inline size_t
-hash_value (const HashCacheDict::DictKey& dk)
-{
-  return dk.a;
-}
-
 void
 HashCacheDict::insert (const string& stat_hash, const string& file_hash, unsigned int expire_time)
 {
@@ -113,5 +107,33 @@ HashCacheDict::lookup (const string& stat_hash)
   result.stat_hash = stat_hash;
   result.file_hash = dbuffer.read_hash();
   result.expire_time = dbuffer.read_uint32();
+  return result;
+}
+
+HashCacheIterator::HashCacheIterator (HashCacheDict& dict) :
+  dict (dict)
+{
+  it = dict.hc_dict.begin();
+}
+
+HashCacheEntry
+HashCacheIterator::get_next()
+{
+  if (it == dict.hc_dict.end())
+    {
+      HashCacheEntry not_found;
+      return not_found;
+    }
+
+  DataBuffer key_dbuffer ((char *) &it->first, 20);
+  DataBuffer value_dbuffer ((char *) &it->second, 24);
+
+  HashCacheEntry result;
+  result.valid = true;
+  result.stat_hash = key_dbuffer.read_hash();
+  result.file_hash = value_dbuffer.read_hash();
+  result.expire_time = value_dbuffer.read_uint32();
+
+  it++;
   return result;
 }

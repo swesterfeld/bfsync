@@ -504,12 +504,27 @@ public:
     unsigned int a, b, c, d, e, f;
   };
 
-private:
   boost::unordered_map<DictKey, DictValue> hc_dict;
 
+  void              insert (const std::string& stat_hash, const std::string& file_hash, unsigned int expire_time);
+  HashCacheEntry    lookup (const std::string& stat_hash);
+};
+
+static inline size_t
+hash_value (const HashCacheDict::DictKey& dk)
+{
+  return dk.a;
+}
+
+class HashCacheIterator
+{
+  boost::unordered_map<HashCacheDict::DictKey, HashCacheDict::DictValue>::iterator it;
+  HashCacheDict& dict;
+
 public:
-  void            insert (const std::string& stat_hash, const std::string& file_hash, unsigned int expire_time);
-  HashCacheEntry  lookup (const std::string& stat_hash);
+  HashCacheIterator (HashCacheDict& dict);
+
+  HashCacheEntry get_next();
 };
 
 class BDBException
