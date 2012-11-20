@@ -73,6 +73,7 @@ public:
   guint32     read_uint32_be();
   std::string read_string();
   void        read_vec_zero (std::vector<char>& vec);
+  std::string read_hash();
   size_t      remaining() const
   {
     return m_remaining;

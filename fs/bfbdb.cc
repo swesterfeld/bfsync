@@ -786,6 +786,23 @@ DataBuffer::read_vec_zero (vector<char>& vec)
   assert (false);
 }
 
+string
+DataBuffer::read_hash()
+{
+  char str[41];
+
+  assert (m_remaining >= 20);
+  for (unsigned int i = 0; i < 20; i++)
+    uint8_hex (m_ptr[i], str + i * 2);
+
+  str[40] = 0; // null termination
+
+  m_remaining -= 20;
+  m_ptr += 20;
+
+  return str;
+}
+
 TimeProfSection tp_store_inode ("BDB::store_inode");
 
 void
