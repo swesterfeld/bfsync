@@ -508,7 +508,7 @@ private:
   boost::unordered_map<DictKey, DictValue> hc_dict;
 
 public:
-  void            insert (const std::string& file_hash, const std::string& stat_hash, unsigned int expire_time);
+  void            insert (const std::string& stat_hash, const std::string& file_hash, unsigned int expire_time);
   HashCacheEntry  lookup (const std::string& stat_hash);
 };
 

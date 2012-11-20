@@ -65,7 +65,7 @@ hash_value (const HashCacheDict::DictKey& dk)
 }
 
 void
-HashCacheDict::insert (const string& file_hash, const string& stat_hash, unsigned int expire_time)
+HashCacheDict::insert (const string& stat_hash, const string& file_hash, unsigned int expire_time)
 {
   DataOutBuffer buffer;
   buffer.write_hash (stat_hash);
