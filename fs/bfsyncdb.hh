@@ -479,10 +479,37 @@ public:
   void update_status (const std::string& op_name, bool force_update);
 };
 
+struct HashCacheEntry
+{
+  HashCacheEntry();
+  HashCacheEntry (const HashCacheEntry& he);
+  ~HashCacheEntry();
+
+  bool         valid;
+  std::string  stat_hash;
+  std::string  file_hash;
+  unsigned int expire_time;
+};
+
 class HashCacheDict
 {
 public:
-  void insert (const std::string& file_hash, const std::string& stat_hash, unsigned int expire_time);
+  struct DictKey
+  {
+    unsigned int a, b, c, d, e;
+  };
+
+  struct DictValue
+  {
+    unsigned int a, b, c, d, e, f;
+  };
+
+private:
+  boost::unordered_map<DictKey, DictValue> hc_dict;
+
+public:
+  void            insert (const std::string& file_hash, const std::string& stat_hash, unsigned int expire_time);
+  HashCacheEntry  lookup (const std::string& stat_hash);
 };
 
 class BDBException

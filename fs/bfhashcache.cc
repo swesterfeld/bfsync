@@ -18,16 +18,100 @@
 */
 
 #include "bfsyncdb.hh"
+#include "bfleakdebugger.hh"
 
 using std::string;
 
 using BFSync::DataOutBuffer;
+using BFSync::DataBuffer;
+
+//----------------------- HashCacheEntry --------------------------
+
+static BFSync::LeakDebugger hash_cache_entry_leak_debugger ("(Python)BFSync::HashCacheEntry");
+
+HashCacheEntry::HashCacheEntry() :
+  valid (false),
+  expire_time (0)
+{
+  hash_cache_entry_leak_debugger.add (this);
+}
+
+HashCacheEntry::HashCacheEntry (const HashCacheEntry& hce) :
+  valid (hce.valid),
+  stat_hash (hce.stat_hash),
+  file_hash (hce.file_hash),
+  expire_time (hce.expire_time)
+{
+  hash_cache_entry_leak_debugger.add (this);
+}
+
+HashCacheEntry::~HashCacheEntry()
+{
+  hash_cache_entry_leak_debugger.del (this);
+}
+
+//----------------------- HashCacheDict --------------------------
+
+static inline bool
+operator== (const HashCacheDict::DictKey& x, const HashCacheDict::DictKey& y)
+{
+  return (x.a == y.a) && (x.b == y.b) && (x.c == y.c) && (x.d == y.d) && (x.e == y.e);
+}
+
+static inline size_t
+hash_value (const HashCacheDict::DictKey& dk)
+{
+  return dk.a;
+}
 
 void
 HashCacheDict::insert (const string& file_hash, const string& stat_hash, unsigned int expire_time)
 {
-  DataOutBuffer key_buffer;
-  key_buffer.write_hash (file_hash);
-  assert (key_buffer.size() == 20);
+  DataOutBuffer buffer;
+  buffer.write_hash (stat_hash);
+  buffer.write_hash (file_hash);
+  buffer.write_uint32 (expire_time);
+  assert (buffer.size() == 44);
 
+  DictKey key;
+  DictValue value;
+
+  const char *bptr = buffer.begin();
+
+  assert (sizeof (key) == 20);
+  memcpy (&key, bptr, 20);
+  assert (sizeof (value) == 24);
+  memcpy (&value, bptr + 20, 24);
+
+  hc_dict[key] = value;
+}
+
+HashCacheEntry
+HashCacheDict::lookup (const string& stat_hash)
+{
+  DataOutBuffer buffer;
+  buffer.write_hash (stat_hash);
+  assert (buffer.size() == 20);
+
+  DictKey key;
+
+  const char *bptr = buffer.begin();
+
+  assert (sizeof (key) == 20);
+  memcpy (&key, bptr, 20);
+
+  boost::unordered_map<DictKey, DictValue>::const_iterator hi = hc_dict.find (key);
+  if (hi == hc_dict.end())
+    {
+      HashCacheEntry not_found;
+      return not_found;
+    }
+  DataBuffer dbuffer ((char *) &hi->second, 24);
+
+  HashCacheEntry result;
+  result.valid = true;
+  result.stat_hash = stat_hash;
+  result.file_hash = dbuffer.read_hash();
+  result.expire_time = dbuffer.read_uint32();
+  return result;
 }
