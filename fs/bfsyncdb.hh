@@ -501,13 +501,16 @@ public:
 
   struct DictValue
   {
-    unsigned int a, b, c, d, e, f;
+    unsigned int a, b, c, d, e;
+    unsigned int expire_time;
   };
 
   boost::unordered_map<DictKey, DictValue> hc_dict;
 
   void              insert (const std::string& stat_hash, const std::string& file_hash, unsigned int expire_time);
   HashCacheEntry    lookup (const std::string& stat_hash);
+  void              save (const std::string& filename);
+  void              load (const std::string& filename, unsigned int load_time);
 };
 
 static inline size_t
