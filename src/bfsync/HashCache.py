@@ -27,21 +27,14 @@ from StatusLine import status_line, OutputSubsampler
 class HashCache:
   def __init__ (self):
     self.cache = bfsyncdb.HashCacheDict()
-    self.load_cache()
+    self.need_load = True
 
   def load_cache (self):
     if os.getenv ("BFSYNC_NO_HASH_CACHE") == "1":
       return
     try:
-      f = open (os.path.expanduser ('~/.bfsync_cache'), "r")
-      load_time = time.time()
-      for line in f.readlines():
-        (stat_hash, file_hash, expire_time) = line.split()
-        # expire cache entries which are too old
-        expire_time = int (expire_time)
-        if load_time < expire_time:
-          self.cache.insert (stat_hash, file_hash, expire_time)
-      f.close ()
+      load_time = int (time.time())
+      self.cache.load (os.path.expanduser ('~/.bfsync_cache'), load_time)
     except:
       pass
 
@@ -68,6 +61,11 @@ class HashCache:
       return ""
 
   def compute_hash (self, filename):
+    # on demand loading
+    if self.need_load:
+      self.need_load = False
+      self.load_cache()
+
     filename = os.path.abspath (filename)
     stat_hash = self.make_stat_hash (filename)
     result = self.lookup (stat_hash)
@@ -102,19 +100,16 @@ class HashCache:
     return stat_hash
 
   def save (self):
+    # if we didn't on-demand-load the cache, we have no new entries
+    if self.need_load:
+      return
+
     if os.getenv ("BFSYNC_NO_HASH_CACHE") == "1":
       return
     # reload cache data in case another bfsync process has added entries to the cache
     self.load_cache()
     try:
-      f = open (os.path.expanduser ('~/.bfsync_cache'), "w")
-      it = bfsyncdb.HashCacheIterator (self.cache)
-      while True:
-        entry = it.get_next()
-        if not entry.valid:
-          break
-        f.write ("%s %s %d\n" % (entry.stat_hash, entry.file_hash, entry.expire_time))
-      f.close()
+      self.cache.save (os.path.expanduser ('~/.bfsync_cache'))
     except:
       pass
 
