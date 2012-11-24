@@ -19,6 +19,7 @@
 * split transactions every 15 seconds
 * gc should show an estimate how much db cache is used
 * maybe upgrade time -> 64bit storage in BDB
+* reduce TransferList memory usage, to allow a large number of files in get/put
 
 Performance:
 ============
