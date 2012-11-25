@@ -1,3 +1,21 @@
+bfsync (0.3.3ubuntu2) precise; urgency=low
+
+  * added on-demand loading of the HashCache
+
+ -- Stefan Westerfeld <stefan@space.twc.de>  Fri, 23 Nov 2012 11:55:02 +0100
+
+bfsync (0.3.3ubuntu1) precise; urgency=low
+
+  * added copy-expire command
+
+ -- Stefan Westerfeld <stefan@space.twc.de>  Mon, 19 Nov 2012 12:55:54 +0100
+
+bfsync (0.3.3) precise; urgency=low
+
+  * Hacky: 0.3.3 + recent devel.
+
+ -- Stefan Westerfeld <stefan@space.twc.de>  Wed, 24 Oct 2012 16:32:14 +0200
+
 bfsync (0.3.2-1) unstable; urgency=low
 
   * Initial release. This is a great thing.
