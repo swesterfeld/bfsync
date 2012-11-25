@@ -1,3 +1,15 @@
+Overview of Changes in bfsync-0.3.4:
+
+* added bfsync sql-export command: export file lists to Postgres DB
+* added bfsync find-missing command: show file names where file contents are
+  unavailable
+* added bfsync copy-expire command: copy expire tags from a remote repo
+* added bfsync get-repo-id command: query unique repository id
+* HashCache remove st_dev from stat hash to work better with external devices,
+  which can change device major/minor numbers
+* reimplemented HashCache in C++: better performance, less memory usage
+* rename expire config values: use "-" instead of "_" for config key names
+
 Overview of Changes in bfsync-0.3.3:
 
 * fixed crash that could sometimes occur during bfsyncfs umount
