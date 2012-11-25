@@ -4,7 +4,7 @@ from setuptools import setup
 
 setup (
   name = 'bfsync',
-  version = '0.3.3',
+  version = '0.3.4',
   description = 'Big File synchronization tool',
   author = 'Stefan Westerfeld',
   author_email = 'stefan@space.twc.de',

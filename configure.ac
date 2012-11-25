@@ -1,4 +1,4 @@
-AC_INIT([bfsync], [0.3.3])
+AC_INIT([bfsync], [0.3.4])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE
