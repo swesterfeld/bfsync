@@ -54,7 +54,7 @@ It is possible to use bfsync for backups, in that case you only use a subset of 
 ; '''gc'''
 : This will check for objects that are present in the local repo, but not used. This can happen when using revert, or for instance if the merge algorithm needs to modify diffs due to merge decisions (then the old diff becomes unused).
 
-; '''repo-files''' [-0|--null] ''<dir>''
+; '''repo-files''' ''[-0|--null]'' ''<dir>''
 : This searches a directory for files that are also in the repo. If you start moving data to the repo, you can clean up copies that might be present elsewhere. Using -0|--null makes the output suitable for use with xargs -0.
 
 ; '''status'''
@@ -102,6 +102,18 @@ It is possible to use bfsync for backups, in that case you only use a subset of 
 ; '''transfer-bench''' ''[--rsh <remote_shell>]'' ''<host>''
 : Measure transfer speed when transferring data from host <host> to the local host. The --rsh option can be used to set the remote shell used to connect the host. It defaults to ssh, but other remote shells (like rsh) can provide better performance.
 
+; '''sql-export''' ''[-d <database>]'' ''[-u <user>]'' ''[-w <password>]'' ''[-H  <host>]'' ''[-p <port>]'' ''[-r]''
+: Export a versioned list of files to postgres, in order to be able to browse the repository contents using standard sql queries. The export only adds the versions that are new since the last sql-export run, unless the -r option is used. In that case, it clears all database tables and starts exporting all versions from the beginning. The postgres connection arguments (user/database/...) can be specified as commandline arguments, or in the config file. See section CONFIGURATION for the config file entries that affect the sql-export command.
+
+; '''find-missing''' ''[-0|--null]''
+: Show filenames of files where file contents are unavailable. This command only shows files that are present in the current version of the repository, files that have been deleted are ignored. If the -0|--null option is used the file list output is \0 seperated instead of \n seperated.
+
+; ''copy-expire'' ''[--rsh <remote_shell>]'' ''<repo>'' 
+: Usually, the deletion of old versions is done by the expire command. If a repository is replicated using clone/pull/get, it is often useful to run the expire command on the source repository, and copy the resulting tags to the target repositories using copy-expire. In this way, the same versions that have been deleted in the source repository will also be deleted in the target repository. The --rsh option can be used to set the remote shell used to connect the host; it defaults to ssh.
+
+; ''get-repo-id''
+: Each bfsync repository or checkout has a unique id, which is generated upon creation of the repository and stored in the "info" file of each repository. This command will print this repository id.
+
 ; '''--version'''
 : Print bfsync version.
 
@@ -130,6 +142,9 @@ Every bfsync checkout has a file called "config", which can be used to set confi
 ; '''default { push''' "''<url>|<path>''"; '''}'''
 : Set default location for push (an <url> or <path>) to be used if '''bfsync push''' is called without an argument.
 
+; '''default { copy-expire''' "''<url>|<path>''"; '''}'''
+: Set default location for copy-expire (an <url> or <path>) to be used if '''bfsync copy-expire''' is called without an argument.
+
 The configuration keys in the '''default group''' can be set simultaneously, by using
 
   default {
@@ -137,6 +152,7 @@ The configuration keys in the '''default group''' can be set simultaneously, by 
     put "...";
     push "...";
     pull "...";
+    ...
   }
 
 ; '''expire { keep_most_recent''' ''<N>''; '''}'''
@@ -172,6 +188,30 @@ The configuration keys in the '''expire group''' can be set simultaneously, for 
     keep_most_recent 30;
     keep_daily 45;
     keep_monthly 30;
+    ...
+  }
+
+; '''sql-export { database''' ''<database>''; '''}'''
+: Use the postgres database <database> for the sql-export command.
+
+; '''sql-export { user''' ''<user>''; '''}'''
+: Use the postgres user <user> for the sql-export command.
+
+; '''sql-export { password''' ''<password>''; '''}'''
+: Use the postgres password <password> for the sql-export command.
+
+; '''sql-export { host''' ''<host>''; '''}'''
+: Use the postgres host <host> for the sql-export command.
+
+; '''sql-export { port''' ''<port>''; '''}'''
+: Use the postgres port <port> for the sql-export command.
+
+The configuration keys in the '''sql-export group''' can be set simultaneously, for instance by using
+
+  sql-export {
+    database bfsync;
+    user postgres;
+    password secret;
     ...
   }
 

@@ -1,4 +1,4 @@
-.TH "BFSYNC" "1" "2012\-07\-17" "Revision 740" "bfsync Manual Page"
+.TH "BFSYNC" "1" "2012\-11\-26" "Revision 861" "bfsync Manual Page"
 
 .SH NAME
 
@@ -62,7 +62,7 @@ Displays the history of the repository. For each commit, one version will show u
 This will check for objects that are present in the local repo, but not used. This can happen when using revert, or for instance if the merge algorithm needs to modify diffs due to merge decisions (then the old diff becomes unused).
 .PP
 .TP
-\fBrepo-files\fR [-0|--null] \fI<dir>\fR
+\fBrepo-files\fR \fI[-0|--null]\fR \fI<dir>\fR
 This searches a directory for files that are also in the repo. If you start moving data to the repo, you can clean up copies that might be present elsewhere. Using -0|--null makes the output suitable for use with xargs -0.
 .PP
 .TP
@@ -126,6 +126,22 @@ Modify repository configuration file. The key can either be a simple key (bfsync
 Measure transfer speed when transferring data from host <host> to the local host. The --rsh option can be used to set the remote shell used to connect the host. It defaults to ssh, but other remote shells (like rsh) can provide better performance.
 .PP
 .TP
+\fBsql-export\fR \fI[-d <database>]\fR \fI[-u <user>]\fR \fI[-w <password>]\fR \fI[-H <host>]\fR \fI[-p <port>]\fR \fI[-r]\fR
+Export a versioned list of files to postgres, in order to be able to browse the repository contents using standard sql queries. The export only adds the versions that are new since the last sql-export run, unless the -r option is used. In that case, it clears all database tables and starts exporting all versions from the beginning. The postgres connection arguments (user/database/...) can be specified as commandline arguments, or in the config file. See section CONFIGURATION for the config file entries that affect the sql-export command.
+.PP
+.TP
+\fBfind-missing\fR \fI[-0|--null]\fR
+Show filenames of files where file contents are unavailable. This command only shows files that are present in the current version of the repository, files that have been deleted are ignored. If the -0|--null option is used the file list output is \0 seperated instead of \n seperated.
+.PP
+.TP
+\fIcopy-expire\fR \fI[--rsh <remote_shell>]\fR \fI<repo>\fR
+Usually, the deletion of old versions is done by the expire command. If a repository is replicated using clone/pull/get, it is often useful to run the expire command on the source repository, and copy the resulting tags to the target repositories using copy-expire. In this way, the same versions that have been deleted in the source repository will also be deleted in the target repository. The --rsh option can be used to set the remote shell used to connect the host; it defaults to ssh.
+.PP
+.TP
+\fIget-repo-id\fR
+Each bfsync repository or checkout has a unique id, which is generated upon creation of the repository and stored in the "info" file of each repository. This command will print this repository id.
+.PP
+.TP
 \fB--version\fR
 Print bfsync version.
 .PP
@@ -161,6 +177,10 @@ Set default location for pull (an <url> or <path>) to be used if \fBbfsync pull\
 \fBdefault { push\fR "\fI<url>|<path>\fR"; \fB}\fR
 Set default location for push (an <url> or <path>) to be used if \fBbfsync push\fR is called without an argument.
 .PP
+.TP
+\fBdefault { copy-expire\fR "\fI<url>|<path>\fR"; \fB}\fR
+Set default location for copy-expire (an <url> or <path>) to be used if \fBbfsync copy-expire\fR is called without an argument.
+.PP
 
 The configuration keys in the \fBdefault group\fR can be set simultaneously, by using
 .EX
@@ -169,6 +189,7 @@ The configuration keys in the \fBdefault group\fR can be set simultaneously, by 
    put "...";
    push "...";
    pull "...";
+   ...
  }
 .EE
 .TP
@@ -214,6 +235,36 @@ The configuration keys in the \fBexpire group\fR can be set simultaneously, for 
    keep_most_recent 30;
    keep_daily 45;
    keep_monthly 30;
+   ...
+ }
+.EE
+.TP
+\fBsql-export { database\fR \fI<database>\fR; \fB}\fR
+Use the postgres database <database> for the sql-export command.
+.PP
+.TP
+\fBsql-export { user\fR \fI<user>\fR; \fB}\fR
+Use the postgres user <user> for the sql-export command.
+.PP
+.TP
+\fBsql-export { password\fR \fI<password>\fR; \fB}\fR
+Use the postgres password <password> for the sql-export command.
+.PP
+.TP
+\fBsql-export { host\fR \fI<host>\fR; \fB}\fR
+Use the postgres host <host> for the sql-export command.
+.PP
+.TP
+\fBsql-export { port\fR \fI<port>\fR; \fB}\fR
+Use the postgres port <port> for the sql-export command.
+.PP
+
+The configuration keys in the \fBsql-export group\fR can be set simultaneously, for instance by using
+.EX
+ sql-export {
+   database bfsync;
+   user postgres;
+   password secret;
    ...
  }
 .EE

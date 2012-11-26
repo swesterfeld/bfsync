@@ -26,6 +26,9 @@ Note that changes only become permanent after using bfsync commit. Other bfsync 
 ; '''-a'''
 : Allows other users to access the mounted filesystem (this sets the -oallow_other option). Without this option, the contents of the filesystem will only be readable/writeable by the user that mounted it.
 
+; '''-c'''
+: Enable FUSE attribute caching. This improves the overall performance of bfsyncfs somewhat. However, in some rare cases the filesystem will no longer return the correct result to the userspace process, therefore it is not enabled by default.
+
 ; '''-f'''
 : Run the filesystem as foreground process. Without this option, bfsyncfs will be started as background process.
 
