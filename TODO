@@ -54,3 +54,5 @@ b4release:
 - bump "fs/setup.py" version
 - edit upgrade command in "src/bfsync/main.py"
 - update documentation if necessary
+- update homepage
+- tag release

@@ -1,4 +1,4 @@
-.TH "BFSYNC" "1" "2012\-11\-26" "Revision 861" "bfsync Manual Page"
+.TH "BFSYNC" "1" "2012\-11\-26" "Revision 869" "bfsync Manual Page"
 
 .SH NAME
 
@@ -131,14 +131,14 @@ Export a versioned list of files to postgres, in order to be able to browse the 
 .PP
 .TP
 \fBfind-missing\fR \fI[-0|--null]\fR
-Show filenames of files where file contents are unavailable. This command only shows files that are present in the current version of the repository, files that have been deleted are ignored. If the -0|--null option is used the file list output is \0 seperated instead of \n seperated.
+Show filenames of files where file contents are unavailable. This command only shows files that are present in the current version of the repository, files that have been deleted are ignored. Using -0|--null makes the output suitable for use with xargs -0.
 .PP
 .TP
-\fIcopy-expire\fR \fI[--rsh <remote_shell>]\fR \fI<repo>\fR
+\fBcopy-expire\fR \fI[--rsh <remote_shell>]\fR \fI<repo>\fR
 Usually, the deletion of old versions is done by the expire command. If a repository is replicated using clone/pull/get, it is often useful to run the expire command on the source repository, and copy the resulting tags to the target repositories using copy-expire. In this way, the same versions that have been deleted in the source repository will also be deleted in the target repository. The --rsh option can be used to set the remote shell used to connect the host; it defaults to ssh.
 .PP
 .TP
-\fIget-repo-id\fR
+\fBget-repo-id\fR
 Each bfsync repository or checkout has a unique id, which is generated upon creation of the repository and stored in the "info" file of each repository. This command will print this repository id.
 .PP
 .TP
@@ -193,48 +193,48 @@ The configuration keys in the \fBdefault group\fR can be set simultaneously, by 
  }
 .EE
 .TP
-\fBexpire { keep_most_recent\fR \fI<N>\fR; \fB}\fR
+\fBexpire { keep-most-recent\fR \fI<N>\fR; \fB}\fR
 Keep <N> most recent versions during expire.
 .PP
 .TP
-\fBexpire { create_daily\fR \fIfirst|last\fR; \fB}\fR
+\fBexpire { create-daily\fR \fIfirst|last\fR; \fB}\fR
 Tag first/last backup of the day as daily backup during expire.
 .PP
 .TP
-\fBexpire { keep_daily\fR \fI<N>\fR; \fB}\fR
+\fBexpire { keep-daily\fR \fI<N>\fR; \fB}\fR
 Keep the newest <N> daily backups during expire.
 .PP
 .TP
-\fBexpire { create_weekly\fR \fI<weekday>\fR; \fB}\fR
+\fBexpire { create-weekly\fR \fI<weekday>\fR; \fB}\fR
 Tag daily backup on <weekday> as weekly backup during expire. Possible values for <weekday> are monday, tuesday, ..., sunday.
 .PP
 .TP
-\fBexpire { keep_weekly\fR \fI<N>\fR; \fB}\fR
+\fBexpire { keep-weekly\fR \fI<N>\fR; \fB}\fR
 Keep the newest <N> weekly backups during expire.
 .PP
 .TP
-\fBexpire { create_monthly\fR \fIfirst|last\fR; \fB}\fR
+\fBexpire { create-monthly\fR \fIfirst|last\fR; \fB}\fR
 Tag first/last daily backup of the month as monthly backup during expire.
 .PP
 .TP
-\fBexpire { keep_monthly\fR \fI<N>\fR; \fB}\fR
+\fBexpire { keep-monthly\fR \fI<N>\fR; \fB}\fR
 Keep the newest <N> monthly backups during expire.
 .PP
 .TP
-\fBexpire { create_yearly\fR \fIfirst|last\fR; \fB}\fR
+\fBexpire { create-yearly\fR \fIfirst|last\fR; \fB}\fR
 Tag first/last daily backup of the year as yearly backup during expire.
 .PP
 .TP
-\fBexpire { keep_yearly\fR \fI<N>\fR; \fB}\fR
+\fBexpire { keep-yearly\fR \fI<N>\fR; \fB}\fR
 Keep the newest <N> yearly backups during expire.
 .PP
 
 The configuration keys in the \fBexpire group\fR can be set simultaneously, for instance by using
 .EX
  expire {
-   keep_most_recent 30;
-   keep_daily 45;
-   keep_monthly 30;
+   keep-most-recent 30;
+   keep-daily 45;
+   keep-monthly 30;
    ...
  }
 .EE
