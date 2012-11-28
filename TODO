@@ -20,6 +20,8 @@
 * gc should show an estimate how much db cache is used
 * maybe upgrade time -> 64bit storage in BDB
 * reduce TransferList memory usage, to allow a large number of files in get/put
+* touch TEST; chmod 444 TEST; cp TEST TEST2  <- fails with bfsyncfs, ok with ext4
+  most likely implementing bfsyncfs_create would fix the problem
 
 Performance:
 ============
