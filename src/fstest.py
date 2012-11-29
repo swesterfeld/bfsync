@@ -1070,6 +1070,15 @@ bf_tests += [ ("test-8bit-filename", test_8bit_filename) ]
 
 #####
 
+def test_create_readonly_file():
+  write_file ("mnt/source", "readonly file")
+  os.chmod ("mnt/source", 0444)
+  os.system ("cp -a mnt/source mnt/dest")
+
+tests += [ ("create-readonly-file", test_create_readonly_file) ]
+
+#####
+
 
 def start_bfsyncfs():
   if os.system ("""( echo "*** fs start (`date`)"; ../fs/bfsyncfs -f test/repo mnt; echo "*** fs stop (`date`), exit $?"
