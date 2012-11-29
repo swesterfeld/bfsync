@@ -18,6 +18,7 @@ bflocktest
 bftestidsort
 bfwalktest
 bfdefrag
+bfrandomize
 mnt
 test
 fs.log
