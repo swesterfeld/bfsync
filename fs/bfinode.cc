@@ -27,6 +27,7 @@
 #include "bflink.hh"
 #include "bfbdb.hh"
 #include "bfhistory.hh"
+#include "bfgroup.hh"
 
 #include <set>
 
@@ -595,6 +596,10 @@ INode::unlink (const Context& ctx, const string& name, LinkMode lm)
 bool
 INode::read_perm_ok (const Context& ctx) const
 {
+  const string& bfsync_group = Options::the()->bfsync_group;
+  if (!bfsync_group.empty() && get_bfsync_group (ctx.fc->pid) != bfsync_group)
+    return false;
+
   if (ctx.fc->uid == 0)
     return true;
 
@@ -610,6 +615,10 @@ INode::read_perm_ok (const Context& ctx) const
 bool
 INode::write_perm_ok (const Context& ctx) const
 {
+  const string& bfsync_group = Options::the()->bfsync_group;
+  if (!bfsync_group.empty() && get_bfsync_group (ctx.fc->pid) != bfsync_group)
+    return false;
+
   if (ctx.fc->uid == 0)
     return true;
 
@@ -625,6 +634,10 @@ INode::write_perm_ok (const Context& ctx) const
 bool
 INode::search_perm_ok (const Context& ctx) const
 {
+  const string& bfsync_group = Options::the()->bfsync_group;
+  if (!bfsync_group.empty() && get_bfsync_group (ctx.fc->pid) != bfsync_group)
+    return false;
+
   if (ctx.fc->uid == 0)
     return true;
 

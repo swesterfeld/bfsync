@@ -172,6 +172,7 @@ struct Options {
   bool         cache_attributes;
   bool         use_uid_gid;
   int          cache_size_mb;
+  std::string  bfsync_group;
 
   static Options *the();
 };

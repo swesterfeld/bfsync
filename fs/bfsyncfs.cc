@@ -1457,7 +1457,7 @@ bfsyncfs_main (int argc, char **argv)
   options.cache_attributes = false;
 
   int opt;
-  while ((opt = getopt (argc, argv, "dafc")) != -1)
+  while ((opt = getopt (argc, argv, "dafcg:")) != -1)
     {
       switch (opt)
         {
@@ -1468,6 +1468,8 @@ bfsyncfs_main (int argc, char **argv)
           case 'a': options.mount_all = true;
                     break;
           case 'c': options.cache_attributes = true;
+                    break;
+          case 'g': options.bfsync_group = optarg;
                     break;
           default:  exit_usage();
                     exit (1);

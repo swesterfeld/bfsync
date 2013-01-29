@@ -6,7 +6,8 @@ DESTDIR = /
 BDB_LIBS = -ldb_cxx
 
 bin_PROGRAMS = bfsyncfs bfsyncca
-noinst_PROGRAMS = bftesthelper bfdbdump bfproftest bflocktest bflockcheck bftestidsort bfperf bfwalktest bfdefrag bfrandomize
+noinst_PROGRAMS = bftesthelper bfdbdump bfproftest bflocktest bflockcheck bftestidsort bfperf bfwalktest bfdefrag bfrandomize \
+                  bfgrouptest
 
 lib_LTLIBRARIES = libbfsync.la
 
@@ -18,10 +19,10 @@ EXTRA_DIST = $(PYTHON_FILES) $(SWIG_FILES) $(EXTENSION_FILES)
 
 BFSYNC_HDRS = bfinode.hh bfidhash.hh bfsyncfs.hh bflink.hh bfsyncserver.hh bfhistory.hh \
               bfcfgparser.hh bfleakdebugger.hh bfbdb.hh bftimeprof.hh bfidsorter.hh \
-              bfdeduptable.hh
+              bfdeduptable.hh bfgroup.hh
 
 libbfsync_la_SOURCES = bfsyncfs.cc bflink.cc bfinode.cc bfleakdebugger.cc bfsyncserver.cc bfidhash.cc \
-                       bfhistory.cc bfcfgparser.cc bfbdb.cc bftimeprof.cc $(BFSYNC_HDRS)
+                       bfhistory.cc bfcfgparser.cc bfbdb.cc bftimeprof.cc bfgroup.cc $(BFSYNC_HDRS)
 libbfsync_la_LIBADD = $(GLIB_LIBS) $(FUSE_LIBS) $(BDB_LIBS)
 
 bfsyncfs_SOURCES = bfmain.cc
@@ -56,6 +57,9 @@ bflockcheck_LDADD = $(GLIB_LIBS) $(FUSE_LIBS) $(BDB_LIBS) libbfsync.la
 
 bftestidsort_SOURCES = bftestidsort.cc
 bftestidsort_LDADD = $(GLIB_LIBS) $(FUSE_LIBS) $(BDB_LIBS) libbfsync.la
+
+bfgrouptest_SOURCES = bfgrouptest.cc
+bfgrouptest_LDADD = $(GLIB_LIBS) $(FUSE_LIBS) $(BDB_LIBS) libbfsync.la
 
 bftesthelper_SOURCES = bftesthelper.cc
 

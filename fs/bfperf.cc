@@ -35,6 +35,7 @@
 #include "bfsyncfs.hh"
 #include "bfidhash.hh"
 #include "bfbdb.hh"
+#include "bfgroup.hh"
 #include "bfleakdebugger.hh"
 
 using std::string;
@@ -392,6 +393,25 @@ perf_int2str()
   print_result ("int2str4/sec", N / (end_t - start_t));
 }
 
+void
+perf_group()
+{
+  const uint64_t N = 100 * 1000;
+  double start_t, end_t;
+  string s;
+
+  // int2str
+  start_t = gettime();
+  for (uint64_t i = 0; i < N; i++)
+    {
+      s = get_bfsync_group (getpid());
+    }
+  end_t = gettime();
+
+  print_result ("get_group/sec", N / (end_t - start_t));
+}
+
+
 int
 main()
 {
@@ -404,6 +424,7 @@ main()
   perf_read_string();
   perf_leak_debugger();
   perf_int2str();
+  perf_group();
   FILE *test = fopen ("mnt/.bfsync/info", "r");
   if (!test)
     {
