@@ -67,7 +67,7 @@ get_bfsync_group_slow (pid_t pid)
 
   fclose (env_file);
 
-  return result.c_str();
+  return result;
 }
 
 
