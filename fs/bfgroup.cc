@@ -20,6 +20,7 @@
 #include "bfgroup.hh"
 #include "bfsyncfs.hh"
 #include <math.h>
+#include <stdlib.h>
 
 #include <map>
 
@@ -74,7 +75,7 @@ namespace
 {
   Mutex               get_group_mutex;
   map<pid_t, string>  get_group_cache;
-  double              get_group_cache_time = 0;
+  time_t              get_group_cache_time;
 }
 
 string
@@ -83,10 +84,10 @@ BFSync::get_bfsync_group (pid_t pid)
   Lock lock (get_group_mutex);
 
   /* invalidate cache every 30 seconds */
-  const double time = gettime();
-  if (fabs (time - get_group_cache_time) > 30)
+  const time_t time_now = time (NULL);
+  if (labs (time_now - get_group_cache_time) > 30)
     {
-      get_group_cache_time = time;
+      get_group_cache_time = time_now;
       get_group_cache.clear();
     }
 
