@@ -25,6 +25,7 @@
 #include "bfcfgparser.hh"
 #include "bfbdb.hh"
 #include "bftimeprof.hh"
+#include "bfgroup.hh"
 #include "config.h"
 
 #include <sys/time.h>
@@ -462,6 +463,10 @@ bfsync_getattr (const char *path_arg, struct stat *stbuf)
   FSLock lock (FSLock::READ);
 
   Context ctx;
+  const string& bfsync_group = Options::the()->bfsync_group;
+  if (!bfsync_group.empty() && get_bfsync_group (ctx.fc->pid) != bfsync_group)
+    return -EACCES;
+
   int version = version_map_path (path);
   if (version > 0)
     {
