@@ -37,6 +37,7 @@ import random
 
 from utils import *
 from expire import expire, copy_expire
+from textdiff import text_diff
 from diffutils import diff
 from commitutils import commit, revert, gen_status
 from remoteutils import *
@@ -392,7 +393,8 @@ def cmd_revert():
   run_commands (repo)
 
 def cmd_remove():
-  bdb_dir = os.path.join (find_repo_dir(), "bdb")
+  (repo_path, repo_start_dir) = find_repo_dir()
+  bdb_dir = os.path.join (repo_path, "bdb")
   bfsyncdb.remove_db (bdb_dir)
 
 def cmd_db_fingerprint():
@@ -881,7 +883,7 @@ def cmd_recover():
       print "fatal: path '" + dir + "' does not exist"
       sys.exit (1)
 
-  repo_path = find_repo_dir()
+  (repo_path, repo_start_dir) = find_repo_dir()
   bfsync_info = parse_config (repo_path + "/config")
 
   cache_size = bfsync_info.get ("cache-size")
@@ -924,7 +926,7 @@ def cmd_need_recover():
       print "fatal: path '" + dir + "' does not exist"
       sys.exit (1)
 
-  repo_path = find_repo_dir()
+  (repo_path, repo_start_dir) = find_repo_dir()
 
   need_recover = bfsyncdb.need_recover_db (repo_path)
 
@@ -987,7 +989,7 @@ def cmd_need_continue():
     sys.exit (1)
 
 def cmd_config_set():
-  repo_path = find_repo_dir()
+  (repo_path, repo_start_dir) = find_repo_dir()
   repo_config_filename = os.path.join (repo_path, "config")
   repo_config = parse_config (repo_config_filename)
 
@@ -1002,7 +1004,7 @@ def cmd_config_set():
   f.close()
 
 def cmd_config_unset():
-  repo_path = find_repo_dir()
+  (repo_path, repo_start_dir) = find_repo_dir()
   repo_config_filename = os.path.join (repo_path, "config")
   repo_config = parse_config (repo_config_filename)
 
@@ -1361,7 +1363,7 @@ def cmd_upgrade():
       print "fatal: path '" + dir + "' does not exist"
       sys.exit (1)
 
-  repo_path = find_repo_dir()
+  (repo_path, repo_start_dir) = find_repo_dir()
   bfsync_info = parse_config (repo_path + "/info")
 
   version = bfsync_info.get ("version")
@@ -1387,6 +1389,10 @@ def cmd_upgrade():
 def cmd_sql_export():
   repo = cd_repo_connect_db()
   sql_export (repo, args)
+
+def cmd_diff():
+  repo = cd_repo_connect_db()
+  text_diff (repo, args)
 
 args = []
 
@@ -1433,6 +1439,7 @@ def main():
       ( "sql-export",             cmd_sql_export, 1),
       ( "get-repo-id",            cmd_get_repo_id, 0),
       ( "find-missing",           cmd_find_missing, 1),
+      ( "diff",                   cmd_diff, 1),
       ( "inr-test",               cmd_inr_test, 1),
       ( "debug-add-tag",          cmd_debug_add_tag, 1),
       ( "debug-del-tag",          cmd_debug_del_tag, 1),

@@ -72,6 +72,7 @@ def mkdir_recursive (dir):
 
 def find_repo_dir():
   dir = os.getcwd()
+  repo_start_dir = ""
   while True:
     file_ok = False
     try:
@@ -104,8 +105,12 @@ def find_repo_dir():
           raise Exception ("bad repo-path list (should have exactly 1 entry)")
       else:
         raise Exception ("unknown repo-type '%s' in find_repo_dir", cfg.get ("repo-type"))
-      return dir
+      return dir, repo_start_dir
     # try parent directory
+    if len (repo_start_dir):
+      repo_start_dir = os.path.join (os.path.basename (dir), repo_start_dir)
+    else:
+      repo_start_dir = os.path.basename (dir)
     newdir = os.path.dirname (dir)
     if newdir == dir:
       # no more parent
@@ -244,7 +249,7 @@ class Repo:
       return None       # no server => no lock
 
 def cd_repo_connect_db (cont = False):
-  repo_path = find_repo_dir()
+  (repo_path, repo_start_dir) = find_repo_dir()
   bfsync_config = parse_config (repo_path + "/config")
   bfsync_info = parse_config (repo_path + "/info")
 
@@ -291,6 +296,7 @@ def cd_repo_connect_db (cont = False):
   repo.path = repo_path
   repo.config = bfsync_config
   repo.info = bfsync_info
+  repo.start_dir = repo_start_dir
 
   if not cont:
     # wipe old temp files (only if we're not starting in "continue" mode)
