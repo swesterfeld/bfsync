@@ -1667,6 +1667,8 @@ bfsyncfs_main (int argc, char **argv)
     {
       printf ("bfsyncfs: can't close bdb\n");
     }
-  printf ("%s\n", TimeProf::the()->result().c_str());
+
+  // disabled timeprof output (too noisy for normal users)
+  // printf ("%s\n", TimeProf::the()->result().c_str());
   return fuse_rc;
 }
