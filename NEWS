@@ -4,6 +4,7 @@ Overview of Changes in bfsync-0.3.5:
 * fix bug that occured when opening newly created read-only files
 * allow restricting access to the filesystem to a group of processes; this
   is useful when running backups, to prevent locate indexing the backup fs
+* fix packaging: ship sqlexport, too; bfsync sql-export should work now
 
 Overview of Changes in bfsync-0.3.4:
 
