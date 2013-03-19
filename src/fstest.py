@@ -1059,7 +1059,8 @@ bf_tests += [ ("test-8bit-filename", test_8bit_filename) ]
 def test_create_readonly_file():
   write_file ("mnt/source", "readonly file")
   os.chmod ("mnt/source", 0444)
-  os.system ("cp -a mnt/source mnt/dest")
+  if os.system ("cp -a mnt/source mnt/dest") != 0:
+    raise Exception ("failed to copy readonly file")
 
 tests += [ ("create-readonly-file", test_create_readonly_file) ]
 
