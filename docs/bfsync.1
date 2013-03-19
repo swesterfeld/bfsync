@@ -1,4 +1,4 @@
-.TH "BFSYNC" "1" "2012\-11\-26" "Revision 869" "bfsync Manual Page"
+.TH "BFSYNC" "1" "2013\-03\-19" "Revision 902" "bfsync Manual Page"
 
 .SH NAME
 
@@ -140,6 +140,10 @@ Usually, the deletion of old versions is done by the expire command. If a reposi
 .TP
 \fBget-repo-id\fR
 Each bfsync repository or checkout has a unique id, which is generated upon creation of the repository and stored in the "info" file of each repository. This command will print this repository id.
+.PP
+.TP
+\fBdiff\fR \fI<filename>\fR ...
+Run diff to compare the last and the current version of \fI<filename>\fR. Only files can be compared, not whole directories. However, specifying more than one file to diff is supported.
 .PP
 .TP
 \fB--version\fR

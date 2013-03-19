@@ -1,4 +1,4 @@
-.TH "BFSYNCFS" "1" "2012\-09\-05" "Revision 776" "bfsync Manual Page"
+.TH "BFSYNCFS" "1" "2013\-03\-19" "Revision 903" "bfsync Manual Page"
 
 .SH NAME
 
@@ -38,6 +38,10 @@ Run the filesystem as foreground process. Without this option, bfsyncfs will be 
 .TP
 \fB-d\fR
 Enables debugging output, this option is mainly useful during development/debugging.
+.PP
+.TP
+\fB-g\fR \fI<group>\fR
+This option is mainly useful for backup scripts. By setting a group, only processes which have the environment varaible BFSYNC_GROUP set to the same value can access the filesystem. This means other processes that should not have been accessing the backup anyway (like locate or similar indexing daemons) are blocked. Note that this is not a security feature. Everyone can set BFSYNC_GROUP to the value found in ps output. The option just protects the filesystem against access from other processes that may just happen to recursively crawl the file tree.
 .PP
 
 .SH THE .BFSYNC DIRECTORY
