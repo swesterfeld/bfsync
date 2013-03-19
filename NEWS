@@ -1,3 +1,10 @@
+Overview of Changes in bfsync-0.3.5:
+
+* added bfsync diff command: textual diffs between last and current version
+* fix bug that occured when opening newly created read-only files
+* allow restricting access to the filesystem to a group of processes; this
+  is useful when running backups, to prevent locate indexing the backup fs)
+
 Overview of Changes in bfsync-0.3.4:
 
 * added bfsync sql-export command: export file lists to Postgres DB
