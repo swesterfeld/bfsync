@@ -884,6 +884,54 @@ bfsync_mknod (const char *path_arg, mode_t mode, dev_t dev)
   return 0;
 }
 
+static int
+bfsync_create (const char *path_arg, mode_t mode, struct fuse_file_info *fi)
+{
+  /* create the file */
+  int mknod_result = bfsync_mknod (path_arg, mode | S_IFREG, 0);
+  if (mknod_result != 0)
+    return mknod_result;
+
+  /* create ok, now we can open (since mknod did all checks, we'll "just" open the file) */
+  string path = path_arg;
+
+  FSLock lock (FSLock::WRITE);
+  Context ctx;
+
+  IFPStatus ifp;
+  INodePtr  inode = inode_from_path (ctx, path, ifp);
+  if (!inode)
+    {
+      if (ifp == IFP_ERR_NOENT)
+        return -ENOENT;
+      if (ifp == IFP_ERR_PERM)
+        return -EACCES;
+    }
+
+  inode.update()->copy_on_write();
+
+  // open "real" file
+  fi->flags &= ~O_CREAT;
+
+  string filename = inode->file_path();
+  int fd = open (filename.c_str(), fi->flags);
+
+  if (fd != -1)
+    {
+      FileHandle *fh = new FileHandle;
+      fh->fd = fd;
+      fh->special_file = FileHandle::NONE;
+      fh->open_for_write = true;
+      fi->fh = reinterpret_cast<uint64_t> (fh);
+      return 0;
+    }
+  else
+    {
+      return -errno;
+    }
+}
+
+
 int
 bfsync_chmod (const char *name_arg, mode_t mode)
 {
@@ -1556,6 +1604,7 @@ bfsyncfs_main (int argc, char **argv)
   bfsync_oper.open     = bfsync_open;
 
   /* write */
+  bfsync_oper.create   = bfsync_create;
   bfsync_oper.mknod    = bfsync_mknod;
   bfsync_oper.chown    = bfsync_chown;
   bfsync_oper.chmod    = bfsync_chmod;
