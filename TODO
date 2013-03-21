@@ -56,4 +56,6 @@ b4release:
 - make check
 - update documentation if necessary
 - update homepage
+- post release announcement @ google group
+- update freshmeat
 - tag release
