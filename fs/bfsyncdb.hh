@@ -488,7 +488,7 @@ public:
     unsigned int expire_time;
   };
 
-  boost::unordered_map<DictKey, DictValue> hc_dict;
+  boost::unordered_map<HashCacheDict::DictKey, HashCacheDict::DictValue> hc_dict;
 
   void              insert (const std::string& stat_hash, const std::string& file_hash, unsigned int expire_time);
   HashCacheEntry    lookup (const std::string& stat_hash);
