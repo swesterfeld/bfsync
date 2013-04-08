@@ -3,34 +3,38 @@
 from setuptools import setup, Extension
 from subprocess import Popen, PIPE
 
-def pkg_config(*packages):
-  cmd = ['pkg-config', '--cflags', '--libs'] + list (packages)
-  proc = Popen (cmd, stdout=PIPE, stderr=PIPE)
-  output, error = proc.stdout.read(), proc.stderr.read()
-  if error:
-    raise ValueError (error)
-  config = { "-I" : [], "-L" : [], "-l" : []}
-  for token in output.split():
+def parse_config_flags (flags):
+  config_flags = { "-I" : [], "-L" : [], "-l" : []}
+  extra_args = []
+  for token in flags.split():
     flag, value = token[:2], token[2:]
-    config[flag].append (value)
-  return config
+    if (flag == '-D'): # defines
+      extra_args += [ token ]
+    elif token == "-pthread":  # ignore -pthread; shouldn't be necessary
+      pass
+    else:
+      config_flags[flag].append (value)
+  return config_flags, extra_args
 
-pkg_config_values = pkg_config ("glib-2.0")
+config_flags, extra_args = parse_config_flags (
+  "@BOOST_CPPFLAGS@ " +
+  "@GLIB_CFLAGS@ @GLIB_LIBS@" +
+  "@FUSE_CFLAGS@ @FUSE_LIBS@")
 
 bfsyncdb_module = Extension('_bfsyncdb',
                            depends = [ "bfsyncdb.hh", "bfbdb.hh", "bfhistory.hh", "bfdeduptable.hh" ],
-                           extra_compile_args = ['-D_FILE_OFFSET_BITS=64'],
+                           extra_compile_args = extra_args,
                            sources=['bfsyncdb.cc', 'bfsyncdb.i', 'bfsqlexport.cc', 'bfhashcache.cc'],
-                           library_dirs = ['.libs'] + pkg_config_values["-L"],
-                           libraries=['bfsync'] + pkg_config_values["-l"],
-                           include_dirs=['..'] + pkg_config_values["-I"],
+                           library_dirs = ['.libs'] + config_flags["-L"],
+                           libraries=['bfsync'] + config_flags["-l"],
+                           include_dirs=['..'] + config_flags["-I"],
                            language='c++',
                            swig_opts=['-c++'],
                            undef_macros=['NDEBUG']
                            )
 
 setup (name = 'bfsyncdb',
-       version = '0.3.5',
+       version = '@VERSION@',
        author = 'Stefan Westerfeld',
        author_email = 'stefan@space.twc.de',
        description = 'Big File synchronization tool - python binding',

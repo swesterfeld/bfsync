@@ -11,7 +11,7 @@ noinst_PROGRAMS = bftesthelper bfdbdump bfproftest bflocktest bflockcheck bftest
 
 lib_LTLIBRARIES = libbfsync.la
 
-PYTHON_FILES = setup.py
+PYTHON_FILES = setup.py.in
 SWIG_FILES = bfsyncdb.i
 EXTENSION_FILES = bfsyncdb.cc bfsyncdb.hh bfsqlexport.cc bfhashcache.cc
 

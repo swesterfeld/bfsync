@@ -110,7 +110,9 @@ BOOST_REQUIRE([1.34])
 
 AC_CONFIG_FILES([
   Makefile
+  setup.py
   fs/Makefile
+  fs/setup.py
   docs/Makefile
   src/Makefile
   src/bfsync/Makefile

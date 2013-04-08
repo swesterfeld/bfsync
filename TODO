@@ -50,8 +50,6 @@ b4release:
 
 - update NEWS
 - bump "configure.ac" version
-- bump "setup.py" version
-- bump "fs/setup.py" version
 - edit upgrade command in "src/bfsync/main.py"
 - make check
 - update documentation if necessary
