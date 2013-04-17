@@ -1359,7 +1359,7 @@ def cmd_upgrade():
 
   new_version = bfsyncdb.repo_version()
 
-  if version != "0.3.1" and version != "0.3.2" and version != "0.3.3" and version != "0.3.4":
+  if version != "0.3.1" and version != "0.3.2" and version != "0.3.3" and version != "0.3.4" and version != "0.3.5":
     raise BFSyncError ("can't upgrade from version %s to %s" % (version, new_version))
 
   status_line.set_op ("UPGRADE")
@@ -1371,6 +1371,38 @@ def cmd_upgrade():
   f = open ("info", "w")
   f.write (bfsync_info.to_string())
   f.close()
+
+def cmd_need_upgrade():
+  parser = argparse.ArgumentParser (prog='bfsync need-upgrade')
+  parser.add_argument ("dest_dir", nargs = "?")
+  parsed_args = parser.parse_args (args)
+
+  if parsed_args.dest_dir:
+    dir = parsed_args.dest_dir
+    try:
+      os.chdir (dir)
+    except:
+      print "fatal: path '" + dir + "' does not exist"
+      sys.exit (1)
+
+  (repo_path, repo_start_dir) = find_repo_dir()
+  bfsync_info = parse_config (repo_path + "/info")
+
+  version = bfsync_info.get ("version")
+  if len (version) != 1:
+    raise Exception ("bad version setting")
+  version = version[0]
+
+  new_version = bfsyncdb.repo_version()
+
+  print "upgrade for " + repo_path + ":",
+
+  if version != new_version:
+    print "required"
+    sys.exit (0)
+  else:
+    print "not required"
+    sys.exit (1)
 
 def cmd_sql_export():
   repo = cd_repo_connect_db()
@@ -1414,6 +1446,7 @@ def main():
       ( "recover",                cmd_recover, 1),
       ( "need-recover",           cmd_need_recover, 1),
       ( "need-continue",          cmd_need_continue, 1),
+      ( "need-upgrade",           cmd_need_upgrade, 1),
       ( "disk-usage",             cmd_disk_usage, 1),
       ( "config-set",             cmd_config_set, 1),
       ( "config-unset",           cmd_config_unset, 1),
