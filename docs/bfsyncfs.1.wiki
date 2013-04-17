@@ -35,6 +35,9 @@ Note that changes only become permanent after using bfsync commit. Other bfsync 
 ; '''-d'''
 : Enables debugging output, this option is mainly useful during development/debugging.
 
+; '''-g''' ''<group>''
+: This option is mainly useful for backup scripts. By setting a group, only processes which have the environment varaible BFSYNC_GROUP set to the same value can access the filesystem. This means other processes that should not have been accessing the backup anyway (like locate or similar indexing daemons) are blocked. Note that this is not a security feature. Everyone can set BFSYNC_GROUP to the value found in ps output. The option just protects the filesystem against access from other processes that may just happen to recursively crawl the file tree.
+
 == THE .bfsync DIRECTORY ==
 
 Once a repository is mounted, all data contained in the current version of the repository will be available through the mount point. However, one additional directory will show up in the file system, the ".bfsync" directory. Within the .bfsync directory, all previous versions of the file system are available inside the commits directory. So if you access the contents of .bfsync/commits/8, this directory will contain the contents of the repository version 8. It is not possible to modify old commits, the .bfsync directory is only for reading.

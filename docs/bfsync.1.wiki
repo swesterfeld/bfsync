@@ -90,6 +90,9 @@ It is possible to use bfsync for backups, in that case you only use a subset of 
 ; '''upgrade'''
 : Upgrade bfsync repository contents from an old bfsync version to a new bfsync version. The repository version of a bfsync repository is initialized to the version of bfsync that created the repository. That is true for master repositories (create with bfsync init) and checkouts (created with bfsync clone). A repository can only be accessed by bfsync if the repository version and the bfsync version matches. In some cases upgrade can automatically upgrade a repository to the current bfsync version. Note that while this makes it possible to access the repository with the new bfsync, at the same time it makes it impossible to access it with the old bfsync (and there is no downgrade command). Manual repository version upgrades are described in the section UPDATING FROM AN OLD VERSION; of course if automated upgrade with bfsync upgrade are easier and should be used if bfsync upgrade supports the old version -> new version upgrade.
 
+; '''need-upgrade''' ''[<repo>]''
+: Returns true if running '''bfsync upgrade''' is necessary. The repository is choosen either from the ''<repo>'' argument, or if that is not there, from the directory "need-upgrade" was started in.
+
 ; '''delete-version''' ''<vrange1>'' ''<vrange2>'' ''...''
 : This command tags the version(s) ''<vrange1>'', ''<vrange2>'', ... as deleted, where single numbers are possible ('''bfsync delete-version 10''') or version ranges ('''bfsync delete-version 10-20'''). Once deleted, these versions become invisible (in the .commits dir, in the bfsync log and so on), and files that are only present in deleted versions are removed during '''bfsync gc''', and will not be retransferred for instance during '''bfsync get'''.
 

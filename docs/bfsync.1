@@ -1,4 +1,4 @@
-.TH "BFSYNC" "1" "2013\-03\-19" "Revision 902" "bfsync Manual Page"
+.TH "BFSYNC" "1" "2013\-04\-17" "Revision 911" "bfsync Manual Page"
 
 .SH NAME
 
@@ -108,6 +108,10 @@ The expire command was designed mainly for deleting the contents of old backups,
 .TP
 \fBupgrade\fR
 Upgrade bfsync repository contents from an old bfsync version to a new bfsync version. The repository version of a bfsync repository is initialized to the version of bfsync that created the repository. That is true for master repositories (create with bfsync init) and checkouts (created with bfsync clone). A repository can only be accessed by bfsync if the repository version and the bfsync version matches. In some cases upgrade can automatically upgrade a repository to the current bfsync version. Note that while this makes it possible to access the repository with the new bfsync, at the same time it makes it impossible to access it with the old bfsync (and there is no downgrade command). Manual repository version upgrades are described in the section UPDATING FROM AN OLD VERSION; of course if automated upgrade with bfsync upgrade are easier and should be used if bfsync upgrade supports the old version -> new version upgrade.
+.PP
+.TP
+\fBneed-upgrade\fR \fI[<repo>]\fR
+Returns true if running \fBbfsync upgrade\fR is necessary. The repository is choosen either from the \fI<repo>\fR argument, or if that is not there, from the directory "need-upgrade" was started in.
 .PP
 .TP
 \fBdelete-version\fR \fI<vrange1>\fR \fI<vrange2>\fR \fI...\fR
