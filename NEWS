@@ -1,3 +1,9 @@
+Overview of Changes in bfsync-0.3.6:
+
+* boost related build fixes
+* fix build on Debian/squeeze
+* bfsync need-upgrade: added command to check if repo needs to be upgraded
+
 Overview of Changes in bfsync-0.3.5:
 
 * added bfsync diff command: textual diffs between last and current version
