@@ -1,3 +1,15 @@
+bfsync (0.3.6) precise; urgency=low
+
+  * new package for bfsync 0.3.6
+
+ -- Stefan Westerfeld <stefan@space.twc.de>  Thu, 18 Apr 2013 11:08:01 +0200
+
+bfsync (0.3.5) precise; urgency=low
+
+  * new package for bfsync 0.3.5
+
+ -- Stefan Westerfeld <stefan@space.twc.de>  Tue, 19 Mar 2013 15:13:15 +0100
+
 bfsync (0.3.4) precise; urgency=low
 
   * new package for bfsync 0.3.4
