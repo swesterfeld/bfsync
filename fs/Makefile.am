@@ -32,10 +32,10 @@ bfsyncca_SOURCES = bfsyncca.cc
 bfsyncca_LDADD = $(GLIB_LIBS)
 
 bfdefrag_SOURCES = bfdefrag.cc
-bfdefrag_LDADD = $(GLIB_LIBS) $(FUSE_LIBS) libbfsync.la
+bfdefrag_LDADD = $(GLIB_LIBS) $(FUSE_LIBS) $(BDB_LIBS) libbfsync.la
 
 bfrandomize_SOURCES = bfrandomize.cc
-bfrandomize_LDADD = $(GLIB_LIBS) $(FUSE_LIBS) libbfsync.la
+bfrandomize_LDADD = $(GLIB_LIBS) $(FUSE_LIBS) $(BDB_LIBS) libbfsync.la
 
 bfperf_SOURCES = bfperf.cc
 bfperf_LDADD = $(GLIB_LIBS) $(FUSE_LIBS) libbfsync.la
