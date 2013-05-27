@@ -689,7 +689,7 @@ class UserConflictResolver:
     elif display == "C":
       subprocess.call ([ "xdg-open", "common_%s" % filename ])
     else:
-      os.system (os.environ['SHELL'])
+      subprocess.call ([ os.environ['SHELL'] ])
     os.chdir (old_cwd)
 
   def resolve (self, conflict):

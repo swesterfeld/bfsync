@@ -1,6 +1,7 @@
 # Licensed GNU GPL v3 or later: http://www.gnu.org/licenses/gpl.html
 
 import os
+import subprocess
 from utils import *
 import bfsyncdb
 
@@ -35,4 +36,6 @@ def text_diff (repo, args):
     this_filename = get_filename (repo, filename, VERSION)
     if this_filename is None:
       raise BFSyncError ("error: %s not found in previous version (%d)" % (this_filename, VERSION))
-    os.system ("diff -u %s %s --label 'a/%s' --label 'b/%s'" % (last_filename, this_filename, full_filename, full_filename))
+    subprocess.call ([ "diff", "-u", last_filename, this_filename,
+                               "--label", "a/%s" % full_filename,
+                               "--label", "b/%s" % full_filename ])

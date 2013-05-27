@@ -14,6 +14,7 @@ import pwd
 import time
 import hashlib
 import cPickle
+import subprocess
 
 # in case the repo is not mounted, we don't need a ServerConn
 #
@@ -37,7 +38,7 @@ def launch_editor (filename):
     editor = os.getenv ("EDITOR")
   if editor is None:
     editor = "vi"
-  os.system ("%s %s" % (editor, filename))
+  subprocess.call ([editor, filename])
 
 def commit_msg_ok (filename):
   file = open (filename, "r")
