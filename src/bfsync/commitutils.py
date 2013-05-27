@@ -506,7 +506,6 @@ class CommitCommand:
       status_line.set_op ("COMMIT")
 
     self.repo = repo
-    self.make_commit_msg (commit_args)
     self.VERSION = self.repo.first_unused_version()
 
     # lock repo to allow modifications
@@ -515,6 +514,9 @@ class CommitCommand:
     else:
       self.server_conn = NoServerConn()
     self.server_conn.get_lock()
+
+    # flush happened due to server lock
+    self.make_commit_msg (commit_args)
 
     if self.DEBUG_MEM:
       print_mem_usage ("after commit msg")
