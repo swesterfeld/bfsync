@@ -5,6 +5,14 @@ import subprocess
 from utils import *
 import bfsyncdb
 
+# "a/b/c" => [ "a", "b", "c" ]
+def split_path (filename):
+  if filename == "":
+    return []
+
+  dirname, basename = os.path.split (filename)
+  return split_path (dirname) + [ basename ]
+
 def follow_link (repo, inode, path_part, VERSION):
   links = repo.bdb.load_links (inode.id, VERSION)
   for link in links:
@@ -14,7 +22,7 @@ def follow_link (repo, inode, path_part, VERSION):
 
 def get_filename (repo, filename, VERSION):
   inode = repo.bdb.load_inode (bfsyncdb.id_root(), VERSION)
-  for path_part in os.path.split (os.path.join (repo.start_dir, filename)):
+  for path_part in split_path (os.path.join (repo.start_dir, filename)):
     inode = follow_link (repo, inode, path_part, VERSION)
     if not inode:
       return None
