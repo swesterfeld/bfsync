@@ -12,11 +12,12 @@ Package: bfsync
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: synchronization for collections of big files
-  bfsync is a file-synchronization tool that allows you to keep a collection
-  of big files synchronized on many machines. It is built around a FuSE filesystem,
-  so repositories can be mounted and the contents can be viewed and modified
-  via the mount point.
-  A collection of commands like commit/push/pull/put/get can be used to control
-  bfsyncs behaviour, and trigger data / history transfers between machines. In
-  addition to synchronizing files between many machines, bfsync can also be used
-  to store backups.
+ bfsync is a file-synchronization tool that allows you to keep a collection
+ of big files synchronized on many machines. It is built around a FuSE filesystem,
+ so repositories can be mounted and the contents can be viewed and modified
+ via the mount point.
+ .
+ A collection of commands like commit/push/pull/put/get can be used to control
+ bfsyncs behaviour, and trigger data / history transfers between machines. In
+ addition to synchronizing files between many machines, bfsync can also be used
+ to store backups.
