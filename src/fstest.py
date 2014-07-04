@@ -1066,6 +1066,54 @@ tests += [ ("create-readonly-file", test_create_readonly_file) ]
 
 #####
 
+def delete_version (vrange):
+  cwd = os.getcwd()
+  os.chdir ("mnt")
+  run_quiet ([BFSYNC, "delete-version", "%s" % vrange])
+  os.chdir (cwd)
+
+def test_commits_dir_full():
+  # previous commits 1 and 2 exist here
+  for i in range (1, 11):
+    write_file ("mnt/file%d" % i, "file%d" % i)
+    commit()    # commit 3, 4, 5, 6, 7,
+                #        8, 9,10,11,12
+  delete_version ("5-6")
+  delete_version (9)
+  commit_dir = os.listdir("mnt/.bfsync/commits")
+  commit_dir = sorted (commit_dir, key = int)
+  commit_dir = ",".join (commit_dir)
+  if commit_dir != "1,2,3,4,7,8,10,11,12":
+    raise Exception ("commits directory contents test failed")
+
+  def check_commits_dir (filepattern, vlist):
+    vlist = vlist.split (",")
+    for v in vlist:
+      # handle !version: this means check for version, and raise Exception if it exists
+      if v[0] == "!":
+        v = v[1:]
+        exists = False
+      else:
+        exists = True
+      filename = "mnt/.bfsync/commits/" + filepattern % v
+      if exists != os.path.exists (filename):
+        raise Exception ("commits dir path exists check '%s'=%d failed" % (filename, exists))
+
+  # check commits directory entry itself: should exist for each version that has not been deleted
+  check_commits_dir ("%s", "!-2,!-1,!0,1,2,3,4,!5,!6,7,8,!9,10,11,12,!13,!14,!15")
+
+  # try a few modifications of 7 to prevent problems caused by string -> int mapping
+  check_commits_dir ("%s", "!07,!+7,!007,!7.,!7-")
+
+  # check presence of README file in commits dir
+  check_commits_dir ("%s/README", "!-2,!-1,!0,!1,2,3,4,!5,!6,7,8,!9,10,11,12,!13,!14,!15")
+
+  # check for string -> int mapping issues (as above)
+  check_commits_dir ("%s/README", "!07,!+7,!007,!7.,!7-")
+
+bf_tests += [ ("test-commits-dir-full", test_commits_dir_full) ]
+
+#####
 
 def start_bfsyncfs():
   if os.system ("""( echo "*** fs start (`date`)"; ../fs/bfsyncfs -f test/repo mnt; echo "*** fs stop (`date`), exit $?"
