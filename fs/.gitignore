@@ -19,8 +19,11 @@ bftestidsort
 bfwalktest
 bfdefrag
 bfrandomize
+bfgrouptest
 mnt
 test
 fs.log
 bfsyncdb.py
 bfsyncdb_wrap.cpp
+setup.py
+build/
