@@ -1087,6 +1087,22 @@ def get_inode_hashes():
       hash_list.append (line)
   return hash_list
 
+def check_inode_hashes (contents):
+  # build expected / actual hash lists
+
+  expect_ihashes = []
+  for c in contents:
+    expect_ihashes.append (hashlib.sha1 (c).hexdigest())
+
+  ihashes = get_inode_hashes()
+
+  # sort hash lists
+  ihashes.sort()
+  expect_ihashes.sort()
+
+  # compare lists
+  return ",".join (ihashes) == ",".join (expect_ihashes)
+
 def test_commits_dir_full():
   # previous commits 1 and 2 exist here
   filename = ""
@@ -1131,27 +1147,59 @@ def test_commits_dir_full():
   # check for string -> int mapping issues (as above)
   check_commits_dir ("%s/README", "!07,!+7,!007,!7.,!7-")
 
-  # sha1hash each element of a list
-  def hash_all (xs):
-    result = []
-    for x in xs:
-      result.append (hashlib.sha1 (x).hexdigest())
-    return result
-
-  ihashes = get_inode_hashes()
-  expect_ihashes = hash_all ([ "file1", "file2", # file3 & file4 deleted
+  if not check_inode_hashes ([ "file1", "file2", # file3 & file4 deleted
                                "file5", "file6", # file7 deleted
                                "file8", "file9", "file10",
                                read_file ("mnt/README"),
-                               read_file ("mnt/subdir/x") ])
-
-  ihashes.sort()
-  expect_ihashes.sort()
-
-  if ",".join (ihashes) != ",".join (expect_ihashes):
+                               read_file ("mnt/subdir/x") ]):
     raise Exception ("inode hashes list doesn't match expected inode hash list")
 
 bf_tests += [ ("test-commits-dir-full", test_commits_dir_full) ]
+
+#####
+
+def test_inode_hashes():
+  # remove initial version with contents
+  os.remove ("mnt/README")
+  os.remove ("mnt/subdir/x")
+  delete_version (2)
+
+  # version 3:
+  write_file ("mnt/file11", "file11")
+  write_file ("mnt/file12", "file12")
+  write_file ("mnt/file13", "file13")
+  write_file ("mnt/file14", "file14")
+  commit()
+
+  # version 4:
+  os.remove ("mnt/file11")
+  write_file ("mnt/file22", "file22")
+  write_file ("mnt/file23", "file23")
+  write_file ("mnt/file24", "file24")
+  commit()
+
+  # version 5:
+  os.remove ("mnt/file12")
+  os.remove ("mnt/file22")
+  write_file ("mnt/file33", "file33")
+  write_file ("mnt/file34", "file34")
+  commit()
+
+  # version 6:
+  os.remove ("mnt/file13")
+  os.remove ("mnt/file23")
+  os.remove ("mnt/file33")
+  write_file ("mnt/file44", "file44")
+  commit()
+
+  delete_version ("4-5")
+  if not check_inode_hashes ([ "file11", "file12", "file13", "file14",
+                                                             "file24",
+                                                             "file34",
+                                                             "file44" ]):
+    raise Exception ("inode hashes list doesn't match expected inode hash list")
+
+bf_tests += [ ("test-inode-hashes", test_inode_hashes) ]
 
 #####
 
