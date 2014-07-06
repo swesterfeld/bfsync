@@ -1293,7 +1293,7 @@ INodeHashIterator::~INodeHashIterator()
 string
 INodeHashIterator::get_next()
 {
-  const set<unsigned int>& deleted_versions = bdb_ptr.get_bdb()->history()->deleted_versions();
+  const History *history = bdb_ptr.get_bdb()->history();
 
   while (dbc_ret == 0)
     {
@@ -1316,7 +1316,7 @@ INodeHashIterator::get_next()
             {
               for (unsigned int version = vmin; version <= vmax; version++)
                 {
-                  if (!deleted_versions.count (version))
+                  if (history->have_version (version))
                     {
                       needed = true;
                       break;

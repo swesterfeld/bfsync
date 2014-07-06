@@ -320,20 +320,17 @@ version_map_path (string& path)
   // search version in history
   int version = -1;
 
-  const vector<unsigned int>& versions = INodeRepo::the()->bdb->history()->all_versions();
-  const set<unsigned int>&    deleted_versions = INodeRepo::the()->bdb->history()->deleted_versions();
-  const unsigned int          current_version = INodeRepo::the()->bdb->history()->current_version();
+  const unsigned int path_version = atoi (p_vec[2].c_str());
+  const History *history = INodeRepo::the()->bdb->history();
 
-  for (size_t i = 0; i < versions.size(); i++)
+  if (history->have_version (path_version) && path_version != history->current_version())
     {
-      if (deleted_versions.count (versions[i]) == 0 && versions[i] != current_version)
-        {
-          char buffer[64];
-          sprintf (buffer, "%u", versions[i]);
-          if (buffer == p_vec[2])
-            version = versions[i];
-        }
+      char buffer[64];
+      sprintf (buffer, "%u", path_version);
+      if (buffer == p_vec[2])
+        version = path_version;
     }
+
   if (version == -1) // not found
     return -1;
 
@@ -576,13 +573,11 @@ read_dir_contents (const Context& ctx, const string& path, vector<string>& entri
     }
   else if (path == "/.bfsync/commits")
     {
-      const vector<unsigned int>& all_versions = INodeRepo::the()->bdb->history()->all_versions();
-      const set<unsigned int>& deleted_versions = INodeRepo::the()->bdb->history()->deleted_versions();
+      const History *history = INodeRepo::the()->bdb->history();
 
-      for (vector<unsigned int>::const_iterator vi = all_versions.begin(); vi != all_versions.end(); vi++)
+      for (unsigned int v = history->vbegin(); v != history->vend(); v++)
         {
-          unsigned int v = *vi;
-          if ((v != INodeRepo::the()->bdb->history()->current_version()) && (deleted_versions.count (v) == 0))
+          if (v != history->current_version() && history->have_version (v))
             {
               string v_str = string_printf ("%u", v);
               entries.push_back (v_str);

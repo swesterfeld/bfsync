@@ -12,20 +12,20 @@ class BDB;
 
 class History
 {
-  unsigned int                m_current_version;
-  std::vector<unsigned int>   m_all_versions;
-  std::set<unsigned int>      m_deleted_versions;
+  std::vector<bool>           m_version_exists;
   BDB                        *bdb;
+
 public:
   History (BDB *bdb);
 
-  unsigned int            current_version();
-  const std::vector<unsigned int>&
-                          all_versions();
-  const std::set<unsigned int>&
-                          deleted_versions();
+  void          read();
 
-  void                    read();
+  unsigned int  current_version() const;
+  bool          have_version (unsigned int version) const;
+
+  // for iterating over each history entry
+  unsigned int  vbegin() const;
+  unsigned int  vend() const;
 };
 
 }

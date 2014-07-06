@@ -20,47 +20,62 @@ History::History (BDB *bdb) :
 }
 
 unsigned int
-History::current_version()
+History::current_version() const
 {
-  return m_current_version;
+  return m_version_exists.size() - 1;
 }
 
-const vector<unsigned int>&
-History::all_versions()
+unsigned int
+History::vbegin() const
 {
-  return m_all_versions;
+  return 1;
 }
 
-const set<unsigned int>&
-History::deleted_versions()
+unsigned int
+History::vend() const
 {
-  return m_deleted_versions;
+  return m_version_exists.size();
+}
+
+bool
+History::have_version (unsigned int version) const
+{
+  if (version > 0 && version < m_version_exists.size())
+    {
+      return m_version_exists[version];
+    }
+  else
+    {
+      return false;
+    }
 }
 
 void
 History::read()
 {
-  m_all_versions.clear();
-  m_deleted_versions.clear();
+  m_version_exists.clear();
+  m_version_exists.push_back (false);   // version 0 never exists
 
   HistoryEntry history_entry;
 
-  m_current_version = 1;
   for (unsigned int version = 1; bdb->load_history_entry (version, history_entry); version++)
     {
-      m_current_version = max (version + 1, m_current_version);
-      m_all_versions.push_back (version);
+      bool version_exists = true;
 
       vector<string> tags = bdb->list_tags (version);
       for (vector<string>::iterator ti = tags.begin(); ti != tags.end(); ti++)
         {
           if (*ti == "deleted")
-            m_deleted_versions.insert (version);
+            {
+              version_exists = false;
+              break;
+            }
         }
+      m_version_exists.push_back (version_exists);
     }
-  m_all_versions.push_back (m_current_version);
+  m_version_exists.push_back (true);    // current_version always exists
 
-  debug ("current version is %d\n", m_current_version);
+  debug ("current version is %d\n", current_version());
 }
 
 }
