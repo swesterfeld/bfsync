@@ -1124,6 +1124,16 @@ def cmd_debug_change_time():
 
   repo.bdb.commit_transaction()
 
+def cmd_debug_inode_hashes():
+  repo = cd_repo_connect_db()
+  hi = bfsyncdb.INodeHashIterator (repo.bdb)
+  while True:
+    hash = hi.get_next()
+    if hash == "":
+      break           # done
+    print hash
+  del hi # free locks iterator may have held
+
 def cmd_expire():
   repo = cd_repo_connect_db()
   expire (repo, args)
@@ -1472,6 +1482,7 @@ def main():
       ( "debug-inode-name",       cmd_debug_inode_name, 1),
       ( "debug-hash-filename",    cmd_debug_hash_filename, 1),
       ( "debug-change-time",      cmd_debug_change_time, 1),
+      ( "debug-inode-hashes",     cmd_debug_inode_hashes, 0),
       ( "--version",              cmd_version, 0),
     ]
     parse_ok = False

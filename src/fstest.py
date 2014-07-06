@@ -10,6 +10,7 @@ import subprocess
 import time
 import traceback
 import argparse
+import hashlib
 from stat import *
 
 BFSYNC = os.path.join (os.getcwd(), "../src/bfsync.py")
@@ -1072,10 +1073,29 @@ def delete_version (vrange):
   run_quiet ([BFSYNC, "delete-version", "%s" % vrange])
   os.chdir (cwd)
 
+def get_inode_hashes():
+  cwd = os.getcwd()
+  os.chdir ("mnt")
+  result = subprocess.Popen ([BFSYNC, "debug-inode-hashes"], stdout=subprocess.PIPE).communicate()[0]
+  os.chdir (cwd)
+  lines = result.split ("\n")
+
+  # filter empty string introduced by final "\n" in subprocess output
+  hash_list = []
+  for line in lines:
+    if line != "":
+      hash_list.append (line)
+  return hash_list
+
 def test_commits_dir_full():
   # previous commits 1 and 2 exist here
+  filename = ""
   for i in range (1, 11):
-    write_file ("mnt/file%d" % i, "file%d" % i)
+    if filename != "":
+      # ensure that each file is only present in one commit
+      os.remove (filename)
+    filename = "mnt/file%d" % i
+    write_file (filename, "file%d" % i)
     commit()    # commit 3, 4, 5, 6, 7,
                 #        8, 9,10,11,12
   delete_version ("5-6")
@@ -1110,6 +1130,26 @@ def test_commits_dir_full():
 
   # check for string -> int mapping issues (as above)
   check_commits_dir ("%s/README", "!07,!+7,!007,!7.,!7-")
+
+  # sha1hash each element of a list
+  def hash_all (xs):
+    result = []
+    for x in xs:
+      result.append (hashlib.sha1 (x).hexdigest())
+    return result
+
+  ihashes = get_inode_hashes()
+  expect_ihashes = hash_all ([ "file1", "file2", # file3 & file4 deleted
+                               "file5", "file6", # file7 deleted
+                               "file8", "file9", "file10",
+                               read_file ("mnt/README"),
+                               read_file ("mnt/subdir/x") ])
+
+  ihashes.sort()
+  expect_ihashes.sort()
+
+  if ",".join (ihashes) != ",".join (expect_ihashes):
+    raise Exception ("inode hashes list doesn't match expected inode hash list")
 
 bf_tests += [ ("test-commits-dir-full", test_commits_dir_full) ]
 
