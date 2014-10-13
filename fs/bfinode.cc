@@ -158,9 +158,6 @@ INodeRepo::delete_unused_inodes (DeleteMode dmode)
   boost::unordered_map<ID, INodeVersionList>::iterator ci = cache.begin();
   while (ci != cache.end())
     {
-      INodeVersionList& ivlist = ci->second;
-      const ID& id = ci->first;
-
       boost::unordered_map<ID, INodeVersionList>::iterator nexti = ci;
       nexti++;
 
@@ -169,6 +166,9 @@ INodeRepo::delete_unused_inodes (DeleteMode dmode)
         del = (random_gen() % 100) <= 5;        // randomly delete 5%
       if (del)
         {
+          const INodeVersionList& ivlist = ci->second;
+          const ID& id = ci->first;
+
           for (size_t i = 0; i < ivlist.size(); i++)
             {
               // can only delete cache entries that have not been modified (and not saved)
