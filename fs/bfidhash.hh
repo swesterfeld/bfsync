@@ -70,7 +70,8 @@ operator!= (const ID& x, const ID& y)
   return !(x == y);
 }
 
-inline ID::ID (const ID& id) :
+inline
+ID::ID (const ID& id) :
   path_prefix (id.path_prefix),
   a (id.a),
   b (id.b),
