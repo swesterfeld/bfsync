@@ -166,7 +166,7 @@ INodeRepo::delete_unused_inodes (DeleteMode dmode)
 
       bool del = true;                          // dmode == DM_ALL <-> delete all
       if (dmode == DM_SOME)
-        del = g_random_int_range (0, 100) <= 5; // randomly delete 5%
+        del = (random_gen() % 100) <= 5;        // randomly delete 5%
       if (del)
         {
           for (size_t i = 0; i < ivlist.size(); i++)

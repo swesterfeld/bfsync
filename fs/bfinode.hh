@@ -8,6 +8,7 @@
 #include <map>
 
 #include <boost/unordered_map.hpp>
+#include <boost/random.hpp>
 
 #include "bfsyncfs.hh"
 #include "bfidhash.hh"
@@ -253,6 +254,7 @@ public:
 
 class INodeRepo
 {
+  boost::random::rand48                       random_gen;
 public:
   boost::unordered_map<ID, INodeVersionList>  cache;
   std::map<ino_t, ID>                         new_inodes;
