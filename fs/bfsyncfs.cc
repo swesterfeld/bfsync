@@ -128,14 +128,6 @@ get_basename (const string& filename)
   return result;
 }
 
-string
-make_object_filename (const string& hash)
-{
-  if (hash.size() != 40)
-    return "";
-  return options.repo_path + "/objects/" + hash.substr (0, 2) + "/" + hash.substr (2);
-}
-
 double
 gettime()
 {
