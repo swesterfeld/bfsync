@@ -513,6 +513,8 @@ public:
   HashCacheEntry get_next();
 };
 
+std::vector<std::string> check_inodes_links_integrity (BDBPtr bdb);
+
 class BDBException
 {
 private:

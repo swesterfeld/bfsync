@@ -13,7 +13,7 @@ lib_LTLIBRARIES = libbfsync.la
 
 PYTHON_FILES = setup.py.in
 SWIG_FILES = bfsyncdb.i
-EXTENSION_FILES = bfsyncdb.cc bfsyncdb.hh bfsqlexport.cc bfhashcache.cc
+EXTENSION_FILES = bfsyncdb.cc bfsyncdb.hh bfsqlexport.cc bfhashcache.cc bfintegrity.cc
 
 EXTRA_DIST = $(PYTHON_FILES) $(SWIG_FILES) $(EXTENSION_FILES)
 
