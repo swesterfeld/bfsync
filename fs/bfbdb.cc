@@ -1870,4 +1870,41 @@ BDB::ret2error (int ret)
   return BDB_ERROR_UNKNOWN;
 }
 
+//----- AllRecordsIterator helper class: iterate over all database records -------
+
+AllRecordsIterator::AllRecordsIterator (Dbc* dbc) :
+  dbc (dbc),
+  multi_data_buffer (64 * 1024)
+{
+  multi_data.set_flags (DB_DBT_USERMEM);
+  multi_data.set_data (&multi_data_buffer[0]);
+  multi_data.set_ulen (multi_data_buffer.size());
+
+  int dbc_ret = dbc->get (&dummy_key, &multi_data, DB_FIRST | DB_MULTIPLE_KEY);
+  data_iterator = (dbc_ret == 0) ? new DbMultipleKeyDataIterator (multi_data) : NULL;
+}
+
+AllRecordsIterator::~AllRecordsIterator()
+{
+  delete data_iterator;
+}
+
+bool
+AllRecordsIterator::next (Dbt& key, Dbt& data)
+{
+  if (data_iterator)
+    {
+      if (data_iterator->next (key, data))
+        return true;
+
+      delete data_iterator;
+
+      int dbc_ret = dbc->get (&dummy_key, &multi_data, DB_NEXT | DB_MULTIPLE_KEY);
+      data_iterator = (dbc_ret == 0) ? new DbMultipleKeyDataIterator (multi_data) : NULL;
+
+      return next (key, data);
+    }
+  return false;
+}
+
 }

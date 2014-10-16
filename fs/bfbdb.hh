@@ -257,6 +257,21 @@ public:
   }
 };
 
+class AllRecordsIterator
+{
+  Dbc                        *dbc;
+  Dbt                         dummy_key;
+  Dbt                         multi_data;
+  std::vector<char>           multi_data_buffer;
+  DbMultipleKeyDataIterator  *data_iterator;
+
+public:
+  AllRecordsIterator (Dbc* dbc);
+  ~AllRecordsIterator();
+
+  bool next (Dbt& key, Dbt& data);
+};
+
 }
 
 #endif
