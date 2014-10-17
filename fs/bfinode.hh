@@ -254,7 +254,7 @@ public:
 
 class INodeRepo
 {
-  boost::random::rand48                       random_gen;
+  boost::rand48                               random_gen;
 public:
   boost::unordered_map<ID, INodeVersionList>  cache;
   std::map<ino_t, ID>                         new_inodes;
