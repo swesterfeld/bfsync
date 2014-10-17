@@ -1892,7 +1892,7 @@ AllRecordsIterator::~AllRecordsIterator()
 bool
 AllRecordsIterator::next (Dbt& key, Dbt& data)
 {
-  if (data_iterator)
+  while (data_iterator)
     {
       if (data_iterator->next (key, data))
         return true;
@@ -1901,8 +1901,6 @@ AllRecordsIterator::next (Dbt& key, Dbt& data)
 
       int dbc_ret = dbc->get (&dummy_key, &multi_data, DB_NEXT | DB_MULTIPLE_KEY);
       data_iterator = (dbc_ret == 0) ? new DbMultipleKeyDataIterator (multi_data) : NULL;
-
-      return next (key, data);
     }
   return false;
 }
