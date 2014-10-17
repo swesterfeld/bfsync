@@ -94,8 +94,9 @@ main (int argc, char **argv)
   size_t link_total_keysize = 0;
   size_t link_total_datasize = 0;
 
-  ret = dbcp->get (&key, &data, DB_FIRST);
-  while (ret == 0)
+  AllRecordsIterator ari (dbcp);
+
+  while (ari.next (key, data))
     {
       DataBuffer kbuffer ((char *) key.get_data(), key.get_size());
       DataBuffer dbuffer ((char *) data.get_data(), data.get_size());
@@ -218,9 +219,8 @@ main (int argc, char **argv)
         {
           printf ("unknown record type %d\n", table);
         }
-
-      ret = dbcp->get (&key, &data, DB_NEXT);
     }
+
   print ("INodes", inodes);
   print ("Links", links);
   print ("ID2ino", id2ino);
@@ -244,8 +244,10 @@ main (int argc, char **argv)
 
   printf ("\nHash DB:\n");
   printf (  "========\n");
-  ret = dbcp->get (&key, &data, DB_FIRST);
-  while (ret == 0)
+
+  AllRecordsIterator hash_ari (dbcp);
+
+  while (hash_ari.next (key, data))
     {
       const unsigned char *kptr = (unsigned char *) key.get_data();
       DataBuffer dbuffer ((char *) data.get_data(), data.get_size());
@@ -256,7 +258,6 @@ main (int argc, char **argv)
 
       unsigned int file_number = dbuffer.read_uint32();
       printf ("%s|%x/%03x\n", hash.c_str(), file_number / 0x1000, file_number & 0xfff);
-      ret = dbcp->get (&key, &data, DB_NEXT);
     }
 
   printf ("\n\n");
