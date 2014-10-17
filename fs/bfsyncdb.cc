@@ -1280,9 +1280,9 @@ ChangedINodesIterator::~ChangedINodesIterator()
 
 INodeHashIterator::INodeHashIterator (BDBPtr bdb_ptr) :
   dbc (bdb_ptr.get_bdb()),
+  db_it (dbc.dbc),
   bdb_ptr (bdb_ptr)
 {
-  dbc_ret = dbc->get (&key, &data, DB_FIRST);
   bdb_ptr.get_bdb()->history()->read();
 }
 
@@ -1295,7 +1295,7 @@ INodeHashIterator::get_next()
 {
   const History *history = bdb_ptr.get_bdb()->history();
 
-  while (dbc_ret == 0)
+  while (db_it.next (key, data))
     {
       string hash;
       char table = ((char *) key.get_data()) [key.get_size() - 1];
@@ -1334,8 +1334,6 @@ INodeHashIterator::get_next()
               hash = dbuffer.read_string();
             }
         }
-      dbc_ret = dbc->get (&key, &data, DB_NEXT);
-
       if (hash.size() == 40)  /* skip empty hash (for instance symlink) and "new" hash (newly changed inode) */
         {
           if (all_hashes.count (hash) == 0) // deduplication: never return the same hash twice

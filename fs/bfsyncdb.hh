@@ -272,11 +272,11 @@ public:
 
 class INodeHashIterator
 {
-  BFSync::DbcPtr dbc;
-  int dbc_ret;
-  BDBPtr bdb_ptr;
+  BFSync::DbcPtr              dbc;
+  BFSync::AllRecordsIterator  db_it;
+  BDBPtr                      bdb_ptr;
 
-  std::set<std::string> all_hashes;
+  std::set<std::string>       all_hashes;
 
   Dbt key, data;
 public:
