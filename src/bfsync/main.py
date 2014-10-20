@@ -39,6 +39,7 @@ from journal import run_commands, run_continue, init_journal
 from gcutils import gc
 from transferbench import transfer_bench
 from sqlexport import sql_export
+from integrity import check_integrity
 
 def find_bfsync_dir():
   old_cwd = os.getcwd()
@@ -159,143 +160,9 @@ def cmd_debug_clear_cache():
   server_conn.get_lock()
   server_conn.clear_cache()
 
-def cmd_debug_integrity():
+def cmd_check_integrity():
   repo = cd_repo_connect_db()
-
-  ids = []
-  ai = bfsyncdb.AllINodesIterator (repo.bdb)
-  while True:
-    id = ai.get_next()
-    if not id.valid:
-      break
-    ids.append (id.str())
-  del ai
-
-  fail = False
-  inode_d = dict()
-  conflicts = []
-  VERSION = repo.first_unused_version()
-
-  ## check inode records
-  for id_str in ids:
-    id = bfsyncdb.ID (id_str)
-    if not id.valid:
-      raise Exception ("found invalid id during debug integrity")
-
-    inodes = repo.bdb.load_all_inodes (id)
-    for inode in inodes:
-      version = inode.vmin
-      while version <= inode.vmax and version <= VERSION:
-        s = "%d|%s" % (version, id_str)
-        if inode_d.has_key (s):
-          conflicts += [ (version, id_str) ]
-        inode_d[s] = 1
-        version += 1
-
-  for conflict in conflicts:
-    version = conflict[0]
-    id = conflict[1]
-    print "error: version %d available more than once for inode %s" % (version, id)
-    fail = True
-
-  ## check link records
-  link_d = dict()
-  conflicts = []
-  for id_str in ids:
-    id = bfsyncdb.ID (id_str)
-    if not id.valid:
-      raise Exception ("found invalid id during debug integrity")
-    links = repo.bdb.load_all_links (id)
-    for link in links:
-      version = link.vmin
-      while version <= link.vmax and version <= VERSION:
-        s = "%d|%s|%s" % (version, id_str, link.name)
-        if link_d.has_key (s):
-          conflicts += [ (version, id_str, link.name) ]
-        link_d[s] = 1
-        version += 1
-
-  for conflict in conflicts:
-    version = conflict[0]
-    id = conflict[1]
-    name = conflict[2]
-    print "error: version %d available more than once for link %s->%s" % (version, id, name)
-    fail = True
-
-  if fail:
-    sys.exit (1)
-  print "ok"
-  return
-
-  c = conn.cursor()
-  c.execute ('''SELECT vmin, vmax,id FROM inodes''')
-  fail = False
-  inode_d = dict()
-  conflicts = []
-  for row in c:
-    vmin = int (row[0])
-    vmax = int (row[1])
-    version = vmin
-    while version <= vmax:
-      s = "%d|%s" % (version, row[2])
-      if inode_d.has_key (s):
-        conflicts += [ (version, row[2]) ]
-      inode_d[s] = 1
-      version += 1
-
-  for conflict in conflicts:
-    version = conflict[0]
-    id = conflict[1]
-    print "error: version %d available more than once for inode %s, name %s" % (
-           version, id, printable_name (c, id, version))
-    fail = True
-
-  c.execute ('''SELECT vmin, vmax, dir_id, name FROM links''')
-  link_d = dict()
-  conflicts = []
-  for row in c:
-    vmin = int (row[0])
-    vmax = int (row[1])
-    version = vmin
-    while version <= vmax:
-      s = "%d|%s|%s" % (version, row[2], row[3])
-      if link_d.has_key (s):
-        conflicts += [ (version, row[2], row[3]) ]
-      link_d[s] = 1
-      version += 1
-
-  for conflict in conflicts:
-    version = conflict[0]
-    id = conflict[1]
-    name = conflict[2]
-    print "error: version %d available more than once for link %s->%s, name %s" % (
-          version, id, name, os.path.join (printable_name (c, id, version), name))
-    fail = True
-
-  c.execute ('''SELECT vmin, vmax, id, nlink FROM inodes''')
-  check_links = []
-  for row in c:
-    vmin = int (row[0])
-    vmax = int (row[1])
-    version = vmin
-    while version <= vmax:
-      check_links += [ (version, row[2], row[3]) ]
-      version += 1
-  for version, id, nlink in check_links:
-    for row in c.execute ('''SELECT COUNT (*) FROM links WHERE inode_id = ? AND ? >= vmin AND ? <= vmax''',
-                         (id, version, version)):
-      have_nlink = row[0]
-    if id == "0"*40:
-      have_nlink += 1
-    if nlink != have_nlink:
-      print "error: nlink field for inode id %s is %d, should be %d" % (id, nlink, have_nlink)
-      fail = True
-
-  c.close()
-  if fail:
-    sys.exit (1)
-  print "ok"
-  return
+  check_integrity (repo, args)
 
 def cmd_debug_inode_name():
   repo = cd_repo_connect_db()
@@ -1470,13 +1337,13 @@ def main():
       ( "find-missing",           cmd_find_missing, 1),
       ( "diff",                   cmd_diff, 1),
       ( "inr-test",               cmd_inr_test, 1),
+      ( "check-integrity",        cmd_check_integrity, 0),
       ( "debug-add-tag",          cmd_debug_add_tag, 1),
       ( "debug-del-tag",          cmd_debug_del_tag, 1),
       ( "debug-load-all-inodes",  cmd_debug_load_all_inodes, 0),
       ( "debug-perf-getattr",     cmd_debug_perf_getattr, 1),
       ( "debug-perf-getattr-list",cmd_debug_perf_getattr_list, 1),
       ( "debug-clear-cache",      cmd_debug_clear_cache, 1),
-      ( "debug-integrity",        cmd_debug_integrity, 0),
       ( "debug-get-prof",         cmd_debug_get_prof, 0),
       ( "debug-reset-prof",       cmd_debug_reset_prof, 0),
       ( "debug-inode-name",       cmd_debug_inode_name, 1),
