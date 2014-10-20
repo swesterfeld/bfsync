@@ -11,6 +11,9 @@ using BFSync::DataBuffer;
 using BFSync::DbcPtr;
 using BFSync::BDB;
 using BFSync::AllRecordsIterator;
+using BFSync::string_printf;
+
+#define VMSTR(v) ((v == VERSION_INF) ? "INF" : string_printf ("%u", v).c_str())
 
 namespace {
 
@@ -18,8 +21,10 @@ class IntegrityCheck
 {
   typedef boost::unordered_map<BFSync::ID, int> IDMap;
 
-  BDBPtr    bdb_ptr;
-  IDMap     id_map;
+  BDBPtr          bdb_ptr;
+  IDMap           id_map;
+
+  vector<string>  errors;
 
   void read_all_ids();
   void check_links();
@@ -91,6 +96,24 @@ links_update_status (size_t n_links)
   fflush (stdout);
 }
 
+enum LinkErr {
+  ERR_NONE = 0,
+  ERR_DIR_ID = 1,
+  ERR_INODE_ID = 2
+};
+
+static const char *
+link_err2str (LinkErr err)
+{
+  if (err == ERR_DIR_ID)
+    return "Directory ID not found in INode table";
+  if (err == ERR_INODE_ID)
+    return "INode ID not found in INode table";
+  if (err == LinkErr (ERR_DIR_ID | ERR_INODE_ID))
+    return "Directory ID and INode ID not found in INode table";
+  return 0;
+}
+
 void
 IntegrityCheck::check_links()
 {
@@ -117,18 +140,20 @@ IntegrityCheck::check_links()
           BFSync::ID inode_id (dbuffer);
           string name = dbuffer.read_string();
 
+          LinkErr err = ERR_NONE;
+
           IDMap::iterator id_it;
 
           id_it = id_map.find (id);
           if (id_it == id_map.end())
             {
-              printf ("left side broken");
+              err = LinkErr (ERR_DIR_ID | err);
             }
 
           id_it = id_map.find (inode_id);
           if (id_it == id_map.end())
             {
-              printf ("right side broken");
+              err = LinkErr (ERR_INODE_ID | err);
             }
           else
             {
@@ -140,8 +165,12 @@ IntegrityCheck::check_links()
           n_links++;
           if (output_needs_update())
             links_update_status (n_links);
-          // printf ("%s -/%s/-> %s\n", id.pretty_str().c_str(), name.c_str(), inode_id.pretty_str().c_str());
-          //id_map[id] = 0;
+
+          if (err)
+            {
+              errors.push_back (string_printf ("LINK ERROR: %s {\n  %s=%u|%s|%s|%s\n}", link_err2str (err),
+                 id.pretty_str().c_str(), vmin, VMSTR (vmax), inode_id.pretty_str().c_str(), name.c_str()));
+            }
         }
     }
   links_update_status (n_links);
@@ -155,9 +184,7 @@ IntegrityCheck::run()
   read_all_ids();
   check_links();
 
-  vector<string> errs;
-  errs.push_back ("foo");
-  return errs;
+  return errors;
 }
 
 vector<string>
