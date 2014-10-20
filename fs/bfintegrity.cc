@@ -28,6 +28,7 @@ class IntegrityCheck
 
   void read_all_ids();
   void check_links();
+  void check_unreachable_inodes();
 
 public:
   IntegrityCheck (BDBPtr bdb_ptr);
@@ -177,12 +178,25 @@ IntegrityCheck::check_links()
   printf ("\n");
 }
 
+void
+IntegrityCheck::check_unreachable_inodes()
+{
+  for (IDMap::const_iterator id_it = id_map.begin(); id_it != id_map.end(); id_it++)
+    {
+      const BFSync::ID& id  = id_it->first;
+      const int flags       = id_it->second;
+
+      if (flags == 0 && id != BFSync::ID::root())
+        errors.push_back (string_printf ("INODE ERROR: INode ID '%s' is unreachable", id.pretty_str().c_str()));
+    }
+}
 
 vector<string>
 IntegrityCheck::run()
 {
   read_all_ids();
   check_links();
+  check_unreachable_inodes();
 
   return errors;
 }
