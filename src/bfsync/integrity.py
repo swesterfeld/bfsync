@@ -5,6 +5,9 @@ import bfsyncdb
 from bfsync.utils import *
 from bfsync.StatusLine import status_line, OutputSubsampler
 
+def VMSTR (v):
+  return "INF" if (v == bfsyncdb.VERSION_INF) else v
+
 def check_version_ranges (repo):
   vr_errors = []
   object_count = 0
@@ -12,6 +15,15 @@ def check_version_ranges (repo):
 
   def update_status():
     status_line.update ("INTEGRITY: phase 3/3: checking version ranges: %d" % object_count)
+
+  def format_error (err, elist):
+    elist = sorted (elist, key = lambda x: x[0])
+    error = ""
+    error += err + " {\n"
+    for msg in elist:
+      error += "  " + msg[1] + "\n"
+    error += "}"
+    vr_errors.append (error)
 
   # check if version ranges overlap
   #  - input:  sorted list of [ vmin, vmax ] pairs
@@ -36,23 +48,26 @@ def check_version_ranges (repo):
       inode_list.append  ([inode.vmin, inode.vmax])
     inode_list = sorted (inode_list, key = lambda irange: irange[0])
     if not check_vmin_vmax_list (inode_list):
-      for irange in inode_list:
-        vr_errors += [ "INODE %s %s" % (id.str(), irange) ]
+      elist = []
+      for inode in inodes:
+        elist += [ [ inode.vmin, "  %s|%s" % (inode.vmin, VMSTR (inode.vmax)) ] ]
+      format_error ("INODE ERROR: Version ranges overlap: INode ID '%s'" % id.pretty_str(), elist)
 
     link_by_name = dict()
     links = repo.bdb.load_all_links (id)
     for link in links:
-      #print id.str(), link.vmin, link.vmax, link.name
       if not link_by_name.has_key (link.name):
         link_by_name[link.name] = []
       assert link.vmin <= link.vmax
       link_by_name[link.name].append ([link.vmin, link.vmax])
     for name in link_by_name:
-      #print id.str(), name
       link_list = sorted (link_by_name[name], key = lambda lrange: lrange[0])
       if not check_vmin_vmax_list (link_list):
-        for lrange in link_list:
-          vr_errors += [ "LINK %s %s %s" % (id.str(), name, lrange) ]
+        elist = []
+        for link in links:
+          if link.name == name:
+            elist += [ [ link.vmin, "  %s|%s|%s" % (link.vmin, VMSTR (link.vmax), link.inode_id.pretty_str()) ] ]
+        format_error ("LINK ERROR: Version ranges overlap: Dir ID '%s', Name '%s'" % (id.pretty_str(), name), elist)
     object_count += 1
     if outss.need_update():
       update_status()

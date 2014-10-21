@@ -33,6 +33,11 @@ struct ID {
   {
     return id.str();
   }
+  std::string
+  pretty_str() const
+  {
+    return id.pretty_str();
+  }
   bool
   operator== (const ID& other) const;
 };
