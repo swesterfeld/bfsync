@@ -1,6 +1,7 @@
 # Licensed GNU GPL v3 or later: http://www.gnu.org/licenses/gpl.html
 
 import bfsyncdb
+import sys
 
 from bfsync.utils import *
 from bfsync.StatusLine import status_line, OutputSubsampler
