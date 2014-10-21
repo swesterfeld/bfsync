@@ -59,7 +59,7 @@ output_needs_update()
 static void
 ids_update_status (size_t n_ids)
 {
-  printf ("\rINTEGRITY: phase 1/2: reading inode IDs: %zd", n_ids);
+  printf ("\rINTEGRITY: phase 1/3: reading inode IDs: %zd", n_ids);
   fflush (stdout);
 }
 
@@ -93,7 +93,7 @@ IntegrityCheck::read_all_ids()
 static void
 links_update_status (size_t n_links)
 {
-  printf ("\rINTEGRITY: phase 2/2: checking links: %zd", n_links);
+  printf ("\rINTEGRITY: phase 2/3: checking links: %zd", n_links);
   fflush (stdout);
 }
 
