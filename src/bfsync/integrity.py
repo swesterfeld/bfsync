@@ -50,7 +50,7 @@ def check_version_ranges (repo):
     if not check_vmin_vmax_list (inode_list):
       elist = []
       for inode in inodes:
-        elist += [ [ inode.vmin, "  %s|%s" % (inode.vmin, VMSTR (inode.vmax)) ] ]
+        elist += [ [ inode.vmin, "%s|%s" % (inode.vmin, VMSTR (inode.vmax)) ] ]
       format_error ("INODE ERROR: Version ranges overlap: INode ID '%s'" % id.pretty_str(), elist)
 
     link_by_name = dict()
@@ -66,7 +66,7 @@ def check_version_ranges (repo):
         elist = []
         for link in links:
           if link.name == name:
-            elist += [ [ link.vmin, "  %s|%s|%s" % (link.vmin, VMSTR (link.vmax), link.inode_id.pretty_str()) ] ]
+            elist += [ [ link.vmin, "%s|%s|%s" % (link.vmin, VMSTR (link.vmax), link.inode_id.pretty_str()) ] ]
         format_error ("LINK ERROR: Version ranges overlap: Dir ID '%s', Name '%s'" % (id.pretty_str(), name), elist)
     object_count += 1
     if outss.need_update():
@@ -80,8 +80,14 @@ def check_version_ranges (repo):
 def check_integrity (repo, args):
   il_errors = bfsyncdb.check_inodes_links_integrity (repo.bdb)
   vr_errors = check_version_ranges (repo)
-
-  for e in il_errors:
-    print e
-  for e in vr_errors:
-    print e
+  print
+  error_count = 0
+  for error in il_errors:
+    print error
+    error_count += 1
+  for error in vr_errors:
+    print error
+    error_count += 1
+  print "INTEGRITY: %d errors found." % error_count
+  if error_count > 0:
+    sys.exit (1)
