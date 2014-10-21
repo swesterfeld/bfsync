@@ -1,3 +1,19 @@
+0.3.7:
+======
+* bfsync_rename: should set mtime & ctime of the directory inode
+* INode::load will use shared cache, but unconditionally adds links via load_links (this could duplicate links)
+* multi data buffer sizes can be perf tuned
+* Link|INode don't initialize deleted | updated field (=> valgrind errors)
+* add --show-all-versions feature
+* boost arg parser
+* twcbackup should clone with -u
+* twcbackup should fail on merge
+* document bfsync init
+* document bfsync check-integrity
+* debug libdb++-6.0 behaviour
+
+==============================================================================================
+
 * automatic deadlock detection
 * retry transactions on deadlock
 * properly handle copy-on-write() errors (disk full, ...)
