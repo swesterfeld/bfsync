@@ -11,6 +11,7 @@
 * document bfsync init
 * document bfsync check-integrity
 * debug libdb++-6.0 behaviour
+* INodeHashIterator could use unordered_set
 
 ==============================================================================================
 
