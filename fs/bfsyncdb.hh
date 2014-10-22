@@ -7,8 +7,8 @@
 #include <stdint.h>
 #include <string>
 #include <vector>
-#include <set>
 #include <queue>
+#include <boost/unordered_set.hpp>
 
 #undef major
 #undef minor
@@ -281,7 +281,7 @@ class INodeHashIterator
   BFSync::AllRecordsIterator  db_it;
   BDBPtr                      bdb_ptr;
 
-  std::set<std::string>       all_hashes;
+  boost::unordered_set<std::string> all_hashes;
 
   Dbt key, data;
 public:
