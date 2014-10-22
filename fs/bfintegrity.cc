@@ -12,6 +12,12 @@ using BFSync::DbcPtr;
 using BFSync::BDB;
 using BFSync::AllRecordsIterator;
 using BFSync::string_printf;
+using BFSync::BDB_ERROR_INTR;
+
+extern "C" {
+// #include <Python.h>
+extern int PyErr_CheckSignals();
+}
 
 #define VMSTR(v) ((v == VERSION_INF) ? "INF" : string_printf ("%u", v).c_str())
 
@@ -23,12 +29,15 @@ class IntegrityCheck
 
   BDBPtr          bdb_ptr;
   IDMap           id_map;
+  bool            sig_interrupted;
 
   vector<string>  errors;
 
   void read_all_ids();
   void check_links();
   void check_unreachable_inodes();
+
+  bool check_interrupted();
 
 public:
   IntegrityCheck (BDBPtr bdb_ptr);
@@ -39,8 +48,18 @@ public:
 }
 
 IntegrityCheck::IntegrityCheck (BDBPtr bdb_ptr) :
-  bdb_ptr (bdb_ptr)
+  bdb_ptr (bdb_ptr),
+  sig_interrupted (false)
 {
+}
+
+bool
+IntegrityCheck::check_interrupted()
+{
+  if (!sig_interrupted && PyErr_CheckSignals())
+    sig_interrupted = true;
+
+  return sig_interrupted;
 }
 
 static bool
@@ -83,7 +102,12 @@ IntegrityCheck::read_all_ids()
           id_map[id] = 0;
 
           if (output_needs_update())
-            ids_update_status (id_map.size());
+            {
+              ids_update_status (id_map.size());
+
+              if (check_interrupted())
+                return;
+            }
         }
     }
   ids_update_status (id_map.size());
@@ -165,8 +189,11 @@ IntegrityCheck::check_links()
 
           n_links++;
           if (output_needs_update())
-            links_update_status (n_links);
-
+            {
+              links_update_status (n_links);
+              if (check_interrupted())
+                return;
+            }
           if (err)
             {
               errors.push_back (string_printf ("LINK ERROR: %s {\n  %s=%u|%s|%s|%s\n}", link_err2str (err),
@@ -188,6 +215,9 @@ IntegrityCheck::check_unreachable_inodes()
 
       if (flags == 0 && id != BFSync::ID::root())
         errors.push_back (string_printf ("INODE ERROR: INode ID '%s' is unreachable", id.pretty_str().c_str()));
+
+      if (output_needs_update() && check_interrupted())
+        return;
     }
 }
 
@@ -195,8 +225,22 @@ vector<string>
 IntegrityCheck::run()
 {
   read_all_ids();
+  if (check_interrupted())
+    {
+      printf ("\n");
+      throw BDBException (BDB_ERROR_INTR);
+    }
+
   check_links();
+  if (check_interrupted())
+    {
+      printf ("\n");
+      throw BDBException (BDB_ERROR_INTR);
+    }
+
   check_unreachable_inodes();
+  if (check_interrupted())
+    throw BDBException (BDB_ERROR_INTR);
 
   return errors;
 }
