@@ -1541,8 +1541,6 @@ bfsyncfs_main (int argc, char **argv)
       return 1;
     }
 
-  string repo_path, mount_point;
-
   if (options.mount_fg)
     printf ("mount_fg\n");
   if (options.mount_all)
@@ -1561,7 +1559,7 @@ bfsyncfs_main (int argc, char **argv)
   exit (0);
 
   CfgParser repo_cfg_parser;
-  if (!repo_cfg_parser.parse (repo_path + "/config"))
+  if (!repo_cfg_parser.parse (options.repo_path + "/config"))
     {
       printf ("bfsyncfs: parse error in repo config:\n%s\n", repo_cfg_parser.error().c_str());
       exit (1);
@@ -1588,7 +1586,7 @@ bfsyncfs_main (int argc, char **argv)
     }
 
   CfgParser repo_info_parser;
-  if (!repo_info_parser.parse (repo_path + "/info"))
+  if (!repo_info_parser.parse (options.repo_path + "/info"))
     {
       printf ("bfsyncfs: parse error in repo info:\n%s\n", repo_info_parser.error().c_str());
       exit (1);
@@ -1612,13 +1610,13 @@ bfsyncfs_main (int argc, char **argv)
   check_version_compat_or_die (info_values["version"]);
 
   special_files.info  = "repo-type mount;\n";
-  special_files.info += "repo-path \"" + repo_path + "\";\n";
-  special_files.info += "mount-point \"" + mount_point + "\";\n";
+  special_files.info += "repo-path \"" + options.repo_path + "\";\n";
+  special_files.info += "mount-point \"" + options.mount_point + "\";\n";
   special_files.info += "use-uid-gid " + string (options.use_uid_gid ? "1" : "0") + ";\n";
 
   debug ("starting bfsyncfs; info = \n{\n%s}\n", special_files.info.c_str());
 
-  if (!server.init_socket (repo_path))
+  if (!server.init_socket (options.repo_path))
     {
       printf ("bfsyncfs: initialization of socket failed\n");
       exit (1);
@@ -1667,8 +1665,6 @@ bfsyncfs_main (int argc, char **argv)
   my_argv[my_argc++] = g_strdup ("-ouse_ino");
   my_argv[my_argc] = NULL;
 
-
-  string bdb_path = options.repo_path;
   BDB *bdb = bdb_open (options.repo_path, options.cache_size_mb, false);
   if (!bdb)
     {
@@ -1685,7 +1681,7 @@ bfsyncfs_main (int argc, char **argv)
   if (bfsyncfs_read_only)
     {
       printf ("bfsyncfs: some operation did not complete, mounting readonly\n");
-      printf ("bfsyncfs: use bfsync continue %s to fix this\n", bdb_path.c_str());
+      printf ("bfsyncfs: use bfsync continue %s to fix this\n", options.repo_path.c_str());
     }
 
   int fuse_rc = fuse_main (my_argc, my_argv, &bfsync_oper, NULL);
