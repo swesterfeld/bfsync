@@ -1529,15 +1529,16 @@ bfsyncfs_main (int argc, char **argv)
       if (vm.count ("mount-point"))
         options.mount_point = make_absolute_path (vm["mount-point"].as<string>());
 
-      if (vm.count ("help"))
+      if (vm.count ("help") || options.repo_path == "" || options.mount_point == "")
         {
+          printf ("Usage: bfsyncfs [options] <repo-path> <mount-point>\n\n");
           std::cout << desc << "\n";
           return 1;
         }
     }
   catch (boost::program_options::error& e)
     {
-      printf ("ERROR: %s\n", e.what());
+      printf ("bfsyncfs: %s\n", e.what());
       return 1;
     }
 
