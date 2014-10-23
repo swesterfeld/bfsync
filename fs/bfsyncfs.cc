@@ -1470,50 +1470,38 @@ check_version_compat_or_die (const vector<string>& info_version)
     }
 }
 
+static string
+make_absolute_path (const string& path)
+{
+  if (!g_path_is_absolute (path.c_str()))
+    return g_get_current_dir() + string (G_DIR_SEPARATOR + path);
+  else
+    return path;
+}
+
 }
 
 int
 bfsyncfs_main (int argc, char **argv)
 {
-#if 0
-  int opt;
-  while ((opt = getopt (argc, argv, "dafcg:")) != -1)
-    {
-      switch (opt)
-        {
-          case 'd': options.mount_debug = true;
-                    break;
-          case 'f': options.mount_fg = true;
-                    break;
-          case 'a': options.mount_all = true;
-                    break;
-          case 'c': options.cache_attributes = true;
-                    break;
-          case 'g': options.bfsync_group = optarg;
-                    break;
-          default:  exit_usage();
-                    exit (1);
-        }
-    }
-#endif
   try
     {
       boost::program_options::options_description desc ("Allowed options");
       desc.add_options()
-        ("help",                                                "produce help message")
-        ("foreground,f",                                        "run as foreground process")
-        ("all,a",                                               "allow all users to access filesystem")
-        ("group,g", boost::program_options::value<string>(),    "set bfsync group")
-        ("debug,d",                                             "enable debug mode")
-        ("cache-attributes,c",                                  "enable attribute cacheing");
+        ("help",                                                  "produce help message")
+        ("foreground,f",                                          "run as foreground process")
+        ("all,a",                                                 "allow all users to access filesystem")
+        ("group,g", boost::program_options::value<string>(),      "set bfsync group")
+        ("debug,d",                                               "enable debug mode")
+        ("cache-attributes,c",                                    "enable attribute cacheing");
 
       boost::program_options::options_description hidden ("Hidden options");
       hidden.add_options()
-        ("repo", boost::program_options::value<string>(),       "repository path")
-        ("mount-point", boost::program_options::value<string>(),"mount point");
+        ("repo-path", boost::program_options::value<string>(),    "repository path")
+        ("mount-point", boost::program_options::value<string>(),  "mount point");
 
       boost::program_options::positional_options_description positional_options;
-      positional_options.add ("repo", 1);
+      positional_options.add ("repo-path", 1);
       positional_options.add ("mount-point", 1);
 
       boost::program_options::options_description cmdline_options;
@@ -1535,14 +1523,12 @@ bfsyncfs_main (int argc, char **argv)
       if (vm.count ("group"))
         options.bfsync_group = vm["group"].as<string>();
 
-      if (vm.count ("repo"))
-        {
-          printf ("repo='%s'\n", vm["repo"].as<string>().c_str());
-        }
+      if (vm.count ("repo-path"))
+        options.repo_path = make_absolute_path (vm["repo-path"].as<string>());
+
       if (vm.count ("mount-point"))
-        {
-          printf ("mount-point='%s'\n", vm["mount-point"].as<string>().c_str());
-        }
+        options.mount_point = make_absolute_path (vm["mount-point"].as<string>());
+
       if (vm.count ("help"))
         {
           std::cout << desc << "\n";
@@ -1567,24 +1553,12 @@ bfsyncfs_main (int argc, char **argv)
     printf ("cache_attributes\n");
   if (options.bfsync_group != "")
     printf ("group='%s'\n", options.bfsync_group.c_str());
+  if (options.repo_path != "")
+    printf ("repo_path='%s'\n", options.repo_path.c_str());
+  if (options.mount_point != "")
+    printf ("mount_point='%s'\n", options.mount_point.c_str());
 
   exit (0);
-  if (argc - optind != 2)
-    {
-      printf ("wrong number of arguments\n");
-      exit_usage();
-    }
-  repo_path = argv[optind++];
-  mount_point = argv[optind++];
-
-  if (!g_path_is_absolute (repo_path.c_str()))
-    repo_path = g_get_current_dir() + string (G_DIR_SEPARATOR + repo_path);
-
-  if (!g_path_is_absolute (mount_point.c_str()))
-    mount_point = g_get_current_dir() + string (G_DIR_SEPARATOR + mount_point);
-
-  options.repo_path = repo_path;
-  options.mount_point = mount_point;
 
   CfgParser repo_cfg_parser;
   if (!repo_cfg_parser.parse (repo_path + "/config"))
