@@ -1557,8 +1557,6 @@ bfsyncfs_main (int argc, char **argv)
   if (options.mount_point != "")
     printf ("mount_point='%s'\n", options.mount_point.c_str());
 
-  exit (0);
-
   CfgParser repo_cfg_parser;
   if (!repo_cfg_parser.parse (options.repo_path + "/config"))
     {
