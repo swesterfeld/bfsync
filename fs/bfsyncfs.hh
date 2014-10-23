@@ -157,6 +157,8 @@ struct Options {
   int          cache_size_mb;
   std::string  bfsync_group;
 
+  void debug() const;
+
   static Options *the();
 };
 

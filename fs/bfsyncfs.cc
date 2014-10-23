@@ -1481,6 +1481,25 @@ make_absolute_path (const string& path)
 
 }
 
+void
+Options::debug() const
+{
+  if (mount_fg)
+    printf ("mount_fg\n");
+  if (mount_all)
+    printf ("mount_all\n");
+  if (mount_debug)
+    printf ("mount_debug\n");
+  if (cache_attributes)
+    printf ("cache_attributes\n");
+  if (bfsync_group != "")
+    printf ("group='%s'\n", bfsync_group.c_str());
+  if (repo_path != "")
+    printf ("repo_path='%s'\n", repo_path.c_str());
+  if (mount_point != "")
+    printf ("mount_point='%s'\n", mount_point.c_str());
+}
+
 int
 bfsyncfs_main (int argc, char **argv)
 {
@@ -1542,20 +1561,7 @@ bfsyncfs_main (int argc, char **argv)
       return 1;
     }
 
-  if (options.mount_fg)
-    printf ("mount_fg\n");
-  if (options.mount_all)
-    printf ("mount_all\n");
-  if (options.mount_debug)
-    printf ("mount_debug\n");
-  if (options.cache_attributes)
-    printf ("cache_attributes\n");
-  if (options.bfsync_group != "")
-    printf ("group='%s'\n", options.bfsync_group.c_str());
-  if (options.repo_path != "")
-    printf ("repo_path='%s'\n", options.repo_path.c_str());
-  if (options.mount_point != "")
-    printf ("mount_point='%s'\n", options.mount_point.c_str());
+  // options.debug();
 
   CfgParser repo_cfg_parser;
   if (!repo_cfg_parser.parse (options.repo_path + "/config"))
