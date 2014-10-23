@@ -25,6 +25,8 @@
 #include <vector>
 #include <set>
 
+#include <boost/program_options.hpp>
+
 using std::string;
 using std::vector;
 using std::set;
@@ -1473,13 +1475,7 @@ check_version_compat_or_die (const vector<string>& info_version)
 int
 bfsyncfs_main (int argc, char **argv)
 {
-  string repo_path, mount_point;
-
-  options.mount_debug = false;
-  options.mount_all = false;
-  options.mount_fg = false;
-  options.cache_attributes = false;
-
+#if 0
   int opt;
   while ((opt = getopt (argc, argv, "dafcg:")) != -1)
     {
@@ -1499,6 +1495,80 @@ bfsyncfs_main (int argc, char **argv)
                     exit (1);
         }
     }
+#endif
+  try
+    {
+      boost::program_options::options_description desc ("Allowed options");
+      desc.add_options()
+        ("help",                                                "produce help message")
+        ("foreground,f",                                        "run as foreground process")
+        ("all,a",                                               "allow all users to access filesystem")
+        ("group,g", boost::program_options::value<string>(),    "set bfsync group")
+        ("debug,d",                                             "enable debug mode")
+        ("cache-attributes,c",                                  "enable attribute cacheing");
+
+      boost::program_options::options_description hidden ("Hidden options");
+      hidden.add_options()
+        ("repo", boost::program_options::value<string>(),       "repository path")
+        ("mount-point", boost::program_options::value<string>(),"mount point");
+
+      boost::program_options::positional_options_description positional_options;
+      positional_options.add ("repo", 1);
+      positional_options.add ("mount-point", 1);
+
+      boost::program_options::options_description cmdline_options;
+      cmdline_options.add (desc).add (hidden);
+
+      boost::program_options::variables_map vm;
+      boost::program_options::store (
+        boost::program_options::command_line_parser (argc, argv).options (cmdline_options).positional (positional_options).run(),
+        vm);
+      boost::program_options::notify (vm);
+
+      // flags
+      options.mount_fg = vm.count ("foreground") > 0;
+      options.mount_all = vm.count ("all") > 0;
+      options.mount_debug = vm.count ("debug") > 0;
+      options.cache_attributes = vm.count ("cache-attributes") > 0;
+
+      // other options
+      if (vm.count ("group"))
+        options.bfsync_group = vm["group"].as<string>();
+
+      if (vm.count ("repo"))
+        {
+          printf ("repo='%s'\n", vm["repo"].as<string>().c_str());
+        }
+      if (vm.count ("mount-point"))
+        {
+          printf ("mount-point='%s'\n", vm["mount-point"].as<string>().c_str());
+        }
+      if (vm.count ("help"))
+        {
+          std::cout << desc << "\n";
+          return 1;
+        }
+    }
+  catch (boost::program_options::error& e)
+    {
+      printf ("ERROR: %s\n", e.what());
+      return 1;
+    }
+
+  string repo_path, mount_point;
+
+  if (options.mount_fg)
+    printf ("mount_fg\n");
+  if (options.mount_all)
+    printf ("mount_all\n");
+  if (options.mount_debug)
+    printf ("mount_debug\n");
+  if (options.cache_attributes)
+    printf ("cache_attributes\n");
+  if (options.bfsync_group != "")
+    printf ("group='%s'\n", options.bfsync_group.c_str());
+
+  exit (0);
   if (argc - optind != 2)
     {
       printf ("wrong number of arguments\n");
