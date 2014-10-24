@@ -4,7 +4,6 @@
 * INode::load will use shared cache, but unconditionally adds links via load_links (this could duplicate links)
 * multi data buffer sizes can be perf tuned
 * Link|INode don't initialize deleted | updated field (=> valgrind errors)
-* add --show-all-versions feature
 * twcbackup should clone with -u
 * twcbackup should fail on merge
 * twcbackup should run integrity check, configurable to { always, daily, weekly }

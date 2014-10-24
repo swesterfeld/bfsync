@@ -317,7 +317,17 @@ version_map_path (string& path)
   const unsigned int path_version = atoi (p_vec[2].c_str());
   const History *history = INodeRepo::the()->bdb->history();
 
-  if (history->have_version (path_version) && path_version != history->current_version())
+  bool version_visible;
+  if (options.show_all_versions) // show all versions, even deleted ones
+    {
+      version_visible = (path_version >= history->vbegin() && path_version < history->vend());
+    }
+  else // version is visible if it wasn't deleted from history
+    {
+      version_visible = history->have_version (path_version);
+    }
+
+  if (version_visible && path_version != history->current_version())
     {
       char buffer[64];
       sprintf (buffer, "%u", path_version);
@@ -571,7 +581,7 @@ read_dir_contents (const Context& ctx, const string& path, vector<string>& entri
 
       for (unsigned int v = history->vbegin(); v != history->vend(); v++)
         {
-          if (v != history->current_version() && history->have_version (v))
+          if (v != history->current_version() && (history->have_version (v) || options.show_all_versions))
             {
               string v_str = string_printf ("%u", v);
               entries.push_back (v_str);
@@ -1510,9 +1520,10 @@ Options::parse_or_exit (int argc, char **argv)
       opts::options_description desc ("Options");
       desc.add_options()
         ("help",                                "produce help message")
-        ("foreground,f",                        "run as foreground process")
         ("all,a",                               "allow all users to access filesystem")
         ("group,g", opts::value<string>(),      "set bfsync group")
+        ("foreground,f",                        "run as foreground process")
+        ("show-all-versions",                   "also show deleted versions in .bfsync/commits dir")
         ("debug,d",                             "enable debug mode")
         ("cache-attributes,c",                  "enable attribute cacheing");
 
@@ -1537,6 +1548,7 @@ Options::parse_or_exit (int argc, char **argv)
       mount_all = vm.count ("all") > 0;
       mount_debug = vm.count ("debug") > 0;
       cache_attributes = vm.count ("cache-attributes") > 0;
+      show_all_versions = vm.count ("show-all-versions") > 0;
 
       // other options
       if (vm.count ("group"))

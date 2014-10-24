@@ -156,6 +156,7 @@ struct Options {
   bool         use_uid_gid;
   int          cache_size_mb;
   std::string  bfsync_group;
+  bool         show_all_versions;
 
   void debug() const;
   void parse_or_exit (int argc, char **argv);
