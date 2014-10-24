@@ -249,7 +249,7 @@ INodePtr::INodePtr (const Context& ctx, const char *path, const ID *id)
   ptr->major = 0;
   ptr->minor = 0;
   ptr->nlink = 0;
-  ptr->set_mtime_ctime_now();
+  ptr->set_mtime_ctime (INodeTime::now());
   ptr->alloc_ino();
   ptr->new_file_number = 0;
   ptr->updated = true;
@@ -367,30 +367,36 @@ INode::~INode()
   inode_leak_debugger.del (this);
 }
 
-void
-INode::set_mtime_ctime_now()
+INodeTime::INodeTime (time_t sec, int nsec) :
+  sec (sec),
+  nsec (nsec)
 {
-  timespec time_now;
+}
 
-  if (clock_gettime (CLOCK_REALTIME, &time_now) == 0)
-    {
-      mtime     = time_now.tv_sec;
-      mtime_ns  = time_now.tv_nsec;
-      ctime     = time_now.tv_sec;
-      ctime_ns  = time_now.tv_nsec;
-    }
+INodeTime
+INodeTime::now()
+{
+  timespec  time_now;
+
+  clock_gettime (CLOCK_REALTIME, &time_now);
+
+  return INodeTime (time_now.tv_sec, time_now.tv_nsec);
 }
 
 void
-INode::set_ctime_now()
+INode::set_mtime_ctime (const INodeTime& time)
 {
-  timespec time_now;
+  mtime     = time.sec;
+  mtime_ns  = time.nsec;
+  ctime     = time.sec;
+  ctime_ns  = time.nsec;
+}
 
-  if (clock_gettime (CLOCK_REALTIME, &time_now) == 0)
-    {
-      ctime     = time_now.tv_sec;
-      ctime_ns  = time_now.tv_nsec;
-    }
+void
+INode::set_ctime (const INodeTime& time)
+{
+  ctime     = time.sec;
+  ctime_ns  = time.nsec;
 }
 
 bool

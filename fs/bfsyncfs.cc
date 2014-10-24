@@ -806,7 +806,7 @@ bfsync_write (const char *path_arg, const char *buf, size_t size, off_t offset,
           IFPStatus ifp;
           INodePtr inode = inode_from_path (ctx, path, ifp);
           if (inode)
-            inode.update()->set_mtime_ctime_now();
+            inode.update()->set_mtime_ctime (INodeTime::now());
         }
     }
 
@@ -879,7 +879,7 @@ bfsync_mknod (const char *path_arg, mode_t mode, dev_t dev)
       return -ENOENT;
     }
 
-  dir_inode.update()->set_mtime_ctime_now();
+  dir_inode.update()->set_mtime_ctime (INodeTime::now());
   dir_inode.update()->add_link (ctx, inode, get_basename (path));
   return 0;
 }
@@ -960,7 +960,7 @@ bfsync_chmod (const char *name_arg, mode_t mode)
     mode &= ~S_ISGID;
 
   inode.update()->mode = mode;
-  inode.update()->set_ctime_now();
+  inode.update()->set_ctime (INodeTime::now());
   return 0;
 }
 
@@ -1031,7 +1031,7 @@ bfsync_chown (const char *name_arg, uid_t uid, gid_t gid)
   if (gid != -1)
     inode.update()->gid = gid;
 
-  inode.update()->set_ctime_now();
+  inode.update()->set_ctime (INodeTime::now());
   return 0;
 }
 
@@ -1058,7 +1058,7 @@ bfsync_utimens (const char *name_arg, const struct timespec times[2])
 
   inode.update()->mtime    = times[1].tv_sec;
   inode.update()->mtime_ns = times[1].tv_nsec;
-  inode.update()->set_ctime_now();
+  inode.update()->set_ctime (INodeTime::now());
 
   return 0;
 }
@@ -1092,7 +1092,7 @@ bfsync_truncate (const char *name_arg, off_t off)
   int rc = truncate (inode->file_path().c_str(), off);
   if (rc == 0)
     {
-      inode.update()->set_mtime_ctime_now();
+      inode.update()->set_mtime_ctime (INodeTime::now());
       return 0;
     }
   return -errno;
@@ -1143,8 +1143,10 @@ bfsync_unlink (const char *name_arg)
   if (!inode_dir.update()->unlink (ctx, filename))
     return -ENOENT;
 
-  inode.update()->set_ctime_now();
-  inode_dir.update()->set_mtime_ctime_now();
+  INodeTime time_now = INodeTime::now();
+
+  inode.update()->set_ctime (time_now);
+  inode_dir.update()->set_mtime_ctime (time_now);
   return 0;
 }
 
@@ -1178,7 +1180,7 @@ bfsync_mkdir (const char *path_arg, mode_t mode)
   inode.update()->mode = mode;
 
   inode_dir.update()->add_link (ctx, inode, get_basename (path));
-  inode_dir.update()->set_mtime_ctime_now();
+  inode_dir.update()->set_mtime_ctime (INodeTime::now());
   return 0;
 }
 
@@ -1234,7 +1236,7 @@ bfsync_rmdir (const char *name_arg)
   if (!inode_dir.update()->unlink (ctx, dirname))
     return -ENOENT;
 
-  inode_dir.update()->set_mtime_ctime_now();
+  inode_dir.update()->set_mtime_ctime (INodeTime::now());
   return 0;
 }
 
@@ -1308,7 +1310,7 @@ bfsync_rename (const char *old_path_arg, const char *new_path_arg)
 
   inode_new_dir.update()->add_link (ctx, inode_old, get_basename (new_path));
   inode_old_dir.update()->unlink (ctx, get_basename (old_path));
-  inode_old.update()->set_ctime_now();
+  inode_old.update()->set_ctime (INodeTime::now());
 
   return 0;
 }
@@ -1348,7 +1350,7 @@ bfsync_symlink (const char *from_arg, const char *to_arg)
   inode.update()->link = from;
 
   dir_inode.update()->add_link (ctx, inode, get_basename (to));
-  dir_inode.update()->set_mtime_ctime_now();
+  dir_inode.update()->set_mtime_ctime (INodeTime::now());
   return 0;
 }
 
@@ -1430,8 +1432,10 @@ bfsync_link (const char *old_path_arg, const char *new_path_arg)
     return -EACCES;
 
   inode_new_dir.update()->add_link (ctx, inode_old, get_basename (new_path));
-  inode_new_dir.update()->set_mtime_ctime_now();
-  inode_old.update()->set_ctime_now();
+
+  INodeTime time_now = INodeTime::now();
+  inode_new_dir.update()->set_mtime_ctime (time_now);
+  inode_old.update()->set_ctime (time_now);
   return 0;
 }
 

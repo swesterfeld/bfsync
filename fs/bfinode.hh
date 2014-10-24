@@ -108,6 +108,15 @@ enum FileStatus
   FS_CHANGED
 };
 
+struct INodeTime
+{
+  time_t sec;
+  int    nsec;
+
+  INodeTime (time_t sec, int nsec);
+  static INodeTime now();
+};
+
 class INode
 {
   static std::vector<ino_t> ino_pool;
@@ -149,8 +158,8 @@ public:
   bool          save();
   bool          load (const Context& ctx, const ID& id);
 
-  void          set_mtime_ctime_now();
-  void          set_ctime_now();
+  void          set_mtime_ctime (const INodeTime& time);
+  void          set_ctime (const INodeTime& time);
 
   FileStatus    file_status() const;
   std::string   new_file_path() const;
