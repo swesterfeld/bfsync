@@ -1503,34 +1503,34 @@ Options::debug() const
 void
 Options::parse_or_exit (int argc, char **argv)
 {
+  namespace opts = boost::program_options;
+
   try
     {
-      boost::program_options::options_description desc ("Allowed options");
+      opts::options_description desc ("Options");
       desc.add_options()
-        ("help",                                                  "produce help message")
-        ("foreground,f",                                          "run as foreground process")
-        ("all,a",                                                 "allow all users to access filesystem")
-        ("group,g", boost::program_options::value<string>(),      "set bfsync group")
-        ("debug,d",                                               "enable debug mode")
-        ("cache-attributes,c",                                    "enable attribute cacheing");
+        ("help",                                "produce help message")
+        ("foreground,f",                        "run as foreground process")
+        ("all,a",                               "allow all users to access filesystem")
+        ("group,g", opts::value<string>(),      "set bfsync group")
+        ("debug,d",                             "enable debug mode")
+        ("cache-attributes,c",                  "enable attribute cacheing");
 
-      boost::program_options::options_description hidden ("Hidden options");
+      opts::options_description hidden ("Hidden options");
       hidden.add_options()
-        ("repo-path", boost::program_options::value<string>(),    "repository path")
-        ("mount-point", boost::program_options::value<string>(),  "mount point");
+        ("repo-path", opts::value<string>(),    "repository path")
+        ("mount-point", opts::value<string>(),  "mount point");
 
-      boost::program_options::positional_options_description positional_options;
+      opts::positional_options_description positional_options;
       positional_options.add ("repo-path", 1);
       positional_options.add ("mount-point", 1);
 
-      boost::program_options::options_description cmdline_options;
+      opts::options_description cmdline_options;
       cmdline_options.add (desc).add (hidden);
 
-      boost::program_options::variables_map vm;
-      boost::program_options::store (
-        boost::program_options::command_line_parser (argc, argv).options (cmdline_options).positional (positional_options).run(),
-        vm);
-      boost::program_options::notify (vm);
+      opts::variables_map vm;
+      opts::store (opts::command_line_parser (argc, argv).options (cmdline_options).positional (positional_options).run(), vm);
+      opts::notify (vm);
 
       // flags
       options.mount_fg = vm.count ("foreground") > 0;
@@ -1555,7 +1555,7 @@ Options::parse_or_exit (int argc, char **argv)
           exit (1);
         }
     }
-  catch (boost::program_options::error& e)
+  catch (opts::error& e)
     {
       printf ("bfsyncfs: %s\n", e.what());
       exit (1);
