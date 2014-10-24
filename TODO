@@ -13,6 +13,7 @@
 * debug libdb++-6.0 behaviour
 * test defrag performance changes
 * gc should output database size
+* implement per-file log
 
 ==============================================================================================
 
