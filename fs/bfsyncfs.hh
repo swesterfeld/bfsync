@@ -158,6 +158,7 @@ struct Options {
   std::string  bfsync_group;
 
   void debug() const;
+  void parse_or_exit (int argc, char **argv);
 
   static Options *the();
 };

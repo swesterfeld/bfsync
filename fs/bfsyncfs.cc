@@ -1500,8 +1500,8 @@ Options::debug() const
     printf ("mount_point='%s'\n", mount_point.c_str());
 }
 
-int
-bfsyncfs_main (int argc, char **argv)
+void
+Options::parse_or_exit (int argc, char **argv)
 {
   try
     {
@@ -1552,15 +1552,20 @@ bfsyncfs_main (int argc, char **argv)
         {
           printf ("Usage: bfsyncfs [options] <repo-path> <mount-point>\n\n");
           std::cout << desc << "\n";
-          return 1;
+          exit (1);
         }
     }
   catch (boost::program_options::error& e)
     {
       printf ("bfsyncfs: %s\n", e.what());
-      return 1;
+      exit (1);
     }
+}
 
+int
+bfsyncfs_main (int argc, char **argv)
+{
+  options.parse_or_exit (argc, argv);
   // options.debug();
 
   CfgParser repo_cfg_parser;
