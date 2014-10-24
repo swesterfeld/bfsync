@@ -80,10 +80,10 @@ class Repo:
   def check_integrity (self):
     old_cwd = os.getcwd()
     os.chdir (self.repo.path)
-    success = os.system ("%s debug-integrity >/dev/null" % BFSYNC) == 0
+    success = os.system ("%s check-integrity >/dev/null" % BFSYNC) == 0
     if not success:
       print
-      os.system ("%s debug-integrity" % BFSYNC) == 0
+      os.system ("%s check-integrity" % BFSYNC) == 0
       print
     os.chdir (old_cwd)
     if not success:

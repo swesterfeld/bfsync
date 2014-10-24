@@ -41,10 +41,10 @@ class FuseFS:
   def check_integrity (self):
     cwd = os.getcwd()
     os.chdir ("mnt")
-    success = run_quiet ([BFSYNC, "debug-integrity"]) == 0
+    success = run_quiet ([BFSYNC, "check-integrity"]) == 0
     if not success:
       print
-      os.system ("%s debug-integrity" % BFSYNC)
+      os.system ("%s check-integrity" % BFSYNC)
       print
     os.chdir (cwd)
     if not success:
