@@ -1533,22 +1533,22 @@ Options::parse_or_exit (int argc, char **argv)
       opts::notify (vm);
 
       // flags
-      options.mount_fg = vm.count ("foreground") > 0;
-      options.mount_all = vm.count ("all") > 0;
-      options.mount_debug = vm.count ("debug") > 0;
-      options.cache_attributes = vm.count ("cache-attributes") > 0;
+      mount_fg = vm.count ("foreground") > 0;
+      mount_all = vm.count ("all") > 0;
+      mount_debug = vm.count ("debug") > 0;
+      cache_attributes = vm.count ("cache-attributes") > 0;
 
       // other options
       if (vm.count ("group"))
-        options.bfsync_group = vm["group"].as<string>();
+        bfsync_group = vm["group"].as<string>();
 
       if (vm.count ("repo-path"))
-        options.repo_path = make_absolute_path (vm["repo-path"].as<string>());
+        repo_path = make_absolute_path (vm["repo-path"].as<string>());
 
       if (vm.count ("mount-point"))
-        options.mount_point = make_absolute_path (vm["mount-point"].as<string>());
+        mount_point = make_absolute_path (vm["mount-point"].as<string>());
 
-      if (vm.count ("help") || options.repo_path == "" || options.mount_point == "")
+      if (vm.count ("help") || repo_path == "" || mount_point == "")
         {
           printf ("Usage: bfsyncfs [options] <repo-path> <mount-point>\n\n");
           std::cout << desc << "\n";
