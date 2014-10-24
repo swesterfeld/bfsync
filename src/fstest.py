@@ -609,6 +609,29 @@ tests += [ ("rename", test_rename) ]
 
 #####
 
+def test_rename_times():
+  os.mkdir ("mnt/newdir")
+  # get mtime/ctime for subdir and newdir before rename
+  old_stat_subdir = os.stat ("mnt/subdir")
+  old_stat_newdir = os.stat ("mnt/newdir")
+  time.sleep (0.1)
+  os.rename ("mnt/subdir/x", "mnt/newdir/x")
+  # get mtime/ctime for subdir and newdir after rename
+  new_stat_subdir = os.stat ("mnt/subdir")
+  new_stat_newdir = os.stat ("mnt/newdir")
+  if old_stat_subdir.st_ctime == new_stat_subdir.st_ctime:
+    raise Exception ("subdir ctime unchanged after rename")
+  if old_stat_subdir.st_mtime == new_stat_subdir.st_mtime:
+    raise Exception ("subdir mtime unchanged after rename")
+  if old_stat_newdir.st_ctime == new_stat_newdir.st_ctime:
+    raise Exception ("newdir ctime unchanged after rename")
+  if old_stat_newdir.st_mtime == new_stat_newdir.st_mtime:
+    raise Exception ("newdir mtime unchanged after rename")
+
+tests += [ ("rename-times", test_rename_times) ]
+
+#####
+
 def test_chmod_ctime():
   old_stat = os.stat ("mnt/README")
   time.sleep (0.1)
