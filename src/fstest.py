@@ -1226,6 +1226,41 @@ bf_tests += [ ("test-inode-hashes", test_inode_hashes) ]
 
 #####
 
+def atomic_time_test (testname, filename):
+  root_stat = os.lstat ("mnt")
+  test_stat = os.lstat (filename)
+
+  if root_stat.st_mtime != test_stat.st_mtime:
+    raise Exception ("root mtime and %s mtime don't match" % testname)
+  if root_stat.st_ctime != test_stat.st_ctime:
+    raise Exception ("root ctime and %s ctime don't match" % testname)
+  if root_stat.st_mtime != root_stat.st_ctime:
+    raise Exception ("root ctime and root ctime don't match")
+
+def test_mkdir_atomic_time():
+  os.mkdir ("mnt/dir")
+  atomic_time_test ("dir", "mnt/dir")
+
+tests += [ ("mkdir-atomic-time", test_mkdir_atomic_time) ]
+
+#####
+
+def test_mknod_atomic_time():
+  os.mknod ("mnt/file", 0644)
+  atomic_time_test ("file", "mnt/file")
+
+tests += [ ("mknod-atomic-time", test_mknod_atomic_time) ]
+
+#####
+
+def test_symlink_atomic_time():
+  os.symlink ("README", "mnt/README-symlink")
+  atomic_time_test ("symlink", "mnt/README-symlink")
+
+tests += [ ("symlink-atomic-time", test_symlink_atomic_time) ]
+
+#####
+
 def start_bfsyncfs():
   if os.system ("""( echo "*** fs start (`date`)"; ../fs/bfsyncfs -f test/repo mnt; echo "*** fs stop (`date`), exit $?"
                    ) >> fs.log 2>&1 &""") != 0:
