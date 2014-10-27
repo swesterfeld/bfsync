@@ -29,13 +29,15 @@ enum FileType {
   FILE_CHAR_DEV
 };
 
+struct INodeTime;
+
 class INode;
 class INodePtr
 {
   INode *ptr;
 public:
   INodePtr (const Context& ctx, const ID& id);
-  INodePtr (const Context& ctx, const char *path, const ID *id = NULL);
+  INodePtr (const Context& ctx, const INodeTime& time, const char *path, const ID *id = NULL);
   INodePtr (INode *inode = NULL);  // == null()
   ~INodePtr();
 

@@ -836,7 +836,8 @@ bfsync_mknod (const char *path_arg, mode_t mode, dev_t dev)
   if (!dir_inode->search_perm_ok (ctx) || !dir_inode->write_perm_ok (ctx))
     return -EACCES;
 
-  INodePtr inode (ctx, path_arg);  // create new inode
+  INodeTime time_now = INodeTime::now();
+  INodePtr  inode (ctx, time_now, path_arg);  // create new inode
 
   inode.update()->mode = mode & ~S_IFMT;
 
@@ -879,7 +880,7 @@ bfsync_mknod (const char *path_arg, mode_t mode, dev_t dev)
       return -ENOENT;
     }
 
-  dir_inode.update()->set_mtime_ctime (INodeTime::now());
+  dir_inode.update()->set_mtime_ctime (time_now);
   dir_inode.update()->add_link (ctx, inode, get_basename (path));
   return 0;
 }
@@ -1174,13 +1175,14 @@ bfsync_mkdir (const char *path_arg, mode_t mode)
   if (!inode_dir->write_perm_ok (ctx))
     return -EACCES;
 
-  INodePtr inode (ctx, path_arg);  // create new inode
+  INodeTime time_now = INodeTime::now();
+  INodePtr  inode (ctx, time_now, path_arg);  // create new inode
 
   inode.update()->type = FILE_DIR;
   inode.update()->mode = mode;
 
   inode_dir.update()->add_link (ctx, inode, get_basename (path));
-  inode_dir.update()->set_mtime_ctime (INodeTime::now());
+  inode_dir.update()->set_mtime_ctime (time_now);
   return 0;
 }
 
@@ -1350,13 +1352,15 @@ bfsync_symlink (const char *from_arg, const char *to_arg)
   if (check_to)
     return -EEXIST;
 
-  INodePtr inode (ctx, to_arg);
+  INodeTime time_now = INodeTime::now();
+  INodePtr  inode (ctx, time_now, to_arg);
+
   inode.update()->mode = 0777;
   inode.update()->type = FILE_SYMLINK;
   inode.update()->link = from;
 
   dir_inode.update()->add_link (ctx, inode, get_basename (to));
-  dir_inode.update()->set_mtime_ctime (INodeTime::now());
+  dir_inode.update()->set_mtime_ctime (time_now);
   return 0;
 }
 

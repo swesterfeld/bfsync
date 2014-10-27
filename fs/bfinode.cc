@@ -235,7 +235,7 @@ INodePtr::INodePtr (const Context& ctx, const ID& id) :
     }
 }
 
-INodePtr::INodePtr (const Context& ctx, const char *path, const ID *id)
+INodePtr::INodePtr (const Context& ctx, const INodeTime& time, const char *path, const ID *id)
 {
   assert ((path && id == NULL) || (id && path == NULL));
 
@@ -249,7 +249,7 @@ INodePtr::INodePtr (const Context& ctx, const char *path, const ID *id)
   ptr->major = 0;
   ptr->minor = 0;
   ptr->nlink = 0;
-  ptr->set_mtime_ctime (INodeTime::now());
+  ptr->set_mtime_ctime (time);
   ptr->alloc_ino();
   ptr->new_file_number = 0;
   ptr->updated = true;

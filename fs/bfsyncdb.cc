@@ -1807,7 +1807,7 @@ INodeRepo::create_inode (const string& name, unsigned int version)
   BFSync::Context ctx;
   ctx.version = version;
 
-  return INodeRepoINode (BFSync::INodePtr (ctx, name.c_str()));
+  return INodeRepoINode (BFSync::INodePtr (ctx, BFSync::INodeTime::now(), name.c_str()));
 }
 
 INodeRepoINode
@@ -1816,7 +1816,7 @@ INodeRepo::create_inode_with_id (const ID& id, unsigned int version)
   BFSync::Context ctx;
   ctx.version = version;
 
-  return INodeRepoINode (BFSync::INodePtr (ctx, NULL, &id.id));
+  return INodeRepoINode (BFSync::INodePtr (ctx, BFSync::INodeTime::now(), NULL, &id.id));
 }
 
 void
