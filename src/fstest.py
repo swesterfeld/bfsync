@@ -1226,6 +1226,17 @@ bf_tests += [ ("test-inode-hashes", test_inode_hashes) ]
 
 #####
 
+def test_link_integrity():
+  os.system ("touch mnt")
+  commit()
+  os.stat ("mnt/.bfsync/commits/2")
+  os.system ("touch mnt")
+  commit()
+
+bf_tests += [ ("test-link-integrity", test_link_integrity) ]
+
+#####
+
 def atomic_time_test (testname, filename):
   root_stat = os.lstat ("mnt")
   test_stat = os.lstat (filename)
