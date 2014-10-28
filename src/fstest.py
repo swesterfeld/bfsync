@@ -1237,6 +1237,17 @@ bf_tests += [ ("test-link-integrity", test_link_integrity) ]
 
 #####
 
+def test_link_integrity2():
+  os.system ("touch mnt")
+  commit()
+  os.remove ("mnt/README")
+  os.stat ("mnt/.bfsync/commits/2")
+  commit()
+
+bf_tests += [ ("test-link-integrity2", test_link_integrity2) ]
+
+#####
+
 def atomic_time_test (testname, filename):
   root_stat = os.lstat ("mnt")
   test_stat = os.lstat (filename)
