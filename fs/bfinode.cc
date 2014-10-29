@@ -432,7 +432,7 @@ INode::load (const Context& ctx, const ID& id)
       INodeRepo::the()->bdb->load_links (load_links, id, ctx.version);
 
       for (vector<Link*>::const_iterator li = load_links.begin(); li != load_links.end(); li++)
-        links.update()->link_map[(*li)->name].add (LinkPtr (*li));
+        links.update()->link_map[(*li)->name].add_deduplicate (LinkPtr (*li));
     }
 
   load_or_alloc_ino();
@@ -775,6 +775,66 @@ void
 LinkVersionList::add (const LinkPtr& ptr)
 {
   links.push_back (ptr);
+}
+
+/*
+ * On link deduplication:
+ * ======================
+ * Every time a directory inode is loaded, all links belonging to that
+ * directory are loaded. The same directory inode may be loaded more than once
+ * if different versions of the same directory are accessed (for instance using
+ * .bfsync/commits/N and .bfsync/commits/M).
+ *
+ * Since links are valid for a range of versions (vmin - vmax), it is possible
+ * that the same link version range belongs to two different inode versions (N
+ * and M). In this case, loading two different inode versions can cause the
+ * same link to be loaded twice.
+ *
+ * To prevent this from actually duplicating the link in our in-memory
+ * representation, we filter the links after loading, and dismiss all links as
+ * duplicates that have the following two properties:
+ *
+ *   - the filename is identical
+ *   - the minimum version (vmin) is identical
+ *
+ * We do not check the maximum version (vmax), because after loading, if the
+ * maximum version of the link was "INF", it is possible that the link was
+ * modified, so that no link with vmin and vmax exists in memory due to link
+ * copy on write.
+ *
+ * On deletions:
+ * =============
+ * We don't care about the deleted flag at all. If a link is deleted (which is
+ * only possible if its vmax is "INF"), then there are two cases:
+ *
+ *   1) the link is completely new, that is, it exists only in the current
+ *      version - in this case it cannot belong to two different versions N and M
+ *
+ *   2) the link has some history, especially belongs to two different versions
+ *      N and M - then deletion will not affect the vmin part of the deletion,
+ *      so some historic version of the link will remain, an filename/vmin
+ *      comparision will be effective
+ *
+ * Some remarks:
+ * =============
+ * One inode version range cannot span multiple link version ranges, because the
+ * directory inode always gets updated when a link is added or removed.
+ *
+ * Every inode version gets loaded only once, so the same inode version is never
+ * loaded again, unless a directory gets removed from cache. Then *all* links
+ * and *all* inode versions get deleted from cache at the same time.
+ */
+void
+LinkVersionList::add_deduplicate (const LinkPtr& ptr)
+{
+  for (size_t i = 0; i < links.size(); i++)
+    {
+      if (links[i]->vmin == ptr->vmin)
+        {
+          return;   // duplicate
+        }
+    }
+  add (ptr);
 }
 
 LinkPtr&

@@ -226,6 +226,7 @@ public:
   LinkPtr& operator[] (size_t pos);
   const LinkPtr& operator[] (size_t pos) const;
   void add (const LinkPtr& link);
+  void add_deduplicate (const LinkPtr& link);
   LinkPtr& find_version (unsigned int version);
   const LinkPtr& find_version (unsigned int version) const;
 };
