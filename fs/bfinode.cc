@@ -558,6 +558,7 @@ INode::add_link (const Context& ctx, INodePtr to, const string& name, LinkMode l
   link->dir_id = id;
   link->inode_id = to->id;
   link->name = name;
+  link->updated = true;
 
   if (lm == LM_UPDATE_NLINK)
     to.update()->nlink++;
