@@ -40,6 +40,7 @@ from gcutils import gc
 from transferbench import transfer_bench
 from sqlexport import sql_export
 from integrity import check_integrity
+from filelog import file_log
 
 def find_bfsync_dir():
   old_cwd = os.getcwd()
@@ -1289,6 +1290,10 @@ def cmd_diff():
   repo = cd_repo_connect_db()
   text_diff (repo, args)
 
+def cmd_flog():
+  repo = cd_repo_connect_db()
+  file_log (repo, args)
+
 args = []
 
 def main():
@@ -1336,6 +1341,7 @@ def main():
       ( "get-repo-id",            cmd_get_repo_id, 0),
       ( "find-missing",           cmd_find_missing, 1),
       ( "diff",                   cmd_diff, 1),
+      ( "flog",                   cmd_flog, 1),
       ( "inr-test",               cmd_inr_test, 1),
       ( "check-integrity",        cmd_check_integrity, 0),
       ( "debug-add-tag",          cmd_debug_add_tag, 1),
