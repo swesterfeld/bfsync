@@ -44,8 +44,17 @@ def file_log (repo, args):
     if inode:
       attrs = (inode.hash, inode.size, inode.mtime)
       if attrs != last_attrs:
+        # load history entry
+        hentry = repo.bdb.load_history_entry (v)
+        msg = hentry.message
+        msg = msg.strip()
+
         print "%4d   Hash   %s" % (v, inode.hash)
         print "       Size   %s" % inode.size
         print "       MTime  %s" % datetime.datetime.fromtimestamp (inode.mtime).strftime ("%F %H:%M:%S")
+        print
+        for line in msg.split ("\n"):     # commit message
+          print "       %s" % line
+
         print "-" * 80
         last_attrs = attrs
