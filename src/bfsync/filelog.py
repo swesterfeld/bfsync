@@ -33,6 +33,7 @@ def get_inode (repo, filename, VERSION):
 def file_log (repo, args):
   parser = argparse.ArgumentParser (prog='bfsync file-log')
   parser.add_argument ("-a", action="store_true", dest="all", default=False, help='show all versions (including deleted versions)')
+  parser.add_argument ("-v", action="store_true", dest="verbose", default=False, help='show details for each version')
   parser.add_argument ("file")
   parsed_args = parser.parse_args (args)
 
@@ -60,6 +61,20 @@ def file_log (repo, args):
           print "%4d   Hash   %s" % (v, inode.hash)
           print "       Size   %s" % inode.size
           print "       MTime  %s" % datetime.datetime.fromtimestamp (inode.mtime).strftime ("%F %H:%M:%S")
+          if parsed_args.verbose:
+            print
+            print "       Commit-Author %s" % hentry.author
+            print "       Commit-Date   %s" % datetime.datetime.fromtimestamp (hentry.time).strftime ("%A, %F %H:%M:%S")
+
+            tag_list = []
+            tags = repo.bdb.list_tags (hentry.version)
+            for t in tags:
+              values = repo.bdb.load_tag (hentry.version, t)
+              for v in values:
+                tag_list.append ("%s=%s" % (t, v))
+
+            if tag_list:
+              print "       Commit-Tags   %s" % ",".join (tag_list)
           print
           for line in msg.split ("\n"):     # commit message
             print "       %s" % line
