@@ -2,6 +2,7 @@
 
 import os
 import datetime
+import argparse
 from utils import *
 import bfsyncdb
 
@@ -30,31 +31,38 @@ def get_inode (repo, filename, VERSION):
   return inode
 
 def file_log (repo, args):
-  assert (len (args) == 1)
-  filename = args[0]
+  parser = argparse.ArgumentParser (prog='bfsync file-log')
+  parser.add_argument ("-a", action="store_true", dest="all", default=False, help='show all versions (including deleted versions)')
+  parser.add_argument ("file")
+  parsed_args = parser.parse_args (args)
+
+  filename = parsed_args.file
+
   full_filename = os.path.join (repo.start_dir, filename)
   VERSION = repo.first_unused_version()
+  deleted_versions = repo.get_deleted_version_set()
 
   print "-" * 80
 
   last_attrs = ('')
 
   for v in range (1, VERSION):
-    inode = get_inode (repo, filename, v)
-    if inode:
-      attrs = (inode.hash, inode.size, inode.mtime)
-      if attrs != last_attrs:
-        # load history entry
-        hentry = repo.bdb.load_history_entry (v)
-        msg = hentry.message
-        msg = msg.strip()
+    if v not in deleted_versions or parsed_args.all:
+      inode = get_inode (repo, filename, v)
+      if inode:
+        attrs = (inode.hash, inode.size, inode.mtime)
+        if attrs != last_attrs:
+          # load history entry
+          hentry = repo.bdb.load_history_entry (v)
+          msg = hentry.message
+          msg = msg.strip()
 
-        print "%4d   Hash   %s" % (v, inode.hash)
-        print "       Size   %s" % inode.size
-        print "       MTime  %s" % datetime.datetime.fromtimestamp (inode.mtime).strftime ("%F %H:%M:%S")
-        print
-        for line in msg.split ("\n"):     # commit message
-          print "       %s" % line
+          print "%4d   Hash   %s" % (v, inode.hash)
+          print "       Size   %s" % inode.size
+          print "       MTime  %s" % datetime.datetime.fromtimestamp (inode.mtime).strftime ("%F %H:%M:%S")
+          print
+          for line in msg.split ("\n"):     # commit message
+            print "       %s" % line
 
-        print "-" * 80
-        last_attrs = attrs
+          print "-" * 80
+          last_attrs = attrs
