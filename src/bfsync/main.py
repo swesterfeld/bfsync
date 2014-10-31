@@ -247,7 +247,7 @@ def cmd_revert():
   run_commands (repo)
 
 def cmd_remove():
-  (repo_path, repo_start_dir) = find_repo_dir()
+  repo_path = find_repo_dir()
   bdb_dir = os.path.join (repo_path, "bdb")
   bfsyncdb.remove_db (bdb_dir)
 
@@ -737,7 +737,7 @@ def cmd_recover():
       print "fatal: path '" + dir + "' does not exist"
       sys.exit (1)
 
-  (repo_path, repo_start_dir) = find_repo_dir()
+  repo_path = find_repo_dir()
   bfsync_info = parse_config (repo_path + "/config")
 
   cache_size = bfsync_info.get ("cache-size")
@@ -780,7 +780,7 @@ def cmd_need_recover():
       print "fatal: path '" + dir + "' does not exist"
       sys.exit (1)
 
-  (repo_path, repo_start_dir) = find_repo_dir()
+  repo_path = find_repo_dir()
 
   need_recover = bfsyncdb.need_recover_db (repo_path)
 
@@ -843,7 +843,7 @@ def cmd_need_continue():
     sys.exit (1)
 
 def cmd_config_set():
-  (repo_path, repo_start_dir) = find_repo_dir()
+  repo_path = find_repo_dir()
   repo_config_filename = os.path.join (repo_path, "config")
   repo_config = parse_config (repo_config_filename)
 
@@ -858,7 +858,7 @@ def cmd_config_set():
   f.close()
 
 def cmd_config_unset():
-  (repo_path, repo_start_dir) = find_repo_dir()
+  repo_path = find_repo_dir()
   repo_config_filename = os.path.join (repo_path, "config")
   repo_config = parse_config (repo_config_filename)
 
@@ -1227,7 +1227,7 @@ def cmd_upgrade():
       print "fatal: path '" + dir + "' does not exist"
       sys.exit (1)
 
-  (repo_path, repo_start_dir) = find_repo_dir()
+  repo_path = find_repo_dir()
   bfsync_info = parse_config (repo_path + "/info")
 
   version = bfsync_info.get ("version")
@@ -1263,7 +1263,7 @@ def cmd_need_upgrade():
       print "fatal: path '" + dir + "' does not exist"
       sys.exit (1)
 
-  (repo_path, repo_start_dir) = find_repo_dir()
+  repo_path = find_repo_dir()
   bfsync_info = parse_config (repo_path + "/info")
 
   version = bfsync_info.get ("version")

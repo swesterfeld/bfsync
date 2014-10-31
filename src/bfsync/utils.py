@@ -112,7 +112,7 @@ def find_repo_dir3():
 # backward compatibility
 def find_repo_dir():
   (repo_path, repo_start_dir, mount_point) = find_repo_dir3()
-  return repo_path, repo_start_dir
+  return repo_path
 
 class Repo:
   def make_temp_name (self):
