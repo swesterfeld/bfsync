@@ -61,6 +61,9 @@ def file_log (repo, args):
           print "%4d   Hash   %s" % (v, inode.hash)
           print "       Size   %s" % inode.size
           print "       MTime  %s" % datetime.datetime.fromtimestamp (inode.mtime).strftime ("%F %H:%M:%S")
+          if repo.mount_point:
+            print "       Path   %s" % os.path.join (repo.mount_point, ".bfsync", "commits", "%d" % v, full_filename)
+
           if parsed_args.verbose:
             print
             print "       Commit-Author %s" % hentry.author

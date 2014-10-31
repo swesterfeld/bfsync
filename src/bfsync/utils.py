@@ -56,9 +56,10 @@ def mkdir_recursive (dir):
       pass
   raise Exception ("can't create directory %s\n" % dir)
 
-def find_repo_dir():
+def find_repo_dir3():
   dir = os.getcwd()
   repo_start_dir = ""
+  mount_point = None
   while True:
     file_ok = False
     try:
@@ -89,9 +90,14 @@ def find_repo_dir():
           dir = dir[0]
         else:
           raise Exception ("bad repo-path list (should have exactly 1 entry)")
+        mpoint = cfg.get ("mount-point")
+        if len (mpoint) == 1:
+          mount_point = mpoint[0]
+        else:
+          raise Exception ("bad mount-point (should have exactly 1 entry)")
       else:
         raise Exception ("unknown repo-type '%s' in find_repo_dir", cfg.get ("repo-type"))
-      return dir, repo_start_dir
+      return dir, repo_start_dir, mount_point
     # try parent directory
     if len (repo_start_dir):
       repo_start_dir = os.path.join (os.path.basename (dir), repo_start_dir)
@@ -102,6 +108,11 @@ def find_repo_dir():
       # no more parent
       raise BFSyncError ("error: can not find .bfsync directory/file")
     dir = newdir
+
+# backward compatibility
+def find_repo_dir():
+  (repo_path, repo_start_dir, mount_point) = find_repo_dir3()
+  return repo_path, repo_start_dir
 
 class Repo:
   def make_temp_name (self):
@@ -235,7 +246,7 @@ class Repo:
       return None       # no server => no lock
 
 def cd_repo_connect_db (cont = False):
-  (repo_path, repo_start_dir) = find_repo_dir()
+  (repo_path, repo_start_dir, mount_point) = find_repo_dir3()
   bfsync_config = parse_config (repo_path + "/config")
   bfsync_info = parse_config (repo_path + "/info")
 
@@ -283,6 +294,7 @@ def cd_repo_connect_db (cont = False):
   repo.config = bfsync_config
   repo.info = bfsync_info
   repo.start_dir = repo_start_dir
+  repo.mount_point = mount_point
 
   if not cont:
     # wipe old temp files (only if we're not starting in "continue" mode)
