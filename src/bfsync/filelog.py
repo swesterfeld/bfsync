@@ -14,18 +14,13 @@ def split_path (filename):
   dirname, basename = os.path.split (filename)
   return split_path (dirname) + [ basename ]
 
-def follow_link (repo, inode, path_part, VERSION):
-  links = repo.bdb.load_links (inode.id, VERSION)
-  for link in links:
-    if link.name == path_part:
-      return repo.bdb.load_inode (link.inode_id, VERSION)
-  return None
+def get_inode (inode_repo, filename, VERSION):
+  inode = inode_repo.load_inode (bfsyncdb.id_root(), VERSION)
+  assert (inode.valid())      # root inode should always be there
 
-def get_inode (repo, filename, VERSION):
-  inode = repo.bdb.load_inode (bfsyncdb.id_root(), VERSION)
-  for path_part in split_path (os.path.join (repo.start_dir, filename)):
-    inode = follow_link (repo, inode, path_part, VERSION)
-    if not inode:
+  for path_part in split_path (filename):
+    inode = inode.get_child (VERSION, path_part)
+    if not inode.valid():
       return None
 
   return inode
@@ -42,6 +37,7 @@ def file_log (repo, args):
   full_filename = os.path.join (repo.start_dir, filename)
   VERSION = repo.first_unused_version()
   deleted_versions = repo.get_deleted_version_set()
+  inode_repo = bfsyncdb.INodeRepo (repo.bdb)
 
   print "-" * 80
 
@@ -49,18 +45,18 @@ def file_log (repo, args):
 
   for v in range (1, VERSION):
     if v not in deleted_versions or parsed_args.all:
-      inode = get_inode (repo, filename, v)
+      inode = get_inode (inode_repo, full_filename, v)
       if inode:
-        attrs = (inode.hash, inode.size, inode.mtime)
+        attrs = (inode.hash(), inode.size(), inode.mtime())
         if attrs != last_attrs:
           # load history entry
           hentry = repo.bdb.load_history_entry (v)
           msg = hentry.message
           msg = msg.strip()
 
-          print "%4d   Hash   %s" % (v, inode.hash)
-          print "       Size   %s" % inode.size
-          print "       MTime  %s" % datetime.datetime.fromtimestamp (inode.mtime).strftime ("%F %H:%M:%S")
+          print "%4d   Hash   %s" % (v, inode.hash())
+          print "       Size   %s" % inode.size()
+          print "       MTime  %s" % datetime.datetime.fromtimestamp (inode.mtime()).strftime ("%F %H:%M:%S")
           if repo.mount_point:
             print "       Path   %s" % os.path.join (repo.mount_point, ".bfsync", "commits", "%d" % v, full_filename)
 
