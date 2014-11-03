@@ -14,6 +14,14 @@ def split_path (filename):
   dirname, basename = os.path.split (filename)
   return split_path (dirname) + [ basename ]
 
+def strip_bfsync_commits_dir (path):
+  path_parts = split_path (path)
+  if len (path_parts) > 3:
+    if path_parts[0] == ".bfsync" and path_parts[1] == "commits":
+      return os.path.join (*path_parts[3:])
+  else:
+    return path
+
 def get_inode (inode_repo, filename, version):
   inode = inode_repo.load_inode (bfsyncdb.id_root(), version)
   assert (inode.valid())      # root inode should always be there
@@ -32,9 +40,7 @@ def file_log (repo, args):
   parser.add_argument ("file")
   parsed_args = parser.parse_args (args)
 
-  filename = parsed_args.file
-
-  full_filename = os.path.join (repo.start_dir, filename)
+  full_filename = strip_bfsync_commits_dir (os.path.join (repo.start_dir, parsed_args.file))
   VERSION = repo.first_unused_version()
   deleted_versions = repo.get_deleted_version_set()
   inode_repo = bfsyncdb.INodeRepo (repo.bdb)
