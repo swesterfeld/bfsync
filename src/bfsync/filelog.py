@@ -19,8 +19,7 @@ def strip_bfsync_commits_dir (path):
   if len (path_parts) > 3:
     if path_parts[0] == ".bfsync" and path_parts[1] == "commits":
       return os.path.join (*path_parts[3:])
-  else:
-    return path
+  return path
 
 def get_inode (inode_repo, filename, version):
   inode = inode_repo.load_inode (bfsyncdb.id_root(), version)
