@@ -2,6 +2,8 @@
 
 import bfsyncdb
 import sys
+import datetime
+import argparse
 
 from bfsync.utils import *
 from bfsync.StatusLine import status_line, OutputSubsampler
@@ -78,7 +80,39 @@ def check_version_ranges (repo):
   status_line.cleanup()
   return vr_errors
 
+def time_as_str (time, time_fmt):
+  return datetime.datetime.fromtimestamp (time).strftime (time_fmt)
+
+def compare_stamps (last_time, time, interval):
+  if interval == "weekly":
+    time_fmt = "%Y%W"
+  elif interval == "daily":
+    time_fmt = "%Y%m%d"
+  elif interval == "always" or interval is None:
+    return False
+  else:
+    print "INTEGRITY: interval '%s' not supported" % interval
+    sys.exit (1)
+
+  return time_as_str (last_time, time_fmt) == time_as_str (time, time_fmt)
+
 def check_integrity (repo, args):
+  parser = argparse.ArgumentParser (prog='bfsync check-integrity')
+  parser.add_argument ('-i', help='set time interval')
+  parsed_args = parser.parse_args (args)
+
+  # test if integrity test should be done (or has recently been executed)
+  last_time_values = repo.bdb.get_variable ("check-integrity-timestamp")
+  if len (last_time_values):
+    last_time = int (last_time_values[0])
+
+    if compare_stamps (last_time, time.time(), parsed_args.i):
+      print "INTEGRITY: last checked: " + time_as_str (last_time, "%A, %F %H:%M:%S")
+      print "INTEGRITY: current time: " + time_as_str (time.time(), "%A, %F %H:%M:%S")
+      print "INTEGRITY: skipped test due to '%s' interval" % parsed_args.i
+      return
+
+  # integrity check
   il_errors = bfsyncdb.check_inodes_links_integrity (repo.bdb)
   vr_errors = check_version_ranges (repo)
   print
@@ -90,5 +124,11 @@ def check_integrity (repo, args):
     print error
     error_count += 1
   print "INTEGRITY: %d errors found." % error_count
+
+  # update timestamp
+  repo.bdb.begin_transaction()
+  repo.bdb.set_variable ("check-integrity-timestamp", ["%d" % time.time()])
+  repo.bdb.commit_transaction()
+
   if error_count > 0:
     sys.exit (1)

@@ -1356,7 +1356,7 @@ def main():
       ( "diff",                   cmd_diff, 1),
       ( "file-log",               cmd_file_log, 1),
       ( "inr-test",               cmd_inr_test, 1),
-      ( "check-integrity",        cmd_check_integrity, 0),
+      ( "check-integrity",        cmd_check_integrity, 1),
       ( "debug-add-tag",          cmd_debug_add_tag, 1),
       ( "debug-del-tag",          cmd_debug_del_tag, 1),
       ( "debug-load-all-inodes",  cmd_debug_load_all_inodes, 0),
