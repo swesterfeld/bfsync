@@ -27,6 +27,7 @@ enum BDBTables
   BDB_TABLE_TEMP_FILES          = 10,
   BDB_TABLE_JOURNAL             = 11,
   BDB_TABLE_TAGS                = 12,
+  BDB_TABLE_VARIABLES           = 13,
 };
 
 enum BDBError
@@ -223,6 +224,9 @@ public:
   std::vector<std::string>  load_tag  (unsigned int version, const std::string& tag);
   BDBError                  add_tag (unsigned int version, const std::string& tag, const std::string& value);
   BDBError                  del_tag (unsigned int version, const std::string& tag, const std::string& value);
+
+  std::vector<std::string>  get_variable (const std::string& variable);
+  BDBError                  set_variable (const std::string& variable, const std::vector<std::string>& value);
 
   std::vector<char>& multi_data_buffer();
 };

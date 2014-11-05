@@ -81,7 +81,7 @@ main (int argc, char **argv)
     }
 
   vector<string> links, inodes, id2ino, ino2id, history, changed_inodes, changed_inodes_rev,
-                 new_file_number, deleted_files, temp_files, journal;
+                 new_file_number, deleted_files, temp_files, journal, variables;
 
   Dbt key;
   Dbt data;
@@ -215,6 +215,13 @@ main (int argc, char **argv)
 
           add ("journal", journal, string_printf ("%s|%s", operation.c_str(), state.c_str()));
         }
+      else if (table == BDB_TABLE_VARIABLES)
+        {
+          string variable = kbuffer.read_string();
+          string value = dbuffer.read_string();
+
+          add ("variables", variables, string_printf ("%s=%s", variable.c_str(), value.c_str()));
+        }
       else
         {
           printf ("unknown record type %d\n", table);
@@ -232,6 +239,7 @@ main (int argc, char **argv)
   print ("Deleted Files", deleted_files);
   print ("Temp Files", temp_files);
   print ("Journal", journal);
+  print ("Variables", variables);
 
   Db *db_hash2file = bdb->get_db_hash2file();
 

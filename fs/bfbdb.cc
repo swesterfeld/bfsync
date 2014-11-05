@@ -1712,6 +1712,78 @@ BDB::del_tag (unsigned int version, const string& tag, const string& value)
   return found ? BDB_ERROR_NONE : BDB_ERROR_NOT_FOUND;
 }
 
+vector<string>
+BDB::get_variable (const string& variable)
+{
+  Lock lock (mutex);
+
+  vector<string> result_values;
+
+  DataOutBuffer kbuf;
+  kbuf.write_string (variable);
+  kbuf.write_table (BDB_TABLE_VARIABLES);
+
+  Dbt key (kbuf.begin(), kbuf.size());
+  Dbt data;
+
+  DbcPtr dbc (this); /* Acquire a cursor for the database. */
+
+  // iterate over all values
+  int ret = dbc->get (&key, &data, DB_SET);
+  while (ret == 0)
+    {
+      DataBuffer dbuffer ((char *) data.get_data(), data.get_size());
+
+      result_values.push_back (dbuffer.read_string());
+
+      ret = dbc->get (&key, &data, DB_NEXT_DUP);
+    }
+  return result_values;
+}
+
+BDBError
+BDB::set_variable (const string& variable, const vector<string>& value)
+{
+  Lock lock (mutex);
+
+  if (!transaction)
+    return BDB_ERROR_NO_TRANS;
+
+  DataOutBuffer kbuf;
+  kbuf.write_string (variable);
+  kbuf.write_table (BDB_TABLE_VARIABLES);
+
+  Dbt key (kbuf.begin(), kbuf.size());
+  Dbt data;
+
+  DbcPtr dbc (this, DbcPtr::WRITE); /* Acquire a cursor for the database. */
+
+  // delete old variable values
+  int ret = dbc->get (&key, &data, DB_SET);
+  while (ret == 0)
+    {
+      ret = dbc->del (0);
+      if (ret != 0)
+        return ret2error (ret);
+
+      ret = dbc->get (&key, &data, DB_NEXT_DUP);
+    }
+
+  // write new variable values
+  for (vector<string>::const_iterator vi = value.begin(); vi != value.end(); vi++)
+    {
+      DataOutBuffer dbuf;
+      dbuf.write_string (*vi);
+
+      Dbt data (dbuf.begin(), dbuf.size());
+
+      int ret = db->put (transaction, &key, &data, 0);
+      if (ret != 0)
+        return ret2error (ret);
+    }
+  return BDB_ERROR_NONE;
+}
+
 static inline int
 make_shm_key (int n)
 {

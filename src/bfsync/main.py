@@ -1002,6 +1002,19 @@ def cmd_debug_inode_hashes():
     print hash
   del hi # free locks iterator may have held
 
+def cmd_debug_set_variable():
+  repo = cd_repo_connect_db()
+
+  repo.bdb.begin_transaction()
+  repo.bdb.set_variable (args[0], args[1:])
+  repo.bdb.commit_transaction()
+
+def cmd_debug_get_variable():
+  repo = cd_repo_connect_db()
+
+  values = repo.bdb.get_variable (args[0])
+  print args[0] + "=" + "|".join (values)
+
 def cmd_expire():
   repo = cd_repo_connect_db()
   expire (repo, args)
@@ -1356,6 +1369,8 @@ def main():
       ( "debug-hash-filename",    cmd_debug_hash_filename, 1),
       ( "debug-change-time",      cmd_debug_change_time, 1),
       ( "debug-inode-hashes",     cmd_debug_inode_hashes, 0),
+      ( "debug-set-variable",     cmd_debug_set_variable, 1),
+      ( "debug-get-variable",     cmd_debug_get_variable, 1),
       ( "--version",              cmd_version, 0),
     ]
     parse_ok = False

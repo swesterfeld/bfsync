@@ -217,6 +217,9 @@ public:
   void                      add_tag (unsigned int version, const std::string& tag, const std::string& value);
   void                      del_tag (unsigned int version, const std::string& tag, const std::string& value);
 
+  std::vector<std::string>  get_variable (const std::string& variable);
+  void                      set_variable (const std::string& variable, const std::vector<std::string>& value);
+
   unsigned int       gen_new_file_number();
 
   void               close();

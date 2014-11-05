@@ -1175,6 +1175,20 @@ BDBPtr::del_tag (unsigned int version, const string& tag, const string& value)
     throw BDBException (err);
 }
 
+vector<string>
+BDBPtr::get_variable (const string& variable)
+{
+  return ptr->my_bdb->get_variable (variable);
+}
+
+void
+BDBPtr::set_variable (const string& variable, const vector<string>& value)
+{
+  BDBError err = ptr->my_bdb->set_variable (variable, value);
+  if (err)
+    throw BDBException (err);
+}
+
 void
 print_leak_debugger_stats()
 {
