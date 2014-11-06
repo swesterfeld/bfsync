@@ -7,7 +7,6 @@
 * document bfsync check-integrity
 * document bfsync file-log
 * debug libdb++-6.0 behaviour
-* test defrag performance changes
 * gc should output database size
 
 ==============================================================================================
