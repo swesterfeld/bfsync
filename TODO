@@ -1,7 +1,6 @@
 0.3.7:
 ======
 * multi data buffer sizes can be perf tuned
-* twcbackup should clone with -u
 * twcbackup should fail on merge
 * document bfsync init
 * document bfsync check-integrity
