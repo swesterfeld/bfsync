@@ -3,7 +3,6 @@
 * multi data buffer sizes can be perf tuned
 * twcbackup should clone with -u
 * twcbackup should fail on merge
-* twcbackup should run integrity check, configurable to { always, daily, weekly }
 * document bfsync init
 * document bfsync check-integrity
 * document bfsync file-log
