@@ -381,7 +381,7 @@ def cmd_pull():
 def cmd_push():
   parser = argparse.ArgumentParser (prog='bfsync push')
   parser.add_argument ('--rsh', help='set remote shell')
-  parser.add_argument ("url", nargs = "*")
+  parser.add_argument ("url", nargs = "?")
   parsed_args = parser.parse_args (args)
 
   if parsed_args.rsh is not None:
@@ -396,7 +396,7 @@ def cmd_push():
 def cmd_get():
   parser = argparse.ArgumentParser (prog='bfsync get')
   parser.add_argument ('--rsh', help='set remote shell')
-  parser.add_argument ("url", nargs = "*")
+  parser.add_argument ("url", nargs = "?")
   parsed_args = parser.parse_args (args)
 
   if parsed_args.rsh is not None:
@@ -412,7 +412,7 @@ def cmd_get():
 def cmd_put():
   parser = argparse.ArgumentParser (prog='bfsync put')
   parser.add_argument ('--rsh', help='set remote shell')
-  parser.add_argument ("url", nargs = "*")
+  parser.add_argument ("url", nargs = "?")
   parsed_args = parser.parse_args (args)
 
   if parsed_args.rsh is not None:
@@ -428,7 +428,7 @@ def cmd_put():
 def cmd_copy_expire():
   parser = argparse.ArgumentParser (prog='bfsync copy-expire')
   parser.add_argument ('--rsh', help='set remote shell')
-  parser.add_argument ("url", nargs = "*")
+  parser.add_argument ("url", nargs = "?")
   parsed_args = parser.parse_args (args)
 
   if parsed_args.rsh is not None:

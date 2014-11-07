@@ -223,14 +223,12 @@ def expire (repo, args):
   repo.bdb.commit_transaction()
   print "EXPIRE: %d versions deleted during expire" % count
 
-def copy_expire (repo, urls, rsh):
-  if len (urls) == 0:
+def copy_expire (repo, url, rsh):
+  if url is None:
     default_copy_expire = repo.config.get ("default/copy-expire")
     if len (default_copy_expire) == 0:
       raise BFSyncError ("copy-expire: no repository specified and default/copy-expire config value empty")
     url = default_copy_expire[0]
-  else:
-    url = urls[0]
 
   remote_repo = RemoteRepo (url, rsh)
   remote_history = remote_repo.get_history()

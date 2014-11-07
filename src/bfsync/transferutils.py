@@ -38,16 +38,14 @@ def get_remote_objects (repo, remote_repo, transfer_objs, tparams):
   # do the actual copying
   remote_repo.get_objects (repo, tlist, tparams)
 
-def get (repo, urls, rsh):
+def get (repo, url, rsh):
   repo_path = repo.path
 
-  if len (urls) == 0:
+  if url is None:
     default_get = repo.config.get ("default/get")
     if len (default_get) == 0:
       raise BFSyncError ("get: no repository specified and default/get config value empty")
     url = default_get[0]
-  else:
-    url = urls[0]
 
   remote_repo = RemoteRepo (url, rsh)
 
@@ -71,16 +69,14 @@ def get (repo, urls, rsh):
 
   get_remote_objects (repo, remote_repo, objs, tparams)
 
-def put (repo, urls, rsh):
+def put (repo, url, rsh):
   repo_path = repo.path
 
-  if len (urls) == 0:
+  if url is None:
     default_put = repo.config.get ("default/put")
     if len (default_put) == 0:
       raise BFSyncError ("put: no repository specified and default/put config value empty")
     url = default_put[0]
-  else:
-    url = urls[0]
 
   remote_repo = RemoteRepo (url, rsh)
   need_objs = remote_repo.need_objects ("inodes")
@@ -102,16 +98,14 @@ def put (repo, urls, rsh):
 
   remote_repo.put_objects (repo, tl, tparams)
 
-def push (repo, urls, rsh):
+def push (repo, url, rsh):
   repo_path = repo.path
 
-  if len (urls) == 0:
+  if url is None:
     default_push = repo.config.get ("default/push")
     if len (default_push) == 0:
       raise Exception ("push: no repository specified and default/push config value empty")
     url = default_push[0]
-  else:
-    url = urls[0]
 
   remote_repo = RemoteRepo (url, rsh)
   remote_history = remote_repo.get_history()
