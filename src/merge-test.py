@@ -54,7 +54,7 @@ class Repo:
     old_cwd = os.getcwd()
     os.chdir (self.repo.path)
     try:
-      get (self.repo, [], "ssh")
+      get (self.repo, None, "ssh")
     except Exception, e:
       print "GET FAILED: %s" % e
       sys.exit (1)
@@ -64,7 +64,7 @@ class Repo:
     old_cwd = os.getcwd()
     os.chdir (self.repo.path)
     try:
-      push (self.repo, [], "ssh")
+      push (self.repo, None, "ssh")
     except Exception, e:
       print "PUSH FAILED: %s" % e
       sys.exit (1)
