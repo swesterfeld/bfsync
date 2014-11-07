@@ -4,6 +4,7 @@
 * document bfsync init
 * document bfsync check-integrity
 * document bfsync file-log
+* update bfsync pull documentation
 * gc should output database size
 * debug: libdb++-6.0 behaviour
 * debug: merge-test.py subdir-rm crashes
