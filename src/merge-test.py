@@ -73,7 +73,7 @@ class Repo:
   def pull (self, args):
     old_cwd = os.getcwd()
     os.chdir (self.repo.path)
-    pull (self.repo, args, "ssh")
+    pull (self.repo, args)
     run_commands (self.repo)
     os.chdir (old_cwd)
 

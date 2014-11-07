@@ -1147,8 +1147,9 @@ class FastForwardCommand:
   def set_state (self, state):
     self.state = state
 
-def pull (repo, args, rsh, server = True):
+def pull (repo, args, server = True):
   parser = argparse.ArgumentParser (prog='bfsync pull')
+  parser.add_argument ('--rsh', help='set remote shell')
   parser.add_argument ('--always-local', action='store_const', const=True,
                        help='always use local version for merge conflicts')
   parser.add_argument ('--always-master', action='store_const', const=True,
@@ -1159,6 +1160,12 @@ def pull (repo, args, rsh, server = True):
   pull_args = parser.parse_args (args)
 
   repo_path = repo.path
+
+  # Remote shell
+  if pull_args.rsh is not None:
+    rsh = pull_args.rsh
+  else:
+    rsh = "ssh"
 
   # Uncommitted changes?
   if repo.check_uncommitted_changes():

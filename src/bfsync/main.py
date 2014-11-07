@@ -373,19 +373,9 @@ def cmd_remote():
       sys.stdout.flush()
 
 def cmd_pull():
-  parser = argparse.ArgumentParser (prog='bfsync pull')
-  parser.add_argument ('--rsh', help='set remote shell')
-  parser.add_argument ("url", nargs = "*")
-  parsed_args = parser.parse_args (args)
-
-  if parsed_args.rsh is not None:
-    rsh = parsed_args.rsh
-  else:
-    rsh = "ssh"
-
   repo = cd_repo_connect_db ()
   status_line.set_op ("PULL")
-  pull (repo, parsed_args.url, rsh)
+  pull (repo, args)
   run_commands (repo)
 
 def cmd_push():
@@ -677,7 +667,7 @@ def cmd_clone():
   repo_path = repo.path
 
   # pull changes from master
-  pull (repo, [ url ], rsh, server = False)
+  pull (repo, [ "--rsh", rsh, url ], server = False)
   run_commands (repo)
 
 def cmd_repo_files():
