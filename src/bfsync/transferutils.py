@@ -1156,6 +1156,8 @@ def pull (repo, args, server = True):
                        help='always use master version for merge conflicts')
   parser.add_argument ('--always-both', action='store_const', const=True,
                        help='always use both versions for merge conflicts')
+  parser.add_argument ('--ff-only', action='store_const', const=True,
+                       help='only perform fast-forward pull (fail for merges)')
   parser.add_argument ('repo', nargs = '?')
   pull_args = parser.parse_args (args)
 
@@ -1174,7 +1176,7 @@ def pull (repo, args, server = True):
   if pull_args.repo is None:
     default_pull = repo.config.get ("default/pull")
     if len (default_pull) == 0:
-      raise Exception ("pull: no repository specified and default/push config value empty")
+      raise Exception ("pull: no repository specified and default/pull config value empty")
     url = default_pull[0]
   else:
     url = pull_args.repo
@@ -1235,6 +1237,8 @@ def pull (repo, args, server = True):
 
     cmd.start (repo, ff_apply, server)
     queue_command (cmd)
+  elif pull_args.ff_only:
+    raise BFSyncError ("pull failed: this is not a fast-forward pull (merging disabled)")
   else:
     history_merge (repo, local_history, remote_history, pull_args, rsh)
 
