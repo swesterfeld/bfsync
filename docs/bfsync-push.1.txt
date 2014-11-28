@@ -1,0 +1,29 @@
+bfsync-push(1)
+==============
+
+NAME
+----
+bfsync-push - Push changes to master repository
+
+SYNOPSIS
+--------
+[verse]
+'bfsync push' [--rsh <remote_shell>] [<repo>]
+
+DESCRIPTION
+-----------
+Push new local commits that are not yet part of the history of the master repository
+`<repo>` to the master repostory.
+
+If the `<repo>` argument is missing, the default from the config file will be used.
+
+Note that `bfsync push` and `bfsync pull` only transfers the history
+information (what files and directories exists, and what SHA1 their contents
+have). To transfer the contents of the files, `bfsync put` or `bfsync get` can
+be used.
+
+OPTIONS
+-------
+--rsh <remote_shell>::
+    This option can be used to set the remote shell used to connect the host; it
+    defaults to ssh.

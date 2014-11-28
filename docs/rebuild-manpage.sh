@@ -1,5 +1,5 @@
 #!/bin/bash
-for p in bfsync-clone.1 bfsync-commit.1
+for p in bfsync-clone.1 bfsync-commit.1 bfsync-push.1
 do
   a2x -f manpage $p.txt
   asciidoc -b xhtml11 -d manpage $p.txt
