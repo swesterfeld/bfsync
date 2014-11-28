@@ -1,8 +1,8 @@
 #!/bin/bash
 for p in bfsync-clone.1 bfsync-commit.1
-do \
+do
   a2x -f manpage $p.txt
-  groff -mandoc -Thtml < $p >$p.html; \
+  asciidoc -b xhtml11 -d manpage $p.txt
 done
 exit
 
