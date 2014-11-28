@@ -12,13 +12,13 @@ SYNOPSIS
 
 DESCRIPTION
 -----------
-Commit changes to the repository. Unless the -m option is used, an editor will
-be started to allow the user to enter a  commit  message.
+Commit changes to the repository. Unless the `-m` option is used, an editor
+will be started to allow the user to enter a commit message.
 
 OPTIONS
 -------
 -m <message>::
-    Set the commit message to <message> and no editor will be started.
+    Set the commit message to `<message>` (no editor will be started).
 
 -a <author>::
     Set the author of the commit (otherwise the author defaults to user@host).

@@ -13,18 +13,20 @@ SYNOPSIS
 
 DESCRIPTION
 -----------
-Initialize new cloned bfsync repo from bfsync master repo. If
-<dest-dir> is not specified, bfsync clone will generate  a directory name from the repository name, otherwise it will clone into the directory <dest-dir>.
+Initialize new cloned bfsync repo from bfsync master repo. If `<dest-dir>` is
+not specified, bfsync clone will generate a directory name from the repository
+name, otherwise it will clone into the directory `<dest-dir>`.
 
 OPTIONS
 -------
 -u::
-    If -u is given, bfsync clone will set the "use-uid-gid" option in the config
+    If `-u` is given, bfsync clone will set the `"use-uid-gid"` option in the config
     file for the cloned repository to 1. This means  that  upon mount,  the  user
     id  settings and group id settings for files/directories will be taken from the
     repository. This will only make sense if all machines that access the data have
-    the same uid/gid numbers. The default (without -u) is  not  to use  the uid/gid
-    numbers,  which should be perfect for almost every use case except for backups.
+    the same uid/gid numbers. The default (without `-u`) is  not  to use  the
+    uid/gid numbers,  which should be perfect for almost every use case except for
+    backups.
 
 -c <cache_size_mb>::
     The cache size is the amount of shared memory that will be used as database
