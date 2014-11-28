@@ -8,7 +8,9 @@ bfsync-pull - Pull changes from master repository
 SYNOPSIS
 --------
 [verse]
-'bfsync pull' [--rsh <remote_shell>] [<repo>]
+'bfsync pull' [--ff-only] [--rsh <remote_shell>]
+             [--always-local] [--always-master] [--always-both]
+             [<repo>]
 
 DESCRIPTION
 -----------
@@ -20,7 +22,24 @@ If the `<repo>` argument is missing, the default from the config file is used.
 
 OPTIONS
 -------
+--ff-only::
+    Only perform fast-forward pulls, where the local history has no new commits
+    compared to the master history. For merges, which occur if both, the master
+    history and the local history, have new commits, this option will make
+    pull abort without changing anything.
+
 --rsh <remote_shell>::
     This option can be used to set the remote shell used to connect the host; it
     defaults to ssh.
 
+--always-local::
+    If merge conflicts occur, automatically resolve them by always choosing the
+    local version. This is mainly intended for unit testing scripts.
+
+--always-master::
+    If merge conflicts occur, automatically resolve them by always choosing the
+    master version. This is mainly intended for unit testing scripts.
+
+--always-both::
+    If merge conflicts occur, automatically resolve them by always choosing
+    both versions. This is mainly intended for unit testing scripts.
