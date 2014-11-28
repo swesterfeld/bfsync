@@ -7,7 +7,9 @@ bfsync-clone - Clone a bfsync repo from a bfsync master repo
 
 SYNOPSIS
 --------
-'bfsync clone' [ -u ] [ -c <cache_size_mb> ] [--rsh <remote_shell>] <repo> [ <dest-dir> ]
+[verse]
+'bfsync clone' [ -u ] [ -c <cache_size_mb> ] [--rsh <remote_shell>]
+             <repo> [ <dest-dir> ]
 
 DESCRIPTION
 -----------
