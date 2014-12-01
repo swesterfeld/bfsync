@@ -1,0 +1,23 @@
+bfsync-gc(1)
+============
+
+NAME
+----
+bfsync-gc - Cleanup unused files
+
+SYNOPSIS
+--------
+[verse]
+'bfsync gc'
+
+DESCRIPTION
+-----------
+This will check for objects that are present in the local repo, but not used. These
+unnecessary files will be deleted to free space.
+
+Files can become unused for instance
+
+* when versions are deleted by `bfsync expire` or `bfsync delete-version`
+* when using `bfsync revert`
+* if the merge algorithm needs to modify diffs due to merge decisions
+  (then the old diff becomes unused)
