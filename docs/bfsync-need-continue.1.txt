@@ -1,0 +1,17 @@
+bfsync-need-continue(1)
+=======================
+
+NAME
+----
+bfsync-need-continue - Check whether bfsync continue needs to be run
+
+SYNOPSIS
+--------
+[verse]
+'bfsync need-continue' [<repo>]
+
+DESCRIPTION
+-----------
+Returns true if running `bfsync continue` is necessary. The repository is
+choosen either from the `<repo>` argument, or if that is not there, from the
+directory `need-continue` was started in.
