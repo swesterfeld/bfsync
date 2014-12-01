@@ -1,0 +1,18 @@
+bfsync-revert(1)
+================
+
+NAME
+----
+bfsync-revert - Go back to a previous version
+
+SYNOPSIS
+--------
+[verse]
+'bfsync revert' [<version>]
+
+DESCRIPTION
+-----------
+If `<version>` is not specified, `bfsync revert` will discard all uncommitted
+changes, and revert to the newest version available in the history.
+
+If `<version>` is specified, it will go back in time to that version.
