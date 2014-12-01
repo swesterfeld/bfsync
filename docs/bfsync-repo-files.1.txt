@@ -1,0 +1,23 @@
+bfsync-repo-files(1)
+====================
+
+NAME
+----
+bfsync-repo-files - Search a directory for files that are also in the repo
+
+SYNOPSIS
+--------
+[verse]
+'bfsync repo-files' [-0|--null] <dir>
+
+DESCRIPTION
+-----------
+Search the directory `<dir>` for files that are also in the repo.
+
+If you start moving data to the repo, you can clean up copies that might be present elsewhere.
+
+OPTIONS
+-------
+-0::
+--null::
+    Makes the output suitable for use with `xargs -0`.

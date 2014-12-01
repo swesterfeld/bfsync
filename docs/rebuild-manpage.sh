@@ -1,7 +1,7 @@
 #!/bin/bash
 for p in bfsync-clone.1 bfsync-commit.1 bfsync-push.1 bfsync-pull.1 \
          bfsync-get.1 bfsync-put.1 bfsync-check.1 bfsync-log.1 \
-         bfsync-gc.1
+         bfsync-gc.1 bfsync-repo-files.1
 do
   a2x -f manpage $p.txt
   asciidoc -f asciidoc.conf -b xhtml11 -d manpage $p.txt
