@@ -9,8 +9,8 @@ SYNOPSIS
 --------
 [verse]
 'bfsync pull' [--ff-only] [--rsh <remote_shell>]
-             [--always-local] [--always-master] [--always-both]
-             [<repo>]
+            [--always-local] [--always-master] [--always-both]
+            [<repo>]
 
 DESCRIPTION
 -----------
