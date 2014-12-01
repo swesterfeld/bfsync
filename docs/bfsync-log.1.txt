@@ -1,0 +1,21 @@
+bfsync-log(1)
+=============
+
+NAME
+----
+bfsync-log - Display the history of the repository
+
+SYNOPSIS
+--------
+[verse]
+'bfsync log' [-a]
+
+DESCRIPTION
+-----------
+Display the history of the repository. For each commit, one version will show
+up in this log.
+
+OPTIONS
+-------
+-a::
+    Normally deleted versions are omitted but can be shown using this option.
