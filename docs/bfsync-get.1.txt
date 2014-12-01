@@ -1,0 +1,32 @@
+bfsync-get(1)
+=============
+
+NAME
+----
+bfsync-get - Transfer file contents from repository
+
+SYNOPSIS
+--------
+[verse]
+'bfsync get' [--rsh <remote_shell>] [<repo>]
+
+DESCRIPTION
+-----------
+Transfer file contents from repository `<repo>` to the local repository. The
+repository `<repo>` should contain a bfsync checkout of the repository you're
+working with. First, `bfsync get` will make a list of file contents (SHA1
+content hashes) that are referenced by the local repository, but not available.
+Then, it will check if any of these file contents are available in the
+repository `<repo>` and transfer these to the local repository.
+
+A `<repo>` path with a ":" is interpreted as remote path, a path without ":" is
+a local path.  Examples for remote paths are
+`stefan@server:/repos/files.bfsync` or `server:some/dir`.
+
+If the `<repo>` argument is missing, the default from the config file is used.
+
+OPTIONS
+-------
+--rsh <remote_shell>::
+    This option can be used to set the remote shell used to connect the host; it
+    defaults to ssh.
