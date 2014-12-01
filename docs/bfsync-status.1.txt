@@ -1,0 +1,16 @@
+bfsync-status(1)
+================
+
+NAME
+----
+bfsync-status - Show information about uncommitted changes
+
+SYNOPSIS
+--------
+[verse]
+'bfsync status'
+
+DESCRIPTION
+-----------
+Show status information for files which have been modified in the local
+checkout, but not committed yet.
