@@ -1,0 +1,23 @@
+bfsync-check(1)
+===============
+
+NAME
+----
+bfsync-check - Checks local repository
+
+SYNOPSIS
+--------
+[verse]
+'bfsync check'
+
+DESCRIPTION
+-----------
+Check tests if the local repository is complete and all file contents and
+commit hash objects are present.
+
+Ideally, all file contents that are known to the history of the repository are
+available in the objects directory of the repository (which stores one file per
+SHA1 hash).
+
+If that is not the case, linkbfsync:bfsync-put[1]/linkbfsync:bfsync-get[1] can
+be used to complete the local repository.
