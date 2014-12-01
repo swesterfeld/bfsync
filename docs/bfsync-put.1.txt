@@ -1,0 +1,28 @@
+bfsync-put(1)
+=============
+
+NAME
+----
+bfsync-put - Transfer file contents to repository
+
+SYNOPSIS
+--------
+[verse]
+'bfsync put' [--rsh <remote_shell>] [<repo>]
+
+DESCRIPTION
+-----------
+Transfer file contents from local checkout to `<repo>`.  The repository
+`<repo>` should contain a bfsync checkout of the repository you're working
+with. First, `bfsync put` will make a list of file contents (SHA1 content
+hashes) that are referenced by the repository `<repo>`, but not are available
+there.  Then, it will check if any of these file contents is available in the
+local repository and transfer these to the repository `<repo>`.
+
+If the `<repo>` argument is missing, the default from the config file is used.
+
+OPTIONS
+-------
+--rsh <remote_shell>::
+    This option can be used to set the remote shell used to connect the host; it
+    defaults to ssh.
