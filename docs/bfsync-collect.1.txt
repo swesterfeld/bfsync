@@ -1,0 +1,23 @@
+bfsync-collect(1)
+================
+
+NAME
+----
+bfsync-collect - Show information about uncommitted changes
+
+SYNOPSIS
+--------
+[verse]
+'bfsync collect' <dir>
+
+DESCRIPTION
+-----------
+This command allows using a non-checkout directory `<dir>` to populate a
+repository with file contents. It computes the SHA1 hash of all files in the
+directory, and copies those files with matching hash that are required for the
+local repository to its object directory.
+
+This is for instance useful if you're converting from an old bfsync format to
+the new one, because by using collect you don't have to retransfer the file
+contents.
+
