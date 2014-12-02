@@ -1,0 +1,31 @@
+bfsync-disk-usage(1)
+====================
+
+NAME
+----
+bfsync-disk-usage - Generate disk usage information
+
+SYNOPSIS
+--------
+[verse]
+'bfsync disk-usage' [-h]
+
+DESCRIPTION
+-----------
+This generates disk usage information. The disk usage information is designed
+to see what could be freed when removing older versions. Therefore, it will
+start with the most recent version, since you'll want to keep this version in
+any case. This first size will be the size required to store one full backup
+(for the backup use case).
+
+Then, older versions are examined. Only the sizes of the files are counted that
+need to be kept additionally to be able to retrieve the older version
+completely. Since most of the files will be unchanged when compared to the
+current version, the increments will usually be small.
+
+OPTIONS
+-------
+-h::
+    This option uses human readable sizes (like 15G for 15 gigabytes), omitting
+    it will print the sizes in bytes.
+
