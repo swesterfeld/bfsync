@@ -1,0 +1,17 @@
+bfsync-need-upgrade(1)
+======================
+
+NAME
+----
+bfsync-need-upgrade - Check whether bfsync upgrade needs to be run
+
+SYNOPSIS
+--------
+[verse]
+'bfsync need-upgrade' [<repo>]
+
+DESCRIPTION
+-----------
+Returns true if running `bfsync upgrade` is necessary. The repository is
+choosen either from the `<repo>` argument, or if that is not there, from the
+directory `need-upgrade` was started in.
