@@ -1,0 +1,25 @@
+bfsync-new-files(1)
+===================
+
+NAME
+----
+bfsync-new-files - Show which files were added for a given version
+
+SYNOPSIS
+--------
+[verse]
+'bfsync new-files' [-h] [-s] <version>
+
+DESCRIPTION
+-----------
+This command shows which files were added to the repository for a given version.
+
+OPTIONS
+-------
+-s::
+    Print the sizes of the newly added files. When the size information is
+    requested, the files will be sorted by size, to make it easier to find out
+    which are the biggest additions of this version.
+
+-h::
+    Use human readable sizes, omitting it will print the sizes in bytes.
