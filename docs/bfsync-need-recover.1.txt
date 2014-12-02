@@ -1,0 +1,17 @@
+bfsync-need-recover(1)
+======================
+
+NAME
+----
+bfsync-need-recover - Check whether bfsync recover needs to be run
+
+SYNOPSIS
+--------
+[verse]
+'bfsync need-recover' [<repo>]
+
+DESCRIPTION
+-----------
+Returns true if running `bfsync recover` is necessary. The repository is
+choosen either from the `<repo>` argument, or if that is not there, from the
+directory `need-recover` was started in.
