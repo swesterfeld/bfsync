@@ -1,0 +1,22 @@
+bfsync-delete-version(1)
+========================
+
+NAME
+----
+bfsync-delete-version - Delete one or more versions from repository
+
+SYNOPSIS
+--------
+[verse]
+'bfsync delete-version' <vrange1> [<vrange2> ...]
+
+DESCRIPTION
+-----------
+This command tags the version(s) `<vrange1>`, `<vrange2>`, ... as deleted,
+where single numbers are possible (`bfsync delete-version 10`) or version
+ranges (`bfsync delete-version 10-20`).
+
+Once deleted, these versions become invisible (in the `.commits` directory, in
+the `bfsync log` and so on). Files contents that are only used in deleted
+versions are removed during `bfsync gc`, and will not be retransferred for
+instance during `bfsync get`.
