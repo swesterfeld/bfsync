@@ -13,8 +13,17 @@ SYNOPSIS
 DESCRIPTION
 -----------
 This command tags the version(s) `<vrange1>`, `<vrange2>`, ... as deleted,
-where single numbers are possible (`bfsync delete-version 10`) or version
-ranges (`bfsync delete-version 10-20`).
+where single numbers are possible:
+
+----
+$ bfsync delete-version 10
+----
+
+or version ranges:
+
+----
+$ bfsync delete-version 10-20
+----
 
 Once deleted, these versions become invisible (in the `.commits` directory, in
 the `bfsync log` and so on). Files contents that are only used in deleted
