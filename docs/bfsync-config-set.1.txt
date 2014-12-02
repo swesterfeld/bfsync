@@ -1,0 +1,28 @@
+bfsync-config-set(1)
+====================
+
+NAME
+----
+bfsync-config-set - Modify repository configuration file
+
+SYNOPSIS
+--------
+[verse]
+'bfsync config-set' <key> <value> [...]
+
+DESCRIPTION
+-----------
+Modify repository configuration file. The `<key>` can either be a simple key:
+
+----
+$ bfsync config-set cache-size 1024
+----
+
+or in `<group>/<key>` format:
+
+----
+$ bfsync config-set expire/keep_daily 30
+----
+
+It is possible to assign more than one value to a key, however this only makes
+sense for keys that support that.
