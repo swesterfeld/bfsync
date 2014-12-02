@@ -1,0 +1,33 @@
+bfsync-upgrade(1)
+=================
+
+NAME
+----
+bfsync-upgrade - Upgrade repository contents from an old bfsync version
+
+SYNOPSIS
+--------
+[verse]
+'bfsync upgrade' [<repo>]
+
+DESCRIPTION
+-----------
+Upgrade bfsync repository contents from an old bfsync version to a new bfsync
+version. The repository is choosen either from the `<repo>` argument, or if
+that is missing, from the directory `bfsync upgrade` was started in.
+
+The repository version of a bfsync repository is initialized to the version of
+bfsync that created the repository. That is true for master repositories
+(create with `bfsync init`) and checkouts (created with `bfsync clone`). A
+repository can only be accessed by bfsync if the repository version and the
+bfsync version matches.
+
+In some cases upgrade can automatically upgrade a repository to the current
+bfsync version. Note that while this makes it possible to access the repository
+with the new bfsync, at the same time it makes it impossible to access it with
+the old bfsync (and there is no downgrade command).
+
+Manual repository version upgrades are described in the section
+"UPDATING FROM AN OLD VERSION" of linkbfsync:bfsync[1]. Of course if automated
+upgrade with bfsync upgrade are easier and should be used if bfsync upgrade
+supports the old version -> new version upgrade.
