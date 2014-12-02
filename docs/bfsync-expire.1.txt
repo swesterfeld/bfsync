@@ -1,0 +1,41 @@
+bfsync-expire(1)
+================
+
+NAME
+----
+bfsync-expire - Mark old versions as deleted to reduce disk usage
+
+SYNOPSIS
+--------
+[verse]
+'bfsync expire'
+
+DESCRIPTION
+-----------
+The expire command was designed mainly for deleting the contents of old
+backups, although it will work on any repository.
+
+During expire, the tags *daily*, *weekly*, *monthly* and *yearly* will be
+assigned to the versions that are daily, weekly, monthly or yearly backups. The
+expire configuration will determine which version is - for instance - a monthly
+backup. It could be the first backup of the month, or the last backup of the
+month.
+
+Finally, after all versions have been tagged according to the expire
+configuration, expire will mark versions deleted that shouldn't be kept. For
+each daily/weekly/monthly/yearly backup, expire will keep the N newest backups,
+where N is configurable.
+
+The `expire/keep_daily` setting defines how many daily backups expire will
+keep, the `expire/keep_weekly` setting defines how many weekly backups expire
+will keep, and so on. Finally the setting `expire/keep_most_recent` defines how
+many most recent backups expire will keep. Every backup that is not kept due
+to one of these settings will be marked deleted.
+
+The settings that affect the expire command are documented in the
+"CONFIGURATION" section of linkbfsync:bfsync[1].
+
+Note that while `expire` marks versions as deleted, it doesn't actually delete
+the file contents that belong to deleted versions.  Running
+linkbfsync:bfsync-gc[1] will delete all file contents that are only in deleted
+versions.
