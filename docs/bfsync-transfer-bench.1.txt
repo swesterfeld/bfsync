@@ -1,0 +1,24 @@
+bfsync-transfer-bench(1)
+========================
+
+NAME
+----
+bfsync-transfer-bench - Measure transfer speed from remote host to local host
+
+SYNOPSIS
+--------
+[verse]
+'bfsync transfer-bench' [--rsh <remote_shell>] <host>
+
+DESCRIPTION
+-----------
+Measure transfer speed when transferring data from host <host> to the local
+host.
+
+OPTIONS
+-------
+--rsh::
+    This option can be used to set the remote shell used to connect the host.
+    It defaults to `ssh`, but other remote shells (like `rsh`) can provide better
+    performance.
+
