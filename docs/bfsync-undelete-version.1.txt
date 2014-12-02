@@ -1,0 +1,19 @@
+bfsync-undelete-version(1)
+==========================
+
+NAME
+----
+bfsync-undelete-version - Undelete one or more versions from repository
+
+SYNOPSIS
+--------
+[verse]
+'bfsync undelete-version' <vrange1> [<vrange2> ...]
+
+DESCRIPTION
+-----------
+Untag versions that were previously deleted. Versions can either be single
+versions (`bfsync undelete-version 10`) or version ranges (`bfsync
+undelete-version 10-20`)
+
+See linkbfsync:bfsync-delete-version[1] for complete description.
