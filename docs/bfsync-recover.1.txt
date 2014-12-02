@@ -1,0 +1,30 @@
+bfsync-recover(1)
+=================
+
+NAME
+----
+bfsync-recover - Recover database to a consistent state
+
+SYNOPSIS
+--------
+[verse]
+'bfsync recover' [<repo>]
+
+DESCRIPTION
+-----------
+Since bfsync uses Berkeley DB to store its data, the data integrity is
+protected even against extreme failures. For instance if the process that
+accesses the database crashes or is killed, or if everything on the host
+running bfsync is interrupted due to power failure or kernel panic. After such
+failures, the database needs recovery. Trying to mount bfsyncfs in that
+situation or using the bfsync utility will fail.
+
+In this situation running `bfsync recover` will restore the database to a
+consistent state and after that, normal work can start again. The repository is
+choosen either from the `<repo>` argument, or if that is not there, from the
+directory `bfsync recover` was started in.
+
+Recovery can not be done if there are still processes that are using the
+database. In that case, these processes need to be terminated before recovery.
+Attempting recovery if it is not necessary is safe, so it won't change the
+database state.
