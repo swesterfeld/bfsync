@@ -1,0 +1,29 @@
+bfsync-copy-expire(1)
+=====================
+
+NAME
+----
+bfsync-copy-expire - Copy expire tags from source to target repository
+
+SYNOPSIS
+--------
+[verse]
+'bfsync copy-expire' [--rsh <remote_shell>] <repo>
+
+DESCRIPTION
+-----------
+Usually, the deletion of old versions is done by the `expire` command. If a
+repository is replicated using `clone/pull/get`, it is often useful to run the
+expire command on the source repository, and copy the resulting tags to the
+target repositories using copy-expire. In this way, the same versions that have
+been deleted in the source repository will also be deleted in the target
+repository.
+
+The source repository is defined by the command line parameter `<repo>`, the
+target repostory is defined by the current directory.
+
+OPTIONS
+-------
+--rsh <remote_shell>::
+    This option can be used to set the remote shell used to connect the host; it
+    defaults to ssh.
