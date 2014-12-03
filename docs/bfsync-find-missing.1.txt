@@ -1,0 +1,22 @@
+bfsync-find-missing(1)
+======================
+
+NAME
+----
+bfsync-find-missing - Show filenames of files where file contents are unavailable
+
+SYNOPSIS
+--------
+[verse]
+'bfsync find-missing' [-0 | --null]
+
+DESCRIPTION
+-----------
+Show filenames of files where file contents are unavailable. This command only
+shows files that are present in the current version of the repository, files
+that have been deleted are ignored.
+
+OPTIONS
+-------
+-0, --null::
+    This option makes the output suitable for use with `xargs -0`.
