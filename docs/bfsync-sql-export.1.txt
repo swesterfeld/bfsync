@@ -1,0 +1,42 @@
+bfsync-sql-export(1)
+====================
+
+NAME
+----
+bfsync-sql-export - Export versioned file list to postgres database
+
+SYNOPSIS
+--------
+[verse]
+'bfsync sql-export' [-d <database>] [-u <user>] [-w <password>]
+                  [-H <host>] [-p <port>] [-r]
+
+DESCRIPTION
+-----------
+Export a versioned list of files to postgres, in order to be able to browse the
+repository contents using standard sql queries. The postgres connection arguments
+(user/database/...) can be specified as commandline arguments, or in the config
+file. See the "CONFIGURATION" section of linkbfsync:bfsync[1] for the config
+file entries that affect the `sql-export` command.
+
+OPTIONS
+-------
+-r::
+    The export normally only adds the versions that are new since the last
+    `sql-export` run. If the `-r` option is used, all database tables are
+    cleared, and all versions from the beginning are exported.
+
+-d <database>::
+    Set postgres database name.
+
+-u <user>::
+    Set user for postgres database.
+
+-w <password>::
+    Set password for postgres database.
+
+-H <host>::
+    Set host for postgres database.
+
+-p <port>::
+    Set port for postgres database.
