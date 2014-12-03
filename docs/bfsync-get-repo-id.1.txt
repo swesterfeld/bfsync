@@ -1,0 +1,17 @@
+bfsync-get-repo-id(1)
+=====================
+
+NAME
+----
+bfsync-get-repo-id - Get unique bfsync repo id
+
+SYNOPSIS
+--------
+[verse]
+'bfsync get-repo-id'
+
+DESCRIPTION
+-----------
+Each bfsync repository or checkout has a unique id, which is generated upon
+creation of the repository and stored in the `"info"` file of each repository.
+This command will print this repository id.
