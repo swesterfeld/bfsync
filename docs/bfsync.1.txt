@@ -1,0 +1,40 @@
+bfsync(1)
+=========
+
+NAME
+----
+bfsync - big file synchronization tool
+
+SYNOPSIS
+--------
+[verse]
+'bfsync' <command> <args>...
+
+DESCRIPTION
+-----------
+`bfsync` is a file-synchronization tool which allows to keep a collection of
+big files synchronized on many machines. There are two types of repositories:
+master repositories and checkouts. Master repositories only contain the history
+information. Usually they should be stored on a central server which all
+computers that should view/edit this data can reach (at least some of the
+time). Master repositories are created using linkbfsync:bfsync-init[1]. The
+other repository type is a checkout. A checkout can be created using
+linkbfsync:bfsync-clone[1]. Besides the history information checkouts contain
+the actual file contents, so a checkout can be huge (houndreds of gigabytes)
+whereas a master repository is usually small.
+
+To view/edit the data in a checked out repository, the repository must be
+mounted using linkbfsync:bfsyncfs[1]. Once mounted, `bfsync` can be called with
+the commands given below. For instance `bfsync commit/push/pull` can be used to
+modify the local history and resynchronize the history with the master history.
+Other commands like `bfsync get/put` can be used to transfer data between
+checkouts.
+
+For transfer, `bfsync` needs to be installed on every system that needs to be
+accessed. The actual transfer is done using ssh. Transfer has only be tested
+with ssh keys; it's highly recommended to use `ssh-agent` to avoid entering
+your password over and over again.
+
+It is possible to use `bfsync` for backups, in that case you only use a subset
+of what `bfsync` can do to get a versioned FUSE filesystem with deduplication.
+See the section BACKUP WALKTHROUGH for a description.
