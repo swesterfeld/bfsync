@@ -8,7 +8,7 @@ for p in bfsync-clone.1 bfsync-commit.1 bfsync-push.1 bfsync-pull.1 \
          bfsync-need-upgrade.1 bfsync-delete-version.1 \
          bfsync-undelete-version.1 bfsync-config-set.1 \
          bfsync-transfer-bench.1 bfsync-sql-export.1 bfsync-find-missing.1 \
-         bfsync-copy-expire.1 bfsync-get-repo-id.1
+         bfsync-copy-expire.1 bfsync-get-repo-id.1 bfsync-diff.1
 do
   a2x -f manpage $p.txt
   asciidoc -f asciidoc.conf -b xhtml11 -d manpage $p.txt

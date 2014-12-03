@@ -1,0 +1,20 @@
+bfsync-diff(1)
+==============
+
+NAME
+----
+bfsync-diff - Diff text file changes between last and current version
+
+SYNOPSIS
+--------
+[verse]
+'bfsync diff' <filename> ...
+
+DESCRIPTION
+-----------
+Run diff to compare the last and the current version of `<filename>`. Only
+files can be compared, not whole directories. However, specifying more than one
+file to diff is supported.
+
+Using this command is useful for text files that have been changed, but useless
+for binary files.
