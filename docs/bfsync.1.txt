@@ -8,11 +8,11 @@ bfsync - big file synchronization tool
 SYNOPSIS
 --------
 [verse]
-'bfsync' <command> <args>...
+'bfsync' [--version] <command> <args>...
 
 DESCRIPTION
 -----------
-`bfsync` is a file-synchronization tool which allows to keep a collection of
+*`bfsync`* is a file-synchronization tool which allows to keep a collection of
 big files synchronized on many machines. There are two types of repositories:
 master repositories and checkouts. Master repositories only contain the history
 information. Usually they should be stored on a central server which all
@@ -38,3 +38,17 @@ your password over and over again.
 It is possible to use `bfsync` for backups, in that case you only use a subset
 of what `bfsync` can do to get a versioned FUSE filesystem with deduplication.
 See the section BACKUP WALKTHROUGH for a description.
+
+OPTIONS
+-------
+For sub-commands like `bfsync pull` or `bfsync commit`, the options depend on
+the command. In these cases, options are documented on the sub-command manual
+page.
+
+--version::
+    If this option is used and no command is specified, bfsync prints out the
+    current version.
+
+COMMANDS
+--------
+...include here...
