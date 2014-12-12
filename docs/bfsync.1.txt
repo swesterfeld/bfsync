@@ -244,4 +244,59 @@ activate the shared memory configuration without rebooting, you can use
 server:~$ sysctl -p /etc/sysctl.d/90-bfsync-shm.conf
 ----
 
+MERGES
+------
 
+bfsync allows independent modifications of the data/history contained in
+different checkouts. Upon push, bfsync will check that the master history
+doesn't contain new commits that are unknown to the local checkout. If two
+clients modify the repository independently, the first client that uses bfsync
+push will simply reintegrate its changes into the master history, and the new
+master history will be this client's history.
+
+However, if the second client tries a bfsync push, the push will be refused. To
+resolve the situation, the second client can use linkbfsync:bfsync-pull[1].
+Once it is detected that merging both histories is necessary, a merge algorithm
+will be used. For non-conflicting changes, everything will be merged
+automatically.
+
+Non-conflicting changes could be:
+
+*master history has new file F - client 2 has new file G*::
+    After merging, both files will be present in the repository
+
+*master history has new dir A, with new files in it - client 2 has new dir B, with new files in it*::
+    After merging, both directories will be part of the repository
+
+*master history has renamed file F to G - client 2 has renamed dir X to Y*::
+    After merging, both renames will be done
+
+*master history has new file X - client 2 has new file X*::
+    In this case, one of the files will be renamed to `X~1`, since they were
+    both independently added it is likely that the user wants to keep both
+    files.
+
+However, there are situations where the merge algorithm can't merge both
+histories automatically:
+
+*master history has edited file F - client 2 has edited file F*::
+    In this case, bfsync pull will ask the user to resolve the situation; it is
+    possible to keep the master version, or the local version or both.
+
+*master history has edited file F - client 2 has deleted file F*::
+    bfsync pull will ask the user in this case; it is possible to either keep
+    the file with changes, or delete it.
+
+In any case, after the merge decisions are made (if any), the merge algorithm
+will use them to modify the local history so that it can be executed without
+conflicts *after* the master history. After this step, the modified local
+commits will be based on the master history. This means that then, `bfsync push`
+will succeed, and the modified changes of client 2 can be pushed to the master
+history.
+
+Note that the master history is always linear, so the history branch that was
+present before the merge algorithm was used will no longer be visible in the
+history after the pull. The merged history will simply contain the old history
+(before client 1 and client 2 made their changes), the changes made on client
+1, an extra merge commit (if necessary to resolve merge issues), and the
+*modified changes* of client 2.
