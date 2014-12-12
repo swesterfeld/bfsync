@@ -51,4 +51,11 @@ page.
 
 COMMANDS
 --------
-...include here...
+
+Main Commands
+~~~~~~~~~~~~~
+include::cmds-main.txt[]
+
+Additional Commands
+~~~~~~~~~~~~~~~~~~~
+include::cmds-add.txt[]

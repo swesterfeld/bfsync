@@ -1,31 +1,31 @@
-bfsync-check
-bfsync-clone
-bfsync-collect
-bfsync-commit
-bfsync-config-set
-bfsync-continue
-bfsync-copy-expire
-bfsync-delete-version
-bfsync-diff
-bfsync-disk-usage
-bfsync-expire
-bfsync-find-missing
-bfsync-gc
-bfsync-get
-bfsync-get-repo-id
-bfsync-log
-bfsync-need-continue
-bfsync-need-recover
-bfsync-need-upgrade
-bfsync-new-files
-bfsync-pull
-bfsync-push
-bfsync-put
-bfsync-recover
-bfsync-repo-files
-bfsync-revert
-bfsync-sql-export
-bfsync-status
-bfsync-transfer-bench
-bfsync-undelete-version
-bfsync-upgrade
+bfsync-check                        main
+bfsync-clone                        main
+bfsync-collect                      main
+bfsync-commit                       main
+bfsync-config-set                   add
+bfsync-continue                     add
+bfsync-copy-expire                  add
+bfsync-delete-version               main
+bfsync-diff                         main
+bfsync-disk-usage                   add
+bfsync-expire                       main
+bfsync-find-missing                 add
+bfsync-gc                           main
+bfsync-get                          main
+bfsync-get-repo-id                  add
+bfsync-log                          main
+bfsync-need-continue                add
+bfsync-need-recover                 add
+bfsync-need-upgrade                 add
+bfsync-new-files                    add
+bfsync-pull                         main
+bfsync-push                         main
+bfsync-put                          main
+bfsync-recover                      main
+bfsync-repo-files                   main
+bfsync-revert                       main
+bfsync-sql-export                   add
+bfsync-status                       main
+bfsync-transfer-bench               add
+bfsync-undelete-version             main
+bfsync-upgrade                      add
