@@ -3,7 +3,7 @@ bfsync-check(1)
 
 NAME
 ----
-bfsync-check - Checks local repository
+bfsync-check - Checks local repository for completeness
 
 SYNOPSIS
 --------

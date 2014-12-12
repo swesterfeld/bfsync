@@ -3,7 +3,7 @@ bfsync-continue(1)
 
 NAME
 ----
-bfsync-continue - Show information about uncommitted changes
+bfsync-continue - Continue previously interrupted command
 
 SYNOPSIS
 --------

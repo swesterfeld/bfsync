@@ -3,7 +3,7 @@ bfsync-collect(1)
 
 NAME
 ----
-bfsync-collect - Show information about uncommitted changes
+bfsync-collect - Scan directory for file contents required by repository
 
 SYNOPSIS
 --------
@@ -20,4 +20,3 @@ local repository to its object directory.
 This is for instance useful if you're converting from an old bfsync format to
 the new one, because by using collect you don't have to retransfer the file
 contents.
-
