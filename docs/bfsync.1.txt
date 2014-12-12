@@ -59,3 +59,126 @@ include::cmds-main.txt[]
 Additional Commands
 ~~~~~~~~~~~~~~~~~~~
 include::cmds-add.txt[]
+
+CONFIGURATION
+-------------
+Every bfsync checkout has a file called `"config"`, which can be used to set configuration variables for this checkout.
+
+*use-uid-gid* 0|1::
+    Bfsync was designed to store all file meta data, including the user id and
+    group id of each file. These numbers will only make sense if all checkouts use
+    the same uid/gid number to name mappings.
++
+Since for most users we cannot assume that the uid/gid numbers are the same on
+every system that has a checkout, bfsync defaults to ignoring the access
+permissions and uid/gid numbers stored in the repository. All files will appear
+to belong to the user that mounted the filesystem, and access rights will also
+not be enforced.
++
+To use the uid/gid numbers and enforce access rights, set use-uid-gid to 1.
+This is for instance useful if you want to copy data into the repository as
+root and preserve the ownership of the files.
+
+*get-rate-limit* <get-limit-kb>::
+    Set the maximum transfer rate in kilobytes/sec that `bfsync get` will use.
+    This is helpful if your internet connection has a limited speed: that way
+    you can ensure that bfsync will not use up your line completely.
+
+*put-rate-limit* <put-limit-kb>::
+    Set the maximum transfer rate in kilobytes/sec that `bfsync put` will use.
+
+*default { get* "<url>|<path>"; *}*::
+    Set default location for get (an <url> or <path>) to be used if `bfsync
+    get` is called without an argument.
+
+*default { put* "<url>|<path>"; *}*::
+    Set default location for put (an <url> or <path>) to be used if `bfsync
+    put` is called without an argument.
+
+*default { pull* "<url>|<path>"; *}*::
+    Set default location for pull (an <url> or <path>) to be used if `bfsync
+    pull` is called without an argument.
+
+*default { push* "<url>|<path>"; *}*::
+    Set default location for push (an <url> or <path>) to be used if `bfsync
+    push` is called without an argument.
+
+*default { copy-expire* "<url>|<path>"; *}*::
+    Set default location for copy-expire (an <url> or <path>) to be used if
+    `bfsync copy-expire` is called without an argument.
+
+The configuration keys in the *default group* can be set simultaneously, by using
+
+----
+default {
+  get "...";
+  put "...";
+  push "...";
+  pull "...";
+  ...
+}
+----
+
+*expire { keep-most-recent* <N>; *}*::
+    Keep <N> most recent versions during expire.
+
+*expire { create-daily* first|last; *}*::
+    Tag first/last backup of the day as daily backup during expire.
+
+*expire { keep-daily* <N>; *}*::
+    Keep the newest <N> daily backups during expire.
+
+*expire { create-weekly* <weekday>; *}*::
+    Tag daily backup on <weekday> as weekly backup during expire. Possible values for <weekday> are monday, tuesday, ..., sunday.
+
+*expire { keep-weekly* <N>; *}*::
+    Keep the newest <N> weekly backups during expire.
+
+*expire { create-monthly* first|last; *}*::
+    Tag first/last daily backup of the month as monthly backup during expire.
+
+*expire { keep-monthly* <N>; *}*::
+    Keep the newest <N> monthly backups during expire.
+
+*expire { create-yearly* first|last; *}*::
+    Tag first/last daily backup of the year as yearly backup during expire.
+
+*expire { keep-yearly* <N>; *}*::
+    Keep the newest <N> yearly backups during expire.
+
+The configuration keys in the *expire group* can be set simultaneously, for instance by using
+
+----
+expire {
+  keep-most-recent 30;
+  keep-daily 45;
+  keep-monthly 30;
+  ...
+}
+----
+
+*sql-export { database* <database>; *}*::
+    Use the postgres database <database> for the sql-export command.
+
+*sql-export { user* <user>; *}*::
+    Use the postgres user <user> for the sql-export command.
+
+*sql-export { password* <password>; *}*::
+    Use the postgres password <password> for the sql-export command.
+
+*sql-export { host* <host>; *}*::
+    Use the postgres host <host> for the sql-export command.
+
+*sql-export { port* <port>; *}*::
+    Use the postgres port <port> for the sql-export command.
+
+The configuration keys in the *sql-export group* can be set simultaneously, for instance by using
+
+----
+sql-export {
+  database bfsync;
+  user postgres;
+  password secret;
+  ...
+}
+----
