@@ -300,3 +300,101 @@ history after the pull. The merged history will simply contain the old history
 (before client 1 and client 2 made their changes), the changes made on client
 1, an extra merge commit (if necessary to resolve merge issues), and the
 *modified changes* of client 2.
+
+WALKTHROUGH
+-----------
+First, we create and setup repositories on three computers: server, client1 and
+client2. The server will hold the master repository (which manages the history,
+but nothing else). It is stored under `~/repos/big.bfsync`. All computers will
+contain a checkout, so that the actual contents of the files can be kept there.
+
+*server:~$ mkdir repos*::
+    Create a directory on the server for the master repository.
+
+*server:~$ cd repos*::
+    Change dir.
+
+*server:~/repos$ bfsync init big.bfsync*::
+    Init master repo.
+
+*server:\~/repos$ cd ~*::
+    Change dir.
+
+*server:~$ bfsync clone repos/big.bfsync*::
+    Clone repository on the server.
+
+*server:~$ mkdir big*::
+    Create mount point on the server.
+
+*server:~$ bfsyncfs big.bfsync big*::
+    Mount repository on the server.
+
+*client1:~$ bfsync clone server:repos/big.bfsync*::
+    Clone repository on client1.
+
+*client1:~$ mkdir big*::
+    Create mount point on client1.
+
+*client1:~$ bfsyncfs big.bfsync big*::
+    Mount repository on client1.
+
+*client2:~$ bfsync clone server:repos/big.bfsync*::
+    Clone repository on client2.
+
+*client2:~$ mkdir big*::
+    Create mount point on client2.
+
+*client2:~$ bfsyncfs big.bfsync big*::
+    Mount repository on client2.
+
+As second step, we add a music file on client1. Of course it's possible to add
+more files in one step; you can also use rsync, mc or a file manager to copy
+files into the repository. Whenever files are added or otherwise changed, we
+need to commit and push the changes to the server, so that it contains the
+canonical index of files.
+ 
+*client1:~$ cd big*::
+    Change dir.
+
+*client1:\~/big$ cp ~/download/01-some-music.flac .*::
+    Copy a big file into the repository checkout.
+
+*client1:~/big$ bfsync commit*::
+    Commit the changes to the repository.
+
+*client1:~/big$ bfsync push*::
+    Push the changes to the server.
+
+So far, we have added the file to the repository on client1, but the contents
+of the file are only present on client1, and not in the other repos. To change
+this, we can transfer the file to the server.
+
+*server:~$ cd big*::
+    Change directory.
+
+*server:~/big$ bfsync pull*::
+    Using pull is required on the server before we can transfer the file there.
+    By pulling, the server will have the necessary information, or in other
+    words: the server can know that a file named 01-some-music.flac is part of
+    the bfsync repository and should be there. Running `bfsync check`
+    will report one missing file after this step.
+
+*client1:~/big$ bfsync put server:big*::
+    Now the actual transfer: after this step, both client1 and server will have
+    a copy of `01-some-music.flac`.
+
+As last step, we'll transfer the file to client2. Of course we could use the
+same commands that we used to get the file to the server, but let's assume that
+client2 is behind a firewall, and that it's not possible to ssh to client2
+directly. Fortunately, besides uploading files to another host (`bfsync
+put`), it's also possible to download data from another host (`bfsync
+get`).
+
+*client2:~$ cd big*::
+    Change directory
+
+*client2:~/big$ bfsync pull*::
+    Update directory information.
+
+*client2:~/big$ bfsync get server:big*::
+    Get the file from the server.
