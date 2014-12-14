@@ -398,3 +398,104 @@ get`).
 
 *client2:~/big$ bfsync get server:big*::
     Get the file from the server.
+
+BACKUP WALKTHROUGH
+------------------
+
+Since bfsync implements file level deduplication and versioning of files, it
+can be used to do backups. Backups typically contain lots of files (like
+5.000.000 files). Therefore you can only use a subset of the available commands
+for backups, since some commands do not work well if the number of files is
+that large.
+
+Commands like *commit*, *get*, *put*, *push*, *pull*, *check* and *gc* should
+work fine for backup usage. Also deleting old backups using *expire* and maybe
+*copy-expire* is supported. However, advanced functions like merges might
+never be supported for backups - for typical backup scenarios this is not an
+issue.
+
+The first step for backups is to set up repositories. All *steps should be
+done as root*. For this example, we assume that our *backup harddisk is
+mounted to /backup*.
+
+*server:/backup$ bfsync init master*::
+    Setup master repository
+
+*server:/backup$ bfsync clone -u -c 500 master repo*::
+    Clone repository, ensure uid/gid are stored and set cache size.
+
+The cache size is important for backups: if it is too small, the backup will
+take a lot more time. However, since the cache is stored in shared memory, a
+overly large cache may use too much of the system memory. As a rule of thumb,
+100 megabytes of cache should be used for every 1.000.000 files that are stored
+in the backup. More is better, if you can afford it.
+
+*server:/backup$ mkdir mnt*::
+    Create mount point for the backup repository.
+
+*server:/backup$ bfsyncfs repo mnt*::
+    Mount repository.
+
+*server:/backup$ cd /backup/mnt*::
+    Change dir.
+
+Now that everything is initialized, we can backup some data. For this example
+we backup /home.
+
+*server:/backup/mnt$ rsync -axH --delete /home/ home*::
+    Copy everything from /home to the backup. This is the initial backup, so
+    all files will be copyied to the backup harddisk.
+
+The `rsync` options we use here are:
+
+-a::
+    Copy all file attributes.
+-x::
+    Exclude everything that is not on the filesystem that /home is on.
+-H::
+    Backup hardlinks as hardlinks.
+--delete::
+    Delete files in the target directory that are not in the source
+    directory.
+
+*server:/backup/mnt$ bfsync commit -m "initial backup"*::
+    Snapshot current state, run deduplication.
+
+*server:/backup/mnt$ bfsync push*::
+    Push changes into the master repository. This is a precaution for the case
+    that your repository gets damaged due to disk failure. Having the metadata
+    stored twice can be used to recover your repository in that case (by
+    cloning again for master using linkbfsync:bfsync-clone[1] and reassembling
+    the data files using linkbfsync:bfsync-collect[1]).
+
+We have the initial full backup. Now one day later, we only need to backup
+changes (which will be a lot faster than the initial backup), like this:
+
+*server:/backup/mnt$ rsync -axH --delete /home/ home*::
+    Copy changes from /home to the backup.
+
+*server:/backup/mnt$ bfsync commit -m "first incremental backup"*::
+    Snapshot current state, run deduplication.
+
+*server:/backup/mnt$ bfsync push*::
+    Push changes into the master repository.
+
+Now, we've created the first incremental backup. This usually uses a lot less
+additional disk space than the initial full backup, since usually only few
+files will be changed. To access an individual backup, you can use
+
+*server:/backup/mnt$ cd /backup/mnt/.bfsync/commits/2/home*::
+    Access a specific version. The version log can be viewed with
+    linkbfsync:bfsync-log[1].
+
+To automate the process, a script which runs the rsync and commit steps every
+night can be used. Removing the contents of old backups is currently not
+supported, but will be available in the future.
+
+The commandline for creating a backup of the root filesystem is:
+
+*server:/backup/mnt$ rsync -axH --delete / root*::
+    Copy changes from / to the backup.
+
+If you backup more than one filesystem every day, you only need to commit once,
+that is first `rsync` all filesystems and commit as last step.
