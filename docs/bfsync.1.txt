@@ -557,3 +557,7 @@ You can delete the old format checkouts after verifying with
 linkbfsync:bfsync-check[1] that all files you need are there. You do not need
 to install old and new bfsync versions on the satellite systems. Only the new
 bfsync is required to perform the checkout & collect steps.
+
+SEE ALSO
+--------
+linkbfsync:bfsyncfs[1].
