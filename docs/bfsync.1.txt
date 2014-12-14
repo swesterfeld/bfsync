@@ -499,3 +499,61 @@ The commandline for creating a backup of the root filesystem is:
 
 If you backup more than one filesystem every day, you only need to commit once,
 that is first `rsync` all filesystems and commit as last step.
+
+UPDATING FROM AN OLD VERSION
+----------------------------
+The repository format is not (yet) stable across bfsync versions. In some cases
+upgrades from an old to the current bfsync version can be done *automatically*
+by running
+----
+server:/path/to/files.bfsync$ bfsync upgrade
+----
+
+This is the easiest way. If this way doesn't work, you need to *manually
+convert your old repositories* to a new version. There is currently no easy
+way to preserve the history when manually updating from an old version of
+bfsync. But if you need only preserve the repository content, you can use the
+following steps:
+
+1. *install the old version and the new version of bfsync in parallel on one machine*
++
+Use different prefixes to make this happen (`configure --prefix=...`).
+
+2. *create a new empty master repository and checkout*
++
+This will become your new repository & checkout.
+
+3. *copy all files from the old repository to the new repository*
++
+You'll need to mount both, the old and new bfsync repository using `bfsyncfs`.
+Copying can be done with a filemanager, `cp -a` or `rsync`. You need to copy
+everything except for the `.bfsync` directory.
+
+4. *commit and push in the new repository*
++
+You have a new repository now, conversion on this machine is finished.
+
+To avoid retransfer if you have the data on other machines, the following steps can be used:
+
+1. *checkout the new master repository on a satellite system*
++
+Now you have a new bfsync repository, but the data is still missing
+
+2. *use bfsync collect to get your data into the new repository without retransfer*
++
+Since you already have a bfsync checkout on the satellite system, you can
+simply get the data from there, without retransfer. Since linkbfsync:bfsync-collect[1]
+automatically detects whether it needs a file or not using the file contents,
+you can simply use
++
+----
+bfsync collect /path/to/files.bfsync
+----
++
+to get the data from your old checkout into the new repository.
+
+Repeat these steps on all machines that contain checkouts of your repository.
+You can delete the old format checkouts after verifying with
+linkbfsync:bfsync-check[1] that all files you need are there. You do not need
+to install old and new bfsync versions on the satellite systems. Only the new
+bfsync is required to perform the checkout & collect steps.
