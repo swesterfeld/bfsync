@@ -1,0 +1,97 @@
+bfsyncfs(1)
+===========
+
+NAME
+----
+bfsyncfs - FuSE filesystem to be used with bfsync big file synchronization tool
+
+SYNOPSIS
+--------
+[verse]
+'bfsyncfs' [<options>] <repo> <mount-point>
+
+DESCRIPTION
+-----------
+*bfsyncfs* is a FuSE filesystem which can be used to modify the contents of a
+bfsync repsitory. To use it, you need a local bfsync checkout `<repo>` (created
+with linkbfsync:bfsync-clone[1]) and a mount point `<mount-point>`, which must
+be an empty directory before running `bfsyncfs`.
+
+Upon successful mount, the mount point directory will be used to display the
+contents of the repository and modifications can be made with any program that
+can operate on files/directories, like a filemanager, `rsync` or regular shell
+commands like `cp` or `mv`.
+
+Note that changes only become permanent after using
+linkbfsync:bfsync-commit[1]. Other bfsync commands can be used to synchronize
+the repository history/contents with other bfsync repos.
+
+OPTIONS
+-------
+-a::
+--all::
+    Allows other users to access the mounted filesystem (this sets the
+    `-oallow_other` option). Without this option, the contents of the filesystem
+    will only be readable/writeable by the user that mounted it.
+
+-c::
+--cache-attributes::
+    Enable FUSE attribute caching. This improves the overall performance of
+    bfsyncfs somewhat. However, in some rare cases the filesystem will no
+    longer return the correct result to the userspace process, therefore it is
+    not enabled by default.
+
+-f::
+--foreground::
+    Run the filesystem as foreground process. Without this option, `bfsyncfs`
+    will be started as background process.
+
+-d::
+--debug::
+    Enables debugging output, this option is mainly useful during
+    development/debugging.
+
+-g <group>::
+--group <group>::
+    This option is mainly useful for backup scripts. By setting a group, only
+    processes which have the environment variable `BFSYNC_GROUP` set to the same
+    value can access the filesystem. This means other processes that should not
+    have been accessing the backup anyway (like locate or similar indexing daemons)
+    are blocked.
++
+Note that this is not a security feature. Everyone can set
+`BFSYNC_GROUP` to the value found in ps output. The option just protects the
+filesystem against access from other processes that may just happen to
+recursively crawl the file tree.
+
+--show-all-versions::
+    Normally `bfsyncfs` doesn't display versions that have been deleted (for
+    instance by linkbfsync:bfsync-delete-version[1]). With this option it
+    does display every version under `.bfsync/commits/<version>`.
++
+While for versions that have not been deleted often all file contents are
+available, for deleted versions it is likely that some files cannot be accessed
+although they are shown
+
+THE .bfsync DIRECTORY
+---------------------
+
+Once a repository is mounted, all data contained in the current version of the
+repository will be available through the mount point. However, one additional
+directory will show up in the file system, the `".bfsync"` directory. Within the
+`.bfsync` directory, all previous versions of the file system are available
+inside the `commits` directory.
+
+So if you access the contents of `.bfsync/commits/8`, this directory will contain
+the contents of the repository version 8. It is not possible to modify old
+commits, the `.bfsync` directory is only for reading.
+
+CONFIGURATION
+-------------
+
+There are configuration options from the repository config file that affect
+bfsyncfs, they are documented in the linkbfsync:bfsync[1] manual page.
+
+SEE ALSO
+--------
+linkbfsync:bfsync[1]
