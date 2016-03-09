@@ -676,11 +676,16 @@ def cmd_repo_files():
   parser = argparse.ArgumentParser (prog='bfsync repo-files')
   parser.add_argument ("-0", "--null",
                   action="store_true", dest="null", default=False)
+  parser.add_argument ('--min-size', help='set minimum file size')
   parser.add_argument ('dirs', nargs = '+')
   repo_files_args = parser.parse_args (args)
 
   dir_list = repo_files_args.dirs
   null = repo_files_args.null
+  if repo_files_args.min_size:
+    min_size = int (repo_files_args.min_size)
+  else:
+    min_size = None
 
   # determine current db version
   VERSION = repo.first_unused_version()
@@ -699,15 +704,16 @@ def cmd_repo_files():
       for f in walk_files:
         full_name = os.path.join (walk_dir, f)
         if os.path.isfile (full_name) and not os.path.islink (full_name): # ignore symlinks
-          try:
-            hash = hash_cache.compute_hash (full_name)
-            if hash in hash_set:
-              if null:
-                sys.stdout.write (full_name + '\0')
-              else:
-                print full_name
-          except IOError, e:
-            pass # ignore files that cannot be read due to permissions
+          if not min_size or os.path.getsize (full_name) >= min_size:     # check minimum size, if specified
+            try:
+              hash = hash_cache.compute_hash (full_name)
+              if hash in hash_set:
+                if null:
+                  sys.stdout.write (full_name + '\0')
+                else:
+                  print full_name
+            except IOError, e:
+              pass # ignore files that cannot be read due to permissions
 
 def cmd_collect():
   old_cwd = os.getcwd()

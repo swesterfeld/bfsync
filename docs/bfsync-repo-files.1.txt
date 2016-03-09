@@ -8,7 +8,7 @@ bfsync-repo-files - Search a directory for files that are also in the repo
 SYNOPSIS
 --------
 [verse]
-'bfsync repo-files' [-0|--null] <dir>
+'bfsync repo-files' [-0|--null] [--min-size <size>] <dir>
 
 DESCRIPTION
 -----------
@@ -21,3 +21,6 @@ OPTIONS
 -0::
 --null::
     Makes the output suitable for use with `xargs -0`.
+
+--min-size <size>::
+    Set minimum file size in bytes (smaller files will not be included).
