@@ -18,7 +18,7 @@ def parse_config_flags (flags):
 
 config_flags, extra_args = parse_config_flags (
   "@BOOST_CPPFLAGS@ " +
-  "@GLIB_CFLAGS@ @GLIB_LIBS@" +
+  "@GLIB_CFLAGS@ @GLIB_LIBS@ " +
   "@FUSE_CFLAGS@ @FUSE_LIBS@")
 
 bfsyncdb_module = Extension('_bfsyncdb',
