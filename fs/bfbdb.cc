@@ -62,7 +62,7 @@ bdb_need_recover (const string& path)
 BDB::BDB() :
   transaction (NULL),
   m_history (this),
-  m_multi_data_buffer (4 * 1024)
+  m_multi_data_buffer (64 * 1024)
 {
 }
 
