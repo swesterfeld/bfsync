@@ -446,7 +446,17 @@ def gen_repo_id():
   return "-".join (l)
 
 def cmd_init():
-  dir = args[0]
+  parser = argparse.ArgumentParser (prog='bfsync init')
+  parser.add_argument ('--with-history', help='import history from directory')
+  parser.add_argument ("dir")
+  parsed_args = parser.parse_args (args)
+
+  dir = parsed_args.dir
+  history_dir = parsed_args.with_history
+
+  if history_dir:
+    history_dir = os.path.abspath (parsed_args.with_history)
+
   try:
     os.mkdir (dir, 0700)
   except:
@@ -483,31 +493,51 @@ def cmd_init():
   # create history table
   repo = cd_repo_connect_db()
 
-  # create initial commit diff
-  time_now = int (time.time())
-  change_list = [
-    "i+",
-    "/" + "0" * 40,     # id (root inode)
-    "%d" % os.getuid(), # uid
-    "%d" % os.getgid(), # gid
-    "%d" % 0755,        # mode
-    "3",                # type
-    "", "", "0", "0", "0", "1",
-    "%d" % time_now, "0", # ctime
-    "%d" % time_now, "0"  # mtime
-  ]
+  if history_dir:
+    repo.bdb.begin_transaction()
+    temp_file_name = repo.make_temp_name()
 
-  f = open ("init-diff", "w")
-  for s in change_list:
-    f.write (s + "\0")
-  f.close()
-  xz ("init-diff")
-  hash = move_file_to_objects (repo, "init-diff.xz")
+    try:
+      version = 1
+      while True:
+        f = open ("%s/%d_history" % (history_dir, version), "r")
+        shutil.copy ("%s/%d_delta" % (history_dir, version), temp_file_name)
+        move_file_to_objects (repo, temp_file_name, False)
+        s = f.read()
+        (hversion, hhash, hauthor, hmsg, htime) = s.split ("\0")
+        f.close()
+        repo.bdb.store_history_entry (int (hversion), hhash, hauthor, hmsg, int (htime))
+        version += 1
+    except:
+      pass
+    repo.bdb.commit_transaction()
+    print "Imported %d history entries from '%s'." % (version - 1, history_dir)
+  else:
+    # create initial commit diff
+    time_now = int (time.time())
+    change_list = [
+      "i+",
+      "/" + "0" * 40,     # id (root inode)
+      "%d" % os.getuid(), # uid
+      "%d" % os.getgid(), # gid
+      "%d" % 0755,        # mode
+      "3",                # type
+      "", "", "0", "0", "0", "1",
+      "%d" % time_now, "0", # ctime
+      "%d" % time_now, "0"  # mtime
+    ]
 
-  # create initial history entry
-  repo.bdb.begin_transaction()
-  repo.bdb.store_history_entry (1, hash, "no author", "initial commit", time_now)
-  repo.bdb.commit_transaction()
+    f = open ("init-diff", "w")
+    for s in change_list:
+      f.write (s + "\0")
+    f.close()
+    xz ("init-diff")
+    hash = move_file_to_objects (repo, "init-diff.xz")
+
+    # create initial history entry
+    repo.bdb.begin_transaction()
+    repo.bdb.store_history_entry (1, hash, "no author", "initial commit", time_now)
+    repo.bdb.commit_transaction()
 
 def guess_dir_name (url):
   dir_name = ""
@@ -1303,6 +1333,41 @@ def cmd_file_log():
   repo = cd_repo_connect_db()
   file_log (repo, args)
 
+def cmd_export_history():
+  parser = argparse.ArgumentParser (prog='bfsync export-history')
+  parser.add_argument ("dest_dir")
+  parsed_args = parser.parse_args (args)
+
+  dir = parsed_args.dest_dir
+  if os.path.exists (dir):
+    print "fatal: destination path '" + dir + "' already exists"
+    sys.exit (1)
+
+  repo = cd_repo_connect_db()
+  repo_path = repo.path
+
+  print "Exporting history into %s..." % dir
+
+  try:
+    os.mkdir (dir, 0700)
+    os.chdir (dir)
+  except:
+    raise Exception ("can't create directory %s for history" % dir)
+
+  VERSION = 1
+  while True:
+    hentry = repo.bdb.load_history_entry (VERSION)
+    VERSION += 1
+
+    if not hentry.valid:
+      break
+
+    f = open ("%d_history" % hentry.version, "w")
+    row = ("%d" % hentry.version, hentry.hash, hentry.author, hentry.message, "%d" % hentry.time)
+    f.write ("\0".join (row))
+    f.close()
+    shutil.copy (repo.make_object_filename (hentry.hash), "%d_delta" % hentry.version)
+
 args = []
 
 def main():
@@ -1351,6 +1416,7 @@ def main():
       ( "find-missing",           cmd_find_missing, 1),
       ( "diff",                   cmd_diff, 1),
       ( "file-log",               cmd_file_log, 1),
+      ( "export-history",         cmd_export_history, 1),
       ( "inr-test",               cmd_inr_test, 1),
       ( "check-integrity",        cmd_check_integrity, 1),
       ( "debug-add-tag",          cmd_debug_add_tag, 1),
