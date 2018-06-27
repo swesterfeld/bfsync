@@ -374,10 +374,11 @@ class CommitState:
 
 class CommitCommand:
   EXEC_PHASE_SCAN     = 1
-  EXEC_PHASE_ADD      = 2
-  EXEC_PHASE_DIFF     = 3
-  EXEC_PHASE_HISTORY  = 4
-  EXEC_PHASE_CLEANUP  = 5
+  EXEC_PHASE_FIX      = 2
+  EXEC_PHASE_ADD      = 3
+  EXEC_PHASE_DIFF     = 4
+  EXEC_PHASE_HISTORY  = 5
+  EXEC_PHASE_CLEANUP  = 6
 
   def __init__ (self):
     self.outss = OutputSubsampler()
@@ -555,6 +556,57 @@ class CommitCommand:
       if self.DEBUG_MEM:
         print_mem_usage ("after id list scanning")
 
+    if self.state.exec_phase == self.EXEC_PHASE_FIX:
+      # in some (very rare) cases, bfsyncfs will copy-on-write the file associated with the inode
+      # without modifying the file data or inode attributes
+      #
+      # the "fix unchanged inodes" pass is designed to reset the inode to the old version in this
+      # case, before committing, which avoids problems with the actual diff created later on
+      OPS = 0
+      self.repo.bdb.begin_transaction()
+
+      id_list_file = open (self.state.id_list_filename, "r")
+      for id_str in id_list_file:
+        id = bfsyncdb.ID (id_str.strip())
+        inode_new = self.repo.bdb.load_inode (id, self.VERSION)
+        inode_old = self.repo.bdb.load_inode (id, self.VERSION - 1)
+
+        if inode_old.valid and inode_new.valid:
+          if inode_old.vmin != inode_new.vmin or inode_old.vmax != inode_new.vmax:
+            def inode_fields (inode):
+              return ( inode.id.str(),
+                      inode.uid, inode.gid,
+                      inode.mode, inode.type,
+                      inode.link, inode.size,
+                      inode.major, inode.minor,
+                      inode.nlink,
+                      inode.ctime, inode.ctime_ns,
+                      inode.mtime, inode.mtime_ns )
+
+            if inode_fields (inode_old) == inode_fields (inode_new) and inode_new.hash == "new":
+              filename = self.repo.make_number_filename (inode_new.new_file_number)
+
+              if inode_old.hash == hash_cache.compute_hash (filename):
+                self.repo.bdb.delete_inode (inode_new)
+                self.repo.bdb.delete_inode (inode_old)
+                inode_old.vmax = bfsyncdb.VERSION_INF
+                self.repo.bdb.store_inode (inode_old)
+                self.repo.bdb.add_deleted_file (inode_new.new_file_number)
+
+        OPS += 1
+        if OPS >= 20000:
+          OPS = 0
+          self.repo.bdb.commit_transaction()
+          self.repo.bdb.begin_transaction()
+
+      id_list_file.close()
+
+      self.state.exec_phase += 1
+
+      # create new journal entry
+      mk_journal_entry (self.repo)
+      self.repo.bdb.commit_transaction()
+
     if self.state.exec_phase == self.EXEC_PHASE_ADD:
       self.start_time = time.time() - self.state.previous_time
 
@@ -639,15 +691,14 @@ class CommitCommand:
         status_line.update ("computing changes: done")
         status_line.cleanup()
 
-      if not commit_size_ok:
+      if commit_size_ok:
+        # next step: write history entry
+        self.state.exec_phase += 1
+      else:
         print "Nothing to commit."
 
-        # cleanup server lock
-        self.server_conn.clear_cache()
-        self.server_conn.close()
-        return CMD_DONE
-
-      self.state.exec_phase += 1
+        # skip history entry
+        self.state.exec_phase = self.EXEC_PHASE_CLEANUP
 
       # create new journal entry
       self.repo.bdb.begin_transaction()
