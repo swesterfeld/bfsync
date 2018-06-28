@@ -1,6 +1,9 @@
-dist_man_MANS = bfsync.1 bfsyncfs.1 bfsync-clone.1 bfsync-commit.1
+DOCS_TXT = bfsync.1.txt bfsyncfs.1.txt $(wildcard bfsync-*.1.txt)
+DOCS_MAN = $(patsubst %.1.txt, %.1, $(DOCS_TXT))
 
-EXTRA_DIST = bfsync.1.wiki bfsyncfs.1.wiki bfsync-overview.odg rebuild-manpage.sh
+dist_man_MANS = $(DOCS_MAN)
+
+EXTRA_DIST = $(DOCS_MAN) $(DOCS_TXT) bfsync.1.wiki bfsyncfs.1.wiki bfsync-overview.odg rebuild-manpage.sh
 
 DOCS_DIR = ~/public_html/bfsync/docs-$(VERSION)
 PROJECT_DIR = ~/public_html/bfsync
