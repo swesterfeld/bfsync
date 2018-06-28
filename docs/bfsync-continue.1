@@ -1,0 +1,41 @@
+'\" t
+.\"     Title: bfsync-continue
+.\"    Author: [FIXME: author] [see http://docbook.sf.net/el/author]
+.\" Generator: DocBook XSL Stylesheets v1.79.1 <http://docbook.sf.net/>
+.\"      Date: 06/28/2018
+.\"    Manual: \ \&
+.\"    Source: \ \&
+.\"  Language: English
+.\"
+.TH "BFSYNC\-CONTINUE" "1" "06/28/2018" "\ \&" "\ \&"
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+bfsync-continue \- Continue previously interrupted command
+.SH "SYNOPSIS"
+.sp
+.nf
+\fIbfsync continue\fR [<repo>]
+.fi
+.SH "DESCRIPTION"
+.sp
+There are some operations, such as commit or revert, that must be finished completely once they are started, to ensure that the database is in a consistent state\&. If such an operation is interrupted, for instance because of a power failure, user abort (^C) or because the process was killed, it needs to be completed before the repository can be used for something else\&. A filesystem with an unfinished command can only be used in readonly mode until that operation is finished\&.
+.sp
+The continue command can be used to finish an unfinished operation, either with the repository directory as argument, or if that is not there, the repository will be choosen according to the directory "continue" was started in\&.

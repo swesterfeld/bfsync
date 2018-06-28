@@ -1,0 +1,101 @@
+'\" t
+.\"     Title: bfsyncfs
+.\"    Author: [FIXME: author] [see http://docbook.sf.net/el/author]
+.\" Generator: DocBook XSL Stylesheets v1.79.1 <http://docbook.sf.net/>
+.\"      Date: 06/28/2018
+.\"    Manual: \ \&
+.\"    Source: \ \&
+.\"  Language: English
+.\"
+.TH "BFSYNCFS" "1" "06/28/2018" "\ \&" "\ \&"
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+bfsyncfs \- FuSE filesystem to be used with bfsync big file synchronization tool
+.SH "SYNOPSIS"
+.sp
+.nf
+\fIbfsyncfs\fR [<options>] <repo> <mount\-point>
+.fi
+.SH "DESCRIPTION"
+.sp
+\fBbfsyncfs\fR is a FuSE filesystem which can be used to modify the contents of a bfsync repsitory\&. To use it, you need a local bfsync checkout <repo> (created with \fBbfsync-clone\fR(1)) and a mount point <mount\-point>, which must be an empty directory before running bfsyncfs\&.
+.sp
+Upon successful mount, the mount point directory will be used to display the contents of the repository and modifications can be made with any program that can operate on files/directories, like a filemanager, rsync or regular shell commands like cp or mv\&.
+.sp
+Note that changes only become permanent after using \fBbfsync-commit\fR(1)\&. Other bfsync commands can be used to synchronize the repository history/contents with other bfsync repos\&.
+.SH "OPTIONS"
+.PP
+\-a, \-\-all
+.RS 4
+Allows other users to access the mounted filesystem (this sets the
+\-oallow_other
+option)\&. Without this option, the contents of the filesystem will only be readable/writeable by the user that mounted it\&.
+.RE
+.PP
+\-c, \-\-cache\-attributes
+.RS 4
+Enable FUSE attribute caching\&. This improves the overall performance of bfsyncfs somewhat\&. However, in some rare cases the filesystem will no longer return the correct result to the userspace process, therefore it is not enabled by default\&.
+.RE
+.PP
+\-f, \-\-foreground
+.RS 4
+Run the filesystem as foreground process\&. Without this option,
+bfsyncfs
+will be started as background process\&.
+.RE
+.PP
+\-d, \-\-debug
+.RS 4
+Enables debugging output, this option is mainly useful during development/debugging\&.
+.RE
+.PP
+\-g <group>, \-\-group <group>
+.RS 4
+This option is mainly useful for backup scripts\&. By setting a group, only processes which have the environment variable
+BFSYNC_GROUP
+set to the same value can access the filesystem\&. This means other processes that should not have been accessing the backup anyway (like locate or similar indexing daemons) are blocked\&.
+.sp
+Note that this is not a security feature\&. Everyone can set
+BFSYNC_GROUP
+to the value found in ps output\&. The option just protects the filesystem against access from other processes that may just happen to recursively crawl the file tree\&.
+.RE
+.PP
+\-\-show\-all\-versions
+.RS 4
+Normally
+bfsyncfs
+doesn\(cqt display versions that have been deleted (for instance by
+\fBbfsync-delete-version\fR(1))\&. With this option it does display every version under
+\&.bfsync/commits/<version>\&.
+.sp
+While for versions that have not been deleted often all file contents are available, for deleted versions it is likely that some files cannot be accessed although they are shown
+.RE
+.SH "THE \&.BFSYNC DIRECTORY"
+.sp
+Once a repository is mounted, all data contained in the current version of the repository will be available through the mount point\&. However, one additional directory will show up in the file system, the "\&.bfsync" directory\&. Within the \&.bfsync directory, all previous versions of the file system are available inside the commits directory\&.
+.sp
+So if you access the contents of \&.bfsync/commits/8, this directory will contain the contents of the repository version 8\&. It is not possible to modify old commits, the \&.bfsync directory is only for reading\&.
+.SH "CONFIGURATION"
+.sp
+There are configuration options from the repository config file that affect bfsyncfs, they are documented in the \fBbfsync\fR(1) manual page\&.
+.SH "SEE ALSO"
+.sp
+\fBbfsync\fR(1)

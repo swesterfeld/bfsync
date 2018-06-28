@@ -1,0 +1,49 @@
+'\" t
+.\"     Title: bfsync-expire
+.\"    Author: [FIXME: author] [see http://docbook.sf.net/el/author]
+.\" Generator: DocBook XSL Stylesheets v1.79.1 <http://docbook.sf.net/>
+.\"      Date: 06/28/2018
+.\"    Manual: \ \&
+.\"    Source: \ \&
+.\"  Language: English
+.\"
+.TH "BFSYNC\-EXPIRE" "1" "06/28/2018" "\ \&" "\ \&"
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+bfsync-expire \- Mark old versions as deleted to reduce disk usage
+.SH "SYNOPSIS"
+.sp
+.nf
+\fIbfsync expire\fR
+.fi
+.SH "DESCRIPTION"
+.sp
+The expire command was designed mainly for deleting the contents of old backups, although it will work on any repository\&.
+.sp
+During expire, the tags \fBdaily\fR, \fBweekly\fR, \fBmonthly\fR and \fByearly\fR will be assigned to the versions that are daily, weekly, monthly or yearly backups\&. The expire configuration will determine which version is \- for instance \- a monthly backup\&. It could be the first backup of the month, or the last backup of the month\&.
+.sp
+Finally, after all versions have been tagged according to the expire configuration, expire will mark versions deleted that shouldn\(cqt be kept\&. For each daily/weekly/monthly/yearly backup, expire will keep the N newest backups, where N is configurable\&.
+.sp
+The expire/keep_daily setting defines how many daily backups expire will keep, the expire/keep_weekly setting defines how many weekly backups expire will keep, and so on\&. Finally the setting expire/keep_most_recent defines how many most recent backups expire will keep\&. Every backup that is not kept due to one of these settings will be marked deleted\&.
+.sp
+The settings that affect the expire command are documented in the "CONFIGURATION" section of \fBbfsync\fR(1)\&.
+.sp
+Note that while expire marks versions as deleted, it doesn\(cqt actually delete the file contents that belong to deleted versions\&. Running \fBbfsync-gc\fR(1) will delete all file contents that are only in deleted versions\&.

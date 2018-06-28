@@ -1,0 +1,47 @@
+'\" t
+.\"     Title: bfsync-disk-usage
+.\"    Author: [FIXME: author] [see http://docbook.sf.net/el/author]
+.\" Generator: DocBook XSL Stylesheets v1.79.1 <http://docbook.sf.net/>
+.\"      Date: 06/28/2018
+.\"    Manual: \ \&
+.\"    Source: \ \&
+.\"  Language: English
+.\"
+.TH "BFSYNC\-DISK\-USAGE" "1" "06/28/2018" "\ \&" "\ \&"
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+bfsync-disk-usage \- Generate disk usage information
+.SH "SYNOPSIS"
+.sp
+.nf
+\fIbfsync disk\-usage\fR [\-h]
+.fi
+.SH "DESCRIPTION"
+.sp
+This generates disk usage information\&. The disk usage information is designed to see what could be freed when removing older versions\&. Therefore, it will start with the most recent version, since you\(cqll want to keep this version in any case\&. This first size will be the size required to store one full backup (for the backup use case)\&.
+.sp
+Then, older versions are examined\&. Only the sizes of the files are counted that need to be kept additionally to be able to retrieve the older version completely\&. Since most of the files will be unchanged when compared to the current version, the increments will usually be small\&.
+.SH "OPTIONS"
+.PP
+\-h
+.RS 4
+This option uses human readable sizes (like 15G for 15 gigabytes), omitting it will print the sizes in bytes\&.
+.RE

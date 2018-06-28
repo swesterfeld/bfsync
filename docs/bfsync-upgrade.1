@@ -1,0 +1,45 @@
+'\" t
+.\"     Title: bfsync-upgrade
+.\"    Author: [FIXME: author] [see http://docbook.sf.net/el/author]
+.\" Generator: DocBook XSL Stylesheets v1.79.1 <http://docbook.sf.net/>
+.\"      Date: 06/28/2018
+.\"    Manual: \ \&
+.\"    Source: \ \&
+.\"  Language: English
+.\"
+.TH "BFSYNC\-UPGRADE" "1" "06/28/2018" "\ \&" "\ \&"
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+bfsync-upgrade \- Upgrade repository contents from an old bfsync version
+.SH "SYNOPSIS"
+.sp
+.nf
+\fIbfsync upgrade\fR [<repo>]
+.fi
+.SH "DESCRIPTION"
+.sp
+Upgrade bfsync repository contents from an old bfsync version to a new bfsync version\&. The repository is choosen either from the <repo> argument, or if that is missing, from the directory bfsync upgrade was started in\&.
+.sp
+The repository version of a bfsync repository is initialized to the version of bfsync that created the repository\&. That is true for master repositories (create with bfsync init) and checkouts (created with bfsync clone)\&. A repository can only be accessed by bfsync if the repository version and the bfsync version matches\&.
+.sp
+In some cases upgrade can automatically upgrade a repository to the current bfsync version\&. Note that while this makes it possible to access the repository with the new bfsync, at the same time it makes it impossible to access it with the old bfsync (and there is no downgrade command)\&.
+.sp
+Manual repository version upgrades are described in the section "UPDATING FROM AN OLD VERSION" of \fBbfsync\fR(1)\&. Of course if automated upgrade with bfsync upgrade are easier and should be used if bfsync upgrade supports the old version → new version upgrade\&.

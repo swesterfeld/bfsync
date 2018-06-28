@@ -1,0 +1,63 @@
+'\" t
+.\"     Title: bfsync-delete-version
+.\"    Author: [FIXME: author] [see http://docbook.sf.net/el/author]
+.\" Generator: DocBook XSL Stylesheets v1.79.1 <http://docbook.sf.net/>
+.\"      Date: 06/28/2018
+.\"    Manual: \ \&
+.\"    Source: \ \&
+.\"  Language: English
+.\"
+.TH "BFSYNC\-DELETE\-VERS" "1" "06/28/2018" "\ \&" "\ \&"
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+bfsync-delete-version \- Delete one or more versions from repository
+.SH "SYNOPSIS"
+.sp
+.nf
+\fIbfsync delete\-version\fR <vrange1> [<vrange2> \&...]
+.fi
+.SH "DESCRIPTION"
+.sp
+This command tags the version(s) <vrange1>, <vrange2>, \&... as deleted, where single numbers are possible:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ bfsync delete\-version 10
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+or version ranges:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ bfsync delete\-version 10\-20
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+Once deleted, these versions become invisible (in the \&.commits directory, in the bfsync log and so on)\&. Files contents that are only used in deleted versions are removed during bfsync gc, and will not be retransferred for instance during bfsync get\&.

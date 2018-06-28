@@ -1,0 +1,867 @@
+'\" t
+.\"     Title: bfsync
+.\"    Author: [FIXME: author] [see http://docbook.sf.net/el/author]
+.\" Generator: DocBook XSL Stylesheets v1.79.1 <http://docbook.sf.net/>
+.\"      Date: 06/28/2018
+.\"    Manual: \ \&
+.\"    Source: \ \&
+.\"  Language: English
+.\"
+.TH "BFSYNC" "1" "06/28/2018" "\ \&" "\ \&"
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+bfsync \- big file synchronization tool
+.SH "SYNOPSIS"
+.sp
+.nf
+\fIbfsync\fR [\-\-version] <command> <args>\&...
+.fi
+.SH "DESCRIPTION"
+.sp
+\fBbfsync\fR is a file\-synchronization tool which allows to keep a collection of big files synchronized on many machines\&. There are two types of repositories: master repositories and checkouts\&. Master repositories only contain the history information\&. Usually they should be stored on a central server which all computers that should view/edit this data can reach (at least some of the time)\&. Master repositories are created using \fBbfsync-init\fR(1)\&. The other repository type is a checkout\&. A checkout can be created using \fBbfsync-clone\fR(1)\&. Besides the history information checkouts contain the actual file contents, so a checkout can be huge (houndreds of gigabytes) whereas a master repository is usually small\&.
+.sp
+To view/edit the data in a checked out repository, the repository must be mounted using \fBbfsyncfs\fR(1)\&. Once mounted, bfsync can be called with the commands given below\&. For instance bfsync commit/push/pull can be used to modify the local history and resynchronize the history with the master history\&. Other commands like bfsync get/put can be used to transfer data between checkouts\&.
+.sp
+For transfer, bfsync needs to be installed on every system that needs to be accessed\&. The actual transfer is done using ssh\&. Transfer has only be tested with ssh keys; it\(cqs highly recommended to use ssh\-agent to avoid entering your password over and over again\&.
+.sp
+It is possible to use bfsync for backups, in that case you only use a subset of what bfsync can do to get a versioned FUSE filesystem with deduplication\&. See the section BACKUP WALKTHROUGH for a description\&.
+.SH "OPTIONS"
+.sp
+For sub\-commands like bfsync pull or bfsync commit, the options depend on the command\&. In these cases, options are documented on the sub\-command manual page\&.
+.PP
+\-\-version
+.RS 4
+If this option is used and no command is specified, bfsync prints out the current version\&.
+.RE
+.SH "COMMANDS"
+.SS "Main Commands"
+.PP
+\fBbfsync-check\fR(1)
+.RS 4
+Checks local repository for completeness\&.
+.RE
+.PP
+\fBbfsync-clone\fR(1)
+.RS 4
+Clone a bfsync repo from a bfsync master repo\&.
+.RE
+.PP
+\fBbfsync-collect\fR(1)
+.RS 4
+Scan directory for file contents required by repository\&.
+.RE
+.PP
+\fBbfsync-commit\fR(1)
+.RS 4
+Commit changes to the repository\&.
+.RE
+.PP
+\fBbfsync-delete-version\fR(1)
+.RS 4
+Delete one or more versions from repository\&.
+.RE
+.PP
+\fBbfsync-diff\fR(1)
+.RS 4
+Diff text file changes between last and current version\&.
+.RE
+.PP
+\fBbfsync-expire\fR(1)
+.RS 4
+Mark old versions as deleted to reduce disk usage\&.
+.RE
+.PP
+\fBbfsync-gc\fR(1)
+.RS 4
+Cleanup unused files\&.
+.RE
+.PP
+\fBbfsync-get\fR(1)
+.RS 4
+Transfer file contents from repository\&.
+.RE
+.PP
+\fBbfsync-log\fR(1)
+.RS 4
+Display the history of the repository\&.
+.RE
+.PP
+\fBbfsync-pull\fR(1)
+.RS 4
+Pull changes from master repository\&.
+.RE
+.PP
+\fBbfsync-push\fR(1)
+.RS 4
+Push changes to master repository\&.
+.RE
+.PP
+\fBbfsync-put\fR(1)
+.RS 4
+Transfer file contents to repository\&.
+.RE
+.PP
+\fBbfsync-recover\fR(1)
+.RS 4
+Recover database to a consistent state\&.
+.RE
+.PP
+\fBbfsync-repo-files\fR(1)
+.RS 4
+Search a directory for files that are also in the repo\&.
+.RE
+.PP
+\fBbfsync-revert\fR(1)
+.RS 4
+Go back to a previous version\&.
+.RE
+.PP
+\fBbfsync-status\fR(1)
+.RS 4
+Show information about uncommitted changes\&.
+.RE
+.PP
+\fBbfsync-undelete-version\fR(1)
+.RS 4
+Undelete one or more versions from repository\&.
+.RE
+.SS "Additional Commands"
+.PP
+\fBbfsync-config-set\fR(1)
+.RS 4
+Modify repository configuration file\&.
+.RE
+.PP
+\fBbfsync-continue\fR(1)
+.RS 4
+Continue previously interrupted command\&.
+.RE
+.PP
+\fBbfsync-copy-expire\fR(1)
+.RS 4
+Copy expire tags from source to target repository\&.
+.RE
+.PP
+\fBbfsync-disk-usage\fR(1)
+.RS 4
+Generate disk usage information\&.
+.RE
+.PP
+\fBbfsync-find-missing\fR(1)
+.RS 4
+Show filenames of files where file contents are unavailable\&.
+.RE
+.PP
+\fBbfsync-get-repo-id\fR(1)
+.RS 4
+Get unique bfsync repo id\&.
+.RE
+.PP
+\fBbfsync-need-continue\fR(1)
+.RS 4
+Check whether bfsync continue needs to be run\&.
+.RE
+.PP
+\fBbfsync-need-recover\fR(1)
+.RS 4
+Check whether bfsync recover needs to be run\&.
+.RE
+.PP
+\fBbfsync-need-upgrade\fR(1)
+.RS 4
+Check whether bfsync upgrade needs to be run\&.
+.RE
+.PP
+\fBbfsync-new-files\fR(1)
+.RS 4
+Show which files were added for a given version\&.
+.RE
+.PP
+\fBbfsync-sql-export\fR(1)
+.RS 4
+Export versioned file list to postgres database\&.
+.RE
+.PP
+\fBbfsync-transfer-bench\fR(1)
+.RS 4
+Measure transfer speed from remote host to local host\&.
+.RE
+.PP
+\fBbfsync-upgrade\fR(1)
+.RS 4
+Upgrade repository contents from an old bfsync version\&.
+.RE
+.SH "CONFIGURATION"
+.sp
+Every bfsync checkout has a file called "config", which can be used to set configuration variables for this checkout\&.
+.PP
+\fBuse\-uid\-gid\fR 0|1
+.RS 4
+Bfsync was designed to store all file meta data, including the user id and group id of each file\&. These numbers will only make sense if all checkouts use the same uid/gid number to name mappings\&.
+.sp
+Since for most users we cannot assume that the uid/gid numbers are the same on every system that has a checkout, bfsync defaults to ignoring the access permissions and uid/gid numbers stored in the repository\&. All files will appear to belong to the user that mounted the filesystem, and access rights will also not be enforced\&.
+.sp
+To use the uid/gid numbers and enforce access rights, set use\-uid\-gid to 1\&. This is for instance useful if you want to copy data into the repository as root and preserve the ownership of the files\&.
+.RE
+.PP
+\fBget\-rate\-limit\fR <get\-limit\-kb>
+.RS 4
+Set the maximum transfer rate in kilobytes/sec that
+bfsync get
+will use\&. This is helpful if your internet connection has a limited speed: that way you can ensure that bfsync will not use up your line completely\&.
+.RE
+.PP
+\fBput\-rate\-limit\fR <put\-limit\-kb>
+.RS 4
+Set the maximum transfer rate in kilobytes/sec that
+bfsync put
+will use\&.
+.RE
+.PP
+\fBdefault { get\fR "<url>|<path>"; \fB}\fR
+.RS 4
+Set default location for get (an <url> or <path>) to be used if
+bfsync get
+is called without an argument\&.
+.RE
+.PP
+\fBdefault { put\fR "<url>|<path>"; \fB}\fR
+.RS 4
+Set default location for put (an <url> or <path>) to be used if
+bfsync put
+is called without an argument\&.
+.RE
+.PP
+\fBdefault { pull\fR "<url>|<path>"; \fB}\fR
+.RS 4
+Set default location for pull (an <url> or <path>) to be used if
+bfsync pull
+is called without an argument\&.
+.RE
+.PP
+\fBdefault { push\fR "<url>|<path>"; \fB}\fR
+.RS 4
+Set default location for push (an <url> or <path>) to be used if
+bfsync push
+is called without an argument\&.
+.RE
+.PP
+\fBdefault { copy\-expire\fR "<url>|<path>"; \fB}\fR
+.RS 4
+Set default location for copy\-expire (an <url> or <path>) to be used if
+bfsync copy\-expire
+is called without an argument\&.
+.RE
+.sp
+The configuration keys in the \fBdefault group\fR can be set simultaneously, by using
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+default {
+  get "\&.\&.\&.";
+  put "\&.\&.\&.";
+  push "\&.\&.\&.";
+  pull "\&.\&.\&.";
+  \&.\&.\&.
+}
+.fi
+.if n \{\
+.RE
+.\}
+.PP
+\fBexpire { keep\-most\-recent\fR <N>; \fB}\fR
+.RS 4
+Keep <N> most recent versions during expire\&.
+.RE
+.PP
+\fBexpire { create\-daily\fR first|last; \fB}\fR
+.RS 4
+Tag first/last backup of the day as daily backup during expire\&.
+.RE
+.PP
+\fBexpire { keep\-daily\fR <N>; \fB}\fR
+.RS 4
+Keep the newest <N> daily backups during expire\&.
+.RE
+.PP
+\fBexpire { create\-weekly\fR <weekday>; \fB}\fR
+.RS 4
+Tag daily backup on <weekday> as weekly backup during expire\&. Possible values for <weekday> are monday, tuesday, \&..., sunday\&.
+.RE
+.PP
+\fBexpire { keep\-weekly\fR <N>; \fB}\fR
+.RS 4
+Keep the newest <N> weekly backups during expire\&.
+.RE
+.PP
+\fBexpire { create\-monthly\fR first|last; \fB}\fR
+.RS 4
+Tag first/last daily backup of the month as monthly backup during expire\&.
+.RE
+.PP
+\fBexpire { keep\-monthly\fR <N>; \fB}\fR
+.RS 4
+Keep the newest <N> monthly backups during expire\&.
+.RE
+.PP
+\fBexpire { create\-yearly\fR first|last; \fB}\fR
+.RS 4
+Tag first/last daily backup of the year as yearly backup during expire\&.
+.RE
+.PP
+\fBexpire { keep\-yearly\fR <N>; \fB}\fR
+.RS 4
+Keep the newest <N> yearly backups during expire\&.
+.RE
+.sp
+The configuration keys in the \fBexpire group\fR can be set simultaneously, for instance by using
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+expire {
+  keep\-most\-recent 30;
+  keep\-daily 45;
+  keep\-monthly 30;
+  \&.\&.\&.
+}
+.fi
+.if n \{\
+.RE
+.\}
+.PP
+\fBsql\-export { database\fR <database>; \fB}\fR
+.RS 4
+Use the postgres database <database> for the sql\-export command\&.
+.RE
+.PP
+\fBsql\-export { user\fR <user>; \fB}\fR
+.RS 4
+Use the postgres user <user> for the sql\-export command\&.
+.RE
+.PP
+\fBsql\-export { password\fR <password>; \fB}\fR
+.RS 4
+Use the postgres password <password> for the sql\-export command\&.
+.RE
+.PP
+\fBsql\-export { host\fR <host>; \fB}\fR
+.RS 4
+Use the postgres host <host> for the sql\-export command\&.
+.RE
+.PP
+\fBsql\-export { port\fR <port>; \fB}\fR
+.RS 4
+Use the postgres port <port> for the sql\-export command\&.
+.RE
+.sp
+The configuration keys in the \fBsql\-export group\fR can be set simultaneously, for instance by using
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+sql\-export {
+  database bfsync;
+  user postgres;
+  password secret;
+  \&.\&.\&.
+}
+.fi
+.if n \{\
+.RE
+.\}
+.SH "SHARED MEMORY CONFIGURATION"
+.sp
+Shared memory is used by bfsync to access the Berkeley DB database contents from different processes: the bfsync FUSE filesystem process, bfsyncfs, and the python frontend, bfsync\&. Under Linux, the amount of shared memory usually is limited by three system\-wide kernel parameters:
+.PP
+\fB/proc/sys/kernel/shmall\fR
+.RS 4
+The maximum amount of shared memory that can be allocated\&.
+.RE
+.PP
+\fB/proc/sys/kernel/shmmax\fR
+.RS 4
+The maximum size of a shared memory segment\&.
+.RE
+.PP
+\fB/proc/sys/kernel/shmmni\fR
+.RS 4
+The maximum number of shared memory segments\&.
+.RE
+.sp
+These limits need to be large enough to allow bfsync to allocate the required amount of shared memory\&. The amount of shared memory required mainly depends on the cache size\&. Bfsync will use somewhat more shared memory than the cache size, but setting the limits too high is usually not a problem\&.
+.sp
+Example: If you\(cqre using three bfsync filesystems with 256 MB cache per filesystem, you can do so if \fBshmall\fR is 2 GB and \fBshmmax\fR is 512 MB\&. \fBshmmni\fR is usually not an issue, because bfsync doesn\(cqt use may segments (about 4 per filesystem)\&.
+.sp
+To display your current limits, you can use:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+# Display the system wide shared memory limits\&.
+server:~$ ipcs \-lm
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+To adjust shared memory settings at boot time, create a file called /etc/sysctl\&.d/90\-bfsync\-shm\&.conf:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+# Shared memory settings for bfsync
+
+# Maximum size of shared memory segment in bytes
+# 512 MB
+kernel\&.shmmax = 536870912
+
+# Maximum total size of shared memory in pages (normally 4096 bytes)
+# 2 GB
+kernel\&.shmall = 524288
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+Note that if you have other programs that also need shared memory, you need to coordinate the settings of all shared memory using programs\&. Its also not a problem if your limits are too high, so if the system wide limit for \fBshmall\fR is already 8 GB, there is no need to adjust it\&.
+.sp
+After creating this files, the settings will be loaded at boot time\&. To activate the shared memory configuration without rebooting, you can use
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+# Load shared memory settings (as root)\&.
+server:~$ sysctl \-p /etc/sysctl\&.d/90\-bfsync\-shm\&.conf
+.fi
+.if n \{\
+.RE
+.\}
+.SH "MERGES"
+.sp
+bfsync allows independent modifications of the data/history contained in different checkouts\&. Upon push, bfsync will check that the master history doesn\(cqt contain new commits that are unknown to the local checkout\&. If two clients modify the repository independently, the first client that uses bfsync push will simply reintegrate its changes into the master history, and the new master history will be this client\(cqs history\&.
+.sp
+However, if the second client tries a bfsync push, the push will be refused\&. To resolve the situation, the second client can use \fBbfsync-pull\fR(1)\&. Once it is detected that merging both histories is necessary, a merge algorithm will be used\&. For non\-conflicting changes, everything will be merged automatically\&.
+.sp
+Non\-conflicting changes could be:
+.PP
+\fBmaster history has new file F \- client 2 has new file G\fR
+.RS 4
+After merging, both files will be present in the repository
+.RE
+.PP
+\fBmaster history has new dir A, with new files in it \- client 2 has new dir B, with new files in it\fR
+.RS 4
+After merging, both directories will be part of the repository
+.RE
+.PP
+\fBmaster history has renamed file F to G \- client 2 has renamed dir X to Y\fR
+.RS 4
+After merging, both renames will be done
+.RE
+.PP
+\fBmaster history has new file X \- client 2 has new file X\fR
+.RS 4
+In this case, one of the files will be renamed to
+X~1, since they were both independently added it is likely that the user wants to keep both files\&.
+.RE
+.sp
+However, there are situations where the merge algorithm can\(cqt merge both histories automatically:
+.PP
+\fBmaster history has edited file F \- client 2 has edited file F\fR
+.RS 4
+In this case, bfsync pull will ask the user to resolve the situation; it is possible to keep the master version, or the local version or both\&.
+.RE
+.PP
+\fBmaster history has edited file F \- client 2 has deleted file F\fR
+.RS 4
+bfsync pull will ask the user in this case; it is possible to either keep the file with changes, or delete it\&.
+.RE
+.sp
+In any case, after the merge decisions are made (if any), the merge algorithm will use them to modify the local history so that it can be executed without conflicts \fBafter\fR the master history\&. After this step, the modified local commits will be based on the master history\&. This means that then, bfsync push will succeed, and the modified changes of client 2 can be pushed to the master history\&.
+.sp
+Note that the master history is always linear, so the history branch that was present before the merge algorithm was used will no longer be visible in the history after the pull\&. The merged history will simply contain the old history (before client 1 and client 2 made their changes), the changes made on client 1, an extra merge commit (if necessary to resolve merge issues), and the \fBmodified changes\fR of client 2\&.
+.SH "WALKTHROUGH"
+.sp
+First, we create and setup repositories on three computers: server, client1 and client2\&. The server will hold the master repository (which manages the history, but nothing else)\&. It is stored under ~/repos/big\&.bfsync\&. All computers will contain a checkout, so that the actual contents of the files can be kept there\&.
+.PP
+\fBserver:~$ mkdir repos\fR
+.RS 4
+Create a directory on the server for the master repository\&.
+.RE
+.PP
+\fBserver:~$ cd repos\fR
+.RS 4
+Change dir\&.
+.RE
+.PP
+\fBserver:~/repos$ bfsync init big\&.bfsync\fR
+.RS 4
+Init master repo\&.
+.RE
+.PP
+\fBserver:~/repos$ cd ~\fR
+.RS 4
+Change dir\&.
+.RE
+.PP
+\fBserver:~$ bfsync clone repos/big\&.bfsync\fR
+.RS 4
+Clone repository on the server\&.
+.RE
+.PP
+\fBserver:~$ mkdir big\fR
+.RS 4
+Create mount point on the server\&.
+.RE
+.PP
+\fBserver:~$ bfsyncfs big\&.bfsync big\fR
+.RS 4
+Mount repository on the server\&.
+.RE
+.PP
+\fBclient1:~$ bfsync clone server:repos/big\&.bfsync\fR
+.RS 4
+Clone repository on client1\&.
+.RE
+.PP
+\fBclient1:~$ mkdir big\fR
+.RS 4
+Create mount point on client1\&.
+.RE
+.PP
+\fBclient1:~$ bfsyncfs big\&.bfsync big\fR
+.RS 4
+Mount repository on client1\&.
+.RE
+.PP
+\fBclient2:~$ bfsync clone server:repos/big\&.bfsync\fR
+.RS 4
+Clone repository on client2\&.
+.RE
+.PP
+\fBclient2:~$ mkdir big\fR
+.RS 4
+Create mount point on client2\&.
+.RE
+.PP
+\fBclient2:~$ bfsyncfs big\&.bfsync big\fR
+.RS 4
+Mount repository on client2\&.
+.RE
+.sp
+As second step, we add a music file on client1\&. Of course it\(cqs possible to add more files in one step; you can also use rsync, mc or a file manager to copy files into the repository\&. Whenever files are added or otherwise changed, we need to commit and push the changes to the server, so that it contains the canonical index of files\&.
+.PP
+\fBclient1:~$ cd big\fR
+.RS 4
+Change dir\&.
+.RE
+.PP
+\fBclient1:~/big$ cp ~/download/01\-some\-music\&.flac \&.\fR
+.RS 4
+Copy a big file into the repository checkout\&.
+.RE
+.PP
+\fBclient1:~/big$ bfsync commit\fR
+.RS 4
+Commit the changes to the repository\&.
+.RE
+.PP
+\fBclient1:~/big$ bfsync push\fR
+.RS 4
+Push the changes to the server\&.
+.RE
+.sp
+So far, we have added the file to the repository on client1, but the contents of the file are only present on client1, and not in the other repos\&. To change this, we can transfer the file to the server\&.
+.PP
+\fBserver:~$ cd big\fR
+.RS 4
+Change directory\&.
+.RE
+.PP
+\fBserver:~/big$ bfsync pull\fR
+.RS 4
+Using pull is required on the server before we can transfer the file there\&. By pulling, the server will have the necessary information, or in other words: the server can know that a file named 01\-some\-music\&.flac is part of the bfsync repository and should be there\&. Running
+bfsync check
+will report one missing file after this step\&.
+.RE
+.PP
+\fBclient1:~/big$ bfsync put server:big\fR
+.RS 4
+Now the actual transfer: after this step, both client1 and server will have a copy of
+01\-some\-music\&.flac\&.
+.RE
+.sp
+As last step, we\(cqll transfer the file to client2\&. Of course we could use the same commands that we used to get the file to the server, but let\(cqs assume that client2 is behind a firewall, and that it\(cqs not possible to ssh to client2 directly\&. Fortunately, besides uploading files to another host (bfsync put), it\(cqs also possible to download data from another host (bfsync get)\&.
+.PP
+\fBclient2:~$ cd big\fR
+.RS 4
+Change directory
+.RE
+.PP
+\fBclient2:~/big$ bfsync pull\fR
+.RS 4
+Update directory information\&.
+.RE
+.PP
+\fBclient2:~/big$ bfsync get server:big\fR
+.RS 4
+Get the file from the server\&.
+.RE
+.SH "BACKUP WALKTHROUGH"
+.sp
+Since bfsync implements file level deduplication and versioning of files, it can be used to do backups\&. Backups typically contain lots of files (like 5\&.000\&.000 files)\&. Therefore you can only use a subset of the available commands for backups, since some commands do not work well if the number of files is that large\&.
+.sp
+Commands like \fBcommit\fR, \fBget\fR, \fBput\fR, \fBpush\fR, \fBpull\fR, \fBcheck\fR and \fBgc\fR should work fine for backup usage\&. Also deleting old backups using \fBexpire\fR and maybe \fBcopy\-expire\fR is supported\&. However, advanced functions like merges might never be supported for backups \- for typical backup scenarios this is not an issue\&.
+.sp
+The first step for backups is to set up repositories\&. All \fBsteps should be done as root\fR\&. For this example, we assume that our \fBbackup harddisk is mounted to /backup\fR\&.
+.PP
+\fBserver:/backup$ bfsync init master\fR
+.RS 4
+Setup master repository
+.RE
+.PP
+\fBserver:/backup$ bfsync clone \-u \-c 500 master repo\fR
+.RS 4
+Clone repository, ensure uid/gid are stored and set cache size\&.
+.RE
+.sp
+The cache size is important for backups: if it is too small, the backup will take a lot more time\&. However, since the cache is stored in shared memory, a overly large cache may use too much of the system memory\&. As a rule of thumb, 100 megabytes of cache should be used for every 1\&.000\&.000 files that are stored in the backup\&. More is better, if you can afford it\&.
+.PP
+\fBserver:/backup$ mkdir mnt\fR
+.RS 4
+Create mount point for the backup repository\&.
+.RE
+.PP
+\fBserver:/backup$ bfsyncfs repo mnt\fR
+.RS 4
+Mount repository\&.
+.RE
+.PP
+\fBserver:/backup$ cd /backup/mnt\fR
+.RS 4
+Change dir\&.
+.RE
+.sp
+Now that everything is initialized, we can backup some data\&. For this example we backup /home\&.
+.PP
+\fBserver:/backup/mnt$ rsync \-axH \-\-delete /home/ home\fR
+.RS 4
+Copy everything from /home to the backup\&. This is the initial backup, so all files will be copyied to the backup harddisk\&.
+.RE
+.sp
+The rsync options we use here are:
+.PP
+\-a
+.RS 4
+Copy all file attributes\&.
+.RE
+.PP
+\-x
+.RS 4
+Exclude everything that is not on the filesystem that /home is on\&.
+.RE
+.PP
+\-H
+.RS 4
+Backup hardlinks as hardlinks\&.
+.RE
+.PP
+\-\-delete
+.RS 4
+Delete files in the target directory that are not in the source directory\&.
+.RE
+.PP
+\fBserver:/backup/mnt$ bfsync commit \-m "initial backup"\fR
+.RS 4
+Snapshot current state, run deduplication\&.
+.RE
+.PP
+\fBserver:/backup/mnt$ bfsync push\fR
+.RS 4
+Push changes into the master repository\&. This is a precaution for the case that your repository gets damaged due to disk failure\&. Having the metadata stored twice can be used to recover your repository in that case (by cloning again for master using
+\fBbfsync-clone\fR(1)
+and reassembling the data files using
+\fBbfsync-collect\fR(1))\&.
+.RE
+.sp
+We have the initial full backup\&. Now one day later, we only need to backup changes (which will be a lot faster than the initial backup), like this:
+.PP
+\fBserver:/backup/mnt$ rsync \-axH \-\-delete /home/ home\fR
+.RS 4
+Copy changes from /home to the backup\&.
+.RE
+.PP
+\fBserver:/backup/mnt$ bfsync commit \-m "first incremental backup"\fR
+.RS 4
+Snapshot current state, run deduplication\&.
+.RE
+.PP
+\fBserver:/backup/mnt$ bfsync push\fR
+.RS 4
+Push changes into the master repository\&.
+.RE
+.sp
+Now, we\(cqve created the first incremental backup\&. This usually uses a lot less additional disk space than the initial full backup, since usually only few files will be changed\&. To access an individual backup, you can use
+.PP
+\fBserver:/backup/mnt$ cd /backup/mnt/\&.bfsync/commits/2/home\fR
+.RS 4
+Access a specific version\&. The version log can be viewed with
+\fBbfsync-log\fR(1)\&.
+.RE
+.sp
+To automate the process, a script which runs the rsync and commit steps every night can be used\&. Removing the contents of old backups is currently not supported, but will be available in the future\&.
+.sp
+The commandline for creating a backup of the root filesystem is:
+.PP
+\fBserver:/backup/mnt$ rsync \-axH \-\-delete / root\fR
+.RS 4
+Copy changes from / to the backup\&.
+.RE
+.sp
+If you backup more than one filesystem every day, you only need to commit once, that is first rsync all filesystems and commit as last step\&.
+.SH "UPDATING FROM AN OLD VERSION"
+.sp
+The repository format is not (yet) stable across bfsync versions\&. In some cases upgrades from an old to the current bfsync version can be done \fBautomatically\fR by running
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+server:/path/to/files\&.bfsync$ bfsync upgrade
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+This is the easiest way\&. If this way doesn\(cqt work, you need to \fBmanually convert your old repositories\fR to a new version\&. There is currently no easy way to preserve the history when manually updating from an old version of bfsync\&. But if you need only preserve the repository content, you can use the following steps:
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 1.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  1." 4.2
+.\}
+\fBinstall the old version and the new version of bfsync in parallel on one machine\fR
+.sp
+Use different prefixes to make this happen (configure \-\-prefix=\&.\&.\&.)\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 2.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  2." 4.2
+.\}
+\fBcreate a new empty master repository and checkout\fR
+.sp
+This will become your new repository & checkout\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 3.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  3." 4.2
+.\}
+\fBcopy all files from the old repository to the new repository\fR
+.sp
+You\(cqll need to mount both, the old and new bfsync repository using
+bfsyncfs\&. Copying can be done with a filemanager,
+cp \-a
+or
+rsync\&. You need to copy everything except for the
+\&.bfsync
+directory\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 4.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  4." 4.2
+.\}
+\fBcommit and push in the new repository\fR
+.sp
+You have a new repository now, conversion on this machine is finished\&.
+.RE
+.sp
+To avoid retransfer if you have the data on other machines, the following steps can be used:
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 1.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  1." 4.2
+.\}
+\fBcheckout the new master repository on a satellite system\fR
+.sp
+Now you have a new bfsync repository, but the data is still missing
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 2.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  2." 4.2
+.\}
+\fBuse bfsync collect to get your data into the new repository without retransfer\fR
+.sp
+Since you already have a bfsync checkout on the satellite system, you can simply get the data from there, without retransfer\&. Since
+\fBbfsync-collect\fR(1)
+automatically detects whether it needs a file or not using the file contents, you can simply use
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+bfsync collect /path/to/files\&.bfsync
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+to get the data from your old checkout into the new repository\&.
+.RE
+.sp
+Repeat these steps on all machines that contain checkouts of your repository\&. You can delete the old format checkouts after verifying with \fBbfsync-check\fR(1) that all files you need are there\&. You do not need to install old and new bfsync versions on the satellite systems\&. Only the new bfsync is required to perform the checkout & collect steps\&.
+.SH "SEE ALSO"
+.sp
+\fBbfsyncfs\fR(1)\&.

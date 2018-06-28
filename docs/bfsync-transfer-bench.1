@@ -1,0 +1,47 @@
+'\" t
+.\"     Title: bfsync-transfer-bench
+.\"    Author: [FIXME: author] [see http://docbook.sf.net/el/author]
+.\" Generator: DocBook XSL Stylesheets v1.79.1 <http://docbook.sf.net/>
+.\"      Date: 06/28/2018
+.\"    Manual: \ \&
+.\"    Source: \ \&
+.\"  Language: English
+.\"
+.TH "BFSYNC\-TRANSFER\-BE" "1" "06/28/2018" "\ \&" "\ \&"
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+bfsync-transfer-bench \- Measure transfer speed from remote host to local host
+.SH "SYNOPSIS"
+.sp
+.nf
+\fIbfsync transfer\-bench\fR [\-\-rsh <remote_shell>] <host>
+.fi
+.SH "DESCRIPTION"
+.sp
+Measure transfer speed when transferring data from host <host> to the local host\&.
+.SH "OPTIONS"
+.PP
+\-\-rsh
+.RS 4
+This option can be used to set the remote shell used to connect the host\&. It defaults to
+ssh, but other remote shells (like
+rsh) can provide better performance\&.
+.RE
