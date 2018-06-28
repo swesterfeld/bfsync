@@ -3,7 +3,8 @@ DOCS_MAN = $(patsubst %.1.txt, %.1, $(DOCS_TXT))
 
 dist_man_MANS = $(DOCS_MAN)
 
-EXTRA_DIST = $(DOCS_MAN) $(DOCS_TXT) bfsync.1.wiki bfsyncfs.1.wiki bfsync-overview.odg rebuild-manpage.sh
+EXTRA_DIST = $(DOCS_MAN) $(DOCS_TXT) bfsync.1.wiki bfsyncfs.1.wiki bfsync-overview.odg rebuild-manpage.sh \
+	     command-list.txt asciidoc.conf
 
 DOCS_DIR = ~/public_html/bfsync/docs-$(VERSION)
 PROJECT_DIR = ~/public_html/bfsync
