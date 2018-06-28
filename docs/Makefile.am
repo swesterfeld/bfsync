@@ -1,10 +1,10 @@
-DOCS_TXT = bfsync.1.txt bfsyncfs.1.txt $(wildcard bfsync-*.1.txt)
-DOCS_MAN = $(patsubst %.1.txt, %.1, $(DOCS_TXT))
+DOCS_TXT = bfsync.1.txt bfsyncfs.1.txt bfsync-*.1.txt
+DOCS_MAN = bfsync.1     bfsyncfs.1     bfsync-*.1
 
 dist_man_MANS = $(DOCS_MAN)
 
 EXTRA_DIST = $(DOCS_MAN) $(DOCS_TXT) bfsync.1.wiki bfsyncfs.1.wiki bfsync-overview.odg rebuild-manpage.sh \
-	     command-list.txt asciidoc.conf
+	     command-list.txt asciidoc.conf cmd-list.py
 
 DOCS_DIR = ~/public_html/bfsync/docs-$(VERSION)
 PROJECT_DIR = ~/public_html/bfsync
