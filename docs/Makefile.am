@@ -1,5 +1,5 @@
-DOCS_TXT = bfsync.1.txt bfsyncfs.1.txt bfsync-*.1.txt
-DOCS_MAN = bfsync.1     bfsyncfs.1     bfsync-*.1
+DOCS_TXT = bfsync.txt bfsyncfs.txt bfsync-*.txt
+DOCS_MAN = bfsync.1   bfsyncfs.1   bfsync-*.1
 
 dist_man_MANS = $(DOCS_MAN)
 
