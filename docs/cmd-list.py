@@ -31,9 +31,9 @@ def parse_cat (cat):
     cmd, cmd_cat = (m.group (1), m.group (2))
 
     if cmd_cat == cat:
-      result = parse (cmd + ".1.txt")
+      result = parse (cmd + ".txt")
       if not result:
-        print "ERROR parsing '" + cmd + ".1.txt'"
+        print "ERROR parsing '" + cmd + ".txt'"
         exit(1)
 
       name, desc = result
