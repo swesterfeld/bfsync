@@ -1,3 +1,18 @@
+Overview of Changes in bfsync-0.3.7:
+
+* migrated all documentation to asciidoc
+* each bfsync command has its own manpage now (i.e. man bfsync clone)
+* added new bfsyncfs --show-all-versions option
+* added new bfsync pull --ff-only option
+* use boost option parsing for bfsyncfs
+* new commands: bfsync check-integrity, file-log, history-export
+* bug fix: support DBs with page sizes > 4096 bytes (use 64Kb buffer sizes now)
+* bug fix: avoid problems with identical inodes during commit
+* bug fix: avoid link duplication
+* added new key/value table for our db
+* some performance optimizations
+* small bug fixes
+
 Overview of Changes in bfsync-0.3.6:
 
 * boost related build fixes
