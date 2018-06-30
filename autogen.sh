@@ -24,8 +24,5 @@ fi
 # bail out as scheduled
 test "0$DIE" -gt 0 && exit 1
 
-echo "Ensure: ChangeLog"
-test -e ChangeLog || touch ChangeLog # automake *requires* ChangeLog
-
 echo "Running: autoreconf -i && ./configure $@"
 autoreconf -i -Wno-portability && ./configure "$@"
