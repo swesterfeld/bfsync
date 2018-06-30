@@ -1,5 +1,6 @@
 DOCS_TXT = bfsync.txt bfsyncfs.txt bfsync-*.txt
 DOCS_MAN = bfsync.1   bfsyncfs.1   bfsync-*.1
+DOCS_PHP = bfsync.php bfsyncfs.php bfsync-*.php
 
 dist_man_MANS = $(DOCS_MAN)
 
@@ -11,8 +12,8 @@ PROJECT_DIR = ~/public_html/bfsync
 
 publish-docs:
 	mkdir -p $(DOCS_DIR)
-	for i in $(dist_man_MANS); do \
-	  cp $$i.php $(DOCS_DIR); \
+	for i in $(DOCS_PHP); do \
+	  cp $$i $(DOCS_DIR); \
 	done
 	cd $(DOCS_DIR) && find . -type f -print0 | xargs -0 git add
 	cp ../NEWS $(PROJECT_DIR)
