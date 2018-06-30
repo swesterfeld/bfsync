@@ -12,7 +12,7 @@ PROJECT_DIR = ~/public_html/bfsync
 publish-docs:
 	mkdir -p $(DOCS_DIR)
 	for i in $(dist_man_MANS); do \
-	  cp $$i.html $(DOCS_DIR); \
+	  cp $$i.php $(DOCS_DIR); \
 	done
 	cd $(DOCS_DIR) && find . -type f -print0 | xargs -0 git add
 	cp ../NEWS $(PROJECT_DIR)

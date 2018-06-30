@@ -1,5 +1,5 @@
 '\" t
-.\"     Title: bfsync-get-repo-id
+.\"     Title: bfsync-export-history
 .\"    Author: [FIXME: author] [see http://docbook.sf.net/el/author]
 .\" Generator: DocBook XSL Stylesheets v1.79.1 <http://docbook.sf.net/>
 .\"      Date: 06/30/2018
@@ -7,7 +7,7 @@
 .\"    Source: \ \&
 .\"  Language: English
 .\"
-.TH "BFSYNC\-GET\-REPO\-I" "1" "06/30/2018" "\ \&" "\ \&"
+.TH "BFSYNC\-EXPORT\-HIST" "1" "06/30/2018" "\ \&" "\ \&"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -28,12 +28,17 @@
 .\" * MAIN CONTENT STARTS HERE *
 .\" -----------------------------------------------------------------
 .SH "NAME"
-bfsync-get-repo-id \- Get unique bfsync repo id
+bfsync-export-history \- Export history from a repository
 .SH "SYNOPSIS"
 .sp
 .nf
-\fIbfsync get\-repo\-id\fR
+\fIbfsync export\-history\fR <dir>
 .fi
 .SH "DESCRIPTION"
 .sp
-Each bfsync repository or checkout has a unique id, which is generated upon creation of the repository and stored in the "info" file of each repository\&. This command will print this repository id\&.
+This command exports the history of the current repo to <dir>, which will be created during export\&. The command works for both, master repositories and checkouts\&. Once the history is exported, the history can be used for creating a new master repository using \fIbfsync init\fR with the same history\&.
+.sp
+This is especially useful if your master repository is no longer available but you still own one or more checkouts\&. Using history export, a new master repository for the checkouts can be created, which has the same history and is compatible to the checkouts\&.
+.SH "SEE ALSO"
+.sp
+\fBbfsync-export-history\fR(1)

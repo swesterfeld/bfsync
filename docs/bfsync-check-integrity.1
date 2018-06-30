@@ -1,5 +1,5 @@
 '\" t
-.\"     Title: bfsync-get-repo-id
+.\"     Title: bfsync-check-integrity
 .\"    Author: [FIXME: author] [see http://docbook.sf.net/el/author]
 .\" Generator: DocBook XSL Stylesheets v1.79.1 <http://docbook.sf.net/>
 .\"      Date: 06/30/2018
@@ -7,7 +7,7 @@
 .\"    Source: \ \&
 .\"  Language: English
 .\"
-.TH "BFSYNC\-GET\-REPO\-I" "1" "06/30/2018" "\ \&" "\ \&"
+.TH "BFSYNC\-CHECK\-INTEG" "1" "06/30/2018" "\ \&" "\ \&"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -28,12 +28,21 @@
 .\" * MAIN CONTENT STARTS HERE *
 .\" -----------------------------------------------------------------
 .SH "NAME"
-bfsync-get-repo-id \- Get unique bfsync repo id
+bfsync-check-integrity \- Check repository integrity
 .SH "SYNOPSIS"
 .sp
 .nf
-\fIbfsync get\-repo\-id\fR
+\fIbfsync check\-integrity\fR [\-i <time_interval>]
 .fi
 .SH "DESCRIPTION"
 .sp
-Each bfsync repository or checkout has a unique id, which is generated upon creation of the repository and stored in the "info" file of each repository\&. This command will print this repository id\&.
+This commands runs some basic integrity checks on the repository\&. If this check fails, the database is not consistent\&. Usually this means either some kind of hardware problem or a software bug occurred in the past\&.
+.SH "OPTIONS"
+.PP
+\-i <time_interval>
+.RS 4
+By using the \-i option, which can be
+weekly
+or
+daily, the integrity check will be skipped if it already was performed in this time interval\&.
+.RE

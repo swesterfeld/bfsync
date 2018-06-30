@@ -1,5 +1,5 @@
 '\" t
-.\"     Title: bfsync-get-repo-id
+.\"     Title: bfsync-config-unset
 .\"    Author: [FIXME: author] [see http://docbook.sf.net/el/author]
 .\" Generator: DocBook XSL Stylesheets v1.79.1 <http://docbook.sf.net/>
 .\"      Date: 06/30/2018
@@ -7,7 +7,7 @@
 .\"    Source: \ \&
 .\"  Language: English
 .\"
-.TH "BFSYNC\-GET\-REPO\-I" "1" "06/30/2018" "\ \&" "\ \&"
+.TH "BFSYNC\-CONFIG\-UNSE" "1" "06/30/2018" "\ \&" "\ \&"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -28,12 +28,15 @@
 .\" * MAIN CONTENT STARTS HERE *
 .\" -----------------------------------------------------------------
 .SH "NAME"
-bfsync-get-repo-id \- Get unique bfsync repo id
+bfsync-config-unset \- Remove entry from repository configuration
 .SH "SYNOPSIS"
 .sp
 .nf
-\fIbfsync get\-repo\-id\fR
+\fIbfsync config\-unset\fR <key>
 .fi
 .SH "DESCRIPTION"
 .sp
-Each bfsync repository or checkout has a unique id, which is generated upon creation of the repository and stored in the "info" file of each repository\&. This command will print this repository id\&.
+This command removes the entry for <key> from the configuration file\&.
+.SH "SEE ALSO"
+.sp
+\fBbfsync-config-set\fR(1)

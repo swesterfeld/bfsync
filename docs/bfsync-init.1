@@ -1,5 +1,5 @@
 '\" t
-.\"     Title: bfsync-get-repo-id
+.\"     Title: bfsync-init
 .\"    Author: [FIXME: author] [see http://docbook.sf.net/el/author]
 .\" Generator: DocBook XSL Stylesheets v1.79.1 <http://docbook.sf.net/>
 .\"      Date: 06/30/2018
@@ -7,7 +7,7 @@
 .\"    Source: \ \&
 .\"  Language: English
 .\"
-.TH "BFSYNC\-GET\-REPO\-I" "1" "06/30/2018" "\ \&" "\ \&"
+.TH "BFSYNC\-INIT" "1" "06/30/2018" "\ \&" "\ \&"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -28,12 +28,21 @@
 .\" * MAIN CONTENT STARTS HERE *
 .\" -----------------------------------------------------------------
 .SH "NAME"
-bfsync-get-repo-id \- Get unique bfsync repo id
+bfsync-init \- Create a new bfsync master repo
 .SH "SYNOPSIS"
 .sp
 .nf
-\fIbfsync get\-repo\-id\fR
+\fIbfsync init\fR [\-\-with\-history <history_dir>] <repo_dir>
 .fi
 .SH "DESCRIPTION"
 .sp
-Each bfsync repository or checkout has a unique id, which is generated upon creation of the repository and stored in the "info" file of each repository\&. This command will print this repository id\&.
+This command will create a new bfsync master repository using <repo_dir> as destination directory\&. This master repo can then be cloned to create local or remote checkouts\&.
+.SH "OPTIONS"
+.PP
+\-\-with\-history <history_dir>
+.RS 4
+This option can be used to create a master repository with a specific history, which is mostly useful if the original master repository was lost\&. This is however not the common case, but a rare exception\&.
+.RE
+.SH "SEE ALSO"
+.sp
+\fBbfsync-clone\fR(1), \fBbfsync-export-history\fR(1)

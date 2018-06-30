@@ -2,12 +2,12 @@
 .\"     Title: bfsync
 .\"    Author: [FIXME: author] [see http://docbook.sf.net/el/author]
 .\" Generator: DocBook XSL Stylesheets v1.79.1 <http://docbook.sf.net/>
-.\"      Date: 06/28/2018
+.\"      Date: 06/30/2018
 .\"    Manual: \ \&
 .\"    Source: \ \&
 .\"  Language: English
 .\"
-.TH "BFSYNC" "1" "06/28/2018" "\ \&" "\ \&"
+.TH "BFSYNC" "1" "06/30/2018" "\ \&" "\ \&"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -99,6 +99,11 @@ Cleanup unused files\&.
 Transfer file contents from repository\&.
 .RE
 .PP
+\fBbfsync-init\fR(1)
+.RS 4
+Create a new bfsync master repo\&.
+.RE
+.PP
 \fBbfsync-log\fR(1)
 .RS 4
 Display the history of the repository\&.
@@ -145,9 +150,19 @@ Undelete one or more versions from repository\&.
 .RE
 .SS "Additional Commands"
 .PP
+\fBbfsync-check-integrity\fR(1)
+.RS 4
+Check repository integrity\&.
+.RE
+.PP
 \fBbfsync-config-set\fR(1)
 .RS 4
 Modify repository configuration file\&.
+.RE
+.PP
+\fBbfsync-config-unset\fR(1)
+.RS 4
+Remove entry from repository configuration\&.
 .RE
 .PP
 \fBbfsync-continue\fR(1)
@@ -163,6 +178,16 @@ Copy expire tags from source to target repository\&.
 \fBbfsync-disk-usage\fR(1)
 .RS 4
 Generate disk usage information\&.
+.RE
+.PP
+\fBbfsync-export-history\fR(1)
+.RS 4
+Export history from a repository\&.
+.RE
+.PP
+\fBbfsync-file-log\fR(1)
+.RS 4
+Display the history of one file\&.
 .RE
 .PP
 \fBbfsync-find-missing\fR(1)
