@@ -1,0 +1,28 @@
+bfsync-file-log(1)
+==================
+
+NAME
+----
+bfsync-file-log - Display the history of one file
+
+SYNOPSIS
+--------
+[verse]
+'bfsync file-log' [-a] [-v] <file>
+
+DESCRIPTION
+-----------
+Display the history of one file in the repository. For each commit that affects
+this file, one entry will show up in the log for that file.
+
+OPTIONS
+-------
+-a::
+    Normally deleted versions are omitted but can be shown using this option.
+
+-v::
+    Show details for each version.
+
+SEE ALSO
+--------
+linkbfsync:bfsync-log[1].

@@ -1,0 +1,23 @@
+bfsync-export-history(1)
+========================
+
+NAME
+----
+bfsync-export-history - Export history from a repository
+
+SYNOPSIS
+--------
+[verse]
+'bfsync export-history' <dir>
+
+DESCRIPTION
+-----------
+This command exports the history of the current repo to `<dir>`, which will
+be created during export. The command works for both, master repositories
+and checkouts. Once the history is exported, the history can be used for
+creating a new master repository using 'bfsync init' with the same history.
+
+This is especially useful if your master repository is no longer available
+but you still own one or more checkouts. Using history export, a new master
+repository for the checkouts can be created, which has the same history
+and is compatible to the checkouts.

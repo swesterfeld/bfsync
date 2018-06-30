@@ -1,0 +1,19 @@
+bfsync-config-unset(1)
+====================
+
+NAME
+----
+bfsync-config-unset - Remove entry from repository configuration
+
+SYNOPSIS
+--------
+[verse]
+'bfsync config-unset' <key>
+
+DESCRIPTION
+-----------
+This command removes the entry for `<key>` from the configuration file.
+
+SEE ALSO
+--------
+linkbfsync:bfsync-config-set[1]

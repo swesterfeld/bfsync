@@ -26,3 +26,7 @@ $ bfsync config-set expire/keep_daily 30
 
 It is possible to assign more than one value to a key, however this only makes
 sense for keys that support that.
+
+SEE ALSO
+--------
+linkbfsync:bfsync-config-unset[1]

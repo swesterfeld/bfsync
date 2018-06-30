@@ -19,3 +19,7 @@ OPTIONS
 -------
 -a::
     Normally deleted versions are omitted but can be shown using this option.
+
+SEE ALSO
+--------
+linkbfsync:bfsync-file-log[1].

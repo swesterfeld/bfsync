@@ -1,0 +1,23 @@
+bfsync-check-integrity(1)
+=========================
+
+NAME
+----
+bfsync-check-integrity - Check repository integrity
+
+SYNOPSIS
+--------
+[verse]
+'bfsync check-integrity' [-i <time_interval>]
+
+DESCRIPTION
+-----------
+This commands runs some basic integrity checks on the repository. If this check
+fails, the database is not consistent. Usually this means either some kind of
+hardware problem or a software bug occurred in the past.
+
+OPTIONS
+-------
+-i <time_interval>::
+    By using the -i option, which can be `weekly` or `daily`, the integrity
+    check will be skipped if it already was performed in this time interval.
