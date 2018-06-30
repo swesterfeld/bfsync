@@ -21,3 +21,7 @@ This is especially useful if your master repository is no longer available
 but you still own one or more checkouts. Using history export, a new master
 repository for the checkouts can be created, which has the same history
 and is compatible to the checkouts.
+
+SEE ALSO
+--------
+linkbfsync:bfsync-export-history[1]

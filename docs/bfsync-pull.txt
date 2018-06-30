@@ -43,3 +43,7 @@ OPTIONS
 --always-both::
     If merge conflicts occur, automatically resolve them by always choosing
     both versions. This is mainly intended for unit testing scripts.
+
+SEE ALSO
+--------
+linkbfsync:bfsync-push[1]

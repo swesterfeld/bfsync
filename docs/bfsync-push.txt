@@ -27,3 +27,7 @@ OPTIONS
 --rsh <remote_shell>::
     This option can be used to set the remote shell used to connect the host; it
     defaults to ssh.
+
+SEE ALSO
+--------
+linkbfsync:bfsync-pull[1]

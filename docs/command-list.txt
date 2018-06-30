@@ -17,6 +17,7 @@ bfsync-find-missing                 add
 bfsync-gc                           main
 bfsync-get                          main
 bfsync-get-repo-id                  add
+bfsync-init                         main
 bfsync-log                          main
 bfsync-need-continue                add
 bfsync-need-recover                 add

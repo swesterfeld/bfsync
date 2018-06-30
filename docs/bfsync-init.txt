@@ -1,0 +1,29 @@
+bfsync-init(1)
+===============
+
+NAME
+----
+bfsync-init - Create a new bfsync master repo
+
+SYNOPSIS
+--------
+[verse]
+'bfsync init' [--with-history <history_dir>] <repo_dir>
+
+DESCRIPTION
+-----------
+This command will create a new bfsync master repository using `<repo_dir>` as
+destination directory. This master repo can then be cloned to create local or
+remote checkouts.
+
+OPTIONS
+-------
+--with-history <history_dir>::
+   This option can be used to create a master repository with a specific history,
+   which is mostly useful if the original master repository was lost. This is
+   however not the common case, but a rare exception.
+
+SEE ALSO
+--------
+linkbfsync:bfsync-clone[1],
+linkbfsync:bfsync-export-history[1]
